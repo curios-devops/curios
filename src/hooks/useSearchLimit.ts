@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSession } from './useSession';
 import { useSubscription } from './useSubscription';
+import { useUserType } from './useUserType';
 
 export function useSearchLimit() {
   const { session } = useSession();
   const { subscription } = useSubscription();
+  const userType = useUserType();
   const [remainingSearches, setRemainingSearches] = useState<number>(6);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const maxSearches = subscription?.isPro ? 600 : 6;
 
   useEffect(() => {
     if (!session?.user) {
@@ -26,11 +30,6 @@ export function useSearchLimit() {
           .single();
 
         if (supabaseError) {
-          // Use fallback values for development/demo
-          if (import.meta.env.DEV) {
-            setRemainingSearches(subscription?.isPro ? 600 : 6);
-            return;
-          }
           throw supabaseError;
         }
 
@@ -41,16 +40,14 @@ export function useSearchLimit() {
         if (resetAt < new Date(now.getTime() - 24 * 60 * 60 * 1000)) {
           // Reset counter
           const newCount = subscription?.isPro ? 600 : 6;
-          
-          const { error: updateError } = await supabase
+          await supabase
             .from('profiles')
             .update({
               remaining_searches: newCount,
               searches_reset_at: now.toISOString()
             })
             .eq('id', session.user.id);
-
-          if (updateError) throw updateError;
+          
           setRemainingSearches(newCount);
         } else {
           setRemainingSearches(data.remaining_searches);
@@ -58,7 +55,7 @@ export function useSearchLimit() {
       } catch (error) {
         console.error('Error fetching search limit:', error);
         setError(error instanceof Error ? error.message : 'Failed to fetch search limit');
-        // Set default values as fallback
+        // Set default values
         setRemainingSearches(subscription?.isPro ? 600 : 6);
       } finally {
         setLoading(false);
@@ -69,16 +66,17 @@ export function useSearchLimit() {
   }, [session, subscription]);
 
   const decrementSearches = async () => {
-    if (!session?.user) return false;
+    if (!session?.user) {
+      // For non-logged in users, just return true to allow the search
+      return true;
+    }
+
+    if (remainingSearches <= 0) {
+      return false;
+    }
 
     try {
-      // For development/demo, just decrement locally
-      if (import.meta.env.DEV) {
-        setRemainingSearches(prev => Math.max(0, prev - 1));
-        return true;
-      }
-
-      const { data, error } = await supabase
+      const { data, error: supabaseError } = await supabase
         .from('profiles')
         .update({
           remaining_searches: remainingSearches - 1
@@ -87,18 +85,20 @@ export function useSearchLimit() {
         .select('remaining_searches')
         .single();
 
-      if (error) throw error;
+      if (supabaseError) throw supabaseError;
 
       setRemainingSearches(data.remaining_searches);
       return true;
     } catch (error) {
       console.error('Error decrementing searches:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update search count');
       return false;
     }
   };
 
   return {
     remainingSearches,
+    maxSearches,
     loading,
     error,
     decrementSearches,
