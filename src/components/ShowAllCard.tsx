@@ -13,12 +13,23 @@ export default function ShowAllCard({ totalSources, onClick }: ShowAllCardProps)
     >
       <div className="flex flex-col h-full justify-between">
         <div className="flex -space-x-1.5 mb-2">
-          <div className="w-4 h-4 rounded-full bg-red-500/80 flex items-center justify-center text-[8px] text-white">CN</div>
-          <div className="w-4 h-4 rounded-full bg-blue-500/80 flex items-center justify-center text-[8px] text-white">W</div>
-          <div className="w-4 h-4 rounded-full bg-purple-500/80 flex items-center justify-center text-[8px] text-white">NY</div>
+          {[...Array(Math.min(totalSources, 3))].map((_, i) => (
+            <div 
+              key={i}
+              className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white ${
+                i === 0 ? 'bg-red-500/80' :
+                i === 1 ? 'bg-blue-500/80' :
+                'bg-purple-500/80'
+              }`}
+            >
+              {i + 4}
+            </div>
+          ))}
         </div>
         <div className="flex items-center">
-          <span className="text-gray-400 text-xs">Show all</span>
+          <span className="text-gray-400 text-xs">
+            Show {totalSources} more
+          </span>
         </div>
       </div>
     </button>

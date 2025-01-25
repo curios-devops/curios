@@ -4,9 +4,15 @@ interface ToggleSwitchProps {
   isEnabled: boolean;
   onToggle: () => void;
   disabled?: boolean;
+  showWarning?: boolean;
 }
 
-export default function ToggleSwitch({ isEnabled, onToggle, disabled = false }: ToggleSwitchProps) {
+export default function ToggleSwitch({ 
+  isEnabled, 
+  onToggle, 
+  disabled = false,
+  showWarning = false
+}: ToggleSwitchProps) {
   return (
     <div className="flex items-center gap-2">
       <button
@@ -29,7 +35,7 @@ export default function ToggleSwitch({ isEnabled, onToggle, disabled = false }: 
               ? 'bg-[#007BFF] border-[#007BFF] focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-[#007BFF]' 
               : 'bg-[#2a2a2a] border-gray-700 hover:border-gray-600 focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-gray-700'
           }
-          border
+          ${showWarning ? 'border-red-500' : 'border'}
           translate-y-[1px]
         `}
       >
@@ -64,6 +70,7 @@ export default function ToggleSwitch({ isEnabled, onToggle, disabled = false }: 
               ? 'text-[#007BFF] font-bold' 
               : 'text-gray-500 font-normal'
           }
+          ${showWarning ? 'text-red-500' : ''}
         `}
       >
         Pro

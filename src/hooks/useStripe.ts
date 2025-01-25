@@ -1,58 +1,49 @@
 import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
-import { supabase } from '../lib/supabase';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+import { useSession } from './useSession';
+import { createCheckoutSession, checkSubscription } from '../services/stripe/api';
 
 export function useStripe() {
+  const { session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createCheckoutSession = async (interval: 'month' | 'year') => {
+  const handleCheckoutSession = async (interval: 'month' | 'year') => {
     try {
       setLoading(true);
       setError(null);
-      
-      const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
         throw new Error('You must be logged in to subscribe');
       }
 
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          interval,
-          userId: session.user.id,
-          email: session.user.email,
-        }),
-      });
+      const { url } = await createCheckoutSession(
+        session.user.id,
+        session.user.email || '',
+        interval
+      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create checkout session');
-      }
-
-      const { url } = await response.json();
-      if (!url) throw new Error('No checkout URL returned');
-      
       return url;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create checkout session';
+      const message = error instanceof Error 
+        ? error.message 
+        : 'Failed to create checkout session';
+      console.error('Subscription error:', error);
       setError(message);
-      throw error;
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
+  const verifySubscription = async () => {
+    if (!session?.user) return false;
+    return checkSubscription(session.user.id);
+  };
+
   return {
     loading,
     error,
-    createCheckoutSession,
+    createCheckoutSession: handleCheckoutSession,
+    verifySubscription,
   };
 }

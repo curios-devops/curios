@@ -16,11 +16,19 @@ export interface ImageResult {
   source_url?: string;
 }
 
+export interface Perspective {
+  id: string;
+  title: string;
+  description: string;
+  sources?: Source[];
+}
+
 export interface SearchResponse {
   answer: string;
   sources: Source[];
   images: ImageResult[];
   provider?: string;
+  perspectives?: Perspective[];
 }
 
 export interface SearchState {

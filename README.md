@@ -1,5 +1,5 @@
-## APP NAME
-CuriosAI.com
+## CuriosAI
+An AI-powered search engine building using Bolt tech stack, designed to provide comprehensive answers by utilizing advanced machine learning algorithms. It’s been mainly writing itself, with with a light touch of human guidance.
 
 ## HISTORY VERSION
 **2024**
@@ -11,28 +11,60 @@ CuriosAI.com
   12.31 - Add Logic for Guess-Users
 **2025**
   01.01 - Add focus mode UI 
+  01.18 - Add Brave Search
 
 
-## PITCH
-CuriosAI is an AI-powered search engine building using Bolt tech stack, designed to provide comprehensive answers by utilizing advanced machine learning algorithms.
 
 ## APP DESCRIPTION
 CuriosAI is an AI-powered searching tool or an multiagent AI-powered search engine that goes deep into the internet to find answers. Inspired by Perplexity AI, it's an option that not just searches the web but understands your questions. It uses advanced machine learning algorithms to refine results and provides clear answers with sources cited.
 
 Using SearxNG to stay current and fully open source, CuriosAI ensures you always get the most up-to-date information without compromising your privacy. Also backed by Tavily, GoDaddy and Wiki, to ensure user always get answered.
 
-**Features:**
-Storm by Stanford Model: to make more robust answer, so when user give an open-minded question a perspective agent is call to enrich the queston so get diferent point of view answers.
 
-Focus Modes (Future development): Special modes to better answer specific types of questions. Perplexica currently has 6 focus modes:
-All Mode: Searches the entire web to find the best results.
-Writing Assistant Mode: Helpful for writing tasks that does not require searching the web.
-Academic Search Mode: Finds articles and papers, ideal for academic research.
-YouTube Search Mode: Finds YouTube videos based on the search query.
-Wolfram Alpha Search Mode: Answers queries that need calculations or data analysis using Wolfram Alpha.
-Reddit Search Mode: Searches Reddit for discussions and opinions related to the query.
 
-Current Information: Some search tools might give you outdated info because they use data from crawling bots and convert them into embeddings and store them in a index. Unlike them, CuriosAI uses SearxNG, a metasearch engine to get the results and rerank and get the most relevant source out of it, ensuring you always get the latest information without the overhead of daily data updates.
+**Focus Modes:**  (Available for all users.)
+
+**Web:**
+Purpose: Broad search across the internet.
+Justification: Foundational and universal; expected in any search application.
+
+**Video:**
+Purpose: Discover and watch video content.
+Justification: Video is a dominant content type, catering to both entertainment and educational purposes.
+
+**Social:**
+Purpose: Search discussions and opinions on social platforms.
+Justification: Social insights are essential for users exploring trends or public sentiment.
+
+**Writing:**
+Purpose: Generate creative or professional text without conducting a web search.
+Justification: Supports diverse use cases, from brainstorming to professional content creation.
+
+**Early Adopter Modes (2 Modes)**
+Free at launch to attract niche users and generate engagement.
+
+**Travel & Local (Early Adopters):**
+Purpose: Discover local recommendations, travel itineraries, and tips.
+Justification: Appeals to travelers and locals seeking tailored, actionable insights. It can help grow a loyal user base quickly by addressing practical needs.
+
+**Health & Fitness (Early Adopters):**
+Purpose: Search for fitness plans, health tips, and reliable medical information.
+Justification: Health and wellness are universally popular topics. Offering this mode for free initially can help attract a wide range of users.
+
+**Pro Modes (2 Modes)**
+Exclusive to paying users due to their higher perceived value.
+
+**Research (Pro):**
+Purpose: Access a wider range of academic papers, advanced case studies, and sophisticated research tools.
+Justification: Researchers, students, and professionals are likely to pay for premium tools that streamline access to high-quality, credible information.
+
+**Finance (Pro):**
+Purpose: Explore market trends, investment insights, and advanced financial analyses.
+Justification: Finance-focused users (e.g., investors, professionals) are willing to pay for accurate and detailed information, making this a highly monetizable mode.
+
+
+
+## Agents in ProSearch
 
 ### Origins and Influences
 
@@ -46,8 +78,6 @@ Current Information: Some search tools might give you outdated info because they
    - From MindSearch, we integrate the concept of parallel searches and the dynamic breakdown of a larger query into smaller, more focused subtasks.
 
 ---
-
-## Agents in ProSearch
 
 ProSearch typically features **five operational agents** plus a user-facing interface:
 
@@ -97,6 +127,19 @@ ProSearch typically features **five operational agents** plus a user-facing inte
 5. **Final Write-Up**  
    - The Article Writer turns the refined data into a cohesive, easy-to-read response (including citations).  
    - The result is sent to the UI Agent, which displays it in the user’s familiar interface.
+
+**High-Level Flow**
+
+User Query
+    |
+    v
+UI Agent  <---->  Orchestrator Agent
+    |
+    +--> Perspective Generator --> Information Retriever --> Research Analyst --> Article Writer
+    ^
+    | (results or come back)
+    |
+Final Answer to User
 
 ---
 
@@ -178,3 +221,39 @@ Geometric shapes with Art Deco influence. Rounded corners on interactive element
 
 # TYPOGRAPHY
 Hierarchical type system using FK Displayor Montserrat Bold for branding, FK Grotesk for headings, and Inter for body text. Large, bold headlines contrast with refined body text to create clear visual hierarchy.
+
+# CuriosAI  Deploy on Internet
+
+**To Update and deploy Project:**
+
+1. Backup (just in case)
+   
+   > delete .env
+   Open Curios folder change directory Up (you need to list Curios-x-x)
+   > cd ..
+   > ls (veryfy you see Curios-x-x-x)
+   > rsync -av --exclude='.git' Curios-x-x/ Curios/
+     (Replace x-x for the new folder name) 
+
+3. Run this command:
+  Change directory into Curios:
+   > cd Curios
+     Check what changed:
+   > git status
+
+
+3. Commit and push to update your GitHub repo:
+   > git add .
+   > git status  (opcional)
+
+   > git commit -m "Merge updates from Curios-x-x"
+   > git push
+
+4. alidate git hub and in netlify
+   Trigger a Deploy and wait for Site is live 
+
+    To validate:  Open http://wwww.curiosai.com 
+
+   should be now live an running...
+
+Good Luck!!!

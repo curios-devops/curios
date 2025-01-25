@@ -4,9 +4,10 @@ import type { ImageResult } from '../types';
 
 interface PhotosSectionProps {
   images: ImageResult[];
+  maxImages?: number;
 }
 
-export default function PhotosSection({ images }: PhotosSectionProps) {
+export default function PhotosSection({ images, maxImages = 7 }: PhotosSectionProps) {
   const [showAll, setShowAll] = useState(false);
   
   // Filter out invalid images and ensure unique URLs
@@ -23,7 +24,7 @@ export default function PhotosSection({ images }: PhotosSectionProps) {
         })
         .map(img => [img.url, img])
     ).values()
-  );
+  ).slice(0, maxImages);
 
   // Only show section if we have at least 1 image
   if (validImages.length < 1) return null;
@@ -44,7 +45,6 @@ export default function PhotosSection({ images }: PhotosSectionProps) {
         </div>
 
         <div className="space-y-3">
-          {/* Main large photo */}
           {mainImage && (
             <a 
               href={mainImage.source_url || mainImage.url}
@@ -61,7 +61,6 @@ export default function PhotosSection({ images }: PhotosSectionProps) {
             </a>
           )}
 
-          {/* Two medium photos row */}
           {rowImages.length > 0 && (
             <div className="grid grid-cols-2 gap-3">
               {rowImages.map((image, index) => (
@@ -83,10 +82,8 @@ export default function PhotosSection({ images }: PhotosSectionProps) {
             </div>
           )}
 
-          {/* Last row with one medium and mini photos */}
           {lastRowImage && (
             <div className="grid grid-cols-2 gap-3">
-              {/* Medium photo on left */}
               <a
                 href={lastRowImage.source_url || lastRowImage.url}
                 target="_blank"
@@ -101,7 +98,6 @@ export default function PhotosSection({ images }: PhotosSectionProps) {
                 />
               </a>
 
-              {/* Mini photos container */}
               {miniImages.length > 0 && (
                 <div className="bg-[#222222] rounded-lg p-2">
                   <div className="grid grid-cols-2 gap-2 mb-2">

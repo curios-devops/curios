@@ -5,6 +5,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { signOut } from '../lib/auth';
 import GeneralSection from '../components/settings/GeneralSection';
 import AccountSection from '../components/settings/AccountSection';
+import { X } from 'lucide-react';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -21,8 +22,15 @@ export default function Settings() {
   return (
     <div className="min-h-screen bg-black">
       <header className="bg-[#111111] border-b border-gray-800 px-6 py-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           <h1 className="text-2xl font-medium text-white">Settings</h1>
+          <button
+            onClick={() => navigate('/')}
+            className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-[#222222]"
+            aria-label="Close settings"
+          >
+            <X size={20} />
+          </button>
         </div>
       </header>
 

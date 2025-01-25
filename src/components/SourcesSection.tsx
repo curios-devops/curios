@@ -8,14 +8,18 @@ interface SourcesSectionProps {
   sources: Source[];
   showAllSources: boolean;
   setShowAllSources: (show: boolean) => void;
+  maxSources?: number;
 }
 
 export default function SourcesSection({ 
   sources, 
   showAllSources, 
-  setShowAllSources 
+  setShowAllSources,
+  maxSources = 3
 }: SourcesSectionProps) {
+  // Always show 3 sources + ShowAllCard, or all sources if showAllSources is true
   const displayedSources = showAllSources ? sources : sources.slice(0, 3);
+  const remainingSources = sources.length - 3;
 
   return (
     <div className="mb-6">
@@ -24,15 +28,18 @@ export default function SourcesSection({
         <h2 className="text-xl font-medium text-white">Sources</h2>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {displayedSources?.map((source, index) => (
+        {displayedSources.slice(0, 3).map((source, index) => (
           <SourceCard key={index} source={source} index={index} />
         ))}
-        {!showAllSources && sources.length > 3 && (
+        {!showAllSources && remainingSources > 0 && (
           <ShowAllCard 
-            totalSources={sources.length} 
+            totalSources={remainingSources} 
             onClick={() => setShowAllSources(true)} 
           />
         )}
+        {showAllSources && sources.slice(3).map((source, index) => (
+          <SourceCard key={index + 3} source={source} index={index + 3} />
+        ))}
       </div>
     </div>
   );

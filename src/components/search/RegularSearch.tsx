@@ -5,6 +5,7 @@ import ActionButton from '../SearchInput/ActionButton';
 import ToggleSwitch from '../SearchInput/ToggleSwitch';
 import SearchButton from '../SearchInput/SearchButton';
 import SearchTextArea from '../SearchInput/SearchTextArea';
+import FocusModal from './FocusModal';
 import ProModal from '../subscription/ProModal';
 import ProTooltip from '../subscription/ProTooltip';
 import AuthModal from '../auth/AuthModal';
@@ -12,41 +13,29 @@ import { useSession } from '../../hooks/useSession';
 import { useSearchLimit } from '../../hooks/useSearchLimit';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useUserType } from '../../hooks/useUserType';
+import type { FocusMode } from './types';
 
 export default function RegularSearch() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [isPro, setIsPro] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<FocusMode>('focus');
+  const [showFocusModal, setShowFocusModal] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [showProTooltip, setShowProTooltip] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   
   const { session } = useSession();
   const { subscription } = useSubscription();
-  const { remainingSearches, maxSearches, hasSearchesLeft, decrementSearches } = useSearchLimit();
+  const { 
+    remainingSearches, 
+    maxSearches, 
+    hasSearchesLeft, 
+    showWarning,
+    isProDisabled,
+    decrementSearches 
+  } = useSearchLimit();
   const userType = useUserType();
-
-  const handleSearch = async () => {
-    const trimmedQuery = query.trim();
-    if (!trimmedQuery) return;
-
-    if (!hasSearchesLeft) {
-      setShowProModal(true);
-      return;
-    }
-
-    const success = await decrementSearches();
-    if (success) {
-      navigate(`/search?q=${encodeURIComponent(trimmedQuery)}&pro=${isPro}`);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSearch();
-    }
-  };
 
   const handleProToggle = () => {
     if (userType === 'guest') {
@@ -54,7 +43,7 @@ export default function RegularSearch() {
       return;
     }
 
-    if (!hasSearchesLeft) {
+    if (isProDisabled) {
       setShowProModal(true);
       return;
     }
@@ -62,12 +51,42 @@ export default function RegularSearch() {
     setIsPro(!isPro);
   };
 
+  const handleSearch = async () => {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) return;
+
+    if (isPro) {
+      // Only check pro search quota when using pro search
+      if (!hasSearchesLeft) {
+        setShowProModal(true);
+        return;
+      }
+
+      const success = await decrementSearches(true);
+      if (!success) {
+        setShowProModal(true);
+        return;
+      }
+    }
+
+    navigate(
+      isPro 
+        ? `/pro-search?q=${encodeURIComponent(trimmedQuery)}&mode=${selectedMode}`
+        : `/search?q=${encodeURIComponent(trimmedQuery)}&mode=${selectedMode}`
+    );
+  };
+
   return (
     <div className="relative w-full">
       <SearchTextArea
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSearch();
+          }
+        }}
         isPro={isPro}
       />
 
@@ -76,12 +95,15 @@ export default function RegularSearch() {
           <ActionButton
             icon={Focus}
             label="Focus"
-            onClick={() => {}}
+            tooltip="Set a focus for your sources"
+            onClick={() => setShowFocusModal(true)}
+            mode={selectedMode}
           />
           <ActionButton
             icon={Paperclip}
             label="Attach"
-            onClick={() => {}}
+            tooltip="Attach files to your search"
+            onClick={() => userType === 'guest' && setShowAuthModal(true)}
           />
         </div>
 
@@ -94,7 +116,8 @@ export default function RegularSearch() {
             <ToggleSwitch
               isEnabled={isPro}
               onToggle={handleProToggle}
-              disabled={!hasSearchesLeft}
+              disabled={isProDisabled}
+              showWarning={showWarning}
             />
             {showProTooltip && (
               <ProTooltip 
@@ -110,16 +133,25 @@ export default function RegularSearch() {
                 }}
                 onClose={() => setShowProTooltip(false)}
                 isLoggedIn={userType !== 'guest'}
+                subscription={subscription}
+                alwaysShowUpgrade={!subscription?.isPro}
               />
             )}
           </div>
           <SearchButton
             onClick={handleSearch}
             isActive={query.trim().length > 0}
-            disabled={!query.trim() || !hasSearchesLeft}
+            disabled={!query.trim() || (isPro && !hasSearchesLeft)}
           />
         </div>
       </div>
+
+      <FocusModal 
+        isOpen={showFocusModal}
+        onClose={() => setShowFocusModal(false)}
+        selectedMode={selectedMode}
+        onSelectMode={setSelectedMode}
+      />
 
       <ProModal 
         isOpen={showProModal}

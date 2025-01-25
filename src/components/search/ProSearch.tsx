@@ -5,15 +5,19 @@ import ActionButton from '../SearchInput/ActionButton';
 import ToggleSwitch from '../SearchInput/ToggleSwitch';
 import SearchButton from '../SearchInput/SearchButton';
 import SearchTextArea from '../SearchInput/SearchTextArea';
+import FocusModal from './FocusModal';
 import ProModal from '../subscription/ProModal';
 import ProTooltip from '../subscription/ProTooltip';
 import { useSession } from '../../hooks/useSession';
 import { useSearchLimit } from '../../hooks/useSearchLimit';
 import { useSubscription } from '../../hooks/useSubscription';
+import type { FocusMode } from './types';
 
 export default function ProSearch() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [selectedMode, setSelectedMode] = useState<FocusMode>('focus');
+  const [showFocusModal, setShowFocusModal] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [showProTooltip, setShowProTooltip] = useState(false);
   
@@ -32,7 +36,7 @@ export default function ProSearch() {
 
     const success = await decrementSearches();
     if (success) {
-      navigate(`/search?q=${encodeURIComponent(trimmedQuery)}`);
+      navigate(`/search?q=${encodeURIComponent(trimmedQuery)}&pro=true&mode=${selectedMode}`);
     }
   };
 
@@ -41,6 +45,10 @@ export default function ProSearch() {
       e.preventDefault();
       handleSearch();
     }
+  };
+
+  const handleAttachClick = () => {
+    // For pro users, attach button does nothing for now
   };
 
   return (
@@ -57,12 +65,15 @@ export default function ProSearch() {
           <ActionButton
             icon={Focus}
             label="Focus"
-            onClick={() => {}}
+            tooltip="Set a focus for your sources"
+            onClick={() => setShowFocusModal(true)}
+            mode={selectedMode}
           />
           <ActionButton
             icon={Paperclip}
             label="Attach"
-            onClick={() => {}}
+            tooltip="Attach files to your search"
+            onClick={handleAttachClick}
           />
         </div>
 
@@ -96,6 +107,13 @@ export default function ProSearch() {
           />
         </div>
       </div>
+
+      <FocusModal 
+        isOpen={showFocusModal}
+        onClose={() => setShowFocusModal(false)}
+        selectedMode={selectedMode}
+        onSelectMode={setSelectedMode}
+      />
 
       <ProModal 
         isOpen={showProModal}

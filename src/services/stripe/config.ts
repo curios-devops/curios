@@ -1,7 +1,7 @@
 export const STRIPE_CONFIG = {
   prices: {
-    month: import.meta.env.VITE_STRIPE_MONTHLY_PRICE_ID,
-    year: import.meta.env.VITE_STRIPE_YEARLY_PRICE_ID,
+    month: import.meta.env.VITE_STRIPE_MONTHLY_PRICE_ID || 'price_1Qb7a7BMC94ss7b43iDSmQKO',
+    year: import.meta.env.VITE_STRIPE_YEARLY_PRICE_ID || 'price_1Qb7bKBMC94ss7b4iTc8Qs79',
   },
   successUrl: `${window.location.origin}/subscription/success`,
   cancelUrl: `${window.location.origin}/subscription/cancel`,

@@ -13,3 +13,11 @@ export interface CheckoutSession {
   id: string;
   url: string;
 }
+
+export interface WebhookEvent {
+  id: string;
+  type: string;
+  data: {
+    object: any;
+  };
+}

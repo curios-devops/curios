@@ -7,130 +7,145 @@ const stripe = new Stripe(import.meta.env.VITE_STRIPE_SECRET_KEY, {
 
 export async function createCheckoutSession(req: Request) {
   try {
-    const { userId, email, interval } = await req.json();
+    // Validate Stripe API key
+    if (!import.meta.env.VITE_STRIPE_SECRET_KEY?.trim()) {
+      console.error('Stripe API key is missing');
+      return new Response(
+        JSON.stringify({ error: 'Stripe configuration error' }), 
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
+    // Parse request body with error handling
+    let body;
+    try {
+      body = await req.json();
+      console.log('Received request body:', {
+        userId: body.userId,
+        email: body.email,
+        interval: body.interval
+      });
+    } catch (error) {
+      console.error('Request body parse error:', error);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }), 
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { userId, email, interval } = body;
+
+    // Validate required fields
+    if (!userId?.trim()) {
+      console.error('Missing userId');
+      return new Response(
+        JSON.stringify({ error: 'User ID is required' }), 
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!email?.trim()) {
+      console.error('Missing email');
+      return new Response(
+        JSON.stringify({ error: 'Email is required' }), 
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!interval || !['month', 'year'].includes(interval)) {
+      console.error('Invalid interval:', interval);
+      return new Response(
+        JSON.stringify({ error: 'Invalid subscription interval' }), 
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get correct price ID based on interval
     const priceId = interval === 'year' 
       ? import.meta.env.VITE_STRIPE_YEARLY_PRICE_ID 
       : import.meta.env.VITE_STRIPE_MONTHLY_PRICE_ID;
 
-    const session = await stripe.checkout.sessions.create({
-      customer_email: email,
-      client_reference_id: userId,
-      payment_method_types: ['card'],
-      mode: 'subscription',
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: `${window.location.origin}/subscription/success`,
-      cancel_url: `${window.location.origin}/subscription/cancel`,
-      metadata: {
-        userId,
-      },
-    });
-
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (error) {
-    console.error('Checkout session error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to create checkout session' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
-
-export async function handleWebhook(req: Request) {
-  const signature = req.headers.get('stripe-signature');
-  const webhookSecret = import.meta.env.VITE_STRIPE_WEBHOOK_SECRET;
-
-  if (!signature || !webhookSecret) {
-    return new Response('Missing signature or webhook secret', { status: 400 });
-  }
-
-  try {
-    const event = stripe.webhooks.constructEvent(
-      await req.text(),
-      signature,
-      webhookSecret
-    );
-
-    switch (event.type) {
-      case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
-        break;
-      case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
-        break;
-      case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
-        break;
+    if (!priceId?.trim()) {
+      console.error('Missing price ID for interval:', interval);
+      return new Response(
+        JSON.stringify({ error: 'Invalid subscription configuration' }), 
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    // Create checkout session with error handling
+    try {
+      console.log('Creating Stripe checkout session with params:', {
+        customer_email: email,
+        client_reference_id: userId,
+        price: priceId,
+        mode: 'subscription'
+      });
+
+      const session = await stripe.checkout.sessions.create({
+        customer_email: email,
+        client_reference_id: userId,
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        success_url: `${window.location.origin}/subscription/success`,
+        cancel_url: `${window.location.origin}/subscription/cancel`,
+        metadata: {
+          userId,
+        },
+        allow_promotion_codes: true,
+        billing_address_collection: 'required',
+      });
+
+      // Validate session URL
+      if (!session?.url) {
+        console.error('No URL in Stripe session response:', session);
+        throw new Error('No checkout URL returned from Stripe');
+      }
+
+      console.log('Stripe session created successfully:', {
+        sessionId: session.id,
+        url: session.url
+      });
+
+      return new Response(
+        JSON.stringify({ 
+          url: session.url,
+          sessionId: session.id 
+        }), 
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+    } catch (error) {
+      console.error('Stripe session creation error:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+
+      return new Response(
+        JSON.stringify({ 
+          error: error instanceof Error ? error.message : 'Failed to create checkout session' 
+        }), 
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('Checkout session error:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
     return new Response(
-      JSON.stringify({ error: 'Failed to process webhook' }), 
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Failed to process request' 
+      }), 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
-}
-
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const userId = session.client_reference_id;
-  if (!userId) return;
-
-  const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-  
-  await updateUserSubscription(userId, {
-    stripe_customer_id: session.customer,
-    stripe_subscription_id: subscription.id,
-    stripe_price_id: subscription.items.data[0].price.id,
-    subscription_status: subscription.status,
-    subscription_period_end: new Date(subscription.current_period_end * 1000),
-  });
-}
-
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const { data: user } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('stripe_customer_id', subscription.customer)
-    .single();
-
-  if (!user) return;
-
-  await updateUserSubscription(user.id, {
-    stripe_price_id: subscription.items.data[0].price.id,
-    subscription_status: subscription.status,
-    subscription_period_end: new Date(subscription.current_period_end * 1000),
-  });
-}
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const { data: user } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('stripe_customer_id', subscription.customer)
-    .single();
-
-  if (!user) return;
-
-  await updateUserSubscription(user.id, {
-    subscription_status: 'canceled',
-    subscription_period_end: new Date(),
-  });
-}
-
-async function updateUserSubscription(userId: string, data: any) {
-  await supabase
-    .from('profiles')
-    .update(data)
-    .eq('id', userId);
 }

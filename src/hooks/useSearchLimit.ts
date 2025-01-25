@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, handleSupabaseError } from '../lib/supabase';
 import { useSession } from './useSession';
 import { useSubscription } from './useSubscription';
 import { useUserType } from './useUserType';
@@ -13,6 +13,7 @@ export function useSearchLimit() {
   const [error, setError] = useState<string | null>(null);
 
   const maxSearches = subscription?.isPro ? 600 : 6;
+  const warningThreshold = Math.floor(maxSearches / 3);
 
   useEffect(() => {
     if (!session?.user) {
@@ -23,34 +24,44 @@ export function useSearchLimit() {
 
     const fetchSearchLimit = async () => {
       try {
-        const { data, error: supabaseError } = await supabase
-          .from('profiles')
-          .select('remaining_searches, searches_reset_at')
-          .eq('id', session.user.id)
-          .single();
+        const result = await handleSupabaseError(
+          async () => {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('remaining_searches, searches_reset_at')
+              .eq('id', session.user.id)
+              .single();
 
-        if (supabaseError) {
-          throw supabaseError;
-        }
+            if (error) throw error;
+            return data;
+          },
+          { remaining_searches: maxSearches, searches_reset_at: new Date().toISOString() }
+        );
 
         // Check if we need to reset the counter
-        const resetAt = new Date(data.searches_reset_at);
+        const resetAt = new Date(result.searches_reset_at);
         const now = new Date();
+        const resetInterval = subscription?.isPro ? 30 : 1; // 30 days for pro, 1 day for regular
         
-        if (resetAt < new Date(now.getTime() - 24 * 60 * 60 * 1000)) {
+        if (resetAt < new Date(now.getTime() - resetInterval * 24 * 60 * 60 * 1000)) {
           // Reset counter
           const newCount = subscription?.isPro ? 600 : 6;
-          await supabase
-            .from('profiles')
-            .update({
-              remaining_searches: newCount,
-              searches_reset_at: now.toISOString()
-            })
-            .eq('id', session.user.id);
+          await handleSupabaseError(
+            async () => {
+              await supabase
+                .from('profiles')
+                .update({
+                  remaining_searches: newCount,
+                  searches_reset_at: now.toISOString()
+                })
+                .eq('id', session.user.id);
+            },
+            null
+          );
           
           setRemainingSearches(newCount);
         } else {
-          setRemainingSearches(data.remaining_searches);
+          setRemainingSearches(result.remaining_searches);
         }
       } catch (error) {
         console.error('Error fetching search limit:', error);
@@ -63,31 +74,43 @@ export function useSearchLimit() {
     };
 
     fetchSearchLimit();
-  }, [session, subscription]);
+  }, [session, subscription, maxSearches]);
 
-  const decrementSearches = async () => {
+  const decrementSearches = async (isPro: boolean = false) => {
+    // For guest users, always allow searches
     if (!session?.user) {
-      // For non-logged in users, just return true to allow the search
       return true;
     }
 
+    // For regular users, only decrement if using pro search
+    if (!subscription?.isPro && !isPro) {
+      return true;
+    }
+
+    // Check if we have searches left
     if (remainingSearches <= 0) {
       return false;
     }
 
     try {
-      const { data, error: supabaseError } = await supabase
-        .from('profiles')
-        .update({
-          remaining_searches: remainingSearches - 1
-        })
-        .eq('id', session.user.id)
-        .select('remaining_searches')
-        .single();
+      const result = await handleSupabaseError(
+        async () => {
+          const { data, error } = await supabase
+            .from('profiles')
+            .update({
+              remaining_searches: remainingSearches - 1
+            })
+            .eq('id', session.user.id)
+            .select('remaining_searches')
+            .single();
 
-      if (supabaseError) throw supabaseError;
+          if (error) throw error;
+          return data;
+        },
+        { remaining_searches: remainingSearches - 1 }
+      );
 
-      setRemainingSearches(data.remaining_searches);
+      setRemainingSearches(result.remaining_searches);
       return true;
     } catch (error) {
       console.error('Error decrementing searches:', error);
@@ -102,6 +125,8 @@ export function useSearchLimit() {
     loading,
     error,
     decrementSearches,
-    hasSearchesLeft: remainingSearches > 0
+    hasSearchesLeft: remainingSearches > 0,
+    showWarning: remainingSearches <= warningThreshold && remainingSearches > 0,
+    isProDisabled: remainingSearches === 0
   };
 }

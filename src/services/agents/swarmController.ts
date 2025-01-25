@@ -36,7 +36,11 @@ export class SwarmController {
     return directPatterns.some(pattern => pattern.test(query)) || query.length < 50;
   }
 
-  async processQuery(query: string, onStatusUpdate?: (status: string) => void): Promise<{
+  async processQuery(
+    query: string, 
+    onStatusUpdate?: (status: string) => void,
+    isPro: boolean = false
+  ): Promise<{
     research: ResearchResult;
     article: ArticleResult;
     images: any[];
@@ -45,60 +49,68 @@ export class SwarmController {
       const isDirect = this.isDirectQuestion(query);
       let perspectives = [];
 
-      if (!isDirect) {
+      // Generate perspectives for Pro Search or complex queries
+      if (isPro || !isDirect) {
         onStatusUpdate?.('Adding different perspectives to enrich your answer...');
         const perspectiveResponse = await this.perspectiveAgent.execute(query);
-        if (!perspectiveResponse.success) {
-          throw new Error(`Perspective generation failed: ${perspectiveResponse.error}`);
-        }
-        perspectives = perspectiveResponse.data.perspectives;
+        perspectives = perspectiveResponse.data?.perspectives || [];
       }
 
       // Start image search in parallel with other operations
-      onStatusUpdate?.('Searching for relevant images using SearxNG...');
+      onStatusUpdate?.('Searching for relevant images...');
       const imageSearchPromise = this.imageSearchAgent.execute(query);
 
-      onStatusUpdate?.('Searching through reliable sources using SearxNG...');
-      const retrievalResponse = await this.retrieverAgent.execute(query, perspectives);
-      if (!retrievalResponse.success) {
-        onStatusUpdate?.('SearxNG search failed, falling back to Tavily...');
-        throw new Error(`Information retrieval failed: ${retrievalResponse.error}`);
-      }
+      // Retrieve information
+      onStatusUpdate?.('Searching through reliable sources...');
+      const retrievalResponse = await this.retrieverAgent.execute(
+        query, 
+        perspectives,
+        onStatusUpdate
+      );
 
+      // Generate article from research results
       onStatusUpdate?.('Crafting a comprehensive answer...');
       const writerResponse = await this.writerAgent.execute(
-        retrievalResponse.data as ResearchResult
+        retrievalResponse.data || { query, perspectives: [], results: [] }
       );
-      if (!writerResponse.success) {
-        throw new Error(`Article generation failed: ${writerResponse.error}`);
-      }
 
       // Wait for image search to complete
       const imageResponse = await imageSearchPromise;
-      const images = imageResponse.success ? imageResponse.data.images : [];
-      if (!imageResponse.success) {
-        onStatusUpdate?.('Image search with SearxNG failed, trying alternative sources...');
-      }
 
+      // Format the response using UI agent
       onStatusUpdate?.('Formatting the response...');
       const uiResponse = await this.uiAgent.execute({
         research: retrievalResponse.data,
         article: writerResponse.data,
-        images
+        images: imageResponse.data?.images || []
       });
-      if (!uiResponse.success) {
-        throw new Error(`UI formatting failed: ${uiResponse.error}`);
-      }
 
+      // Return the formatted response
       return {
-        ...uiResponse.data,
-        images
+        research: uiResponse.data.research,
+        article: uiResponse.data.article,
+        images: imageResponse.data?.images || []
       };
     } catch (error) {
-      console.error('Swarm processing error:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Failed to process query'
-      );
+      console.warn('Swarm processing error:', error);
+      // Return a valid fallback response
+      return {
+        research: { 
+          query, 
+          perspectives: [], 
+          results: retrievalResponse?.data?.results || []
+        },
+        article: writerResponse?.data || this.getFallbackArticle(),
+        images: []
+      };
     }
+  }
+
+  private getFallbackArticle(): ArticleResult {
+    return {
+      content: 'We apologize, but we could not process your search at this time. Please try again in a moment.',
+      followUpQuestions: [],
+      citations: []
+    };
   }
 }

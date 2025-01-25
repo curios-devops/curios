@@ -10,13 +10,15 @@ interface MainContentProps {
   showAllSources: boolean;
   setShowAllSources: (show: boolean) => void;
   statusMessage: string;
+  isPro?: boolean;
 }
 
 export default function MainContent({ 
   searchState, 
   showAllSources, 
   setShowAllSources,
-  statusMessage 
+  statusMessage,
+  isPro = false
 }: MainContentProps) {
   return (
     <div className="flex-1">

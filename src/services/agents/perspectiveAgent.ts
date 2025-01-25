@@ -5,7 +5,7 @@ export class PerspectiveAgent extends BaseAgent {
   constructor() {
     super(
       'Perspective Generator',
-      'Generate key perspectives for a given topic'
+      'Generate search-oriented questions and perspectives for a given topic'
     );
   }
 
@@ -23,42 +23,56 @@ export class PerspectiveAgent extends BaseAgent {
   }
 
   private async generatePerspectives(query: string): Promise<Perspective[]> {
-    const completion = await this.openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: `Generate 1-3 key perspectives for researching the given topic. 
-            Return a valid JSON array of objects with 'id', 'title', and 'description' properties.
-            Example format:
-            [
-              {
-                "id": "historical",
-                "title": "Historical Context",
-                "description": "Understanding the historical background"
-              }
-            ]`
-        },
-        {
-          role: 'user',
-          content: query
+    return this.safeOpenAICall(
+      async () => {
+        const completion = await this.openai.chat.completions.create({
+          model: 'gpt-4o-mini',  // Updated to use gpt-4o-mini
+          messages: [
+            {
+              role: 'system',
+              content: `Generate 2-3 search-oriented perspectives for the given topic.
+                Return a JSON object with a 'perspectives' array containing objects with:
+                - id: A unique identifier (e.g., "perspective-1")
+                - title: A clear, concise title
+                - description: A brief explanation`
+            },
+            {
+              role: 'user',
+              content: query
+            }
+          ],
+          temperature: 0.7,
+          response_format: { type: "json_object" }
+        });
+
+        const content = completion.choices[0]?.message?.content;
+        if (!content) {
+          return this.getFallbackData();
         }
-      ],
-      temperature: 0.7,
-      response_format: { type: "json_object" }
-    });
 
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No perspectives generated');
-    }
+        const parsed = await this.safeJsonParse(content);
+        if (!parsed?.perspectives || !Array.isArray(parsed.perspectives)) {
+          return this.getFallbackData();
+        }
 
-    try {
-      const parsed = JSON.parse(content);
-      return Array.isArray(parsed.perspectives) ? parsed.perspectives : [];
-    } catch (error) {
-      console.error('Failed to parse perspectives:', content);
-      return [];
-    }
+        return parsed.perspectives;
+      },
+      this.getFallbackData()
+    );
+  }
+
+  protected getFallbackData(): Perspective[] {
+    return [
+      {
+        id: 'overview',
+        title: 'General Overview',
+        description: 'Key facts and basic information'
+      },
+      {
+        id: 'latest',
+        title: 'Latest Information',
+        description: 'Recent updates and current status'
+      }
+    ];
   }
 }
