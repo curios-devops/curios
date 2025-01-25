@@ -241,6 +241,7 @@ Hierarchical type system using FK Displayor Montserrat Bold for branding, FK Gro
      Check what changed:
    > git status
 
+(On any problem close cursor and open again, to be in the correct directory)
 
 3. Commit and push to update your GitHub repo:
    > git add .
@@ -249,7 +250,9 @@ Hierarchical type system using FK Displayor Montserrat Bold for branding, FK Gro
    > git commit -m "Merge updates from Curios-x-x"
    > git push
 
-4. alidate git hub and in netlify
+4. Validate git hub and in netlify
+
+   Update secrets in Netlify (only necesary on changes) 
    Trigger a Deploy and wait for Site is live 
 
     To validate:  Open http://wwww.curiosai.com 

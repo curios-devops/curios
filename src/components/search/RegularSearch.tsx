@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Focus, Paperclip } from 'lucide-react';
 import ActionButton from '../SearchInput/ActionButton';
@@ -24,6 +24,7 @@ export default function RegularSearch() {
   const [showProModal, setShowProModal] = useState(false);
   const [showProTooltip, setShowProTooltip] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const tooltipTimeoutRef = useRef<number>();
   
   const { session } = useSession();
   const { subscription } = useSubscription();
@@ -76,6 +77,21 @@ export default function RegularSearch() {
     );
   };
 
+  const handleTooltipEnter = () => {
+    // Clear any existing timeout
+    if (tooltipTimeoutRef.current) {
+      window.clearTimeout(tooltipTimeoutRef.current);
+    }
+    setShowProTooltip(true);
+  };
+
+  const handleTooltipLeave = () => {
+    // Set a timeout before hiding the tooltip
+    tooltipTimeoutRef.current = window.setTimeout(() => {
+      setShowProTooltip(false);
+    }, 1000); // 1 second delay
+  };
+
   return (
     <div className="relative w-full">
       <SearchTextArea
@@ -110,8 +126,8 @@ export default function RegularSearch() {
         <div className="flex items-center gap-4">
           <div 
             className="relative"
-            onMouseEnter={() => setShowProTooltip(true)}
-            onMouseLeave={() => setShowProTooltip(false)}
+            onMouseEnter={handleTooltipEnter}
+            onMouseLeave={handleTooltipLeave}
           >
             <ToggleSwitch
               isEnabled={isPro}

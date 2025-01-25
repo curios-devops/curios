@@ -8,16 +8,16 @@ export function useSearchLimit() {
   const { session } = useSession();
   const { subscription } = useSubscription();
   const userType = useUserType();
-  const [remainingSearches, setRemainingSearches] = useState<number>(6);
+  const [remainingSearches, setRemainingSearches] = useState<number>(5);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const maxSearches = subscription?.isPro ? 600 : 6;
+  const maxSearches = subscription?.isPro ? 500 : 5;
   const warningThreshold = Math.floor(maxSearches / 3);
 
   useEffect(() => {
     if (!session?.user) {
-      setRemainingSearches(6);
+      setRemainingSearches(5);
       setLoading(false);
       return;
     }
@@ -45,7 +45,7 @@ export function useSearchLimit() {
         
         if (resetAt < new Date(now.getTime() - resetInterval * 24 * 60 * 60 * 1000)) {
           // Reset counter
-          const newCount = subscription?.isPro ? 600 : 6;
+          const newCount = subscription?.isPro ? 500 : 5;
           await handleSupabaseError(
             async () => {
               await supabase
@@ -67,7 +67,7 @@ export function useSearchLimit() {
         console.error('Error fetching search limit:', error);
         setError(error instanceof Error ? error.message : 'Failed to fetch search limit');
         // Set default values
-        setRemainingSearches(subscription?.isPro ? 600 : 6);
+        setRemainingSearches(subscription?.isPro ? 500 : 5);
       } finally {
         setLoading(false);
       }

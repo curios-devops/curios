@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
 
 interface ProTooltipProps {
@@ -22,6 +22,19 @@ export default function ProTooltip({
   subscription,
   alwaysShowUpgrade = false
 }: ProTooltipProps) {
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        onClose?.();
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
   const percentage = (remainingSearches / maxSearches) * 100;
   const warningThreshold = Math.floor(maxSearches / 3);
   const showWarning = remainingSearches <= warningThreshold;
@@ -31,8 +44,8 @@ export default function ProTooltip({
   if (!isLoggedIn) {
     return (
       <div 
+        ref={tooltipRef}
         className="absolute right-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
-        onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="text-[#007BFF]" size={18} />
@@ -58,8 +71,8 @@ export default function ProTooltip({
   // Logged in user view
   return (
     <div 
+      ref={tooltipRef}
       className="absolute right-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
-      onMouseLeave={onClose}
     >
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="text-[#007BFF]" size={18} />

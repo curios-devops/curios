@@ -7,6 +7,7 @@ import ProResults from './pages/ProResults';
 import Settings from './pages/Settings';
 import Policies from './pages/Policies';
 import AuthCallback from './components/auth/AuthCallback';
+import SubscriptionSuccess from './pages/SubscriptionSuccess';
 
 export default function App() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/policies" element={<Policies />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/subscription/success" element={<SubscriptionSuccess />} />
           </Routes>
         </div>
       </div>
