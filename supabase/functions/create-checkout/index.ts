@@ -1,6 +1,6 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from 'https://esm.sh/stripe@14.21.0';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { Stripe } from "https://esm.sh/stripe@12.1.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,7 +27,7 @@ serve(async (req) => {
     );
 
     // Get request data
-    const { userId, email, interval, priceId } = await req.json();
+    const { userId, email, interval } = await req.json();
 
     // Validate required fields
     if (!userId?.trim()) {
@@ -39,8 +39,14 @@ serve(async (req) => {
     if (!['month', 'year'].includes(interval)) {
       throw new Error('Invalid subscription interval');
     }
+
+    // Get correct price ID based on interval
+    const priceId = interval === 'year' 
+      ? Deno.env.get('STRIPE_YEARLY_PRICE_ID')
+      : Deno.env.get('STRIPE_MONTHLY_PRICE_ID');
+
     if (!priceId?.trim()) {
-      throw new Error('Price ID is required');
+      throw new Error('Invalid price configuration');
     }
 
     // Check for existing customer
@@ -90,7 +96,7 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${origin}/subscription/success`,
+      success_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/subscription/cancel`,
       allow_promotion_codes: true,
       billing_address_collection: 'required',
@@ -122,7 +128,9 @@ serve(async (req) => {
     });
 
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to create checkout session' }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Failed to create checkout session' 
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
