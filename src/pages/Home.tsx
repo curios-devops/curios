@@ -9,7 +9,7 @@ export default function Home() {
         <div className="max-w-2xl mx-auto mt-40 mb-8">
           <h1 className="text-3xl font-medium mb-8 animate-fade-in text-center">
             <span className="text-[#007BFF]">AI</span>
-            <span className="text-white"> - Smart Search</span>
+            <span className="text-white"> - Web Search</span>
           </h1>
 
           <SearchContainer />
