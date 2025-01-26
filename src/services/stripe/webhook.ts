@@ -10,21 +10,11 @@ export async function handleWebhookEvent(event: Stripe.Event) {
       case 'checkout.session.completed':
         await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
         break;
-      case 'customer.updated':
-        await handleCustomerUpdated(event.data.object as Stripe.Customer);
+      case 'customer.subscription.updated':
+        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
         break;
-      case 'payment_intent.succeeded':
-        await handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
-        break;
-      case 'payment_intent.payment_failed':
-        await handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
-        break;
-      case 'subscription_schedule.canceled':
-        await handleSubscriptionCanceled(event.data.object as Stripe.SubscriptionSchedule);
-        break;
-      case 'subscription_schedule.created':
-      case 'subscription_schedule.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.SubscriptionSchedule);
+      case 'customer.subscription.deleted':
+        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
         break;
       default:
         console.log(`Unhandled event type: ${event.type}`);
@@ -45,11 +35,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
     
     await updateUserSubscription(userId, {
-      stripeCustomerId: session.customer as string,
-      stripeSubscriptionId: subscription.id,
-      stripePriceId: subscription.items.data[0].price.id,
-      subscriptionStatus: subscription.status,
-      subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
+      stripe_customer_id: session.customer as string,
+      stripe_subscription_id: subscription.id,
+      stripe_price_id: subscription.items.data[0].price.id,
+      subscription_status: 'active',
+      subscription_period_end: new Date(subscription.current_period_end * 1000),
+      remaining_searches: 500, // Set pro search limit
+      searches_reset_at: new Date()
     });
   } catch (error) {
     console.error('Error handling checkout completion:', error);
@@ -57,32 +49,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 }
 
-async function handleCustomerUpdated(customer: Stripe.Customer) {
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('stripe_customer_id', customer.id)
-      .single();
-
-    if (profile) {
-      await updateUserSubscription(profile.id, {
-        email: customer.email,
-        updated_at: new Date().toISOString()
-      });
-    }
-  } catch (error) {
-    console.error('Error handling customer update:', error);
-    throw error;
-  }
-}
-
-async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
-  try {
-    const subscription = await stripe.subscriptions.retrieve(
-      paymentIntent.metadata.subscription_id
-    );
-
     const { data: profile } = await supabase
       .from('profiles')
       .select('id')
@@ -91,78 +59,33 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
 
     if (profile) {
       await updateUserSubscription(profile.id, {
-        subscriptionStatus: subscription.status,
-        subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000)
-      });
-    }
-  } catch (error) {
-    console.error('Error handling payment success:', error);
-    throw error;
-  }
-}
-
-async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
-  try {
-    const subscription = await stripe.subscriptions.retrieve(
-      paymentIntent.metadata.subscription_id
-    );
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('stripe_subscription_id', subscription.id)
-      .single();
-
-    if (profile) {
-      await updateUserSubscription(profile.id, {
-        subscriptionStatus: 'past_due'
-      });
-    }
-  } catch (error) {
-    console.error('Error handling payment failure:', error);
-    throw error;
-  }
-}
-
-async function handleSubscriptionCanceled(schedule: Stripe.SubscriptionSchedule) {
-  try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('stripe_subscription_id', schedule.subscription)
-      .single();
-
-    if (profile) {
-      await updateUserSubscription(profile.id, {
-        subscriptionStatus: 'canceled',
-        subscriptionPeriodEnd: new Date().toISOString()
-      });
-    }
-  } catch (error) {
-    console.error('Error handling subscription cancellation:', error);
-    throw error;
-  }
-}
-
-async function handleSubscriptionUpdated(schedule: Stripe.SubscriptionSchedule) {
-  try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('stripe_subscription_id', schedule.subscription)
-      .single();
-
-    if (profile) {
-      const subscription = await stripe.subscriptions.retrieve(schedule.subscription as string);
-      
-      await updateUserSubscription(profile.id, {
-        stripePriceId: subscription.items.data[0].price.id,
-        subscriptionStatus: subscription.status,
-        subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000)
+        subscription_status: subscription.status,
+        subscription_period_end: new Date(subscription.current_period_end * 1000),
+        remaining_searches: subscription.status === 'active' ? 500 : 5
       });
     }
   } catch (error) {
     console.error('Error handling subscription update:', error);
+    throw error;
+  }
+}
+
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('stripe_subscription_id', subscription.id)
+      .single();
+
+    if (profile) {
+      await updateUserSubscription(profile.id, {
+        subscription_status: 'inactive',
+        remaining_searches: 5 // Reset to free tier limit
+      });
+    }
+  } catch (error) {
+    console.error('Error handling subscription deletion:', error);
     throw error;
   }
 }

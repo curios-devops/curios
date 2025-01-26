@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Compass, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function SubscriptionSuccess() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +20,7 @@ export default function SubscriptionSuccess() {
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
+            subscription_status: 'active',
             remaining_searches: 500, // Set to pro user limit
             searches_reset_at: new Date().toISOString()
           })
@@ -59,10 +59,10 @@ export default function SubscriptionSuccess() {
           <>
             <div className="flex items-center justify-center gap-2 mb-4">
               <CheckCircle className="text-green-500" size={24} />
-              <h1 className="text-2xl font-bold text-white">Payment Successful!</h1>
+              <h1 className="text-2xl font-bold text-white">Welcome to Pro!</h1>
             </div>
             <p className="text-gray-400 mb-6">
-              Thank you for upgrading to CuriosAI Pro! Your account has been updated with Pro features.
+              Your account has been upgraded with Pro features. You now have access to 500 Pro searches per month.
             </p>
           </>
         )}
@@ -71,7 +71,7 @@ export default function SubscriptionSuccess() {
           onClick={() => navigate('/')}
           className="w-full bg-[#007BFF] text-white py-3 rounded-lg hover:bg-[#0056b3] transition-colors"
         >
-          Return to CuriosAI
+          Start Exploring
         </button>
       </div>
     </div>

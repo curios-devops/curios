@@ -10,7 +10,6 @@ export default defineConfig({
     open: true
   },
   build: {
-    // Optimize chunk size
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
@@ -22,7 +21,6 @@ export default defineConfig({
         }
       }
     },
-    // Optimize build
     target: 'esnext',
     minify: 'terser',
     terserOptions: {
