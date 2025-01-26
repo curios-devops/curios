@@ -8,12 +8,6 @@ export async function createCheckoutSession(
   interval: 'month' | 'year'
 ): Promise<CheckoutSession> {
   try {
-    console.log('Creating checkout session:', {
-      userId,
-      email,
-      interval
-    });
-
     // Validate inputs
     if (!userId?.trim()) {
       throw new Error('User ID is required');
@@ -25,17 +19,28 @@ export async function createCheckoutSession(
       throw new Error('Invalid subscription interval');
     }
 
+    // Get correct price ID based on interval
+    const priceId = interval === 'year' 
+      ? STRIPE_CONFIG.prices.year 
+      : STRIPE_CONFIG.prices.month;
+
+    if (!priceId?.trim()) {
+      throw new Error('Invalid price configuration');
+    }
+
+    console.log('Creating checkout session:', {
+      userId,
+      email,
+      interval,
+      priceId
+    });
+
     // Call Supabase Edge Function
     const { data, error } = await supabase.functions.invoke('create-checkout', {
       body: {
         userId,
         email,
-        interval,
-        priceId: interval === 'year' 
-          ? STRIPE_CONFIG.prices.year 
-          : STRIPE_CONFIG.prices.month,
-        successUrl: STRIPE_CONFIG.successUrl,
-        cancelUrl: STRIPE_CONFIG.cancelUrl
+        interval
       }
     });
 
@@ -65,15 +70,6 @@ export async function createCheckoutSession(
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
     });
-
-    // If it's a Supabase error with response details, log them
-    if (error instanceof Error && 'url' in error && 'status' in error) {
-      console.error('Supabase request failed', {
-        url: (error as any).url,
-        status: (error as any).status,
-        body: (error as any).body
-      });
-    }
 
     throw error;
   }
