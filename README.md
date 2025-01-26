@@ -226,33 +226,17 @@ Hierarchical type system using FK Displayor Montserrat Bold for branding, FK Gro
 
 **To Update and deploy Project:**
 
-1. Backup (just in case)
-   
-   > delete .env
-   Open Curios folder change directory Up (you need to list Curios-x-x)
-   > cd ..
-   > ls (veryfy you see Curios-x-x-x)
-   > rsync -av --exclude='.git' Curios-x-x/ Curios/
+1. Backup (just in case, opional)
+   Open Curios folder 
+   > rsync -av --exclude='.git' ../Curios-x-x/ ./
      (Replace x-x for the new folder name) 
 
-3. Run this command:
-  Change directory into Curios:
-   > cd Curios
-     Check what changed:
-   > git status
-
-(On any problem close cursor and open again, to be in the correct directory)
-
-3. Commit and push to update your GitHub repo:
+2. Commit and push to update your GitHub repo:
    > git add .
-   > git status  (opcional)
-
    > git commit -m "Merge updates from Curios-x-x"
    > git push
 
-4. Validate git hub and in netlify
-
-   Update secrets in Netlify (only necesary on changes) 
+3. Validate git hub and in netlify
    Trigger a Deploy and wait for Site is live 
 
     To validate:  Open http://wwww.curiosai.com 
@@ -260,3 +244,32 @@ Hierarchical type system using FK Displayor Montserrat Bold for branding, FK Gro
    should be now live an running...
 
 Good Luck!!!
+
+## Deploying Edge Function
+Steps to Upload/Update the Supabase Webhook Function
+(Make Sure You’re in the Right Directory)
+
+1. Ensure your working directory is at the root of your Supabase project. It should look like this:
+
+Curios/
+  supabase/
+    functions/
+      stripe-webhook/
+        index.ts
+2. Run the Deploy Command (be sure Docker is Open):
+
+ > supabase functions deploy stripe-webhook
+
+3. Verify the Deployment After deploying, verify that the function was successfully updated:
+ > supabase functions list
+You should see stripe-webhook listed as one of the deployed functions.
+
+4. Check the Logs To ensure everything is working correctly after the update, monitor the logs for the function:
+
+> supabase functions logs stripe-webhook
+Test the Webhook
+
+5. Go to the Stripe Dashboard → Webhooks.
+Select your webhook endpoint and trigger a test event:
+
+Check the logs again to confirm the event was processed.
