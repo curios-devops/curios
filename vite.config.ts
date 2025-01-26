@@ -9,12 +9,6 @@ export default defineConfig({
     strictPort: true,
     open: true
   },
-  preview: {
-    port: 5173,
-    host: true,
-    strictPort: true,
-    open: true
-  },
   build: {
     // Optimize chunk size
     chunkSizeWarningLimit: 1000,
@@ -37,5 +31,11 @@ export default defineConfig({
         drop_debugger: true
       }
     }
+  },
+  preview: {
+    port: 5173,
+    host: true,
+    strictPort: true,
+    open: true
   }
 });
