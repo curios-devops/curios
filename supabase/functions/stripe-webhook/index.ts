@@ -1,6 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import Stripe from 'https://esm.sh/stripe@14.17.0?target=deno';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import Stripe from "https://esm.sh/stripe@14.17.0?target=deno";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -56,20 +56,14 @@ serve(async (req) => {
           await handleCheckoutSession(session);
           break;
         }
-        case 'customer.subscription.updated':
-        case 'customer.subscription.deleted': {
+        case 'customer.subscription.updated': {
           const subscription = event.data.object;
           await handleSubscriptionUpdate(subscription);
           break;
         }
-        case 'payment_intent.succeeded': {
-          const paymentIntent = event.data.object;
-          await handlePaymentSuccess(paymentIntent);
-          break;
-        }
-        case 'payment_intent.payment_failed': {
-          const paymentIntent = event.data.object;
-          await handlePaymentFailure(paymentIntent);
+        case 'customer.subscription.deleted': {
+          const subscription = event.data.object;
+          await handleSubscriptionDeletion(subscription);
           break;
         }
         default: {
@@ -119,6 +113,8 @@ async function handleCheckoutSession(session: Stripe.Checkout.Session) {
       stripe_price_id: subscription.items.data[0].price.id,
       subscription_status: subscription.status,
       subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      remaining_searches: 500, // Set pro search limit
+      searches_reset_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('id', userId);
@@ -141,6 +137,8 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     .update({
       subscription_status: subscription.status,
       subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      stripe_price_id: subscription.items.data[0].price.id,
+      remaining_searches: subscription.status === 'active' ? 500 : 5,
       updated_at: new Date().toISOString()
     })
     .eq('id', profile.id);
@@ -148,13 +146,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   if (error) throw error;
 }
 
-async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
-  if (!paymentIntent.metadata.subscription_id) return;
-
-  const subscription = await stripe.subscriptions.retrieve(
-    paymentIntent.metadata.subscription_id
-  );
-
+async function handleSubscriptionDeletion(subscription: Stripe.Subscription) {
   const { data: profile, error: fetchError } = await supabase
     .from('profiles')
     .select('id')
@@ -167,34 +159,8 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
   const { error } = await supabase
     .from('profiles')
     .update({
-      subscription_status: 'active',
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', profile.id);
-
-  if (error) throw error;
-}
-
-async function handlePaymentFailure(paymentIntent: Stripe.PaymentIntent) {
-  if (!paymentIntent.metadata.subscription_id) return;
-
-  const subscription = await stripe.subscriptions.retrieve(
-    paymentIntent.metadata.subscription_id
-  );
-
-  const { data: profile, error: fetchError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('stripe_subscription_id', subscription.id)
-    .single();
-
-  if (fetchError) throw fetchError;
-  if (!profile) return;
-
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      subscription_status: 'past_due',
+      subscription_status: 'inactive',
+      remaining_searches: 5, // Reset to free tier limit
       updated_at: new Date().toISOString()
     })
     .eq('id', profile.id);
