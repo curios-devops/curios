@@ -14,5 +14,28 @@ export default defineConfig({
     host: true,
     strictPort: true,
     open: true
+  },
+  build: {
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['lucide-react'],
+          'stripe-vendor': ['@stripe/stripe-js'],
+          'supabase-vendor': ['@supabase/supabase-js']
+        }
+      }
+    },
+    // Optimize build
+    target: 'esnext',
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    }
   }
 });
