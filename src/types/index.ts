@@ -11,22 +11,25 @@ export interface Source {
 }
 
 export interface ImageResult {
+  title?: string;
   url: string;
+  image?: string;
   alt: string;
   source_url?: string;
 }
 
-export interface Perspective {
-  id: string;
+export interface VideoResult {
   title: string;
-  description: string;
-  sources?: Source[];
+  url: string;
+  thumbnail?: string;
+  duration?: string;
 }
 
 export interface SearchResponse {
   answer: string;
   sources: Source[];
   images: ImageResult[];
+  videos: VideoResult[];
   provider?: string;
   perspectives?: Perspective[];
 }
@@ -35,4 +38,11 @@ export interface SearchState {
   isLoading: boolean;
   error: string | null;
   data: SearchResponse | null;
+}
+
+export interface Perspective {
+  id: string;
+  title: string;
+  description: string;
+  sources?: Source[];
 }

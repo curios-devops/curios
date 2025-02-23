@@ -1,22 +1,38 @@
-// Rate limiting queue with improved error handling
-class RateLimitQueue {
-  private queue: Array<() => Promise<any>> = [];
-  private processing = false;
-  private requestCount = 0;
-  private lastReset = Date.now();
-  private readonly resetInterval = 60000; // 1 minute
-  private readonly maxRequestsPerMinute = 30; // Reduced from 50
-  private readonly retryDelay = 2000; // 2 seconds between retries
+import { logger } from '../utils/logger';
 
-  async add<T>(task: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      this.queue.push(async () => {
-        try {
-          const result = await this.executeWithRetry(task);
-          resolve(result);
-        } catch (error) {
-          reject(new Error(error instanceof Error ? error.message : 'Task failed'));
-        }
+interface QueueTask<T> {
+  operation: () => Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (error: Error) => void;
+  retryCount: number;
+  abortController: AbortController;
+}
+
+export class RateLimitQueue {
+  private queue: QueueTask<any>[] = [];
+  private processing = false;
+  private lastCallTime = 0; // timestamp of the last API call
+  private readonly callInterval = 1000; // 1 second interval between API calls
+  private readonly retryDelay = 1000; // 1 second delay before retrying
+  private readonly maxRetries = 1; // allow at most 1 retry per API call
+
+  // Fatal error patterns for which we do not retry.
+  // Note: 'status code 429' has been removed so that 429 errors will trigger a retry.
+  private readonly fatalErrorPatterns = [
+    'status code 400',
+    'status code 526'
+  ];
+
+  async add<T>(operation: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const abortController = new AbortController();
+
+      this.queue.push({
+        operation,
+        resolve,
+        reject,
+        retryCount: 0,
+        abortController,
       });
 
       if (!this.processing) {
@@ -25,66 +41,94 @@ class RateLimitQueue {
     });
   }
 
-  private async executeWithRetry<T>(
-    task: () => Promise<T>, 
-    retries = 2
-  ): Promise<T> {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const result = await task();
-        return result;
-      } catch (error) {
-        if (
-          error instanceof Error && 
-          error.message.includes('429') && 
-          attempt < retries
-        ) {
-          await new Promise(resolve => 
-            setTimeout(resolve, this.retryDelay * Math.pow(2, attempt))
-          );
-          continue;
-        }
-        throw error;
-      }
-    }
-    throw new Error('Max retries exceeded');
-  }
-
   private async processQueue() {
     if (this.processing || this.queue.length === 0) return;
 
     this.processing = true;
+    logger.debug('Starting queue processing');
 
     try {
       while (this.queue.length > 0) {
-        if (await this.shouldThrottle()) {
-          await new Promise(resolve => setTimeout(resolve, this.retryDelay));
-          continue;
+        // Enforce a 1-second interval between calls.
+        const now = Date.now();
+        const timeSinceLastCall = now - this.lastCallTime;
+        if (timeSinceLastCall < this.callInterval) {
+          const waitTime = this.callInterval - timeSinceLastCall;
+          logger.debug(`Waiting ${waitTime} ms to respect API rate limit`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
         }
 
-        const task = this.queue.shift();
-        if (task) {
-          await task();
-          this.requestCount++;
+        const task = this.queue[0];
+
+        try {
+          const result = await Promise.race([
+            task.operation(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Operation timed out')), 20000) // 20-second timeout
+            )
+          ]);
+
+          task.resolve(result);
+          this.queue.shift();
+          this.lastCallTime = Date.now();
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+          // Check if the error message matches any fatal error pattern.
+          if (this.fatalErrorPatterns.some(pattern =>
+            errorMessage.toLowerCase().includes(pattern)
+          )) {
+            logger.warn('Fatal error encountered, not retrying', {
+              error: errorMessage,
+              retryCount: task.retryCount
+            });
+            task.reject(error instanceof Error ? error : new Error(errorMessage));
+            this.queue.shift();
+            this.lastCallTime = Date.now();
+            continue;
+          }
+
+          // If the error is not fatal, check if we can retry.
+          if (task.retryCount < this.maxRetries) {
+            task.retryCount++;
+            logger.warn(`Retrying task (${task.retryCount}/${this.maxRetries}) due to error: ${errorMessage}`);
+            await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+            // Do not shift the task out of the queue so that it is retried.
+            continue;
+          }
+
+          // If we've exceeded the max retry count, reject the task and remove it.
+          task.reject(error instanceof Error ? error : new Error(errorMessage));
+          this.queue.shift();
+          this.lastCallTime = Date.now();
         }
       }
     } catch (error) {
-      console.error('Queue processing error:', error);
+      logger.error('Queue processing error', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     } finally {
       this.processing = false;
+      logger.debug('Queue processing finished');
     }
   }
 
-  private async shouldThrottle(): Promise<boolean> {
-    const now = Date.now();
-    if (now - this.lastReset >= this.resetInterval) {
-      this.requestCount = 0;
-      this.lastReset = now;
-      return false;
-    }
-
-    return this.requestCount >= this.maxRequestsPerMinute;
+  cleanup() {
+    this.queue.forEach(task => {
+      task.abortController.abort();
+    });
+    this.queue = [];
+    this.processing = false;
+    this.lastCallTime = 0;
   }
 }
 
+// Create singleton instance
 export const rateLimitQueue = new RateLimitQueue();
+
+// Clean up on page unload
+if (typeof window !== 'undefined') {
+  window.addEventListener('unload', () => {
+    rateLimitQueue.cleanup();
+  });
+}

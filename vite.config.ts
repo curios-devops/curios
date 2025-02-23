@@ -1,39 +1,23 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
+import { Agent } from 'https';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 5173,
-    host: true,
-    strictPort: true,
-    open: true
-  },
-  build: {
-    chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'ui-vendor': ['lucide-react'],
-          'stripe-vendor': ['@stripe/stripe-js'],
-          'supabase-vendor': ['@supabase/supabase-js']
-        }
-      }
-    },
-    target: 'esnext',
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      }
+export default defineConfig(({ mode }) => {
+  // Load env file based on mode
+  const env = loadEnv(mode, process.cwd(), '');
+
+  // Create a reusable HTTPS agent with keep-alive
+  const httpsAgent = new Agent({
+    keepAlive: true,
+    timeout: 120000,
+    rejectUnauthorized: true
+  });
+
+  return {
+    plugins: [react()],
+    server: {
+      port: 5173,
+      host: true
     }
-  },
-  preview: {
-    port: 5173,
-    host: true,
-    strictPort: true,
-    open: true
-  }
+  };
 });

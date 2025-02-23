@@ -26,8 +26,8 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
         </button>
 
         <div className="text-center mb-4">
-          <h2 className="text-3xl font-bold text-white mb-1">Upgrade to Pro</h2>
-          <p className="text-gray-400">Unlock the full potential of advanced AI with Pro features</p>
+          <h2 className="text-3xl font-bold text-white mb-1">Upgrade to Premium</h2>
+          <p className="text-gray-400">Unlock the full potential of advanced AI with Premium features</p>
           {error && <p className="mt-2 text-red-500 text-sm">{error}</p>}
 
           <div className="flex justify-center items-center mt-4">
@@ -47,19 +47,19 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          {/* Free Plan */}
+          {/* Standard Plan */}
           <div className="bg-[#222222] p-6 rounded-xl border border-gray-800 flex flex-col justify-between h-full">
             <div>
               <div className="text-center mb-8">
-                <h3 className="text-xl font-medium text-white mb-4">Free</h3>
+                <h3 className="text-xl font-medium text-white mb-4">Standard</h3>
                 <div className="flex items-center justify-center gap-2 mb-16">
-                  <span className="text-gray-400 text-sm">Forever</span>
+                  <span className="text-gray-400 text-sm">Free Forever</span>
                 </div>
               </div>
 
               <ul className="space-y-4 mb-6 border-t border-gray-700 pt-4">
-                <Feature text="Unlimited Quick searches" />
-                <Feature text="5 Pro searches per day" />
+                <Feature text="Unlimited Basic searches" />
+                <Feature text="5 Advanced searches per day" />
                 <Feature text="Standard AI model optimized for speed" />
                 <Feature text="Create a profile to personalize answers" />
               </ul>
@@ -69,15 +69,15 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
               onClick={onClose}
               className="w-full bg-gray-700 text-white py-3 rounded-lg hover:bg-gray-600 transition-colors"
             >
-              Continue with Free
+              Continue with Standard
             </button>
           </div>
 
-          {/* Pro Plan */}
+          {/* Premium Plan */}
           <div className="bg-[#222222] p-6 rounded-xl border border-gray-800 flex flex-col justify-between h-full">
             <div>
               <div className="text-center mb-6">
-                <h3 className="text-xl font-medium text-white mb-2">Pro</h3>
+                <h3 className="text-xl font-medium text-white mb-2">Premium</h3>
                 <div className="flex items-center justify-center gap-2">
                   <span className="text-3xl font-bold text-white">
                     {selectedInterval === 'month' ? '$10' : '$50'}
@@ -94,8 +94,8 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
               </div>
 
               <ul className="space-y-4 mb-6 border-t border-gray-700 pt-4">
-                <Feature text="Unlimited Quick searches" />
-                <Feature text="500+ Pro searches per day" />
+                <Feature text="Unlimited Basic searches" />
+                <Feature text="500 Advanced searches per month" />
                 <Feature text="Select your preferred AI Model" />
                 <Feature text="Upload unlimited files" />
                 <Feature text="Visualize answers using DALL-E" />
@@ -107,7 +107,7 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
               disabled={!session?.user}
               onError={setError}
             >
-              {!session?.user ? 'Sign in to upgrade' : 'Upgrade to Pro'}
+              {!session?.user ? 'Sign in to upgrade' : 'Upgrade to Premium'}
             </CheckoutButton>
           </div>
         </div>

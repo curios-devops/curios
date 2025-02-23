@@ -8,16 +8,17 @@ import Sidebar from '../components/results/Sidebar';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import type { SearchState } from '../types';
 import ProSearchSection from '../components/ProSearchSection';
+import { logger } from '../utils/logger';
 
 export default function ProResults() {
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
-  const [showAllSources, setShowAllSources] = useState(false);
   
   const [searchStartTime] = useState(Date.now());
   const [timeAgo, setTimeAgo] = useState('just now');
+  const [showAllSources, setShowAllSources] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Initializing Pro Search...');
   
   const [searchState, setSearchState] = useState<SearchState>({
@@ -30,7 +31,6 @@ export default function ProResults() {
     const interval = setInterval(() => {
       setTimeAgo(formatTimeAgo(searchStartTime));
     }, 1000);
-
     return () => clearInterval(interval);
   }, [searchStartTime]);
 
@@ -46,14 +46,23 @@ export default function ProResults() {
       }
 
       try {
+        logger.info('Starting Pro search', { query });
         setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
         
         const response = await performSearch(query, {
           isPro: true,
-          onStatusUpdate: setStatusMessage
+          onStatusUpdate: (status) => {
+            logger.debug('Pro search status update', { status });
+            setStatusMessage(status);
+          }
         });
 
-        console.log('Pro Search response:', response); // Debug log
+        logger.info('Pro search completed', {
+          hasResults: !!response.sources.length,
+          imageCount: response.images.length,
+          videoCount: response.videos?.length || 0,
+          hasPerspectives: !!response.perspectives?.length
+        });
 
         setSearchState({
           isLoading: false,
@@ -61,7 +70,10 @@ export default function ProResults() {
           data: response
         });
       } catch (error) {
-        console.error('Search failed:', error);
+        logger.error('Pro search failed', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          query
+        });
         setSearchState({
           isLoading: false,
           error: error instanceof Error ? error.message : 'Search services are currently unavailable',
@@ -76,7 +88,6 @@ export default function ProResults() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#111111] to-black text-white">
       <TopBar query={query} timeAgo={timeAgo} />
-
       <main className="max-w-7xl mx-auto px-6 py-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
@@ -94,7 +105,6 @@ export default function ProResults() {
             </div>
           </div>
         </div>
-
         <div className="flex gap-6">
           <div className="flex-1">
             {/* Pro Search Section */}
@@ -103,7 +113,6 @@ export default function ProResults() {
               isLoading={searchState.isLoading}
               perspectives={searchState.data?.perspectives}
             />
-
             {/* Main Content */}
             <MainContent 
               searchState={searchState}
@@ -113,10 +122,12 @@ export default function ProResults() {
               isPro={true}
             />
           </div>
-
           {/* Sidebar */}
           {!searchState.error && (
-            <Sidebar images={searchState.data?.images} />
+            <Sidebar 
+              images={searchState.data?.images}
+              videos={searchState.data?.videos}
+            />
           )}
         </div>
       </main>

@@ -1,19 +1,19 @@
 import { useSession } from './useSession';
 import { useSubscription } from './useSubscription';
 
-export type UserType = 'guest' | 'user' | 'pro';
+export type UserType = 'guest' | 'standard' | 'premium';
 
-export function useUserType() {
+export function useUserType(): UserType {
   const { session } = useSession();
   const { subscription } = useSubscription();
 
   if (!session) {
-    return 'guest' as const;
+    return 'guest';
   }
 
-  if (subscription?.isPro) {
-    return 'pro' as const;
+  if (subscription?.isActive) {
+    return 'premium';
   }
 
-  return 'user' as const;
+  return 'standard';
 }

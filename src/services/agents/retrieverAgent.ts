@@ -1,79 +1,173 @@
+// src/services/agents/retrieverAgent.ts
+
+import { API_TIMEOUTS, MAX_RESULTS } from '../constants';
 import { BaseAgent } from './baseAgent';
-import { AgentResponse, SearchResult, Perspective } from './types';
-import { searchWithBrave } from '../braveService';
-import { searchWithTavily } from '../tavilyService';
-import { searchWithDuckDuckGo } from '../duckduckgoService';
-import { getFallbackResults } from '../fallbackService';
+import { AgentResponse, SearchResult, ImageResult } from './types';
+import { searxngSearch } from '../searchTools/searxng';
+import { tavilySearch } from '../searchTools/tavily';
+import { rateLimitQueue } from '../rateLimit';
+import { logger } from '../../utils/logger';
+
+// Helper function to delay execution for a given number of milliseconds.
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Wraps an API call using the rateLimitQueue and retries once on error.
+async function safeCall<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await rateLimitQueue.add(operation);
+  } catch (error) {
+    logger.warn('First attempt failed, retrying after 1 second', {
+      error: error instanceof Error ? error.message : error,
+    });
+    await delay(1000);
+    return rateLimitQueue.add(operation);
+  }
+}
 
 export class RetrieverAgent extends BaseAgent {
   constructor() {
     super(
-      'Information Retriever',
-      'Collect and compile information from multiple sources'
+      'Retriever Agent',
+      'Collects and compiles information (text and images) from multiple sources'
     );
   }
 
   async execute(
-    query: string, 
-    perspectives: Perspective[],
+    query: string,
+    perspectives: any[] = [],
+    isPro: boolean = false,
     onStatusUpdate?: (status: string) => void
   ): Promise<AgentResponse> {
     try {
-      // Search for main query with retries and fallbacks
-      const mainResults = await this.searchWithFallback(query, onStatusUpdate);
+      if (!query?.trim()) {
+        throw new Error('No search query provided');
+      }
 
-      // If no results found for main query, use a more general search
-      if (mainResults.length === 0) {
-        const generalQuery = this.generateGeneralQuery(query);
-        onStatusUpdate?.('Trying broader search terms...');
-        const generalResults = await this.searchWithFallback(generalQuery, onStatusUpdate);
-        if (generalResults.length > 0) {
-          mainResults.push(...generalResults);
+      const trimmedQuery = query.trim();
+      logger.info('Starting retrieval', { query: trimmedQuery });
+      onStatusUpdate?.(isPro ? 'Searching with Tavily...' : 'Searching with SearxNG...');
+
+      // Choose search provider based on isPro flag
+      let searchResults;
+      try {
+        if (isPro) {
+          // Pro users: Use Tavily directly
+          onStatusUpdate?.('Searching with Tavily...');
+          searchResults = await Promise.race([
+            tavilySearch(trimmedQuery),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Tavily search timeout')), API_TIMEOUTS.TAVILY)
+            )
+          ]);
+        } else {
+          // Normal users: Use SearxNG
+          onStatusUpdate?.('Searching with SearxNG...');
+          searchResults = await searxngSearch(trimmedQuery);
+        }
+      } catch (error) {
+        logger.error('Search failed', {
+          error: error instanceof Error ? error.message : error,
+          isPro
+        });
+        return {
+          success: true,
+          data: this.getFallbackData(trimmedQuery)
+        };
+      }
+
+      await delay(1000); // Enforce a 1-second gap after search
+
+      // If no text results, try a more general query.
+      if (!searchResults.web || searchResults.web.length === 0) {
+        const generalQuery = this.generateGeneralQuery(trimmedQuery);
+        onStatusUpdate?.('No results found; trying broader search terms...');
+        const generalResults = await safeCall(() =>
+          isPro ? tavilySearch(generalQuery) : searxngSearch(generalQuery)
+        );
+        await delay(1000);
+        
+        if (generalResults.web) searchResults.web = [...(searchResults.web || []), ...generalResults.web];
+        if (generalResults.images) searchResults.images = [...(searchResults.images || []), ...generalResults.images];
+        if ('videos' in searchResults && generalResults.videos) {
+          searchResults.videos = [...(searchResults.videos || []), ...generalResults.videos];
         }
       }
 
-      // Search for each perspective in parallel with fallback
-      const perspectiveResults = await Promise.all(
-        perspectives.map(async (perspective) => {
-          onStatusUpdate?.(`Exploring perspective: ${perspective.title}...`);
-          const results = await this.searchWithFallback(perspective.title, onStatusUpdate);
-          return {
-            ...perspective,
-            results: results.map(result => ({
-              title: result.title,
-              url: result.url,
-              content: result.content
-            }))
-          };
-        })
-      );
+      // Deduplicate and limit web search results.
+      const validResults = this.deduplicateResults(searchResults.web)
+        .filter(result => result.url !== '#' && result.title && result.content)
+        .slice(0, MAX_RESULTS.WEB);
 
-      // If we still have no results, use the fallback content
-      if (mainResults.length === 0 && perspectiveResults.every(p => p.results.length === 0)) {
-        onStatusUpdate?.('Using fallback content sources...');
-        return {
-          success: true,
-          data: this.getFallbackData(query)
-        };
+      // Deduplicate and limit image search results.
+      const validImages = this.deduplicateImages(searchResults.images)
+        .map(img => ({
+          title: img.title || '',
+          url: img.url || '',
+          image: img.image || img.properties?.url || img.thumbnail?.src || img.url,
+          source_url: img.url,
+          alt: img.title || 'Search result image'
+        }))
+        .slice(0, MAX_RESULTS.IMAGES);
+
+      // Process videos
+      const validVideos = searchResults.video || []
+        .filter(video => video.url && video.title)
+        .slice(0, MAX_RESULTS.VIDEO);
+
+      // Process perspective-specific text searches sequentially.
+      const perspectiveResults = [];
+      for (const perspective of perspectives) {
+        onStatusUpdate?.(`Exploring perspective: ${perspective.title}...`);
+        const perspectiveSearchResults = await safeCall(() => 
+          isPro ? tavilySearch(perspective.title) : searxngSearch(perspective.title)
+        );
+        await delay(1000);
+        
+        // Process and validate sources for this perspective
+        const validSources = perspectiveSearchResults.web
+          .filter(result => result.url && result.title)
+          .map(result => ({
+            title: result.title,
+            url: result.url.trim(),
+            snippet: this.sanitizeContent(result.content || '')
+          }))
+          .slice(0, 5); // Limit to 5 sources per perspective
+
+        perspectiveResults.push({
+          ...perspective,
+          sources: validSources
+        });
       }
+
+      logger.info('Retrieval completed', {
+        resultsCount: validResults.length,
+        imagesCount: validImages.length,
+        perspectivesCount: perspectiveResults.length,
+        perspectivesWithSources: perspectiveResults.filter(p => p.sources?.length > 0).length
+      });
 
       return {
         success: true,
         data: {
-          query,
+          query: trimmedQuery,
           perspectives: perspectiveResults,
-          results: mainResults
-        }
+          results: validResults,
+          images: validImages,
+          videos: validVideos,
+        },
       };
     } catch (error) {
-      console.error('Retriever error:', error);
-      return {
-        success: true,
-        data: this.getFallbackData(query)
-      };
+      logger.error('Retrieval failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        query,
+      });
+      return this.handleError(error);
     }
   }
 
+  // Generates a more general query by removing digits, quotes, and short words.
   private generateGeneralQuery(query: string): string {
     return query
       .replace(/\d+/g, '')
@@ -85,74 +179,49 @@ export class RetrieverAgent extends BaseAgent {
       .trim();
   }
 
-  private async searchWithFallback(
-    query: string,
-    onStatusUpdate?: (status: string) => void
-  ): Promise<SearchResult[]> {
-    const errors: Error[] = [];
-
-    // Try Brave first
-    try {
-      onStatusUpdate?.('Searching with Brave...');
-      const { results } = await searchWithBrave(query);
-      if (results.length > 0) {
-        return results;
-      }
-    } catch (error) {
-      errors.push(error as Error);
-      onStatusUpdate?.('Brave search failed, trying Tavily...');
-    }
-
-    // Try Tavily as first fallback
-    try {
-      const { results } = await searchWithTavily(query);
-      if (results.length > 0) {
-        return results;
-      }
-    } catch (error) {
-      errors.push(error as Error);
-      onStatusUpdate?.('Tavily search failed, trying DuckDuckGo...');
-    }
-
-    // Try DuckDuckGo as second fallback
-    try {
-      const { results } = await searchWithDuckDuckGo(query);
-      if (results.length > 0) {
-        return results;
-      }
-    } catch (error) {
-      errors.push(error as Error);
-      onStatusUpdate?.('DuckDuckGo search failed, trying Wikipedia...');
-    }
-
-    // Try Wikipedia as final fallback
-    try {
-      const { results } = await getFallbackResults(query);
-      if (results.length > 0) {
-        return results;
-      }
-    } catch (error) {
-      errors.push(error as Error);
-      onStatusUpdate?.('All search attempts failed, using fallback content...');
-    }
-
-    // Log errors without throwing
-    if (errors.length > 0) {
-      console.log('Search attempts completed with fallbacks');
-    }
-
-    return [];
+  // Deduplicates web search results based on URL.
+  private deduplicateResults(results: SearchResult[]): SearchResult[] {
+    const seen = new Set<string>();
+    return results.filter(result => {
+      if (seen.has(result.url)) return false;
+      seen.add(result.url);
+      return true;
+    });
   }
 
+  // Deduplicates image search results based on URL.
+  private deduplicateImages(images: ImageResult[]): ImageResult[] {
+    const seen = new Set<string>();
+    return images.filter(image => {
+      if (seen.has(image.url)) return false;
+      seen.add(image.url);
+      return true;
+    });
+  }
+
+  // Sanitize content by removing HTML tags and decoding entities
+  private sanitizeContent(content: string): string {
+    return content
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/&[^;]+;/g, '') // Remove HTML entities
+      .replace(/\s+/g, ' ')    // Normalize whitespace
+      .trim();
+  }
+
+  // Returns fallback data in case retrieval fails.
   protected getFallbackData(query: string = ''): any {
     return {
       query,
       perspectives: [],
-      results: [{
-        title: 'General Information',
-        url: `https://en.wikipedia.org/wiki/${encodeURIComponent(query)}`,
-        content: `We're currently experiencing high traffic. Please try your search again in a moment.`
-      }]
+      results: [
+        {
+          title: 'No Results Found',
+          url: '#',
+          content: 'We could not find any results for your search. Please try different keywords or check back later.'
+        }
+      ],
+      images: [],
+      videos: []
     };
   }
 }

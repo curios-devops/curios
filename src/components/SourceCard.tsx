@@ -1,6 +1,25 @@
 import React from 'react';
 import { Globe, ExternalLink } from 'lucide-react';
 
+// Helper function to get domain info
+function getDomainInfo(source: { url: string }) {
+  try {
+    // Handle special case for fallback URL
+    if (source.url === '#') {
+      return { domain: 'No source available', hostname: '' };
+    } else {
+      const url = new URL(source.url);
+      return {
+        domain: url.hostname.replace('www.', ''),
+        hostname: url.hostname
+      };
+    }
+  } catch {
+    // If URL is invalid, use a fallback domain
+    return { domain: 'Invalid source', hostname: '' };
+  }
+}
+
 interface SourceCardProps {
   source: {
     url: string;
@@ -11,20 +30,7 @@ interface SourceCardProps {
 }
 
 export default function SourceCard({ source, index }: SourceCardProps) {
-  // Validate and parse URL
-  let domain = '';
-  try {
-    // Handle special case for fallback URL
-    if (source.url === '#') {
-      domain = 'No source available';
-    } else {
-      const url = new URL(source.url);
-      domain = url.hostname.replace('www.', '');
-    }
-  } catch {
-    // If URL is invalid, use a fallback domain
-    domain = 'Invalid source';
-  }
+  const { domain, hostname } = getDomainInfo(source);
   
   return (
     <div className="group relative">
@@ -44,10 +50,18 @@ export default function SourceCard({ source, index }: SourceCardProps) {
           <h3 className="text-white text-xs font-medium line-clamp-3 min-h-[48px]">
             {source.title}
           </h3>
-          <div className="flex items-center gap-1.5 text-xs mt-auto">
-            <Globe size={12} className="text-gray-400 group-hover:text-[#0095FF]" />
+          <div className="flex items-center gap-2 text-xs mt-auto">
+            {hostname ? (
+              <img
+                src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+                alt=""
+                className="w-4 h-4 opacity-75 group-hover:opacity-100 transition-opacity"
+                loading="lazy"
+              />
+            ) : (
+              <Globe size={12} className="text-gray-400 group-hover:text-[#0095FF]" />
+            )}
             <span className="text-gray-400 group-hover:text-[#0095FF]">{domain}</span>
-            <span className="text-gray-500">· {index + 1}</span>
           </div>
         </div>
 
@@ -56,7 +70,16 @@ export default function SourceCard({ source, index }: SourceCardProps) {
           <div className="absolute left-[-50%] right-[-50%] top-full mt-2 z-10 bg-[#333333] rounded-lg p-4 border border-[#0095FF]/20 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-xl pointer-events-none">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Globe size={14} className="text-[#0095FF]" />
+                {hostname ? (
+                  <img
+                    src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+                    alt=""
+                    className="w-4 h-4"
+                    loading="lazy"
+                  />
+                ) : (
+                  <Globe size={14} className="text-[#0095FF]" />
+                )}
                 <span className="text-[#0095FF] text-xs">{domain}</span>
               </div>
               <ExternalLink size={12} className="text-[#0095FF]" />

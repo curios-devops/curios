@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { handleRequest } from './api';
 
 export default defineConfig({
   plugins: [react()],
@@ -9,41 +8,29 @@ export default defineConfig({
     host: true,
     strictPort: true,
     open: true,
-    // Add middleware to handle API routes
+    proxy: {
+      // ✅ NEW: Proxy for Brave API requests
+      '/api/brave': {
+        target: 'https://api.search.brave.com/res/v1',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/brave/, ''),
+        headers: {
+          'X-RapidAPI-Key': process.env.VITE_BRAVE_API_KEY || '',
+          'X-RapidAPI-Host': 'api.search.brave.com',
+          'Content-Type': 'application/json'
+        }
+      }
+    },
     middleware: [
       {
-        name: 'api-handler',
+        name: 'cors-headers',
         configureServer(server) {
-          server.middlewares.use(async (req, res, next) => {
-            const url = new URL(req.url!, `http://${req.headers.host}`);
-            
-            // Only handle /api routes
-            if (!url.pathname.startsWith('/api')) {
-              return next();
-            }
-
-            try {
-              const response = await handleRequest(req as Request);
-              
-              // Set response headers
-              for (const [key, value] of response.headers.entries()) {
-                res.setHeader(key, value);
-              }
-              
-              // Set status code
-              res.statusCode = response.status;
-              
-              // Send response body
-              const body = await response.text();
-              res.end(body);
-            } catch (error) {
-              console.error('API error:', error);
-              res.statusCode = 500;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ 
-                error: error instanceof Error ? error.message : 'Internal server error' 
-              }));
-            }
+          server.middlewares.use((_req, res, next) => {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+            res.setHeader('Access-Control-Allow-Headers', 'X-RapidAPI-Key, X-RapidAPI-Host, Content-Type');
+            next();
           });
         }
       }

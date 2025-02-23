@@ -47,44 +47,68 @@ export default function ProSearchSection({
                     onClick={() => setExpandedPerspective(
                       expandedPerspective === perspective.id ? null : perspective.id
                     )}
-                    className="w-full flex items-center justify-between py-2 group hover:bg-[#1a1a1a] rounded-lg transition-colors px-2"
+                    className="w-full flex items-center justify-between py-3 group hover:bg-[#1a1a1a] rounded-lg transition-all duration-200 px-2"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-[#0095FF] text-sm font-medium w-6">0{index + 1}</span>
                       <div className="text-left">
                         <h3 className="text-white font-medium text-sm">{perspective.title}</h3>
-                        <p className="text-gray-400 text-xs">{perspective.description}</p>
+                        {expandedPerspective !== perspective.id && (
+                          <p className="text-gray-400 text-xs line-clamp-1">{perspective.description}</p>
+                        )}
                       </div>
                     </div>
-                    {expandedPerspective === perspective.id ? (
-                      <ChevronUp className="text-gray-400 group-hover:text-[#0095FF] transition-colors shrink-0" size={18} />
-                    ) : (
-                      <ChevronDown className="text-gray-400 group-hover:text-[#0095FF] transition-colors shrink-0" size={18} />
-                    )}
+                    <div className="shrink-0 ml-4">
+                      {expandedPerspective === perspective.id ? (
+                        <ChevronUp className="text-gray-400 group-hover:text-[#0095FF] transition-colors" size={18} />
+                      ) : (
+                        <ChevronDown className="text-gray-400 group-hover:text-[#0095FF] transition-colors" size={18} />
+                      )}
+                    </div>
                   </button>
                   
-                  {expandedPerspective === perspective.id && perspective.sources && (
-                    <div className="py-2 pl-9 pr-2">
-                      <div className="flex flex-wrap gap-2">
-                        {perspective.sources.map((source, sourceIndex) => (
-                          <a
-                            key={sourceIndex}
-                            href={source.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#0095FF] transition-colors bg-[#1a1a1a] px-2 py-1 rounded-lg"
-                          >
-                            <img 
-                              src={`https://www.google.com/s2/favicons?domain=${new URL(source.url).hostname}&sz=16`}
-                              alt=""
-                              className="w-3 h-3"
-                            />
-                            <span className="truncate max-w-[200px]">{source.title}</span>
-                          </a>
-                        ))}
-                      </div>
+                  <div 
+                    className={`
+                      overflow-hidden transition-all duration-200 ease-in-out
+                      ${expandedPerspective === perspective.id ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}
+                    `}
+                  >
+                    <div className="py-2 pl-11 pr-4 space-y-4">
+                      <p className="text-gray-400 text-sm">{perspective.description}</p>
+                      
+                      {perspective.sources && perspective.sources.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {perspective.sources.slice(0, 5).map((source, sourceIndex) => {
+                            let domain = '';
+                            try {
+                              const url = new URL(source.url);
+                              domain = url.hostname.replace('www.', '');
+                            } catch {
+                              return null;
+                            }
+                            
+                            return (
+                              <a
+                                key={sourceIndex}
+                                href={source.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#0095FF] transition-colors bg-[#1a1a1a] px-2 py-1.5 rounded-lg group"
+                              >
+                                <img 
+                                  src={`https://www.google.com/s2/favicons?domain=${domain}&sz=16`}
+                                  alt=""
+                                  className="w-4 h-4 opacity-75 group-hover:opacity-100 transition-opacity"
+                                  loading="lazy"
+                                />
+                                <span className="truncate max-w-[200px]">{domain}</span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>

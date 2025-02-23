@@ -2,115 +2,136 @@ import { UIAgent } from './uiAgent';
 import { PerspectiveAgent } from './perspectiveAgent';
 import { RetrieverAgent } from './retrieverAgent';
 import { WriterAgent } from './writerAgent';
-import { ImageSearchAgent } from './imageSearchAgent';
-import { AgentResponse, ResearchResult, ArticleResult } from './types';
+import { ResearchResult, ArticleResult } from './types';
+import { logger } from '../../utils/logger';
+import { ServiceHealthMonitor } from '../serviceHealth';
 
 export class SwarmController {
   private uiAgent: UIAgent;
-  private perspectiveAgent: PerspectiveAgent;
-  private retrieverAgent: RetrieverAgent;
   private writerAgent: WriterAgent;
-  private imageSearchAgent: ImageSearchAgent;
+  private retrieverAgent: RetrieverAgent;
+  private perspectiveAgent: PerspectiveAgent;
+  private healthMonitor: ServiceHealthMonitor;
 
   constructor() {
     this.uiAgent = new UIAgent();
-    this.perspectiveAgent = new PerspectiveAgent();
-    this.retrieverAgent = new RetrieverAgent();
     this.writerAgent = new WriterAgent();
-    this.imageSearchAgent = new ImageSearchAgent();
-  }
-
-  private isDirectQuestion(query: string): boolean {
-    const directPatterns = [
-      /^what\s+is/i,
-      /^who\s+is/i,
-      /^when\s+did/i,
-      /^where\s+is/i,
-      /^how\s+much/i,
-      /^how\s+many/i,
-      /^which/i,
-      /^define/i,
-      /^explain/i
-    ];
-    
-    return directPatterns.some(pattern => pattern.test(query)) || query.length < 50;
+    this.retrieverAgent = new RetrieverAgent();
+    this.perspectiveAgent = new PerspectiveAgent();
+    this.healthMonitor = ServiceHealthMonitor.getInstance();
   }
 
   async processQuery(
-    query: string, 
+    query: string,
     onStatusUpdate?: (status: string) => void,
     isPro: boolean = false
   ): Promise<{
     research: ResearchResult;
     article: ArticleResult;
     images: any[];
+    videos: any[];
   }> {
     try {
-      const isDirect = this.isDirectQuestion(query);
-      let perspectives = [];
+      // Validate the query
+      if (!query?.trim()) {
+        throw new Error('Search query cannot be empty');
+      }
+      logger.info('Starting query processing', { query, isPro });
 
-      // Generate perspectives for Pro Search or complex queries
-      if (isPro || !isDirect) {
-        onStatusUpdate?.('Adding different perspectives to enrich your answer...');
-        const perspectiveResponse = await this.perspectiveAgent.execute(query);
-        perspectives = perspectiveResponse.data?.perspectives || [];
+      // Use RetrieverAgent to get research results
+      onStatusUpdate?.('Searching through reliable sources...');
+      const searchResponse = await this.executeWithHealthCheck(
+        () => this.retrieverAgent.execute(query, [], isPro, onStatusUpdate),
+        'RetrieverAgent'
+      );
+
+      // For Pro searches, generate perspectives
+      let perspectives = [];
+      if (isPro) {
+        onStatusUpdate?.('Analyzing different perspectives...');
+        try {
+          const perspectiveResponse = await this.executeWithHealthCheck(
+            () => this.perspectiveAgent.execute(query),
+            'PerspectiveAgent'
+          );
+          perspectives = perspectiveResponse.data?.perspectives || [];
+        } catch (error) {
+          logger.warn('Perspective generation failed:', error);
+          // Continue without perspectives
+        }
       }
 
-      // Start image search in parallel with other operations
-      onStatusUpdate?.('Searching for relevant images...');
-      const imageSearchPromise = this.imageSearchAgent.execute(query);
-
-      // Retrieve information
-      onStatusUpdate?.('Searching through reliable sources...');
-      const retrievalResponse = await this.retrieverAgent.execute(
-        query, 
-        perspectives,
-        onStatusUpdate
-      );
-
-      // Generate article from research results
+      // Generate article using WriterAgent based on the main query and retrieved perspectives.
       onStatusUpdate?.('Crafting a comprehensive answer...');
-      const writerResponse = await this.writerAgent.execute(
-        retrievalResponse.data || { query, perspectives: [], results: [] }
+      const writerResponse = await this.executeWithHealthCheck(
+        () =>
+          this.writerAgent.execute({
+            query,
+            perspectives,
+            results: searchResponse.data?.results || []
+          }),
+        'WriterAgent'
       );
 
-      // Wait for image search to complete
-      const imageResponse = await imageSearchPromise;
-
-      // Format the response using UI agent
-      onStatusUpdate?.('Formatting the response...');
-      const uiResponse = await this.uiAgent.execute({
-        research: retrievalResponse.data,
-        article: writerResponse.data,
-        images: imageResponse.data?.images || []
+      logger.info('Query processing completed', {
+        hasResults: searchResponse.data?.results?.length > 0,
+        hasPerspectives: perspectives.length > 0,
+        hasImages: searchResponse.data?.images?.length > 0,
+        hasVideos: searchResponse.data?.videos?.length > 0
       });
 
-      // Return the formatted response
       return {
-        research: uiResponse.data.research,
-        article: uiResponse.data.article,
-        images: imageResponse.data?.images || []
+        research: {
+          query,
+          perspectives,
+          results: searchResponse.data?.results || []
+        },
+        article: writerResponse.data || {
+          content:
+            'We apologize, but we could not process your search at this time. Please try again in a moment.',
+          followUpQuestions: [],
+          citations: []
+        },
+        images: searchResponse.data?.images || [],
+        videos: searchResponse.data?.videos || []
       };
     } catch (error) {
-      console.warn('Swarm processing error:', error);
-      // Return a valid fallback response
+      logger.error('Query processing failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        query
+      });
       return {
-        research: { 
-          query, 
-          perspectives: [], 
-          results: retrievalResponse?.data?.results || []
+        research: {
+          query,
+          perspectives: [],
+          results: []
         },
-        article: writerResponse?.data || this.getFallbackArticle(),
-        images: []
+        article: {
+          content:
+            'We apologize, but we could not process your search at this time. Please try again in a moment.',
+          followUpQuestions: [],
+          citations: []
+        },
+        images: [],
+        videos: []
       };
     }
   }
 
-  private getFallbackArticle(): ArticleResult {
-    return {
-      content: 'We apologize, but we could not process your search at this time. Please try again in a moment.',
-      followUpQuestions: [],
-      citations: []
-    };
+  private async executeWithHealthCheck<T>(
+    operation: () => Promise<T>,
+    serviceName: string
+  ): Promise<T> {
+    try {
+      if (!this.healthMonitor.isHealthy(serviceName)) {
+        throw new Error(`Service ${serviceName} is currently unavailable`);
+      }
+      const result = await operation();
+      this.healthMonitor.reportSuccess(serviceName);
+      return result;
+    } catch (error) {
+      this.healthMonitor.reportFailure(serviceName);
+      throw error;
+    }
   }
 }

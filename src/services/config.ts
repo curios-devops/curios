@@ -1,36 +1,39 @@
-export const SEARX_INSTANCES = [
-  'https://searx.tiekoetter.com',
-  'https://search.rhscz.eu',
-  'https://searx.colbster937.dev'
-];
+// API configuration
+export const API_CONFIG = {
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Origin': window.location.origin
+  },
+  timeout: 15000 // 15 seconds
+};
+
+// Rate limiting configuration
+export const RATE_LIMIT = {
+  maxRequestsPerMinute: 20,
+  retryDelay: 5000,
+  maxRetries: 3
+};
+
+// Search configuration
+export const SEARCH_CONFIG = {
+  allowHttpImages: false,
+  minRelevanceScore: 0.1,
+  maxRetryAttempts: 3,
+  healthCheckInterval: 300000, // 5 minutes
+  usePost: true,
+  engines: {
+    required: ['brave', 'tavily'],
+    fallback: ['duckduckgo', 'wikipedia']
+  }
+};
 
 // Fallback API endpoints
 export const FALLBACK_APIS = {
   wikipedia: 'https://en.wikipedia.org/w/api.php',
+  duckduckgo: 'https://api.duckduckgo.com',
+  tavily: 'https://api.tavily.com/search'
 };
 
-export const RETRY_OPTIONS = {
-  maxRetries: 3,
-  delayMs: 1000,
-  timeout: 15000,
-  exponentialBackoff: true
-};
-
-export const API_TIMEOUT = 15000;
-
-export const MAX_RESULTS = 5;
-
-export const CONCURRENT_REQUESTS = 2;
-
-// Search configuration
-export const SEARCH_CONFIG = {
-  allowHttpImages: true, // Allow HTTP images for better coverage
-  minRelevanceScore: 0.1, // Lower score threshold
-  maxRetryAttempts: 2, // Increased retries before marking unhealthy
-  healthCheckInterval: 300000, // 5 minutes
-  usePost: true, // Use POST for complex queries
-  engines: {
-    required: ['google', 'bing', 'duckduckgo', 'wikipedia'],
-    fallback: ['qwant', 'brave', 'mojeek'] // Alternative engines
-  }
-};
+// Export all configurations
+export { API_TIMEOUT, MAX_RESULTS, RETRY_OPTIONS } from './constants';

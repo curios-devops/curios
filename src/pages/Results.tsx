@@ -7,6 +7,7 @@ import MainContent from '../components/results/MainContent';
 import Sidebar from '../components/results/Sidebar';
 import { ArrowLeft } from 'lucide-react';
 import type { SearchState } from '../types';
+import { logger } from '../utils/logger';
 
 export default function Results() {
   const location = useLocation();
@@ -46,12 +47,22 @@ export default function Results() {
       }
 
       try {
+        logger.info('Starting search', { query, mode });
         setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
         
         const response = await performSearch(query, {
           mode,
           isPro: false,
-          onStatusUpdate: setStatusMessage
+          onStatusUpdate: (status) => {
+            logger.debug('Search status update', { status });
+            setStatusMessage(status);
+          }
+        });
+
+        logger.info('Search completed', {
+          hasResults: !!response.sources.length,
+          imageCount: response.images.length,
+          videoCount: response.videos?.length || 0
         });
 
         setSearchState({
@@ -60,7 +71,12 @@ export default function Results() {
           data: response
         });
       } catch (error) {
-        console.error('Search failed:', error);
+        logger.error('Search failed', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          query,
+          mode
+        });
+
         setSearchState({
           isLoading: false,
           error: error instanceof Error ? error.message : 'Search services are currently unavailable',
@@ -97,7 +113,10 @@ export default function Results() {
           />
 
           {!searchState.error && (
-            <Sidebar images={searchState.data?.images} />
+            <Sidebar 
+              images={searchState.data?.images} 
+              videos={searchState.data?.videos}
+            />
           )}
         </div>
       </main>

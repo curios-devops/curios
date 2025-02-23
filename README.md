@@ -12,8 +12,11 @@ An AI-powered search engine building using Bolt tech stack, designed to provide 
 **2025**
   01.01 - Add focus mode UI 
   01.18 - Add Brave Search
-
-
+  01.31 - Add RapidAPI searxNG
+  02.05 - Simplified to only Brave Search
+  02.20 - Added Rapid API
+  02.22 - Replace Brave for Tavily
+  02.23 - Add Stripe
 
 ## APP DESCRIPTION
 CuriosAI is an AI-powered searching tool or an multiagent AI-powered search engine that goes deep into the internet to find answers. Inspired by Perplexity AI, it's an option that not just searches the web but understands your questions. It uses advanced machine learning algorithms to refine results and provides clear answers with sources cited.
@@ -107,13 +110,13 @@ ProSearch typically features **five operational agents** plus a user-facing inte
 
 ---
 
-## Typical ProSearch Flow
+## Typical Search Flow
 
 1. **User Submits Query**  
    - The user enters a query via the UI Agent (just like any standard search).  
    - The Orchestrator Agent then decides how to break down or parallelize the tasks.
 
-2. **Multi-Perspective Generation**  
+2. **Multi-Perspective Generation (only in proSearch )**  
    - The Perspective Generator proposes different ways to explore the query (for example, brainstorming subtopics or specific angles).
 
 3. **Parallel Information Retrieval**  
@@ -128,8 +131,21 @@ ProSearch typically features **five operational agents** plus a user-facing inte
    - The Article Writer turns the refined data into a cohesive, easy-to-read response (including citations).  
    - The result is sent to the UI Agent, which displays it in the user’s familiar interface.
 
-**High-Level Flow**
+**High-Level Flow for Search and Pro Search **
 
+**Search**
+User Query
+    |
+    v
+UI Agent  <---->  Orchestrator Agent
+    |
+    +--> Information Retriever --> Research Analyst --> Article Writer
+    ^
+    | (direct  response)
+    |
+Final Answer to User
+
+**Pro Search**
 User Query
     |
     v
@@ -137,7 +153,7 @@ UI Agent  <---->  Orchestrator Agent
     |
     +--> Perspective Generator --> Information Retriever --> Research Analyst --> Article Writer
     ^
-    | (results or come back)
+    | (response with perspectives)
     |
 Final Answer to User
 
@@ -164,8 +180,22 @@ Final Answer to User
 Despite the advanced behind-the-scenes coordination:
 
 - **User Interaction**: The user still types a query and sees search results or a generated article, much like any normal search engine.  
-- **Insights**: Partial updates (“Searching…,” “Summarizing…,” “Drafting…”) are shown in the UI, enhancing transparency without complicating the design.
+- **Insights**: Partial updates (“Searching…,” “Summarizing…,” “Drafting…”) are shown in the UI, enhancing transparency).
 
+1. User Types
+Guest – Visitors who haven’t registered or logged in.
+Standard – Logged-in users on the free tier.
+Premium – Logged-in users on the paid (subscriber) tier.
+This way, “Premium” clearly indicates the user is subscribed, avoiding confusion with any “Pro” references.
+
+2. Subscription Tiers
+Free Tier – Available for Standard users.
+Paid Tier (or “Pro Tier” to keep some “Pro” branding) – For Premium users.
+You can call your paid tier “Premium” —just make sure it aligns with your user naming. For instance, Premium user on the Premium (Paid) tier.
+
+3. Search Levels
+Basic Search – Included for Guest or Standard users.
+Advanced Pro Search – An Advanced or “Pro” search for Premium users 
 --
 ## TARGET AUDIENCE
 CuriosAI is designed to cater to a diverse audience, focusing primarily on the following groups:

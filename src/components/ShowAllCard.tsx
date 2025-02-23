@@ -1,11 +1,24 @@
 import React from 'react';
+import { Globe } from 'lucide-react';
 
 interface ShowAllCardProps {
   totalSources: number;
+  sources?: Array<{ url: string }>;
   onClick: () => void;
 }
 
-export default function ShowAllCard({ totalSources, onClick }: ShowAllCardProps) {
+export default function ShowAllCard({ totalSources, sources, onClick }: ShowAllCardProps) {
+  // Get unique domains from remaining sources (up to 3)
+  const domains = sources
+    ?.slice(0, 3)
+    .map(source => {
+      try {
+        return new URL(source.url).hostname;
+      } catch {
+        return null;
+      }
+    })?.filter(Boolean) as string[] || [];
+
   return (
     <button
       onClick={onClick}
@@ -13,16 +26,27 @@ export default function ShowAllCard({ totalSources, onClick }: ShowAllCardProps)
     >
       <div className="flex flex-col h-full justify-between">
         <div className="flex -space-x-1.5 mb-2">
-          {[...Array(Math.min(totalSources, 3))].map((_, i) => (
+          {domains.map((domain, i) => (
             <div 
               key={i}
-              className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white ${
-                i === 0 ? 'bg-red-500/80' :
-                i === 1 ? 'bg-blue-500/80' :
-                'bg-purple-500/80'
-              }`}
+              className="w-6 h-6 rounded-full flex items-center justify-center bg-[#333333] ring-2 ring-[#222222]"
             >
-              {i + 4}
+              <img
+                src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+                alt=""
+                className="w-4 h-4 opacity-75 group-hover:opacity-100"
+                loading="lazy"
+                onError={(e) => {
+                  // Fallback to Globe icon if favicon fails to load
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement?.appendChild(
+                    Object.assign(document.createElement('div'), {
+                      className: 'w-4 h-4 text-gray-400',
+                      innerHTML: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>'
+                    })
+                  );
+                }}
+              />
             </div>
           ))}
         </div>

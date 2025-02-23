@@ -1,6 +1,7 @@
 import { SearchResponse } from '../types';
 import { SwarmController } from './agents/swarmController';
 import { handleSupabaseOperation } from '../lib/supabase';
+import { logger } from '../utils/logger';
 
 export class SearchError extends Error {
   constructor(message: string, public details?: any) {
@@ -22,24 +23,25 @@ export async function performSearch(
   options: SearchOptions = {}
 ): Promise<SearchResponse> {
   try {
+    // Validate the query immediately.
     if (!query.trim()) {
       throw new SearchError('Search query cannot be empty');
     }
 
     const { mode = 'focus', isPro = false, onStatusUpdate } = options;
 
-    // Wrap the search operation in error handling
+    // Wrap the search operation with Supabase error handling.
     return await handleSupabaseOperation(
       async () => {
-        // Process query using swarm controller
-        const { research, article, images } = await swarmController.processQuery(
-          query, 
+        // Process the query using the swarm controller.
+        const { research, article, images, videos } = await swarmController.processQuery(
+          query,
           onStatusUpdate,
           isPro
         );
 
-        // Ensure images array is always defined
-        const validatedImages = images?.filter(img => {
+        // Ensure images array is always defined and valid.
+        const validatedImages = images?.filter((img) => {
           try {
             new URL(img.url);
             return true;
@@ -48,47 +50,52 @@ export async function performSearch(
           }
         }) || [];
 
-        // Map the research data to the expected response format
+        // Map the research data to the expected response format.
         const response: SearchResponse = {
           answer: article.content || 'No results found. Please try again.',
-          sources: research.results.map(result => ({
+          sources: research.results?.map((result) => ({
             title: result.title,
             url: result.url,
             snippet: result.content,
-          })),
+          })) || [],
           images: validatedImages,
+          videos: research.videos || [],
           provider: isPro ? 'Pro Search' : 'Standard Search',
-          perspectives: isPro ? research.perspectives?.map(perspective => ({
-            id: perspective.id,
-            title: perspective.title,
-            description: perspective.description,
-            sources: perspective.results?.map(result => ({
-              title: result.title,
-              url: result.url,
-              snippet: result.content
-            }))
-          })) : undefined
+          perspectives: isPro
+            ? research.perspectives?.map((perspective) => perspective ? {
+                id: perspective.id,
+                title: perspective.title,
+                description: perspective.description,
+                sources: perspective.results?.map((result) => result ? {
+                  title: result.title,
+                  url: result.url,
+                  snippet: result.content,
+                } : null).filter(Boolean),
+              } : null).filter(Boolean)
+            : undefined,
         };
 
         return response;
       },
-      // Fallback response if operation fails
+      // Fallback response if the operation fails.
       {
-        answer: 'We apologize, but we could not process your search at this time. Please try again in a moment.',
+        answer:
+          'We apologize, but we could not process your search at this time. Please try again in a moment.',
         sources: [],
         images: [],
-        provider: isPro ? 'Pro Search' : 'Standard Search'
+        videos: [],
+        provider: isPro ? 'Pro Search' : 'Standard Search',
       }
     );
   } catch (error) {
-    console.error('Search error:', {
+    logger.error('Search error:', {
       error: error instanceof Error ? error.message : error,
       query,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     throw new SearchError(
-      'We\'re experiencing technical difficulties. Please try again in a moment.',
+      "We're experiencing technical difficulties. Please try again in a moment.",
       error
     );
   }

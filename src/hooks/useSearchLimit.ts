@@ -12,7 +12,7 @@ export function useSearchLimit() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const maxSearches = subscription?.isPro ? 500 : 5;
+  const maxSearches = subscription?.isActive ? 500 : 5;
   const warningThreshold = Math.floor(maxSearches / 3);
 
   useEffect(() => {
@@ -41,11 +41,10 @@ export function useSearchLimit() {
         // Check if we need to reset the counter
         const resetAt = new Date(result.searches_reset_at);
         const now = new Date();
-        const resetInterval = subscription?.isPro ? 30 : 1; // 30 days for pro, 1 day for regular
         
-        if (resetAt < new Date(now.getTime() - resetInterval * 24 * 60 * 60 * 1000)) {
-          // Reset counter
-          const newCount = subscription?.isPro ? 500 : 5;
+        if (resetAt < new Date(now.getTime() - 24 * 60 * 60 * 1000)) {
+          // Reset counter based on subscription status
+          const newCount = subscription?.isActive ? 500 : 5;
           await handleSupabaseError(
             async () => {
               await supabase
@@ -66,8 +65,8 @@ export function useSearchLimit() {
       } catch (error) {
         console.error('Error fetching search limit:', error);
         setError(error instanceof Error ? error.message : 'Failed to fetch search limit');
-        // Set default values
-        setRemainingSearches(subscription?.isPro ? 500 : 5);
+        // Set default values based on subscription status
+        setRemainingSearches(subscription?.isActive ? 500 : 5);
       } finally {
         setLoading(false);
       }
@@ -83,7 +82,7 @@ export function useSearchLimit() {
     }
 
     // For regular users, only decrement if using pro search
-    if (!subscription?.isPro && !isPro) {
+    if (!subscription?.isActive && !isPro) {
       return true;
     }
 

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
+import { logger } from '../utils/logger';
 
 // Create Supabase client with retries and proper configuration
 export const supabase = createClient(
@@ -19,12 +20,6 @@ export const supabase = createClient(
     global: {
       headers: {
         'x-client-info': 'curiosai-web'
-      }
-    },
-    // Add retries for better reliability
-    realtime: {
-      params: {
-        eventsPerSecond: 2
       }
     }
   }
@@ -47,7 +42,7 @@ export async function handleSupabaseOperation<T>(
       return await operation();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
-      console.warn(`Supabase operation attempt ${attempt + 1} failed:`, {
+      logger.warn(`Supabase operation attempt ${attempt + 1} failed:`, {
         error: lastError.message,
         timestamp: new Date().toISOString()
       });
@@ -55,14 +50,14 @@ export async function handleSupabaseOperation<T>(
       // Check if it's a network error
       if (lastError.message.includes('Failed to fetch')) {
         if (attempt < retries - 1) continue;
-        console.warn('Network error persists, using fallback');
+        logger.warn('Network error persists, using fallback');
       }
     }
   }
 
   // Log final error and return fallback
   if (lastError) {
-    console.error('Supabase operation failed after retries:', {
+    logger.error('Supabase operation failed after retries:', {
       error: lastError.message,
       timestamp: new Date().toISOString()
     });

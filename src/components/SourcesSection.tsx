@@ -28,16 +28,17 @@ export default function SourcesSection({
         <h2 className="text-xl font-medium text-white">Sources</h2>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {displayedSources.slice(0, 3).map((source, index) => (
+        {displayedSources?.slice(0, 3).map((source, index) => (
           <SourceCard key={index} source={source} index={index} />
         ))}
-        {!showAllSources && remainingSources > 0 && (
+        {!showAllSources && remainingSources > 0 && sources.length > 3 && (
           <ShowAllCard 
-            totalSources={remainingSources} 
+            totalSources={remainingSources}
+            sources={sources.slice(3)}
             onClick={() => setShowAllSources(true)} 
           />
         )}
-        {showAllSources && sources.slice(3).map((source, index) => (
+        {showAllSources && sources?.slice(3).map((source, index) => (
           <SourceCard key={index + 3} source={source} index={index + 3} />
         ))}
       </div>
