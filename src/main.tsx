@@ -2,17 +2,16 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AuthProvider } from './components/auth/AuthContext';
 import App from './App';
-import './index.css';
-
-// Initialize environment and logger
 import { env } from './config/env';
 import { logger } from './utils/logger';
+import './index.css';
 
 // Configure error handling for unhandled promises
 window.addEventListener('unhandledrejection', (event) => {
   logger.error('Unhandled Promise Rejection:', {
     reason: event.reason,
-    promise: event.promise
+    promise: event.promise,
+    timestamp: new Date().toISOString()
   });
   event.preventDefault();
 });
@@ -23,7 +22,8 @@ window.addEventListener('error', (event) => {
     message: event.message,
     filename: event.filename,
     lineno: event.lineno,
-    colno: event.colno
+    colno: event.colno,
+    timestamp: new Date().toISOString()
   });
   event.preventDefault();
 });

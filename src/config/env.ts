@@ -1,7 +1,7 @@
 // Environment variable validation and configuration
 const requiredEnvVars = {
   VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY
 } as const;
 
 // Optional environment variables with fallbacks
@@ -23,8 +23,8 @@ const optionalEnvVars = {
 
 // Validate required environment variables
 Object.entries(requiredEnvVars).forEach(([key, value]) => {
-  if (!value?.trim()) {
-    console.error(`Missing required environment variable: ${key}`);
+  if (!value) {
+    logger.error(`Missing required environment variable: ${key}`);
   }
 });
 
