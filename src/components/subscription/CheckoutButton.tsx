@@ -1,6 +1,7 @@
 import React from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useStripe } from '../../hooks/useStripe';
+import { STRIPE_CONFIG } from '../../services/stripe/config';
 
 interface CheckoutButtonProps {
   interval: 'month' | 'year';
@@ -11,8 +12,19 @@ interface CheckoutButtonProps {
   children?: React.ReactNode;
 }
 
-// Initialize Stripe outside component to avoid re-initialization
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+// Initialize Stripe outside component
+const stripePromise = STRIPE_CONFIG.publishableKey 
+  ? loadStripe(STRIPE_CONFIG.publishableKey) 
+  : Promise.reject(new Error('Stripe publishable key is missing'));
+
+// Log initialization status
+stripePromise.then(
+  () => console.log('Stripe initialized successfully'),
+  error => {
+    console.error('Failed to initialize Stripe:', error);
+    return null;
+  }
+);
 
 export default function CheckoutButton({
   interval,

@@ -1,10 +1,43 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './components/auth/AuthContext';
 import App from './App';
-import { env } from './config/env';
+import Home from './pages/Home';
+import Results from './pages/Results';
+import DeepResearchResults from './pages/DeepResearchResults';
+import ProResults from './pages/ProResults';
+import Settings from './pages/Settings';
+import Policies from './pages/Policies';
+import AuthCallback from './components/auth/AuthCallback';
+import SubscriptionSuccess from './pages/SubscriptionSuccess';
 import { logger } from './utils/logger';
 import './index.css';
+
+// Configure router with future flags
+const router = createBrowserRouter(
+  [
+    {
+      element: <App />,
+      children: [
+        { path: '/', element: <Home /> },
+        { path: '/search', element: <Results /> },
+        { path: '/pro-search', element: <ProResults /> },
+        { path: '/deep-research', element: <DeepResearchResults /> },
+        { path: '/settings', element: <Settings /> },
+        { path: '/policies', element: <Policies /> },
+        { path: '/auth/callback', element: <AuthCallback /> },
+        { path: '/subscription/success', element: <SubscriptionSuccess /> }
+      ]
+    }
+  ],
+  {
+    future: {
+      v7_startTransition: true,
+      v7_relativeSplatPath: true
+    }
+  }
+);
 
 // Configure error handling for unhandled promises
 window.addEventListener('unhandledrejection', (event) => {
@@ -81,15 +114,12 @@ if (!rootElement) {
 // Create root and render app
 const root = createRoot(rootElement);
 
-// Initialize environment
-logger.info('Initializing app with environment:', env);
-
 // Wrap app with error boundary and auth provider
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
       <AuthProvider>
-        <App />
+        <RouterProvider router={router} />
       </AuthProvider>
     </ErrorBoundary>
   </React.StrictMode>

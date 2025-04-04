@@ -67,11 +67,11 @@ export default function FocusModal({ isOpen, onClose, selectedMode, onSelectMode
       title: 'Health & Fitness',
       description: ['Access wellness', 'information'],
     },
-    {
-      id: 'research',
-      icon: GraduationCap,
-      title: 'Research',
-      description: ['Find scholarly', 'articles and papers'],
+    { 
+      id: 'academic',
+      icon: GraduationCap, 
+      title: 'Academic',
+      description: ['Search academic', 'papers and research'],
       requiresPro: true
     },
     {

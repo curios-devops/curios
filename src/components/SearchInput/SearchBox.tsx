@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Focus, Paperclip } from 'lucide-react';
 import ActionButton from './ActionButton';
@@ -68,7 +68,35 @@ export default function SearchBox() {
       />
 
       <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        {/* Left side: Pro toggle */}
+        <div 
+          className="relative"
+          onMouseEnter={() => setShowProTooltip(true)}
+          onMouseLeave={() => setShowProTooltip(false)}
+        >
+          <ToggleSwitch
+            isEnabled={isPro}
+            onToggle={handleProToggle}
+            disabled={!hasSearchesLeft}
+          />
+          {showProTooltip && (
+            <ProTooltip 
+              remainingSearches={remainingSearches}
+              maxSearches={subscription?.isPro ? 600 : 6}
+              onUpgrade={() => {
+                setShowProTooltip(false);
+                setShowProModal(true);
+              }}
+              onSignIn={() => setShowProModal(true)}
+              onClose={() => setShowProTooltip(false)}
+              isLoggedIn={!!session}
+              subscription={subscription}
+            />
+          )}
+        </div>
+
+        {/* Right side: Action buttons and Search */}
+        <div className="flex items-center gap-4">
           <ActionButton
             icon={Focus}
             label="Focus"
@@ -79,31 +107,7 @@ export default function SearchBox() {
             label="Attach"
             onClick={() => {}}
           />
-        </div>
 
-        <div className="flex items-center gap-4">
-          <div 
-            className="relative"
-            onMouseEnter={() => setShowProTooltip(true)}
-            onMouseLeave={() => setShowProTooltip(false)}
-          >
-            <ToggleSwitch
-              isEnabled={isPro}
-              onToggle={handleProToggle}
-              disabled={!hasSearchesLeft}
-            />
-            {showProTooltip && (
-              <ProTooltip 
-                remainingSearches={remainingSearches}
-                maxSearches={subscription?.isPro ? 600 : 6}
-                onUpgrade={() => {
-                  setShowProTooltip(false);
-                  setShowProModal(true);
-                }}
-                onClose={() => setShowProTooltip(false)}
-              />
-            )}
-          </div>
           <SearchButton
             onClick={handleSearch}
             isActive={query.trim().length > 0}

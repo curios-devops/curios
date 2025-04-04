@@ -1,3 +1,5 @@
+import { logger } from '../utils/logger';
+
 // Environment variable validation and configuration
 const requiredEnvVars = {
   VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,

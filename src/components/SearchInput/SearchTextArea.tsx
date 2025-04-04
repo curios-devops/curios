@@ -15,8 +15,8 @@ export default function SearchTextArea({ value, onChange, onKeyDown, isPro }: Se
       value={value}
       onChange={onChange}
       onKeyDown={onKeyDown}
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setIsFocused(false)}
+      onFocus={React.useCallback(() => setIsFocused(true), [])}
+      onBlur={React.useCallback(() => setIsFocused(false), [])}
       placeholder="Ask anything..."
       rows={2}
       className={`
@@ -25,7 +25,8 @@ export default function SearchTextArea({ value, onChange, onKeyDown, isPro }: Se
         text-base 
         text-white 
         rounded-xl 
-        p-4 
+        px-4 
+        py-3 
         pb-14
         h-[108px]
         resize-none 
@@ -39,6 +40,8 @@ export default function SearchTextArea({ value, onChange, onKeyDown, isPro }: Se
         }
         ${!isPro && !isFocused && 'hover:border-gray-600'}
       `}
+      spellCheck={false}
+      autoComplete="off"
     />
   );
 }

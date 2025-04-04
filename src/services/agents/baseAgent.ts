@@ -27,11 +27,11 @@ export abstract class BaseAgent implements Agent {
       this.openai = new OpenAI({
         apiKey,
         organization: orgId,
+        dangerouslyAllowBrowser: true,
         defaultHeaders: {
           'OpenAI-Organization': orgId,
           'X-Project-ID': projectId,
-        },
-        dangerouslyAllowBrowser: true,
+        }
       });
     } else {
       console.warn(`${name}: OpenAI API key not configured, using fallback responses`);

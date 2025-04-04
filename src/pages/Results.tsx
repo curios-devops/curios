@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { performSearch } from '../services/searchService';
 import { formatTimeAgo } from '../utils/time';
+import ShareMenu from '../components/ShareMenu';
 import TopBar from '../components/results/TopBar';
 import MainContent from '../components/results/MainContent';
 import Sidebar from '../components/results/Sidebar';
@@ -93,6 +94,11 @@ export default function Results() {
       <TopBar query={query} timeAgo={timeAgo} />
 
       <main className="max-w-7xl mx-auto px-6 py-6">
+        <ShareMenu
+          url={window.location.href}
+          title={`CuriosAI Search: ${query || ''}`}
+          text={searchState.data?.answer.slice(0, 100) + '...' || ''}
+        />
         <div className="flex items-center gap-4 mb-6">
           <button 
             onClick={() => navigate('/')}

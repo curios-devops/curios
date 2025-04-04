@@ -2,6 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 
+// Validate required environment variables
+if (!env.supabase.url || !env.supabase.anonKey) {
+  logger.error('Missing required Supabase configuration');
+  throw new Error('Please configure Supabase environment variables');
+}
+
 // Create Supabase client with retries and proper configuration
 export const supabase = createClient(
   env.supabase.url,
@@ -12,7 +18,7 @@ export const supabase = createClient(
       persistSession: true,
       detectSessionInUrl: true,
       flowType: 'pkce',
-      storage: localStorage,
+      storage: typeof window !== 'undefined' ? localStorage : undefined,
     },
     db: {
       schema: 'public'

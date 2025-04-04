@@ -17,7 +17,6 @@ export default defineConfig(({ mode }) => {
       },
       open: true,
       proxy: {
-        // ✅ NEW: Proxy for Brave API requests
         '/api/brave': {
           target: 'https://api.search.brave.com/res/v1',
           changeOrigin: true,

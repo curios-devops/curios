@@ -1,5 +1,5 @@
 import React from 'react';
-import { LucideIcon, Focus, Globe, Users, PlayCircle, Calculator, Plane, HeartPulse, GraduationCap, LineChart } from 'lucide-react';
+import { DivideIcon as LucideIcon, Focus, Globe, Users, PlayCircle, Calculator, Plane, HeartPulse, GraduationCap, LineChart } from 'lucide-react';
 import type { FocusMode } from '../search/types';
 
 interface ActionButtonProps {
@@ -37,7 +37,7 @@ export default function ActionButton({
         return Plane;
       case 'health':
         return HeartPulse;
-      case 'research':
+      case 'academic':
         return GraduationCap;
       case 'finance':
         return LineChart;

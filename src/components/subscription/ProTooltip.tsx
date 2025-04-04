@@ -40,7 +40,8 @@ export default function ProTooltip({
     return (
       <div 
         ref={tooltipRef}
-        className="absolute right-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
+        className="absolute left-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
+        onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="text-[#007BFF]" size={18} />
@@ -49,7 +50,7 @@ export default function ProTooltip({
         
         <div className="space-y-4">
           <p className="text-sm text-gray-400">
-            Pro Search considers twice as many sources when searching for your answer.
+            Pro Search includes advanced search capabilities and 3x more sources.
           </p>
           
           <button
@@ -68,7 +69,8 @@ export default function ProTooltip({
     return (
       <div 
         ref={tooltipRef}
-        className="absolute right-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
+        className="absolute left-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
+        onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="text-[#007BFF]" size={18} />
@@ -77,7 +79,7 @@ export default function ProTooltip({
         
         <div className="space-y-4">
           <p className="text-sm text-gray-400">
-            Pro Search considers twice as many sources when searching for your answer.
+            Pro Search includes advanced search capabilities and 3x more sources.
           </p>
           
           <div className="space-y-2">
@@ -100,7 +102,7 @@ export default function ProTooltip({
   return (
     <div 
       ref={tooltipRef}
-      className="absolute right-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
+      className="absolute left-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
     >
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="text-[#007BFF]" size={18} />
@@ -109,7 +111,7 @@ export default function ProTooltip({
       
       <div className="space-y-4">
         <p className="text-sm text-gray-400">
-          Pro Search considers twice as many sources when searching for your answer.
+          Pro Search includes advanced search capabilities and 3x more sources.
         </p>
         
         <div className="space-y-2">
