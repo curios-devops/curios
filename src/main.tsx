@@ -11,6 +11,7 @@ import Settings from './pages/Settings';
 import Policies from './pages/Policies';
 import AuthCallback from './components/auth/AuthCallback';
 import SubscriptionSuccess from './pages/SubscriptionSuccess';
+import BlankPage from './pages/BlankPage';
 import { logger } from './utils/logger';
 import './index.css';
 
@@ -27,7 +28,8 @@ const router = createBrowserRouter(
         { path: '/settings', element: <Settings /> },
         { path: '/policies', element: <Policies /> },
         { path: '/auth/callback', element: <AuthCallback /> },
-        { path: '/subscription/success', element: <SubscriptionSuccess /> }
+        { path: '/subscription/success', element: <SubscriptionSuccess /> },
+        { path: '/blank', element: <BlankPage /> }
       ]
     }
   ],
