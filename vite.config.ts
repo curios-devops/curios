@@ -1,6 +1,17 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// Security headers configuration
+const securityHeaders = {
+  'Cross-Origin-Embedder-Policy': 'credentialless',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'cross-origin',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-RapidAPI-Key, X-RapidAPI-Host',
+  'Content-Security-Policy': "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:;"
+};
+
 export default defineConfig(({ mode }) => {
   // Load env file based on mode
   const env = loadEnv(mode, process.cwd(), '');
@@ -8,24 +19,21 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      // Add memory optimization settings
-      port: 5173,
-      host: true,
-      strictPort: true,
       headers: {
-        'Cross-Origin-Embedder-Policy': 'credentialless',
-        'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Resource-Policy': 'cross-origin',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+        ...securityHeaders,
+        'Cross-Origin-Embedder-Policy': 'credentialless'
       },
       hmr: {
         overlay: false,
         timeout: 5000
       },
-      watch: {
-        usePolling: false
+      proxy: {
+        '/api/stripe': {
+          target: 'https://api.stripe.com',
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/api\/stripe/, '')
+        }
       },
       open: true,
       watch: {
@@ -33,8 +41,12 @@ export default defineConfig(({ mode }) => {
         interval: 1000
       }
     },
-    fs: {
-      strict: false
+    preview: {
+      headers: securityHeaders,
+      port: 5173,
+      host: true,
+      strictPort: true,
+      open: false
     },
     optimizeDeps: {
       include: ['react', 'react-dom', 'react-router-dom', '@stripe/stripe-js', 'lucide-react'],
@@ -46,26 +58,11 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
-    preview: {
-      port: 5173,
-      host: true,
-      strictPort: true,
-      headers: {
-        'Cross-Origin-Embedder-Policy': 'credentialless',
-        'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Resource-Policy': 'cross-origin',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-      },
-      open: true
-    },
     build: {
       sourcemap: true,
       outDir: 'dist',
       assetsDir: 'assets',
       minify: 'esbuild',
-      // Add chunking and optimization settings
       rollupOptions: {
         output: {
           manualChunks: {
