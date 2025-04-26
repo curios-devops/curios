@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { HomeIcon, Globe2, FolderKanban, Library } from 'lucide-react';
-import Logo from './sidebar/Logo';
-import NavItem from './sidebar/NavItem';
-import CollapseButton from './sidebar/CollapseButton';
-import AuthModal from './auth/AuthModal';
-import AuthButtons from './auth/AuthButtons';
-import UserMenu from './auth/UserMenu';
-import { useSession } from '../hooks/useSession';
+import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
+import { FolderKanban, Globe2, HomeIcon, Library } from "lucide-react";
+import { useTranslation } from "../hooks/useTranslation.ts";
+import Logo from "./sidebar/Logo.tsx";
+import NavItem from "./sidebar/NavItem.tsx";
+import CollapseButton from "./sidebar/CollapseButton.tsx";
+import AuthModal from "./auth/AuthModal.tsx";
+import AuthButtons from "./auth/AuthButtons.tsx";
+import UserMenu from "./auth/UserMenu.tsx";
+import { useSession } from "../hooks/useSession.ts";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -17,40 +18,34 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
   const location = useLocation();
   const { session } = useSession();
+  const { t } = useTranslation();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authContext, setAuthContext] = useState<'default' | 'pro' | 'library' | 'spaces'>('default');
+  const [authContext, setAuthContext] = useState<"default" | "pro">("default");
 
   const handleAuthRequired = (context: string) => {
-    setAuthContext(context as 'default' | 'pro' | 'library' | 'spaces');
+    setAuthContext(
+      context === "library" || context === "spaces"
+        ? "default"
+        : context as "default" | "pro",
+    );
     setShowAuthModal(true);
-  };
-
-  const messages = {
-    library: {
-      title: "Save Your Research",
-      subtitle: "Sign in or sign up to save and organize your research"
-    },
-    spaces: {
-      title: "Join the Community",
-      subtitle: "Sign in or sign up to create and join research spaces"
-    }
   };
 
   return (
     <>
-      <aside 
-        className={`fixed left-0 top-0 h-screen bg-[#111111] border-r border-gray-800 flex flex-col transition-all duration-300 ${
-          isCollapsed ? 'w-20' : 'w-56'
+      <aside
+        className={`fixed left-0 top-0 h-screen bg-[#f9f9f8] dark:bg-[#111111] border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 ${
+          isCollapsed ? "w-20" : "w-56"
         }`}
       >
         <div className="flex-shrink-0 p-4">
           <div className="flex items-center gap-3">
             <Logo isCollapsed={isCollapsed} />
             {!isCollapsed && (
-              <CollapseButton 
-                isCollapsed={isCollapsed} 
-                onClick={toggleSidebar} 
-                position="top" 
+              <CollapseButton
+                isCollapsed={isCollapsed}
+                onClick={toggleSidebar}
+                position="top"
               />
             )}
           </div>
@@ -61,22 +56,22 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
             <NavItem
               to="/"
               icon={HomeIcon}
-              label="Home"
-              isActive={location.pathname === '/'}
+              label={t("home")}
+              isActive={location.pathname === "/"}
               isCollapsed={isCollapsed}
             />
             <NavItem
               to="/explore"
               icon={Globe2}
-              label="Explore"
-              isActive={location.pathname === '/explore'}
+              label={t("explore")}
+              isActive={location.pathname === "/explore"}
               isCollapsed={isCollapsed}
             />
             <NavItem
               to="/spaces"
               icon={FolderKanban}
-              label="Spaces"
-              isActive={location.pathname === '/spaces'}
+              label={t("spaces")}
+              isActive={location.pathname === "/spaces"}
               isCollapsed={isCollapsed}
               requiresAuth
               authContext="spaces"
@@ -85,8 +80,8 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
             <NavItem
               to="/library"
               icon={Library}
-              label="Library"
-              isActive={location.pathname === '/library'}
+              label={t("library")}
+              isActive={location.pathname === "/library"}
               isCollapsed={isCollapsed}
               requiresAuth
               authContext="library"
@@ -95,45 +90,39 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
           </div>
         </nav>
 
-        <div className={`flex-shrink-0 mt-auto ${isCollapsed ? 'px-2' : 'px-4'} pb-6`}>
-          {isCollapsed ? (
-            <div className="space-y-4">
-              <CollapseButton 
-                isCollapsed={isCollapsed} 
-                onClick={toggleSidebar} 
-                position="bottom" 
-              />
-              <div className="border-t border-gray-800 w-full"></div>
-              {session ? (
-                <UserMenu email={session.user.email || ''} isCollapsed={true} />
-              ) : (
+        <div className={`flex-shrink-0 ${isCollapsed ? "px-2" : "px-4"} pb-6`}>
+          <div className="space-y-4">
+            {isCollapsed && (
+              <div className="flex justify-center mb-2">
+                <CollapseButton
+                  isCollapsed={isCollapsed}
+                  onClick={toggleSidebar}
+                  position="bottom"
+                />
+              </div>
+            )}
+            <div className="border-t border-gray-200 dark:border-gray-800 w-full transition-colors duration-200">
+            </div>
+            {session
+              ? (
+                <UserMenu
+                  email={session.user.email || ""}
+                  isCollapsed={isCollapsed}
+                />
+              )
+              : (
                 <AuthButtons
                   session={session}
                   isCollapsed={isCollapsed}
-                  onSignInClick={() => handleAuthRequired('default')}
-                  onSignUpClick={() => handleAuthRequired('default')}
+                  onSignInClick={() => handleAuthRequired("default")}
+                  onSignUpClick={() => handleAuthRequired("default")}
                 />
               )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="border-t border-gray-800 w-full"></div>
-              {session ? (
-                <UserMenu email={session.user.email || ''} isCollapsed={false} />
-              ) : (
-                <AuthButtons
-                  session={session}
-                  isCollapsed={isCollapsed}
-                  onSignInClick={() => handleAuthRequired('default')}
-                  onSignUpClick={() => handleAuthRequired('default')}
-                />
-              )}
-            </div>
-          )}
+          </div>
         </div>
       </aside>
 
-      <AuthModal 
+      <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         context={authContext}

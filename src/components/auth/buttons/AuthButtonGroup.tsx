@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
-import AuthButton from './AuthButton';
-import { useAuthButtons } from '../hooks/useAuthButtons';
+import AuthButton from './AuthButton.tsx';
+import { useAuthButtons } from '../hooks/useAuthButtons.ts';
+import { useTranslation } from '../../../hooks/useTranslation.ts';
+import { useEffect } from 'react';
+import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 
 interface AuthButtonGroupProps {
   onSignInClick: () => void;
@@ -9,11 +11,16 @@ interface AuthButtonGroupProps {
 
 export default function AuthButtonGroup({ onSignInClick, onSignUpClick }: AuthButtonGroupProps) {
   const { activeButton, setActiveButton } = useAuthButtons();
+  const { t } = useTranslation();
+  const { currentLanguage } = useLanguage();
 
   // Set initial active button on mount
   useEffect(() => {
     setActiveButton('signup');
-  }, [setActiveButton]);
+    console.log('Current language:', currentLanguage);
+    console.log('Sign Up translation:', t('signUp'));
+    console.log('Sign In translation:', t('signIn'));
+  }, [setActiveButton, currentLanguage, t]);
 
   const handleSignInClick = () => {
     setActiveButton('signin');
@@ -25,6 +32,9 @@ export default function AuthButtonGroup({ onSignInClick, onSignUpClick }: AuthBu
     onSignUpClick();
   };
 
+  const signUpText = t('signUp');
+  const signInText = t('signIn');
+
   return (
     <div className="flex flex-col gap-3">
       <AuthButton
@@ -32,14 +42,14 @@ export default function AuthButtonGroup({ onSignInClick, onSignUpClick }: AuthBu
         isActive={activeButton === 'signup'}
         onClick={handleSignUpClick}
       >
-        Sign up
+        {signUpText}
       </AuthButton>
       <AuthButton
         type="signin"
         isActive={activeButton === 'signin'}
         onClick={handleSignInClick}
       >
-        Sign in
+        {signInText}
       </AuthButton>
     </div>
   );

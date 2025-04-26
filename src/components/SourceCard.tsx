@@ -1,4 +1,3 @@
-import React from 'react';
 import { Globe, ExternalLink } from 'lucide-react';
 
 // Helper function to get domain info
@@ -26,10 +25,9 @@ interface SourceCardProps {
     title: string;
     snippet: string;
   };
-  index: number;
 }
 
-export default function SourceCard({ source, index }: SourceCardProps) {
+export default function SourceCard({ source }: SourceCardProps) {
   const { domain, hostname } = getDomainInfo(source);
   
   return (
@@ -46,8 +44,8 @@ export default function SourceCard({ source, index }: SourceCardProps) {
         }}
       >
         {/* Compact View */}
-        <div className="block bg-[#222222] p-3 rounded-lg transition-all duration-300 border border-gray-800 group-hover:bg-[#333333] group-hover:border-[#0095FF]/20 h-[88px] flex flex-col justify-between">
-          <h3 className="text-white text-xs font-medium line-clamp-3 min-h-[48px]">
+        <div className="flex flex-col justify-between p-3 rounded-lg transition-all duration-300 border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#222222] group-hover:bg-gray-200 dark:group-hover:bg-[#333333] group-hover:border-[#0095FF]/20 h-[88px]">
+          <h3 className="text-gray-900 dark:text-white text-xs font-medium line-clamp-3 min-h-[48px]">
             {source.title}
           </h3>
           <div className="flex items-center gap-2 text-xs mt-auto">
@@ -61,13 +59,13 @@ export default function SourceCard({ source, index }: SourceCardProps) {
             ) : (
               <Globe size={12} className="text-gray-400 group-hover:text-[#0095FF]" />
             )}
-            <span className="text-gray-400 group-hover:text-[#0095FF]">{domain}</span>
+            <span className="text-gray-500 dark:text-gray-400 group-hover:text-[#0095FF]">{domain}</span>
           </div>
         </div>
 
         {/* Expanded View (Shows on Hover) */}
         {source.url !== '#' && (
-          <div className="absolute left-[-50%] right-[-50%] top-full mt-2 z-10 bg-[#333333] rounded-lg p-4 border border-[#0095FF]/20 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-xl pointer-events-none">
+          <div className="absolute left-[-50%] right-[-50%] top-full mt-2 z-10 bg-white dark:bg-[#333333] rounded-lg p-4 border border-[#0095FF]/20 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-xl pointer-events-none">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 {hostname ? (
@@ -84,8 +82,8 @@ export default function SourceCard({ source, index }: SourceCardProps) {
               </div>
               <ExternalLink size={12} className="text-[#0095FF]" />
             </div>
-            <h3 className="text-white text-sm font-medium mb-2">{source.title}</h3>
-            <p className="text-xs text-gray-400 line-clamp-3">{source.snippet}</p>
+            <h3 className="text-gray-900 dark:text-white text-sm font-medium mb-2">{source.title}</h3>
+            <p className="text-gray-600 dark:text-gray-400 text-xs line-clamp-3">{source.snippet}</p>
           </div>
         )}
       </a>

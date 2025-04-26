@@ -1,7 +1,8 @@
-import React from 'react';
 import { Focus, Globe, Users, PlayCircle, Calculator, Plane, HeartPulse, GraduationCap, LineChart } from 'lucide-react';
-import type { FocusMode } from './types';
-import ActionButton from '../SearchInput/ActionButton';
+import type { FocusMode } from './types.ts';
+import ActionButton from '../SearchInput/ActionButton.tsx';
+import { useTheme } from '../theme/ThemeContext.tsx';
+import { useColorScheme } from '../../hooks/useColorScheme.ts';
 
 interface FocusButtonProps {
   mode: FocusMode;
@@ -9,6 +10,10 @@ interface FocusButtonProps {
 }
 
 export default function FocusButton({ mode, onClick }: FocusButtonProps) {
+  const { theme } = useTheme();
+  const systemColorScheme = useColorScheme();
+  const isDark = theme === 'dark' || (theme === 'system' && systemColorScheme === 'dark');
+
   const getModeIcon = () => {
     switch (mode) {
       case 'web':
@@ -23,7 +28,7 @@ export default function FocusButton({ mode, onClick }: FocusButtonProps) {
         return Plane;
       case 'health':
         return HeartPulse;
-      case 'research':
+      case 'academic':
         return GraduationCap;
       case 'finance':
         return LineChart;
@@ -47,8 +52,8 @@ export default function FocusButton({ mode, onClick }: FocusButtonProps) {
         return 'Travel Search';
       case 'health':
         return 'Health Search';
-      case 'research':
-        return 'Research Search';
+      case 'academic':
+        return 'Academic Search';
       case 'finance':
         return 'Finance Search';
       case 'focus':
@@ -64,7 +69,7 @@ export default function FocusButton({ mode, onClick }: FocusButtonProps) {
         label={getModeLabel()}
         onClick={onClick}
       />
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#1a1a1a] text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100">
         {getModeLabel()}
       </div>
     </div>

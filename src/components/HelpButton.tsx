@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { HelpCircle } from 'lucide-react';
+import React, { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { HelpCircle } from "lucide-react";
 
 export default function HelpButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,16 +13,16 @@ export default function HelpButton() {
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const menuItems = [
-    { label: 'Help & FAQ', href: '#' },
-    { label: 'Release Notes', href: '#' },
-    { label: 'Terms & Policies', href: '/policies' },
-    { label: 'Keyboard Shortcuts', href: '#' },
-    { label: 'Report Illegal Content', href: '#' },
+    { label: "Help & FAQ", href: "#" },
+    { label: "Release Notes", href: "#" },
+    { label: "Terms & Policies", href: "/policies" },
+    { label: "Keyboard Shortcuts", href: "#" },
+    { label: "Report Illegal Content", href: "#" },
   ];
 
   return (

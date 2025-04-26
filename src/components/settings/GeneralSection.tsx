@@ -1,8 +1,36 @@
-import React from 'react';
-import { Globe2, Cookie } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Moon, Sun } from 'lucide-react';
 import ToggleSwitch from './ToggleSwitch';
+import LanguageSelector from './LanguageSelector';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function GeneralSection() {
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'light';
+    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  });
+
+  const { currentLanguage } = useLanguage();
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (!document.documentElement.classList.contains('dark') && !document.documentElement.classList.contains('light')) {
+        setTheme(e.matches ? 'dark' : 'light');
+        document.documentElement.classList.toggle('dark', e.matches);
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  const handleThemeChange = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-medium text-white">General</h2>
@@ -15,8 +43,12 @@ export default function GeneralSection() {
                 <h3 className="text-white font-medium">Appearance</h3>
                 <p className="text-gray-400 text-sm mt-1">How CuriosAI looks on your device</p>
               </div>
-              <button className="bg-[#222222] text-white px-4 py-2 rounded-lg hover:bg-[#2a2a2a] transition-colors">
-                Dark
+              <button 
+                onClick={handleThemeChange}
+                className="bg-[#222222] text-white px-4 py-2 rounded-lg hover:bg-[#2a2a2a] transition-colors flex items-center gap-2"
+              >
+                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                {theme === 'dark' ? 'Light' : 'Dark'}
               </button>
             </div>
           </div>
@@ -26,11 +58,9 @@ export default function GeneralSection() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-white font-medium">Language</h3>
-                <p className="text-gray-400 text-sm mt-1">The language used in the user interface</p>
+                <p className="text-gray-400 text-sm mt-1">Interface language: {currentLanguage.name}</p>
               </div>
-              <button className="bg-[#222222] text-white px-4 py-2 rounded-lg hover:bg-[#2a2a2a] transition-colors">
-                English
-              </button>
+              <LanguageSelector />
             </div>
           </div>
 

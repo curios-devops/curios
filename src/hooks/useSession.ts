@@ -1,31 +1,35 @@
-import { useState, useEffect } from 'react';
-import { Session } from '@supabase/supabase-js';
-import { supabase, handleSupabaseOperation } from '../lib/supabase';
+import { useEffect, useState } from "react";
+
+interface User {
+  email: string | null;
+  id: string;
+}
+
+interface Session {
+  user: User;
+}
 
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session with error handling
-    handleSupabaseOperation(
-      async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
+    // In a real app, you would fetch the session from your auth provider
+    const fetchSession = async () => {
+      try {
+        // Simulate session check
+        const storedSession = localStorage.getItem("session");
+        if (storedSession) {
+          setSession(JSON.parse(storedSession));
+        }
+      } catch (error) {
+        console.error("Error fetching session:", error);
+      } finally {
         setLoading(false);
-      },
-      null
-    );
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
+      }
     };
+
+    fetchSession();
   }, []);
 
   return { session, loading };

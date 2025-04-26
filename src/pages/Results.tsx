@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { performSearch } from '../services/searchService';
 import { formatTimeAgo } from '../utils/time';
@@ -90,23 +90,25 @@ export default function Results() {
   }, [query, mode]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#111111] to-black text-white">
+    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">
       <TopBar query={query} timeAgo={timeAgo} />
 
       <main className="max-w-7xl mx-auto px-6 py-6">
-        <ShareMenu
-          url={window.location.href}
-          title={`CuriosAI Search: ${query || ''}`}
-          text={searchState.data?.answer.slice(0, 100) + '...' || ''}
-        />
-        <div className="flex items-center gap-4 mb-6">
-          <button 
-            onClick={() => navigate('/')}
-            className="text-[#0095FF] hover:text-[#0080FF] transition-colors"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="text-2xl font-medium text-white">{query}</h1>
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate('/')}
+              className="text-[#0095FF] hover:text-[#0080FF] transition-colors"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h1 className="text-2xl font-medium">{query}</h1>
+          </div>
+          <ShareMenu
+            url={window.location.href}
+            title={`CuriosAI Search: ${query || ''}`}
+            text={searchState.data?.answer.slice(0, 100) + '...' || ''}
+          />
         </div>
 
         <div className="flex gap-6">

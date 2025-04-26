@@ -1,6 +1,5 @@
-import React from 'react';
 import { DivideIcon as LucideIcon, Focus, Globe, Users, PlayCircle, Calculator, Plane, HeartPulse, GraduationCap, LineChart } from 'lucide-react';
-import type { FocusMode } from '../search/types';
+import type { FocusMode } from '../search/types.ts';
 
 interface ActionButtonProps {
   icon: LucideIcon;
@@ -51,14 +50,15 @@ export default function ActionButton({
   return (
     <div className="relative group">
       <button
+        type="button"
         onClick={onClick}
         disabled={disabled}
         className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
           disabled
             ? 'text-gray-600 cursor-not-allowed'
             : isActive
-            ? 'text-[#007BFF] hover:bg-[#2a2a2a]'
-            : 'text-gray-500 hover:text-[#007BFF] hover:bg-[#2a2a2a]'
+            ? 'text-[#007BFF] bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
+            : 'text-gray-500 bg-gray-100 dark:bg-transparent hover:text-[#007BFF] hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
         }`}
         aria-label={label}
       >

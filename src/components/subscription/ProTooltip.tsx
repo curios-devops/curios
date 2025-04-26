@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
 
 interface ProTooltipProps {
@@ -9,7 +9,6 @@ interface ProTooltipProps {
   onClose?: () => void;
   isLoggedIn?: boolean;
   subscription?: { isActive: boolean };
-  alwaysShowUpgrade?: boolean;
 }
 
 export default function ProTooltip({ 
@@ -19,10 +18,10 @@ export default function ProTooltip({
   onSignIn,
   onClose,
   isLoggedIn = false,
-  subscription,
-  alwaysShowUpgrade = false
+  subscription
 }: ProTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const percentage = (remainingSearches / maxSearches) * 100;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -35,22 +34,21 @@ export default function ProTooltip({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
-  // Guest user view
+  // Guest view
   if (!isLoggedIn) {
     return (
-      <div 
-        ref={tooltipRef}
-        className="absolute left-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
+      <div
+        className="absolute left-0 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
         onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="text-[#007BFF]" size={18} />
-          <h3 className="text-white font-medium">Pro Search</h3>
+          <h3 className="text-gray-900 dark:text-white font-medium transition-colors duration-200">Pro Search</h3>
         </div>
         
         <div className="space-y-4">
-          <p className="text-sm text-gray-400">
-            Pro Search includes advanced search capabilities and 3x more sources.
+          <p className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-200">
+            Sign in to access Pro Search with advanced capabilities and more sources.
           </p>
           
           <button
@@ -67,29 +65,40 @@ export default function ProTooltip({
   // Premium user view
   if (subscription?.isActive) {
     return (
-      <div 
-        ref={tooltipRef}
-        className="absolute left-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
+      <div
+        className="absolute left-0 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
         onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="text-[#007BFF]" size={18} />
-          <h3 className="text-white font-medium">Pro Search</h3>
+          <h3 className="text-gray-900 dark:text-white font-medium transition-colors duration-200">Pro Search</h3>
         </div>
         
         <div className="space-y-4">
-          <p className="text-sm text-gray-400">
+          <p className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-200">
             Pro Search includes advanced search capabilities and 3x more sources.
           </p>
           
           <div className="space-y-2">
-            <div className="w-full bg-[#222222] rounded-full h-1.5">
+            <div className="w-full bg-gray-100 dark:bg-[#222222] rounded-full h-1.5 transition-colors duration-200">
               <div 
-                className="h-1.5 rounded-full transition-all duration-300 bg-[#007BFF]"
-                style={{ width: `${(remainingSearches / maxSearches) * 100}%` }}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  remainingSearches === 0 
+                    ? 'bg-red-500' 
+                    : remainingSearches <= maxSearches / 3
+                      ? 'bg-yellow-500'
+                      : 'bg-[#007BFF]'
+                }`}
+                style={{ width: `${percentage}%` }}
               />
             </div>
-            <p className="text-sm text-gray-400">
+            <p className={`text-sm ${
+              remainingSearches === 0 
+                ? 'text-red-500' 
+                : remainingSearches <= maxSearches / 3
+                  ? 'text-yellow-500'
+                  : 'text-gray-600 dark:text-gray-400'
+            } transition-colors duration-200`}>
               {remainingSearches} searches left today
             </p>
           </div>
@@ -102,20 +111,20 @@ export default function ProTooltip({
   return (
     <div 
       ref={tooltipRef}
-      className="absolute left-0 top-full mt-2 bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-800 w-80 z-50"
+      className="absolute left-0 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
     >
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="text-[#007BFF]" size={18} />
-        <h3 className="text-white font-medium">Pro Search</h3>
+        <h3 className="text-gray-900 dark:text-white font-medium transition-colors duration-200">Pro Search</h3>
       </div>
       
       <div className="space-y-4">
-        <p className="text-sm text-gray-400">
+        <p className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-200">
           Pro Search includes advanced search capabilities and 3x more sources.
         </p>
         
         <div className="space-y-2">
-          <div className="w-full bg-[#222222] rounded-full h-1.5">
+          <div className="w-full bg-gray-100 dark:bg-[#222222] rounded-full h-1.5 transition-colors duration-200">
             <div 
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 remainingSearches === 0 
@@ -132,8 +141,8 @@ export default function ProTooltip({
               ? 'text-red-500' 
               : remainingSearches <= maxSearches / 3
                 ? 'text-yellow-500'
-                : 'text-gray-400'
-          }`}>
+                : 'text-gray-600 dark:text-gray-400'
+          } transition-colors duration-200`}>
             {remainingSearches} searches left today
           </p>
         </div>

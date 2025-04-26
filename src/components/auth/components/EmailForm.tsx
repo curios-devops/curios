@@ -4,7 +4,7 @@ import { validateEmail } from '../../../utils/validation';
 import EmailInput from './EmailInput';
 
 interface EmailFormProps {
-  mode?: 'signup' | 'signin';
+  mode?: 'signup' | 'login';
   onSubmit: (email: string) => void;
 }
 

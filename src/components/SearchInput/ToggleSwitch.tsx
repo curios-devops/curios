@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface ToggleSwitchProps {
   isEnabled: boolean;
   onToggle: () => void;
@@ -32,16 +30,14 @@ export default function ToggleSwitch({
           ${disabled 
             ? 'bg-[#2a2a2a] border-gray-700 cursor-not-allowed opacity-50' 
             : isEnabled 
-              ? 'bg-[#007BFF] border-[#007BFF] focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-[#007BFF]' 
-              : 'bg-[#2a2a2a] border-gray-700 hover:border-gray-600 focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-gray-700'
-          }
-          ${showWarning ? 'border-red-500' : 'border'}
-          translate-y-[1px]
-        `}
+              ? 'bg-[#0095FF] border-[#0095FF] focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-[#0095FF]' 
+              : 'bg-[#007BFF] border-[#007BFF]'
+          }`}
       >
         <span
           className={`
             absolute 
+            block 
             top-0.5 
             left-0.5 
             w-4 
@@ -51,8 +47,8 @@ export default function ToggleSwitch({
             duration-300 
             ease-in-out
             ${isEnabled 
-              ? 'translate-x-5 bg-white' 
-              : 'translate-x-0 bg-gray-500'
+              ? 'translate-x-5 bg-white shadow-md' 
+              : 'translate-x-0 bg-white'
             }
             ${disabled ? 'opacity-50' : ''}
           `}
@@ -67,7 +63,7 @@ export default function ToggleSwitch({
           ${disabled
             ? 'text-gray-600'
             : isEnabled 
-              ? 'text-[#007BFF] font-bold' 
+              ? 'text-[#0095FF] font-bold' 
               : 'text-gray-500 font-normal'
           }
           ${showWarning ? 'text-red-500' : ''}
