@@ -11,11 +11,13 @@ import GuestSignUpBanner from '../components/GuestSignUpBanner.tsx';
 import StandardUserBanner from '../components/StandardUserBanner.tsx';
 import SignUpModal from '../components/auth/SignUpModal.tsx';
 import { useSubscription } from '../hooks/useSubscription.ts';
+import { useTranslation } from '../hooks/useTranslation.ts';
 import { languages } from '../types/language.ts';
 
 export default function Home() {
   const { session } = useSession();
   const { subscription } = useSubscription();
+  const { t } = useTranslation();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [bannerEnabled, setBannerEnabled] = useState(false);
   
@@ -52,9 +54,8 @@ export default function Home() {
 
       <div className="max-w-4xl mx-auto px-8 py-12">
         <div className="flex flex-col items-center justify-center mt-10 mb-0">
-          <h1 className="text-4xl font-semibold text-center text-gray-900 dark:text-white mb-8">
-            <span className="text-[#007BFF]">AI</span>
-            <span className="text-white dark:text-white"> - Smart Search</span>
+          <h1 className="text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-8 leading-tight font-helvetica">
+            {t('mainTitle')}
           </h1>
         </div>
         <InputContainer />

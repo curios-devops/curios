@@ -62,6 +62,7 @@ export const translations: Translations = {
     enter_email: 'Enter your email',
     continue_with_google: 'Continue with Google',
     askAnything: 'Ask anything...',
+    mainTitle: 'What are you curious about?',
   },
   es: {
     search: 'Buscar',
@@ -116,6 +117,7 @@ export const translations: Translations = {
     enter_email: 'Introduce tu correo electrónico',
     continue_with_google: 'Continuar con Google',
     askAnything: 'Pregunta cualquier cosa...',
+    mainTitle: '¿Sobre qué tienes curiosidad?',
   },
   de: {
     search: 'Suchen',
@@ -170,6 +172,7 @@ export const translations: Translations = {
     enter_email: 'E-Mail-Adresse eingeben',
     continue_with_google: 'Mit Google fortfahren',
     askAnything: 'Fragen Sie alles...',
+    mainTitle: 'Was macht Sie neugierig?',
   },
   fr: {
     search: 'Rechercher',
@@ -224,6 +227,7 @@ export const translations: Translations = {
     enter_email: 'Entrez votre adresse e-mail',
     continue_with_google: 'Continuer avec Google',
     askAnything: 'Demandez n\'importe quoi...',
+    mainTitle: 'Qu\'est-ce qui vous rend curieux ?',
   },
   it: {
     search: 'Cerca',
@@ -278,6 +282,7 @@ export const translations: Translations = {
     enter_email: 'Inserisci la tua email',
     continue_with_google: 'Continua con Google',
     askAnything: 'Chiedi qualsiasi cosa...',
+    mainTitle: 'Cosa ti rende curioso?',
   },
   pt: {
     search: 'Pesquisar',
@@ -332,6 +337,7 @@ export const translations: Translations = {
     enter_email: 'Digite seu e-mail',
     continue_with_google: 'Continuar com Google',
     askAnything: 'Pergunte qualquer coisa...',
+    mainTitle: 'O que te deixa curioso?',
   },
   ca: {
     search: 'Cerca',
@@ -386,6 +392,7 @@ export const translations: Translations = {
     enter_email: 'Introdueix el teu correu electrònic',
     continue_with_google: 'Continuar amb Google',    
     askAnything: 'Pregunta qualsevol cosa...',
+    mainTitle: 'Què et fa curiós?',
   }
   // Add more languages here with their translations...
 };
