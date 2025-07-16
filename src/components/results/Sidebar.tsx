@@ -1,79 +1,126 @@
-import AdBanner from '../AdBanner';
-import type { ImageResult, VideoResult } from '../../types';
+import { useState } from "react";
+import { useLocation } from "react-router-dom";
+import { FolderKanban, Globe2, HomeIcon, Library } from "lucide-react";
+// A comment to trigger a file update
+import { useTranslation } from "../../hooks/useTranslation.ts";
+import Logo from "../sidebar/Logo.tsx";
+import NavItem from "../sidebar/NavItem.tsx";
+import CollapseButton from "../sidebar/CollapseButton.tsx";
+import VerificationModal from "../auth/components/VerificationModal.tsx";
+import AuthButtons from "../auth/AuthButtons.tsx";
+import UserMenu from "../auth/UserMenu.tsx";
+import { useSession } from "../../hooks/useSession.ts";
 
-interface SidebarProps {
-  images?: ImageResult[];
-  videos?: VideoResult[];
+interface SidebarProps { 
+  isCollapsed: boolean;
+  toggleSidebar: () => void;
 }
 
-export default function Sidebar({ images, videos }: SidebarProps) {
+export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
+  const location = useLocation();
+  const { session } = useSession();
+  const { t } = useTranslation(); // Import useTranslation hook
+  const [showVerificationModal, setShowVerificationModal] = useState(false); // State to control modal visibility
+  const [modalEmail, setModalEmail] = useState(""); // State to hold email for the modal
+  const handleAuthRequired = (_context: string, email?: string) => { // handle authentication requirement, potentially show a modal
+    setModalEmail(email || "");
+  };
   return (
-    <div className="w-80 shrink-0">
-      <div className="sticky top-24 space-y-6">
-        {images && images.length > 0 && (
-          <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden transition-colors duration-200">
-            <div className="p-4">
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4 transition-colors duration-200">Images</h2>
-              <div className="grid grid-cols-2 gap-2">
-                {images.slice(0, 4).map((image, index) => (
-                  <a
-                    key={index}
-                    href={image.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="aspect-square bg-gray-100 dark:bg-[#1a1a1a] rounded-lg overflow-hidden group transition-colors duration-200"
-                  >
-                    <img
-                      src={image.image}
-                      alt={image.title || ''}
-                      className="w-full h-full object-cover transform transition-all duration-200 group-hover:scale-110"
-                      loading="lazy"
-                    />
-                  </a>
-                ))}
-              </div>
-            </div>
+    <>
+      <aside
+        className={`fixed left-0 top-0 h-screen bg-[#f9f9f8] dark:bg-[#111111] border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 ${
+          isCollapsed ? "w-20" : "w-56"
+        }`}
+      >
+        <div className="flex-shrink-0 p-4">
+          <div className="flex items-center gap-3">
+            <Logo isCollapsed={isCollapsed} />
+            {!isCollapsed && (
+              <CollapseButton
+                isCollapsed={isCollapsed}
+                onClick={toggleSidebar}
+                position="top"
+              />
+            )}
           </div>
-        )}
+        </div>
 
-        {videos && videos.length > 0 && (
-          <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden transition-colors duration-200">
-            <div className="p-4">
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4 transition-colors duration-200">Videos</h2>
-              <div className="space-y-3">
-                {videos.slice(0, 3).map((video, index) => (
-                  <a
-                    key={index}
-                    href={video.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block group"
-                  >
-                    {video.thumbnail && (
-                      <div className="relative aspect-video rounded-lg overflow-hidden mb-2">
-                        <img
-                          src={video.thumbnail}
-                          alt={video.title}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-                    )}
-                    <h4 className="text-sm text-gray-900 dark:text-gray-300 line-clamp-2 group-hover:text-[#0095FF] transition-colors duration-200">{video.title}</h4>
-                  </a>
-                ))}
-              </div>
-            </div>
+        <nav className="flex-1 px-2 py-4">
+          <div className="space-y-1">
+            <NavItem
+              to="/"
+              icon={HomeIcon}
+              label={t("home")}
+              isActive={location.pathname === "/"}
+              isCollapsed={isCollapsed}
+            />
+            <NavItem
+              to="/explore"
+              icon={Globe2}
+              label={t("explore")}
+              isActive={location.pathname === "/explore"}
+              isCollapsed={isCollapsed}
+            />
+            <NavItem
+              to="/spaces"
+              icon={FolderKanban}
+              label={t("spaces")}
+              isActive={location.pathname === "/spaces"}
+              isCollapsed={isCollapsed}
+              requiresAuth
+              authContext="spaces"
+              onAuthRequired={handleAuthRequired}
+            />
+            <NavItem
+              to="/library"
+              icon={Library}
+              label={t("library")}
+              isActive={location.pathname === "/library"}
+              isCollapsed={isCollapsed}
+              requiresAuth
+              authContext="library"
+              onAuthRequired={handleAuthRequired}
+            />
           </div>
-        )}
+        </nav>
+        <div className={`flex-shrink-0 ${isCollapsed ? "px-2" : "px-4"} pb-6`}>
+          <div className="space-y-4">
+            {isCollapsed && (
+              <div className="flex justify-center mb-2">
+                <CollapseButton
+                  isCollapsed={isCollapsed}
+                  onClick={toggleSidebar}
+                  position="bottom"
+                />
+              </div>
+            )}
+            <div className="border-t border-gray-200 dark:border-gray-800 w-full transition-colors duration-200">
+            </div>
+            {session
+              ? (
+                <UserMenu
+                  email={session.user.email || ""}
+                  isCollapsed={isCollapsed}
+                />
+              )
+              : (
+                <AuthButtons
+                  session={session}
+                  isCollapsed={isCollapsed}
+                  onSignInClick={() => handleAuthRequired("default")}
+                  onSignUpClick={() => handleAuthRequired("default")}
+                />
+              )}
+          </div>
+        </div>
+      </aside>
 
-        {/* Ad Banner */}
-        <AdBanner
-          dataAdSlot={import.meta.env.VITE_ADSENSE_SIDEBAR_SLOT}
-          style={{ minHeight: '600px' }}
-          className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden transition-colors duration-200"
+      {showVerificationModal && (
+        <VerificationModal
+          email={modalEmail} // Assuming email is required by VerificationModalProps
+          onClose={() => setShowVerificationModal(false)} // Function to close the modal
         />
-      </div>
-    </div>
+      )}
+    </>
   );
 }

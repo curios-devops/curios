@@ -11,7 +11,7 @@ export const languages: Language[] = [
   { code: 'es', name: 'Español', flag: '🇪🇸' },
   { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'ca', name: 'Català', flag: '🏴‍☠️' },
+  { code: 'ca', name: 'Català', flag: '/ca.svg' }, // Using text for Catalan flag
   { code: 'it', name: 'Italiano', flag: '🇮🇹' },
   { code: 'pt', name: 'Português', flag: '🇧🇷' },
   { code: 'ru', name: 'Русский', flag: '🇷🇺' },

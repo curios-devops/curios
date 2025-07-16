@@ -2,25 +2,25 @@ import { logger } from '../utils/logger';
 
 // Environment variable validation and configuration
 const requiredEnvVars = {
-  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY
+  VITE_SUPABASE_URL: typeof import.meta !== 'undefined' ? import.meta.env?.VITE_SUPABASE_URL : process.env.VITE_SUPABASE_URL,
+  VITE_SUPABASE_ANON_KEY: typeof import.meta !== 'undefined' ? import.meta.env?.VITE_SUPABASE_ANON_KEY : process.env.VITE_SUPABASE_ANON_KEY
 } as const;
 
 // Optional environment variables with fallbacks
 const optionalEnvVars = {
-  VITE_OPENAI_API_KEY: import.meta.env.VITE_OPENAI_API_KEY || '',
-  VITE_OPENAI_ORG_ID: import.meta.env.VITE_OPENAI_ORG_ID || '',
-  VITE_OPENAI_PROJECT_ID: import.meta.env.VITE_OPENAI_PROJECT_ID || '',
-  VITE_ADSENSE_PUB_ID: import.meta.env.VITE_ADSENSE_PUB_ID || '',
-  VITE_ADSENSE_SIDEBAR_SLOT: import.meta.env.VITE_ADSENSE_SIDEBAR_SLOT || '',
-  VITE_RAPIDAPI_KEY: import.meta.env.VITE_RAPIDAPI_KEY || '',
-  VITE_BRAVE_API_KEY: import.meta.env.VITE_BRAVE_API_KEY || '',
-  VITE_TAVILY_API_KEY: import.meta.env.VITE_TAVILY_API_KEY || '',
-  VITE_STRIPE_PUBLISHABLE_KEY: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
-  VITE_STRIPE_SECRET_KEY: import.meta.env.VITE_STRIPE_SECRET_KEY || '',
-  VITE_STRIPE_WEBHOOK_SECRET: import.meta.env.VITE_STRIPE_WEBHOOK_SECRET || '',
-  VITE_STRIPE_MONTHLY_PRICE_ID: import.meta.env.VITE_STRIPE_MONTHLY_PRICE_ID || '',
-  VITE_STRIPE_YEARLY_PRICE_ID: import.meta.env.VITE_STRIPE_YEARLY_PRICE_ID || '',
+  VITE_OPENAI_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_OPENAI_API_KEY : process.env.VITE_OPENAI_API_KEY) || '',
+  VITE_OPENAI_ORG_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_OPENAI_ORG_ID : process.env.VITE_OPENAI_ORG_ID) || '',
+  VITE_OPENAI_PROJECT_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_OPENAI_PROJECT_ID : process.env.VITE_OPENAI_PROJECT_ID) || '',
+  VITE_ADSENSE_PUB_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ADSENSE_PUB_ID : process.env.VITE_ADSENSE_PUB_ID) || '',
+  VITE_ADSENSE_SIDEBAR_SLOT: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ADSENSE_SIDEBAR_SLOT : process.env.VITE_ADSENSE_SIDEBAR_SLOT) || '',
+  VITE_RAPIDAPI_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_RAPIDAPI_KEY : process.env.VITE_RAPIDAPI_KEY) || '',
+  VITE_BRAVE_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_BRAVE_API_KEY : process.env.VITE_BRAVE_API_KEY) || '',
+  VITE_TAVILY_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_TAVILY_API_KEY : process.env.VITE_TAVILY_API_KEY) || '',
+  VITE_STRIPE_PUBLISHABLE_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_PUBLISHABLE_KEY : process.env.VITE_STRIPE_PUBLISHABLE_KEY) || '',
+  VITE_STRIPE_SECRET_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_SECRET_KEY : process.env.VITE_STRIPE_SECRET_KEY) || '',
+  VITE_STRIPE_WEBHOOK_SECRET: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_WEBHOOK_SECRET : process.env.VITE_STRIPE_WEBHOOK_SECRET) || '',
+  VITE_STRIPE_MONTHLY_PRICE_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_MONTHLY_PRICE_ID : process.env.VITE_STRIPE_MONTHLY_PRICE_ID) || '',
+  VITE_STRIPE_YEARLY_PRICE_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_YEARLY_PRICE_ID : process.env.VITE_STRIPE_YEARLY_PRICE_ID) || '',
 } as const;
 
 // Validate required environment variables

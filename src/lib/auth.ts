@@ -1,65 +1,103 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase.ts';
 import { AuthError } from '@supabase/supabase-js';
-import { AUTH_CONFIG } from '../services/auth/config';
-import type { AuthResponse } from '../services/auth/types';
+import { AUTH_CONFIG } from '../services/auth/config.ts';
+import { COOKIE_OPTIONS } from '../services/auth/config.ts';
+import type { AuthResponse, CookieOptions } from '../services/auth/types.ts';
 
-export async function signInWithEmail(email: string): Promise<AuthResponse> {
+export async function signInWithEmail(email: string): Promise<Partial<AuthResponse>> {
   try {
-    const { error } = await supabase.auth.signInWithOtp({
+    const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: AUTH_CONFIG.redirectUrl,
         shouldCreateUser: true,
       },
     });
-
     if (error) throw error;
-    return { success: true };
+    return {
+      user: data.user,
+      session: data.session,
+    };
   } catch (error) {
     console.error('Sign in error:', error);
     return {
-      success: false,
-      error: error instanceof AuthError ? error.message : 'Failed to sign in'
+      error:
+        error instanceof AuthError
+          ? {
+              code: error.code,
+              message: error.message,
+            }
+          : {
+              message: 'Failed to sign in',
+            },
     };
   }
 }
+
+export const setCookie = (name: string, value: string, options?: CookieOptions) => {
+  const mergedOptions = { ...COOKIE_OPTIONS, ...options };
+  let cookieString = `${name}=${value};`;
+
+  if (mergedOptions.maxAge) {
+    cookieString += ` Max-Age=${mergedOptions.maxAge};`;
+  }
+
+  if (mergedOptions.sameSite) {
+    cookieString += ` SameSite=${mergedOptions.sameSite};`;
+  }
+    if (mergedOptions.secure) {
+    cookieString += ` Secure;`;
+  }
+  document.cookie = cookieString;
+};
 
 // Use the same magic link flow for both sign in and sign up
 export const signUpWithEmail = signInWithEmail;
 
-export async function signOut(): Promise<AuthResponse> {
+export async function signOut(): Promise<Partial<AuthResponse>> {
   try {
-    const { error } = await supabase.auth.signOut();
+    const { error, data } = await supabase.auth.signOut();
     if (error) throw error;
-    return { success: true };
+    return {
+      user: data.user,
+      session: data.session,
+    };
   } catch (error) {
     console.error('Sign out error:', error);
     return {
-      success: false,
-      error: error instanceof AuthError ? error.message : 'Failed to sign out'
+      error:
+        error instanceof AuthError
+          ? {
+              code: error.code,
+              message: error.message,
+            }
+          : {
+              message: 'Failed to sign out',
+            },
     };
   }
 }
 
-export async function verifyOtp(email: string, token: string): Promise<AuthResponse> {
+export async function verifyOtp(email: string, token: string): Promise<Partial<AuthResponse>> {
   try {
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       email,
       token,
-      type: 'email'
+      type: 'email',
     });
-
     if (error) throw error;
-    return { success: true };
+    return {
+      user: data.user,
+      session: data.session,
+    };
   } catch (error) {
     console.error('OTP verification error:', error);
     return {
-      success: false,
-      error: error instanceof AuthError 
-        ? error.message === 'Invalid OTP' 
-          ? 'Invalid verification code'
-          : error.message
-        : 'Failed to verify code'
+      error: error instanceof AuthError
+        ? error.message === 'Invalid OTP'
+          ? { message: 'Invalid verification code'}
+          : { code: error.code, message: error.message}
+        : { message: 'Failed to verify code' },
     };
   }
 }

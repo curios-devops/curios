@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Compass, CheckCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-
+import { supabase } from "../lib/supabase.ts";
 export default function SubscriptionSuccess() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const updateUserProfile = async () => {
+    const updateUserProfile = async (): Promise<void> => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) {

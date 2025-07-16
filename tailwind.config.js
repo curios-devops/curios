@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import typography from '@tailwindcss/typography';
+
 export default {
   content: [
     "./index.html",
@@ -11,9 +13,24 @@ export default {
         primary: '#0095FF',
         'primary-hover': '#0080FF'
       },
+      keyframes: {
+        'fade-in-up': {
+          '0%': {
+            opacity: '0',
+            transform: 'translateY(10px)'
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateY(0)'
+          }
+        }
+      },
+      animation: {
+        'fade-in-up': 'fade-in-up 0.5s ease-in-out forwards'
+      }
     },
   },
   plugins: [
-    require('@tailwindcss/typography'),
+    typography,
   ],
 }

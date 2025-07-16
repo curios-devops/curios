@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Share2, Link2, Check } from 'lucide-react';
 import Notification from './Notification';
 
@@ -43,7 +43,9 @@ export default function ShareMenu({ url, title, text }: ShareMenuProps) {
           }, 2000);
           break;
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+      }
       console.error('Share operation failed:', error);
     }
   };

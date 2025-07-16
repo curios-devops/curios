@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import ToggleSwitch from './ToggleSwitch';
 import LanguageSelector from './LanguageSelector';

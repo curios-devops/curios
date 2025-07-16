@@ -5,6 +5,7 @@
 
 @layer base {
   :root {
+
     color-scheme: light dark;
   }
 
@@ -12,13 +13,35 @@
     :root {
       --background: #ffffff;
       --foreground: #222222;
+      --bg-theme-searxng-status: #f5f5f5; /* light gray */
+      --bg-theme-theme-toggle:#d4d4d4;
+      --bg-theme-theme-toggle-hover: #e5e5e5; /* slightly darker light gray */
+      --bg-theme-loading:#f5f5f5;
+      --bg-theme-help-button: var(--bg-theme-theme-toggle);
+      --bg-theme-help-button-hover: var(--bg-theme-theme-toggle-hover);
+
     }
+    
+    :root.dark{
+      --bg-theme-searxng-status-dark:#333333;      
+      --bg-theme-theme-toggle:#222222;
+      --bg-theme-loading:#111111;
+      --bg-theme-theme-toggle-hover: #333333; /* slightly darker gray */
+      --bg-theme-help-button: var(--bg-theme-theme-toggle);
+      --bg-theme-help-button-hover: var(--bg-theme-theme-toggle-hover);
+    }
+
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
       --background: #111111;
       --foreground: #ffffff;
+      --bg-theme-theme-toggle:#222222;
+      
+      --bg-theme-theme-toggle-hover: #333333; /* slightly darker gray */
+      --bg-theme-help-button: var(--bg-theme-theme-toggle);
+      --bg-theme-help-button-hover: #444444; /* slightly darker gray */
     }
   }
 
@@ -71,4 +94,28 @@
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate))
     skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x))
     scaleY(var(--tw-scale-y));
+}
+
+/* HelpButton theme-aware styles */
+
+
+
+.bg-theme-help-button {
+  background-color: var(--bg-theme-help-button);
+}
+
+.hover\:bg-theme-help-button-hover:hover {
+  background-color: var(--bg-theme-help-button-hover);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) { /* Adjust breakpoint as needed */
+  .sidebar-container {
+    display: none; /* Hide sidebar by default on small screens */
+  }
+
+  .main-content {
+    margin-left: 0; /* Remove left margin on small screens */
+  }
+
 }

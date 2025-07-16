@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState } from 'react';
 import { BookOpen, ThumbsUp, ThumbsDown, Copy } from 'lucide-react';
 import Notification from './Notification';
@@ -14,7 +15,7 @@ export default function AnswerSection({ answer }: AnswerSectionProps) {
       await navigator.clipboard.writeText(answer);
       setShowNotification(true);
       setTimeout(() => setShowNotification(false), 2000);
-    } catch (clipboardError) {
+    } catch (clipboardError: unknown) {
       console.error('Clipboard write failed:', clipboardError);
       
       // Fallback for clipboard API failure
@@ -27,7 +28,7 @@ export default function AnswerSection({ answer }: AnswerSectionProps) {
         document.body.removeChild(textArea);
         setShowNotification(true);
         setTimeout(() => setShowNotification(false), 2000);
-      } catch (clipboardError) {
+      } catch (clipboardError: unknown) {
         console.error('Clipboard fallback failed:', clipboardError);
       }
     }

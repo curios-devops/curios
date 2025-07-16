@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Focus, Paperclip } from 'lucide-react';
-import ActionButton from './ActionButton';
-import ToggleSwitch from './ToggleSwitch';
-import SearchButton from './SearchButton';
-import SearchTextArea from './SearchTextArea';
-import ProModal from '../subscription/ProModal';
-import ProTooltip from '../subscription/ProTooltip';
-import { useSession } from '../../hooks/useSession';
-import { useSearchLimit } from '../../hooks/useSearchLimit';
-import { useSubscription } from '../../hooks/useSubscription';
+import ActionButton from './ActionButton.tsx';
+import ToggleSwitch from './ToggleSwitch.tsx';
+import SearchButton from './SearchButton.tsx';
+import SearchTextArea from './SearchTextArea.tsx';
+import ProModal from '../subscription/ProModal.tsx';
+import ProTooltip from '../subscription/ProTooltip.tsx';
+import { useSession } from '../../hooks/useSession.ts';
+import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
+import { useSubscription } from '../../hooks/useSubscription.ts';
 
 export default function SearchBox() {
   const navigate = useNavigate();
@@ -59,15 +59,18 @@ export default function SearchBox() {
   };
 
   return (
-    <div className="relative w-full">
-      <SearchTextArea
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
-        isPro={isPro}
-      />
+    <div className="w-full space-y-3">
+      {/* Text input area - clean and dedicated for typing */}
+      <div className="relative">
+        <SearchTextArea
+          value={query}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+      </div>
 
-      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+      {/* Button bar - dedicated row for all controls */}
+      <div className="flex items-center justify-between px-1">
         {/* Left side: Pro toggle */}
         <div 
           className="relative"
@@ -90,13 +93,13 @@ export default function SearchBox() {
               onSignIn={() => setShowProModal(true)}
               onClose={() => setShowProTooltip(false)}
               isLoggedIn={!!session}
-              subscription={subscription}
+              subscription={subscription ? { isActive: subscription.isActive } : undefined}
             />
           )}
         </div>
 
         {/* Right side: Action buttons and Search */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <ActionButton
             icon={Focus}
             label="Focus"

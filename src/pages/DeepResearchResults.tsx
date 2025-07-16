@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { Brain, ArrowLeft, Loader2 } from 'lucide-react';
-import { formatTimeAgo } from '../utils/time';
-import TopBar from '../components/results/TopBar';
-import { logger } from '../utils/logger';
-import { ResearchManager } from '../services/research/researchManager';
-import type { ResearchData } from '../services/research/types';
-
+import { logger } from '../utils/logger.ts'; import Sidebar from '../components/results/Sidebar.tsx'; import TopBar from '../components/results/TopBar.tsx';
+import { useLocation, useNavigate } from 'react-router-dom'; // Add the import statement here
+import { ResearchManager } from '../services/research/researchManager.ts';
 interface ResearchStep {
   agent: string;
   status: string;
@@ -18,6 +14,7 @@ interface ResearchState {
   error: string | null;
   currentStep: ResearchStep | null;
   data: ResearchData | null;
+
 }
 
 const researchManager = new ResearchManager();
@@ -38,10 +35,9 @@ export default function DeepResearchResults() {
     data: null
   });
   
-  // Lazy load heavy components
-  const ShareMenu = React.lazy(() => import('../components/ShareMenu'));
-  const MainContent = React.lazy(() => import('../components/results/MainContent'));
-  const Sidebar = React.lazy(() => import('../components/results/Sidebar'));
+  // Lazy load heavy components (if they are still lazy loaded)
+  const ShareMenu = React.lazy(() => import('../components/ShareMenu.tsx'));
+  const MainContent = React.lazy(() => import('../components/results/MainContent.tsx'));
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -63,10 +59,10 @@ export default function DeepResearchResults() {
       }
 
       try {
-        const data = await researchManager.conductResearch(
-          query,
-          (agent, status, progress) => {
-            setResearchState(prev => ({
+        const data: ResearchData = await researchManager.conductResearch(
+ query,
+          (agent: string, status: string, progress: number) => { // Added explicit types
+ setResearchState((prev: ResearchState) => ({
               ...prev,
               currentStep: { agent, status, progress }
             }));
@@ -84,7 +80,7 @@ export default function DeepResearchResults() {
         setResearchState({
           isLoading: false,
           error: error instanceof Error ? error.message : 'Research process failed',
-          currentStep: null,
+          currentStep: null, // Ensure currentStep is null on error
           data: null
         });
       }
@@ -95,7 +91,7 @@ export default function DeepResearchResults() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#111111] to-black text-white">
-      <TopBar query={query} timeAgo={timeAgo} />
+ <TopBar query={query} timeAgo={timeAgo} sourceName="Deep Research" />
       
       <React.Suspense fallback={null}>
         {researchState.data && (
@@ -131,7 +127,7 @@ export default function DeepResearchResults() {
                 <div className="flex flex-col items-center gap-6">
                   <Loader2 className="animate-spin text-[#0095FF]" size={28} />
                   <div className="text-center space-y-4">
-                    <p className="text-gray-300 text-lg font-medium">{researchState.currentStep.agent}</p>
+                    <p className="text-gray-300 text-lg font-medium">{researchState.currentStep.agent as string}</p>
                     <p className="text-gray-400">{researchState.currentStep.status}</p>
                     <div className="w-full bg-[#222222] h-1.5 rounded-full">
                       <div 
@@ -166,8 +162,8 @@ export default function DeepResearchResults() {
                   {researchState.data?.outline ? (
                     <ul className="space-y-2">
                       {(Array.isArray(researchState.data.outline) 
-                        ? researchState.data.outline 
-                        : Object.values(researchState.data.outline)
+                        ? researchState.data.outline as string[] // Explicitly cast to string[]
+ : Object.values(researchState.data.outline) as React.ReactNode[] // Explicitly cast to React.ReactNode[]
                       ).map((item, index) => (
                         <li key={index} className="flex items-center gap-2 text-gray-300">
                           <span className="text-[#0095FF] text-sm">{index + 1}.</span>
@@ -184,24 +180,24 @@ export default function DeepResearchResults() {
                 <MainContent 
                   searchState={{
                     isLoading: false,
-                    error: null,
                     data: {
+                      error: null, // Add error property here
                       answer: researchState.data.content,
                       sources: researchState.data.sources,
                       images: researchState.data.images
                     }
                   }}
-                  showAllSources={showAllSources}
-                  setShowAllSources={setShowAllSources}
+                  showAllSources={false} // Assuming a default value for this component
+                  setShowAllSources={() => {}} // Assuming a default no-op function
                   statusMessage=""
-                  isPro={true}
+                  isPro={true} // Explicitly set isPro
                 />
 
                 {/* Follow-up Questions */}
                 <div className="bg-[#111111] rounded-xl border border-gray-800 p-6">
                   <h2 className="text-xl font-medium text-white mb-4">Follow-up Questions</h2>
                   <ul className="space-y-2">
-                    {researchState.data.followUpQuestions.map((question, index) => (
+                    {researchState.data.followUpQuestions.map((question: string, index: number) => ( // Added explicit types
                       <li 
                         key={index}
                         className="text-gray-300 hover:text-white cursor-pointer transition-colors"
@@ -218,12 +214,10 @@ export default function DeepResearchResults() {
           </div>
 
           {!researchState.error && !researchState.isLoading && researchState.data && (
-            <React.Suspense fallback={<div className="w-80 animate-pulse bg-[#222222] h-96 rounded-xl" />}>
-              <Sidebar 
-                images={researchState.data?.images || []}
-                videos={[]}
-              />
-            </React.Suspense>
+            <Sidebar
+              images={researchState.data?.images || []}
+              videos={[]}
+            />
           )}
         </div>
       </main>

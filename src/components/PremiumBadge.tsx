@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Crown } from 'lucide-react';
 
 export default function PremiumBadge() {
@@ -6,7 +6,7 @@ export default function PremiumBadge() {
 
   return (
     <div 
-      className="fixed bottom-4 left-[calc(14rem+1rem)] z-50 transition-all duration-300"
+      className="fixed bottom-4 left-[calc(12rem+1rem)] z-50 transition-all duration-300"
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >

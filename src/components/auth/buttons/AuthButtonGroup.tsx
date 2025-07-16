@@ -1,28 +1,18 @@
 import AuthButton from './AuthButton.tsx';
 import { useAuthButtons } from '../hooks/useAuthButtons.ts';
-import { useTranslation } from '../../../hooks/useTranslation.ts';
-import { useEffect } from 'react';
-import { useLanguage } from '../../../contexts/LanguageContext.tsx';
+import { useTranslation } from "./../../../hooks/useTranslation.ts";
 
 interface AuthButtonGroupProps {
-  onSignInClick: () => void;
+ onSignInClick: () => void;
   onSignUpClick: () => void;
 }
 
 export default function AuthButtonGroup({ onSignInClick, onSignUpClick }: AuthButtonGroupProps) {
   const { activeButton, setActiveButton } = useAuthButtons();
   const { t } = useTranslation();
-  const { currentLanguage } = useLanguage();
-
-  // Set initial active button on mount
-  useEffect(() => {
-    setActiveButton('signup');
-    console.log('Current language:', currentLanguage);
-    console.log('Sign Up translation:', t('signUp'));
-    console.log('Sign In translation:', t('signIn'));
-  }, [setActiveButton, currentLanguage, t]);
 
   const handleSignInClick = () => {
+    console.log('handleSignInClick called');
     setActiveButton('signin');
     onSignInClick();
   };

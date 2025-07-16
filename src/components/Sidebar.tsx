@@ -1,41 +1,42 @@
-import React, { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useState } from "react";
 import { FolderKanban, Globe2, HomeIcon, Library } from "lucide-react";
+import * as ReactRouterDom from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation.ts";
-import Logo from "./sidebar/Logo.tsx";
+import { useSession } from "../hooks/useSession.ts";
 import NavItem from "./sidebar/NavItem.tsx";
 import CollapseButton from "./sidebar/CollapseButton.tsx";
-import AuthModal from "./auth/AuthModal.tsx";
+import SignInModal from "./auth/SignInModal.tsx";
+import { useLanguage } from "../contexts/LanguageContext.tsx";
+import SignUpModal from "./auth/SignUpModal.tsx";
 import AuthButtons from "./auth/AuthButtons.tsx";
+import Logo from "./sidebar/Logo.tsx";
 import UserMenu from "./auth/UserMenu.tsx";
-import { useSession } from "../hooks/useSession.ts";
-
+// Define SidebarProps interface
 interface SidebarProps {
-  isCollapsed: boolean;
-  toggleSidebar: () => void;
+ isCollapsed: boolean;
+ toggleSidebar: () => void;
+ className?: string;
 }
 
 export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
-  const location = useLocation();
-  const { session } = useSession();
-  const { t } = useTranslation();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authContext, setAuthContext] = useState<"default" | "pro">("default");
+ const location = ReactRouterDom.useLocation();
+  const { session } = useSession(); // Call useSession hook and safely access session
+ const { currentLanguage } = useLanguage();
+ const { t } = useTranslation();
+ const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
+ const [showSignUpModal, setShowSignUpModal] = useState<boolean>(false);
 
-  const handleAuthRequired = (context: string) => {
-    setAuthContext(
-      context === "library" || context === "spaces"
-        ? "default"
-        : context as "default" | "pro",
-    );
-    setShowAuthModal(true);
-  };
+ const handleSignInClick = () => setShowSignInModal(true);
+ const handleSignUpClick = () => setShowSignUpModal(true);
+
+ const handleCloseSignInModal = () => setShowSignInModal(false);
+ const handleCloseSignUpModal = () => setShowSignUpModal(false);
 
   return (
     <>
       <aside
-        className={`fixed left-0 top-0 h-screen bg-[#f9f9f8] dark:bg-[#111111] border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 ${
-          isCollapsed ? "w-20" : "w-56"
+        className={`fixed left-0 top-0 h-screen bg-[#f9f9f8] dark:bg-[#2a2a2a] border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 ${
+          isCollapsed ? "w-20" : "w-48"
         }`}
       >
         <div className="flex-shrink-0 p-4">
@@ -57,36 +58,36 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
               to="/"
               icon={HomeIcon}
               label={t("home")}
-              isActive={location.pathname === "/"}
+              isActive={location.pathname === "/"} // Pass isActive prop
               isCollapsed={isCollapsed}
             />
             <NavItem
               to="/explore"
               icon={Globe2}
               label={t("explore")}
-              isActive={location.pathname === "/explore"}
+              isActive={location.pathname === "/explore"} // Pass isActive prop
               isCollapsed={isCollapsed}
             />
             <NavItem
               to="/spaces"
               icon={FolderKanban}
               label={t("spaces")}
-              isActive={location.pathname === "/spaces"}
-              isCollapsed={isCollapsed}
+              isActive={location.pathname === "/spaces"} // Pass isActive prop
               requiresAuth
-              authContext="spaces"
-              onAuthRequired={handleAuthRequired}
+ isCollapsed={isCollapsed}
             />
             <NavItem
               to="/library"
               icon={Library}
               label={t("library")}
-              isActive={location.pathname === "/library"}
-              isCollapsed={isCollapsed}
+              isActive={location.pathname === "/library"} // Pass isActive prop
               requiresAuth
-              authContext="library"
-              onAuthRequired={handleAuthRequired}
+ isCollapsed={isCollapsed}
             />
+             {/* Ensure all NavItem instances have isCollapsed and isActive props */}
+             {/* Example for an additional NavItem if needed: */}
+             {/* <NavItem to="/settings" icon={Settings} label={t("settings")} isActive={location.pathname === "/settings"} isCollapsed={isCollapsed} /> */}
+
           </div>
         </nav>
 
@@ -104,7 +105,8 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
             <div className="border-t border-gray-200 dark:border-gray-800 w-full transition-colors duration-200">
             </div>
             {session
-              ? (
+// Temporarily commented out session check for debugging
+? ( // Check if session exists
                 <UserMenu
                   email={session.user.email || ""}
                   isCollapsed={isCollapsed}
@@ -114,18 +116,24 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                 <AuthButtons
                   session={session}
                   isCollapsed={isCollapsed}
-                  onSignInClick={() => handleAuthRequired("default")}
-                  onSignUpClick={() => handleAuthRequired("default")}
+                  onSignInClick={handleSignInClick}
+                  onSignUpClick={handleSignUpClick}
                 />
               )}
           </div>
         </div>
       </aside>
 
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        context={authContext}
+
+ <SignInModal
+ isOpen={showSignInModal}
+        currentLanguage={currentLanguage}
+ onClose={handleCloseSignInModal}
+      />
+ <SignUpModal
+ isOpen={showSignUpModal}
+        currentLanguage={currentLanguage}
+ onClose={handleCloseSignUpModal}
       />
     </>
   );

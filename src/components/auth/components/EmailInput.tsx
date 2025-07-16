@@ -1,6 +1,7 @@
-import React from 'react';
+import { useTranslation } from "../../../hooks/useTranslation.ts";
+import { useTheme } from "../../theme/ThemeContext.tsx"; // Corrected import path
 
-interface EmailInputProps {
+interface EmailInputProps { // Corrected interface syntax
   value: string;
   onChange: (value: string) => void;
   error?: string;
@@ -12,15 +13,17 @@ export default function EmailInput({
   onChange, 
   error, 
   disabled 
+
 }: EmailInputProps) {
+  const { theme } = useTheme(); // Destructure theme from useTheme
   return (
     <div className="space-y-2">
       <div className="relative">
         <input
           type="email"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Enter your email"
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
+          placeholder={useTranslation().t("enter_email")}
           disabled={disabled}
           className={`
             w-full 
@@ -28,10 +31,11 @@ export default function EmailInput({
             border 
             ${error ? 'border-red-500' : 'border-gray-700'} 
             rounded-lg 
-            px-4 
-            py-3.5 
-            text-white 
-            placeholder-gray-500 
+            px-4
+            py-3.5
+            ${theme === 'dark' 
+              ? 'bg-[#222222] placeholder-gray-700 text-white' 
+              : 'bg-white text-gray-900 placeholder-gray-400'} // Use theme for conditional styling
             focus:outline-none 
             focus:border-[#007BFF] 
             transition-colors

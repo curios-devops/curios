@@ -1,9 +1,25 @@
-import { useSession } from "./useSession.ts";
+import { useSession } from './useSession.ts';
+import { Session, User } from '@supabase/supabase-js';
 
-type UserType = "guest" | "authenticated";
-
+export type UserType = 'free' | 'premium';
 export function useUserType(): UserType {
-  const { session } = useSession();
+  const { session, isLoading } = useSession(); // use isLoading
 
-  return session ? "authenticated" : "guest";
+  interface CustomUser extends User {
+     user_metadata: {
+      userType?: UserType;
+    };
+  }
+
+  interface CustomSession extends Session {
+    user: CustomUser;
+  }
+  
+  if (isLoading) return 'free';
+  const customSession = session as CustomSession | null;
+
+  return customSession?.user?.user_metadata?.userType === 'premium'
+    ? 'premium'
+    : 'free';
 }
+

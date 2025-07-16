@@ -18,7 +18,8 @@ An AI-powered search engine building using Bolt tech stack, designed to provide 
   02.22 - Replace Brave for Tavily
   02.23 - Add Stripe
   03.24 - Add Share after adding Pro Search (fix Stripe update)
-
+  07.01 - Ad Researcher
+  07.06 - Ad Artifacts
 ## APP DESCRIPTION
 CuriosAI is an AI-powered searching tool or an multiagent AI-powered search engine that goes deep into the internet to find answers. Inspired by Perplexity AI, it's an option that not just searches the web but understands your questions. It uses advanced machine learning algorithms to refine results and provides clear answers with sources cited.
 
@@ -198,6 +199,22 @@ You can call your paid tier “Premium” —just make sure it aligns with your 
 Basic Search – Included for Guest or Standard users.
 Advanced Pro Search – An Advanced or “Pro” search for Premium users 
 --
+
+## THREE SELECTOR
+Run inside the input container in home page and has three options
+
+Regular /page -> Pro /page 
+1.Search Rearch -> ProSearch  ProSearchResults 
+2.Insights InsightsResults-> Research ResearchResults
+3. Labs LabsResuls-> Pro Labs ProLabsResuls (soon) 
+
+Input Mode	Route	Page Component	Pro Parameter
+Search	/search	SearchResults	No
+Pro Search	/pro-search	ProSearchResults	?pro=true
+Insights	/insights-results	InsightsResults	No
+Research	/research-results	ResearcherResults	?pro=true
+Labs	/labs-results	LabsResults	No
+Pro Labs	/pro-labs-results	LabsResults	?pro=true
 ## TARGET AUDIENCE
 CuriosAI is designed to cater to a diverse audience, focusing primarily on the following groups:
 Researchers and Academics: With its Academic Search Mode, CuriosAI is tailored for users seeking scholarly articles and papers, making it an ideal tool for academic research and study.
@@ -304,3 +321,7 @@ Test the Webhook
 Select your webhook endpoint and trigger a test event:
 
 Check the logs again to confirm the event was processed.
+
+To download the project From Firebase Studio run:
+tar -czvf project.tar.gz --exclude=".*" .
+then Righ click and Download

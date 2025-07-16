@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+
 import { Sparkles, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Perspective } from '../types';
 
@@ -83,7 +84,9 @@ export default function ProSearchSection({
                             try {
                               const url = new URL(source.url);
                               domain = url.hostname.replace('www.', '');
-                            } catch {
+                            } catch (error: unknown) {
+                              console.error('Error parsing URL:', error);
+
                               return null;
                             }
                             

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { useSession } from './useSession';
+import { supabase } from '../lib/supabase.ts';
+import { useSession } from './useSession.ts';
 
 export interface Subscription {
   status: string;

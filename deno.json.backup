@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
+  },
+  "imports": {
+    "react": "npm:react",
+    "react-dom": "npm:react-dom",
+    "react-router-dom": "npm:react-router-dom@^6.22.4",
+    "lucide-react": "npm:lucide-react"
+  },
+  "tasks": {
+    "start": "deno run --allow-net --allow-read --allow-env src/main.tsx"
+  }
+}

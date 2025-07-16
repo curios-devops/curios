@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { useUserType } from "../../hooks/useUserType.ts";
+import { useSession } from "../../hooks/useSession.ts";
 import type { LucideIcon } from "lucide-react";
 
-interface NavItemProps {
+export interface NavItemProps {
   to: string;
   icon: LucideIcon;
   label: string;
@@ -25,12 +25,13 @@ export default function NavItem({
   onAuthRequired,
 }: NavItemProps) {
   const navigate = useNavigate();
-  const userType = useUserType();
+  const { session } = useSession();
+  const isGuest = !session;
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
 
-    if (requiresAuth && userType === "guest") {
+    if (requiresAuth && isGuest) {
       onAuthRequired?.(authContext);
       return;
     }
@@ -52,7 +53,7 @@ export default function NavItem({
     >
       <Icon size={24} />
       {!isCollapsed && (
-        <span className="text-[15px] font-medium tracking-[-0.01em]">
+        <span className="text-sm font-medium tracking-[-0.01em]">
           {label}
         </span>
       )}

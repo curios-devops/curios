@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "https://esm.sh/lucide-react@0.330.0";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface CollapseButtonProps {
   isCollapsed: boolean;

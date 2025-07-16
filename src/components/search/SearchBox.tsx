@@ -1,15 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Focus, Paperclip } from 'lucide-react';
-import ActionButton from './ActionButton';
-import ToggleSwitch from './ToggleSwitch';
-import SearchButton from './SearchButton';
-import SearchTextArea from './SearchTextArea';
-import ProModal from '../subscription/ProModal';
-import ProTooltip from '../subscription/ProTooltip';
-import { useSession } from '../../hooks/useSession';
-import { useSearchLimit } from '../../hooks/useSearchLimit';
-import { useSubscription } from '../../hooks/useSubscription';
+import ActionButton from '../SearchInput/ActionButton.tsx';
+import ToggleSwitch from '../SearchInput/ToggleSwitch.tsx';
+import SearchButton from '../SearchInput/SearchButton.tsx';
+import SearchTextArea from '../SearchInput/SearchTextArea.tsx';
+import ProModal from '../subscription/ProModal.tsx';
+import ProTooltip from '../subscription/ProTooltip.tsx';
+import { useSession } from '../../hooks/useSession.ts';
+import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
+import { useSubscription } from '../../hooks/useSubscription.ts';
 
 export default function SearchBox() {
   const navigate = useNavigate();
@@ -59,30 +59,31 @@ export default function SearchBox() {
     setIsPro(!isPro);
   };
 
-  const handleTooltipEnter = () => {
-    // Clear any existing timeout
-    if (tooltipTimeoutRef.current) {
-      window.clearTimeout(tooltipTimeoutRef.current);
-    }
-    setShowProTooltip(true);
+  const handleMouseEnter = () => {
+    tooltipTimeoutRef.current = globalThis.setTimeout(() => {
+      setShowProTooltip(true);
+    }, 200);
   };
 
-  const handleTooltipLeave = () => {
-    // Set a timeout before hiding the tooltip
-    tooltipTimeoutRef.current = window.setTimeout(() => {
-      setShowProTooltip(false);
-    }, 1000); // 1 second delay
+  const handleMouseLeave = () => {
+    globalThis.clearTimeout(tooltipTimeoutRef.current);
+    setShowProTooltip(false);
   };
 
   return (
     <div className="relative w-full">
+      {/* Title section */}
+      <div className="w-full flex justify-center mb-8">
+        <h1 className="text-3xl font-bold text-center">
+          <span className="text-blue-600">AI</span> Web Search
+        </h1>
+      </div>
       <SearchTextArea
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        isPro={isPro}
       />
-
+      {/* Button bar - no border or division line */}
       <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ActionButton
@@ -100,8 +101,8 @@ export default function SearchBox() {
         <div className="flex items-center gap-4">
           <div 
             className="relative"
-            onMouseEnter={handleTooltipEnter}
-            onMouseLeave={handleTooltipLeave}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
             <ToggleSwitch
               isEnabled={isPro}

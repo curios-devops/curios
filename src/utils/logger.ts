@@ -16,7 +16,7 @@ function safeStringify(data: any): string {
 
     // Handle circular references and limit string length
     const seen = new WeakSet();
-    const stringified = JSON.stringify(data, (key, value) => {
+    const stringified = JSON.stringify(data, (_key, value) => {
       // Handle Error objects in nested structures
       if (value instanceof Error) {
         return {
@@ -108,7 +108,7 @@ class Logger {
 export const logger = new Logger();
 
 // Set log level based on environment
-if (import.meta.env.DEV) {
+if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
   logger.setLogLevel('debug');
 } else {
   logger.setLogLevel('info');

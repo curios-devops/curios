@@ -1,17 +1,20 @@
-import React from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { AuthProvider } from './components/auth/AuthContext';
-import App from './App';
-import Home from './pages/Home';
-import Results from './pages/Results';
-import DeepResearchResults from './pages/DeepResearchResults';
-import ProResults from './pages/ProResults';
-import Settings from './pages/Settings';
-import Policies from './pages/Policies';
-import AuthCallback from './components/auth/AuthCallback';
-import SubscriptionSuccess from './pages/SubscriptionSuccess';
-import { logger } from './utils/logger';
+import { AuthProvider } from './components/auth/AuthContext.tsx';
+import App from './App.tsx';
+import Home from './pages/Home.tsx';
+import SearchResults from './pages/SearchResults.tsx';
+import DeepResearchResults from './pages/DeepResearchResults.tsx';
+import ProSearchResults from './pages/ProSearchResults.tsx';
+import Settings from './pages/Settings.tsx';
+import Policies from './pages/Policies.tsx';
+import AuthCallback from './components/auth/AuthCallback.tsx';
+import SubscriptionSuccess from './pages/SubscriptionSuccess.tsx';
+import { logger } from './utils/logger.ts';
+import InsightsResults from './pages/InsightsResults.tsx';
+import ResearcherResults from './pages/ResearcherResults.tsx';
+import LabsResults from './pages/LabsResults.tsx';
 import './index.css';
 
 // Configure router with future flags
@@ -21,26 +24,25 @@ const router = createBrowserRouter(
       element: <App />,
       children: [
         { path: '/', element: <Home /> },
-        { path: '/search', element: <Results /> },
-        { path: '/pro-search', element: <ProResults /> },
+        { path: '/search', element: <SearchResults /> },
+        { path: '/pro-search', element: <ProSearchResults /> },
         { path: '/deep-research', element: <DeepResearchResults /> },
+        { path: '/insights-results', element: <InsightsResults /> },
+        { path: '/research-results', element: <ResearcherResults /> },
+        { path: '/researcher-results', element: <ResearcherResults /> },
+        { path: '/labs-results', element: <LabsResults /> },
+        { path: '/pro-labs-results', element: <LabsResults /> },
         { path: '/settings', element: <Settings /> },
         { path: '/policies', element: <Policies /> },
         { path: '/auth/callback', element: <AuthCallback /> },
         { path: '/subscription/success', element: <SubscriptionSuccess /> }
       ]
     }
-  ],
-  {
-    future: {
-      v7_startTransition: true,
-      v7_relativeSplatPath: true
-    }
-  }
+  ]
 );
 
 // Configure error handling for unhandled promises
-window.addEventListener('unhandledrejection', (event) => {
+globalThis.addEventListener('unhandledrejection', (event) => {
   logger.error('Unhandled Promise Rejection:', {
     reason: event.reason,
     promise: event.promise,
@@ -50,7 +52,7 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 // Configure error handling for uncaught errors
-window.addEventListener('error', (event) => {
+globalThis.addEventListener('error', (event) => {
   logger.error('Uncaught Error:', {
     message: event.message,
     filename: event.filename,
@@ -61,44 +63,52 @@ window.addEventListener('error', (event) => {
   event.preventDefault();
 });
 
-// Error boundary for the entire app
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
+// Error boundary functional component
+function ErrorBoundary({ children }: ErrorBoundaryProps) {
+  const [hasError, setHasError] = useState(false);
 
-  componentDidCatch(error: Error) {
-    logger.error('React Error Boundary caught error:', {
-      error: error.message,
-      stack: error.stack
-    });
-  }
+  useEffect(() => {
+    const errorHandler = (error: ErrorEvent) => {
+      logger.error('Uncaught Error caught by ErrorBoundary:', {
+        message: error.message,
+        filename: error.filename,
+        lineno: error.lineno,
+        colno: error.colno,
+        timestamp: new Date().toISOString()
+      });
+      setHasError(true);
+    };
 
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-black flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-medium text-white mb-4">Something went wrong</h1>
-            <p className="text-gray-400 mb-4">We're sorry, but something went wrong. Please try refreshing the page.</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-[#007BFF] text-white px-4 py-2 rounded-lg hover:bg-[#0056b3] transition-colors"
-            >
-              Refresh Page
-            </button>
-          </div>
+    globalThis.addEventListener('error', errorHandler);
+    return () => globalThis.removeEventListener('error', errorHandler);
+  }, []);
+
+  // Note: For more comprehensive error catching in functional components (including within event handlers),
+  // you might need a dedicated library like react-error-boundary or implement a componentDidCatch equivalent
+  // using a class component as a wrapper if needed for specific cases not covered by global error handling.
+
+  if (hasError) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-medium text-white mb-4">Something went wrong</h1>
+          <p className="text-gray-400 mb-4">We're sorry, but something went wrong. Please try refreshing the page.</p>
+          <button
+            onClick={() => globalThis.location.reload()}
+            className="bg-[#007BFF] text-white px-4 py-2 rounded-lg hover:bg-[#0056b3] transition-colors"
+          >
+            Refresh Page
+          </button>
         </div>
-      );
-    }
-
-    return this.props.children;
+      </div>
+    );
   }
+
+  return <>{children}</>;
 }
 
 // Get the root element
@@ -116,11 +126,9 @@ const root = createRoot(rootElement);
 
 // Wrap app with error boundary and auth provider
 root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
-    </ErrorBoundary>
-  </React.StrictMode>
+  <ErrorBoundary>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  </ErrorBoundary>
 );

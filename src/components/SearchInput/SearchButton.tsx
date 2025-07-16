@@ -13,11 +13,9 @@ export default function SearchButton({ onClick, disabled, isActive }: SearchButt
       onClick={onClick}
       disabled={disabled}
       className={`
-        p-2 rounded-lg 
+        w-8 h-8 rounded-lg 
         transition-all duration-250 ease-in-out
-        transform hover:scale-102
         flex items-center justify-center
-        translate-y-[1px]
         ${disabled 
           ? 'opacity-50 cursor-not-allowed' 
           : 'hover:shadow-lg'
@@ -31,7 +29,7 @@ export default function SearchButton({ onClick, disabled, isActive }: SearchButt
       aria-label="Search"
     >
       <ArrowRight 
-        size={16} 
+        size={18} 
         className={`transition-colors duration-250 ease-in-out ${
           isActive 
             ? 'text-white' 

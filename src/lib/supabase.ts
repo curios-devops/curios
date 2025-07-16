@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { env } from '../config/env';
-import { logger } from '../utils/logger';
+import { env } from "../config/env.ts";
+import { logger } from "../utils/logger.ts";
 
 // Validate required environment variables
 if (!env.supabase.url || !env.supabase.anonKey) {

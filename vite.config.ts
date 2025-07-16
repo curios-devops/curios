@@ -5,7 +5,6 @@ import process from "node:process";
 
 // Security headers configuration
 const securityHeaders = {
-  "Cross-Origin-Embedder-Policy": "credentialless",
   "Cross-Origin-Opener-Policy": "same-origin",
   "Cross-Origin-Resource-Policy": "cross-origin",
   "Access-Control-Allow-Origin": "*",
@@ -19,19 +18,24 @@ const securityHeaders = {
 export default defineConfig(({ mode }) => {
   // Load env file based on mode
   const _env = loadEnv(mode, process.cwd(), "");
+  
 
   return {
     plugins: [react()],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+        "react": path.resolve(__dirname, "./node_modules/react"),
+        "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
+        "react/jsx-runtime": path.resolve(__dirname, "./node_modules/react/jsx-runtime"),
+        "react/jsx-dev-runtime": path.resolve(__dirname, "./node_modules/react/jsx-dev-runtime"),
       },
       extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
+      dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
     },
     server: {
       headers: {
         ...securityHeaders,
-        "Cross-Origin-Embedder-Policy": "credentialless",
       },
       hmr: {
         overlay: false,
@@ -50,13 +54,13 @@ export default defineConfig(({ mode }) => {
         usePolling: true,
         interval: 1000,
       },
-      port: 5173,
+      port: parseInt(_env.PORT || "5173", 10),
     },
     preview: {
       headers: securityHeaders,
-      port: 5173,
       host: true,
       strictPort: true,
+      port: parseInt(_env.PORT || "5173", 10),
       open: false,
     },
     optimizeDeps: {
@@ -65,6 +69,8 @@ export default defineConfig(({ mode }) => {
         "react-dom",
         "react-router-dom",
         "@stripe/stripe-js",
+        "@supabase/supabase-js",
+        "@supabase/ssr",
         "lucide-react",
       ],
       exclude: [],

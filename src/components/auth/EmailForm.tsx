@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
-import { signInWithEmail } from '../../services/auth/authService';
-import { validateEmail } from '../../utils/validation';
-import EmailInput from './EmailInput';
-
-interface EmailFormProps {
-  onSubmit: (email: string) => void;
+import { useState } from 'react';
+import { signInWithEmail } from '../../services/auth/authService.ts';
+import { validateEmail } from '../../utils/validation.ts';
+import EmailInput from './components/EmailInput.tsx'; // Assuming this path is correct based on the previous fix
+import { useTranslation } from '../../hooks/useTranslation.ts';
+ 
+type EmailFormProps = {
+ onSubmit: (email: string) => void;
 }
 
 export default function EmailForm({ onSubmit }: EmailFormProps) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = async () => {
     const validation = validateEmail(email);
@@ -40,7 +42,7 @@ export default function EmailForm({ onSubmit }: EmailFormProps) {
     <div className="space-y-3">
       <EmailInput
         value={email}
-        onChange={(value) => {
+        onChange={(value: string) => {
           setEmail(value);
           setError('');
         }}
@@ -49,6 +51,7 @@ export default function EmailForm({ onSubmit }: EmailFormProps) {
       />
 
       <button
+        type="button"
         onClick={handleSubmit}
         disabled={!email.trim() || loading}
         className={`
@@ -61,8 +64,7 @@ export default function EmailForm({ onSubmit }: EmailFormProps) {
             : 'bg-[#222222] text-gray-500 cursor-not-allowed'
           }
         `}
-      >
-        {loading ? 'Sending magic link...' : 'Continue with email'}
+ >{loading ? t('please_wait') : t('or_continue_with_email')}
       </button>
     </div>
   );

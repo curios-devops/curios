@@ -46,3 +46,5 @@ export interface Perspective {
   description: string;
   sources?: Source[];
 }
+
+export type UserType = 'free' | 'premium';

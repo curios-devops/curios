@@ -1,3 +1,4 @@
+import React from 'react';
 import { Globe, ExternalLink } from 'lucide-react';
 
 // Helper function to get domain info
@@ -66,7 +67,7 @@ export default function SourceCard({ source }: SourceCardProps) {
         {/* Expanded View (Shows on Hover) */}
         {source.url !== '#' && (
           <div className="absolute left-[-50%] right-[-50%] top-full mt-2 z-10 bg-white dark:bg-[#333333] rounded-lg p-4 border border-[#0095FF]/20 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-xl pointer-events-none">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3"> 
               <div className="flex items-center gap-2">
                 {hostname ? (
                   <img

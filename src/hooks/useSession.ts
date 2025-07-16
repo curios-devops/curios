@@ -1,36 +1,27 @@
 import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase.ts";
 
-interface User {
-  email: string | null;
-  id: string;
-}
-
-interface Session {
-  user: User;
-}
+import { Session } from "@supabase/supabase-js";
 
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // In a real app, you would fetch the session from your auth provider
     const fetchSession = async () => {
       try {
-        // Simulate session check
-        const storedSession = localStorage.getItem("session");
-        if (storedSession) {
-          setSession(JSON.parse(storedSession));
-        }
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
       } catch (error) {
         console.error("Error fetching session:", error);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
     fetchSession();
   }, []);
 
-  return { session, loading };
+  return { session, isLoading };
 }

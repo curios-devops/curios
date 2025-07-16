@@ -1,9 +1,12 @@
-import { useLanguage } from '../../contexts/LanguageContext';
-import { languages, Language } from '../../types/language';
+import { useLanguage } from '../../contexts/LanguageContext.tsx';
+import React from "react";
+import { languages as _languages, Language } from '../../types/language.ts';
 import { useState, useRef, useEffect } from 'react';
 
 export function LanguageSelector() {
   const { currentLanguage, setLanguage } = useLanguage();
+  console.log('Current Language:', currentLanguage);
+
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -18,31 +21,62 @@ export function LanguageSelector() {
   }, []);
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={ref} >
       <button
-        onClick={() => setOpen((v) => !v)}
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-xl bg-gray-200 dark:bg-[#222] border border-gray-300 dark:border-gray-700 shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 ${open ? 'ring-2 ring-blue-500 scale-110' : ''}`}
-        title={currentLanguage.name}
-        aria-label={`Switch language, current: ${currentLanguage.name}`}
-        aria-pressed={open}
-        style={{ boxShadow: open ? '0 0 0 4px #3b82f633' : '0 1px 4px #0001', overflow: 'hidden', padding: 0 }}
+      type='button'
+      onClick={() => setOpen(!open)}
+      className={`w-7 h-7 rounded-full flex items-center justify-center text-xl bg-gray-200 dark:bg-[#1a1a1a] border border-gray-300 dark:border-gray-700 shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 ${open ? 'ring-2 ring-blue-500 scale-110' : ''}`}
       >
-        <span className="text-xl drop-shadow-sm" style={{ filter: 'drop-shadow(0 1px 2px #0005)' }}>{currentLanguage.flag}</span>
+        {currentLanguage.flag.startsWith('/') ? (
+ // Prioritize /ca.svg for Catalan
+          currentLanguage.code === 'ca' ? (
+ <img src="/ca.svg" alt="Catalan flag" className="w-6 h-6 rounded-full object-cover" />
+ ) : (
+ <img src={currentLanguage.flag} alt={currentLanguage.name} className="w-6 h-6 rounded-full object-cover" />
+ )
+        ) : (
+          <div className="overflow-hidden w-6 h-6 rounded-full relative flex-shrink-0">
+            <span style={{ fontSize: '22px', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.6)' }}>{currentLanguage.flag}</span>
+          </div>
+        )}
       </button>
       {open && (
-        <div className="absolute left-1/2 -translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 min-w-[44px] flex flex-col py-1 animate-fade-in">
-          {languages.filter(l => l.code !== currentLanguage.code).map((lang: Language) => (
-            <button
-              key={lang.code}
-              onClick={() => { setLanguage(lang); setOpen(false); }}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xl hover:bg-gray-100 dark:hover:bg-[#222] transition-colors m-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              title={lang.name}
-              aria-label={`Switch to ${lang.name}`}
-              style={{ boxShadow: '0 1px 4px #0001' }}
-            >
-              <span className="text-2xl drop-shadow-sm" style={{ filter: 'drop-shadow(0 1px 2px #0005)' }}>{lang.flag}</span>
-            </button>
-          ))}
+        <div className="absolute left-1/2 -translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-2 animate-fade-in" style={{ border: '1px solid red' }}>
+          <div className="flex flex-wrap gap-2 justify-center p-2 mb-1">
+            {_languages /* Removed min-w-[30px] */
+              .filter((l: Language) => l.code !== currentLanguage.code)
+              .map((lang: Language) => (
+                <button
+                  type="button"
+                  key={lang.code}
+                  onClick={() => {
+                    setLanguage(lang);
+                    setOpen(false);
+                  }} /* Added px-2 */
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors hover:scale-105 dark:hover:bg-[#2a2a2a] dark:focus:ring-blue-700"
+                  title={lang.name}
+                >
+                  {lang.code === 'ca' ? ( // Check specifically for 'ca' code
+                    <img
+                      src="/ca.svg" // Use the new SVG for Catalan
+                      alt="Catalan flag"
+                      className="w-6 h-6 rounded-full object-cover"
+                    />
+                  ) : lang.flag.startsWith('/') ? (
+                    <img
+                      src={lang.flag}
+                      alt={`Language ${lang.code} flag`}
+                      className="w-6 h-6 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="overflow-hidden w-6 h-6 rounded-full relative">
+                      {/* Added flex-shrink-0 */}
+                      <span style={{ fontSize: '22px', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.6)' }}>{lang.flag}</span>
+                    </div>
+                  )}
+                </button>
+              ))}
+          </div>
         </div>
       )}
     </div>

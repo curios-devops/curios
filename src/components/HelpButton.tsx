@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { HelpCircle } from "lucide-react";
 
@@ -28,20 +28,21 @@ export default function HelpButton() {
   return (
     <div className="relative" ref={menuRef}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors"
+        className="w-7 h-7 rounded-full bg-theme-theme-toggle flex items-center justify-center transition-colors"
         aria-label="Help menu"
       >
-        <HelpCircle size={16} className="text-gray-400" />
+        <HelpCircle size={14} className="text-on-surface text-gray-400" />
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full right-0 mb-2 w-48 bg-[#222222] rounded-lg shadow-lg border border-gray-800 overflow-hidden">
+        <div className="absolute bottom-full right-0 mb-2 w-48 bg-surface rounded-lg shadow-lg border border-outline overflow-hidden">
           {menuItems.map((item, index) => (
             <Link
               key={index}
               to={item.href}
-              className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#333333] hover:text-white transition-colors"
+              className="block px-4 py-2 text-sm text-on-surface hover:bg-secondary hover:text-white transition-colors"
               onClick={() => setIsOpen(false)}
             >
               {item.label}

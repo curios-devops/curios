@@ -1,16 +1,16 @@
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger.ts';
 
 interface QueueTask<T> {
   operation: () => Promise<T>;
-  resolve: (value: T | PromiseLike<T>) => void;
+  resolve: (value: T) => void;
   reject: (error: Error) => void;
   retryCount: number;
   abortController: AbortController;
 }
 
 export class RateLimitQueue {
-  private queue: QueueTask<any>[] = [];
-  private processing = false;
+  private queue: QueueTask<unknown>[] = []; // Queue of tasks
+  private processing = false
   private lastCallTime = 0; // timestamp of the last API call
   private readonly callInterval = 1000; // 1 second interval between API calls
   private readonly retryDelay = 1000; // 1 second delay before retrying
@@ -23,13 +23,13 @@ export class RateLimitQueue {
     'status code 526'
   ];
 
-  async add<T>(operation: () => Promise<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
+   add(operation: () => Promise<unknown>): Promise<unknown> {
+    return new Promise((resolve, reject) => {
       const abortController = new AbortController();
 
       this.queue.push({
         operation,
-        resolve,
+        resolve: (value) => resolve(value),
         reject,
         retryCount: 0,
         abortController,
@@ -127,8 +127,8 @@ export class RateLimitQueue {
 export const rateLimitQueue = new RateLimitQueue();
 
 // Clean up on page unload
-if (typeof window !== 'undefined') {
-  window.addEventListener('unload', () => {
+if (typeof globalThis !== 'undefined') {
+  globalThis.addEventListener('beforeunload', () => {
     rateLimitQueue.cleanup();
   });
 }

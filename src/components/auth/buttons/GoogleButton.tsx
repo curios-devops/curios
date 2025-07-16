@@ -1,13 +1,15 @@
-import React from 'react';
-import { signInWithGoogle } from '../../../services/auth/google';
+import { signInWithGoogle } from '../../../services/auth/google.ts';
+import { useTranslation } from '../../../hooks/useTranslation.ts';
+import { useTheme } from '../../theme/ThemeContext.tsx';
 
 interface GoogleButtonProps {
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }
 
-export default function GoogleButton({ onSuccess, onError }: GoogleButtonProps) {
-  const handleClick = async () => {
+export default function GoogleButton({ onSuccess, onError }: GoogleButtonProps) {const { t } = useTranslation();
+  const { theme } = useTheme();
+    const handleClick = async () => {
     try {
       const response = await signInWithGoogle();
       if (response.success) {
@@ -22,8 +24,13 @@ export default function GoogleButton({ onSuccess, onError }: GoogleButtonProps) 
 
   return (
     <button
-      onClick={handleClick}
-      className="w-full flex items-center justify-center gap-3 bg-[#222222] text-white py-3.5 px-4 rounded-lg hover:bg-[#2a2a2a] transition-colors border border-gray-700"
+      className={`w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-lg transition-colors ${
+        theme === 'dark' ? 'bg-[#222222] text-white border-gray-700 hover:bg-[#2a2a2a]' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+      onClick={handleClick}type="button"// Make text responsive: smaller font on smaller screens
+
+
+      // Make text responsive: smaller font on smaller screens
+      // Consider hiding text on very small screens if needed, e.g., using md:block class and a span
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path
@@ -43,7 +50,7 @@ export default function GoogleButton({ onSuccess, onError }: GoogleButtonProps) 
           d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
         />
       </svg>
-      Continue with Google
+      <span className="text-sm sm:text-base">{t('continue_with_google')}</span>
     </button>
   );
 }

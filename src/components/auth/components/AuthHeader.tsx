@@ -1,4 +1,5 @@
-import React from 'react';
+import { useTranslation } from '../../../hooks/useTranslation.ts';
+import { useTheme } from '../../theme/ThemeContext.tsx';
 
 interface AuthHeaderProps {
   mode: 'signin' | 'signup';
@@ -6,15 +7,18 @@ interface AuthHeaderProps {
 }
 
 export default function AuthHeader({ mode, context = 'default' }: AuthHeaderProps) {
+  const { t } = useTranslation();
+  const { theme } = useTheme();
+
   const messages = {
     default: {
       signin: {
-        title: 'Welcome back',
-        subtitle: 'Sign in to continue'
+        title: t('welcome_back'),
+        subtitle: t('sign_in_to_continue')
       },
       signup: {
-        title: 'Welcome',
-        subtitle: 'Sign up to CuriosAI'
+        title: t('welcome'),
+        subtitle: t('sign_up_to_curios_ai')
       }
     },
     pro: {
@@ -53,7 +57,7 @@ export default function AuthHeader({ mode, context = 'default' }: AuthHeaderProp
 
   return (
     <div className="text-center">
-      <h2 className="text-3xl font-medium text-white mb-2">
+      <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
         {content.title}
       </h2>
       <p className="text-gray-400 text-sm">

@@ -1,29 +1,21 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import SearchBox from './SearchInput/SearchBox';
-import HelpButton from './HelpButton';
+import SearchBox from './SearchInput/SearchBox.tsx';
+import HelpButton from './HelpButton.tsx';
 
 interface MainContentProps {
-  isCollapsed: boolean;
+  _isCollapsed: boolean;
 }
 
-export default function MainContent({ isCollapsed }: MainContentProps) {
-  const navigate = useNavigate();
-
-  const handleSearch = (query: string) => {
-    navigate(`/search?q=${encodeURIComponent(query)}`);
-  };
-
+export default function MainContent({ _isCollapsed }: MainContentProps) {
   return (
     <div className="min-h-screen bg-black relative">
       <div className="max-w-4xl mx-auto px-8 py-12">
-        <div className="max-w-2xl mx-auto mt-40 mb-8">
-          <h1 className="text-3xl font-medium mb-8 animate-fade-in text-center">
+        <div className="max-w-2xl mx-auto mt-48 mb-16">
+          <h1 className="text-2xl font-medium mb-12 animate-fade-in text-center">
             <span className="text-[#007BFF]">AI</span>
             <span className="text-white"> - Web Search</span>
           </h1>
 
-          <SearchBox onSearch={handleSearch} />
+          <SearchBox />
         </div>
       </div>
       

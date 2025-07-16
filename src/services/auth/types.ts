@@ -1,11 +1,16 @@
 export interface AuthResponse {
-  success: boolean;
-  error?: string;
+  user?: object;
+  session?: object;
+  error?: object | null;
 }
 
-export interface VerificationDetails {
-  email: string;
-  type: 'magiclink' | 'otp';
+export interface SignOutResponse {
+  error: object | null;
 }
 
-export type AuthMode = 'signin' | 'signup';
+export interface CookieOptions {
+  maxAge: number;
+  httpOnly: boolean;
+  sameSite: 'lax' | 'strict' | 'none';
+  secure: boolean;
+}

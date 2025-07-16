@@ -2,14 +2,16 @@ import { useEffect, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
 
 interface ProTooltipProps {
-  remainingSearches: number;
+  remainingSearches: number | null;
   maxSearches: number;
-  onUpgrade: () => void;
+  onUpgrade?: () => void; // Make onUpgrade optional as it's not needed for premium users
   onSignIn?: () => void;
   onClose?: () => void;
   isLoggedIn?: boolean;
   subscription?: { isActive: boolean };
+  _alwaysShowUpgrade?: boolean; // Add _alwaysShowUpgrade property (prefixed to indicate unused)
 }
+// Remove the duplicate export interface line
 
 export default function ProTooltip({ 
   remainingSearches,
@@ -18,10 +20,12 @@ export default function ProTooltip({
   onSignIn,
   onClose,
   isLoggedIn = false,
-  subscription
+  subscription,
+  _alwaysShowUpgrade = false
 }: ProTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const percentage = (remainingSearches / maxSearches) * 100;
+  const safeRemainingSearches = remainingSearches ?? 0;
+  const percentage = (safeRemainingSearches / maxSearches) * 100;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -52,6 +56,7 @@ export default function ProTooltip({
           </p>
           
           <button
+            type="button"
             onClick={onSignIn}
             className="w-full bg-[#007BFF] text-white py-2.5 rounded-lg hover:bg-[#0056b3] transition-colors text-sm font-medium"
           >
@@ -83,9 +88,9 @@ export default function ProTooltip({
             <div className="w-full bg-gray-100 dark:bg-[#222222] rounded-full h-1.5 transition-colors duration-200">
               <div 
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  remainingSearches === 0 
+                  safeRemainingSearches === 0 
                     ? 'bg-red-500' 
-                    : remainingSearches <= maxSearches / 3
+                    : safeRemainingSearches <= maxSearches / 3
                       ? 'bg-yellow-500'
                       : 'bg-[#007BFF]'
                 }`}
@@ -93,13 +98,13 @@ export default function ProTooltip({
               />
             </div>
             <p className={`text-sm ${
-              remainingSearches === 0 
+              safeRemainingSearches === 0 
                 ? 'text-red-500' 
-                : remainingSearches <= maxSearches / 3
+                : safeRemainingSearches <= maxSearches / 3
                   ? 'text-yellow-500'
                   : 'text-gray-600 dark:text-gray-400'
             } transition-colors duration-200`}>
-              {remainingSearches} searches left today
+              {safeRemainingSearches} searches left today
             </p>
           </div>
         </div>
@@ -127,27 +132,28 @@ export default function ProTooltip({
           <div className="w-full bg-gray-100 dark:bg-[#222222] rounded-full h-1.5 transition-colors duration-200">
             <div 
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                remainingSearches === 0 
+                safeRemainingSearches === 0 
                   ? 'bg-red-500' 
-                  : remainingSearches <= maxSearches / 3
+                  : safeRemainingSearches <= maxSearches / 3
                     ? 'bg-yellow-500'
                     : 'bg-[#007BFF]'
               }`}
-              style={{ width: `${(remainingSearches / maxSearches) * 100}%` }}
+              style={{ width: `${(safeRemainingSearches / maxSearches) * 100}%` }}
             />
           </div>
           <p className={`text-sm ${
-            remainingSearches === 0 
+            safeRemainingSearches === 0 
               ? 'text-red-500' 
-              : remainingSearches <= maxSearches / 3
+              : safeRemainingSearches <= maxSearches / 3
                 ? 'text-yellow-500'
                 : 'text-gray-600 dark:text-gray-400'
           } transition-colors duration-200`}>
-            {remainingSearches} searches left today
+            {safeRemainingSearches} searches left today
           </p>
         </div>
 
         <button
+          type="button"
           onClick={onUpgrade}
           className="w-full bg-[#007BFF] text-white py-2.5 rounded-lg hover:bg-[#0056b3] transition-colors text-sm font-medium"
         >
