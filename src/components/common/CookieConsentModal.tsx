@@ -56,7 +56,7 @@ export default function CookieConsentModal({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-3 right-3 z-50 animate-fade-in">
+    <div className="fixed bottom-2 left-2 sm:left-56 z-40 animate-fade-in">
       <div className="bg-[#2a2a2a] border border-gray-700 rounded-md shadow-xl max-w-[280px] p-3 relative">
         {/* Header with icon */}
         <div className="flex items-center gap-1.5 mb-2">

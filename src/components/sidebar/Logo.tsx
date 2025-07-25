@@ -1,12 +1,12 @@
 
 export default function Logo({ isCollapsed }: { isCollapsed: boolean }) {
   return (
-    <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-      <img src='/compass.svg' className="h-10 w-10"/>
+    <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2'}`}>
+      <img src='/compass.svg' className="h-7 w-7"/>
       {!isCollapsed && (
         <div className="flex items-center tracking-tight">
-          <span className="text-gray-900 dark:text-white font-semibold text-xl tracking-[-0.02em]">Curios</span>
-          <span className="font-semibold text-xl tracking-[-0.02em] text-blue-500">AI</span>
+          <span className="font-helvetica font-semibold text-xl tracking-tight text-gray-900 dark:text-white">Curios</span>
+          <span className="font-helvetica font-semibold text-xl tracking-tight text-[#0095FF] ml-0.5">AI</span>
         </div>
       )}
     </div>

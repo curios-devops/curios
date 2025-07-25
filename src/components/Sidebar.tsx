@@ -7,7 +7,6 @@ import NavItem from "./sidebar/NavItem.tsx";
 import CollapseButton from "./sidebar/CollapseButton.tsx";
 import SignInModal from "./auth/SignInModal.tsx";
 import { useLanguage } from "../contexts/LanguageContext.tsx";
-import SignUpModal from "./auth/SignUpModal.tsx";
 import AuthButtons from "./auth/AuthButtons.tsx";
 import Logo from "./sidebar/Logo.tsx";
 import UserMenu from "./auth/UserMenu.tsx";
@@ -24,13 +23,10 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
  const { currentLanguage } = useLanguage();
  const { t } = useTranslation();
  const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
- const [showSignUpModal, setShowSignUpModal] = useState<boolean>(false);
 
  const handleSignInClick = () => setShowSignInModal(true);
- const handleSignUpClick = () => setShowSignUpModal(true);
 
  const handleCloseSignInModal = () => setShowSignInModal(false);
- const handleCloseSignUpModal = () => setShowSignUpModal(false);
 
   return (
     <>
@@ -104,21 +100,19 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
             )}
             <div className="border-t border-gray-200 dark:border-gray-800 w-full transition-colors duration-200">
             </div>
+            {/* Only render Sign In button in the sidebar for guests */}
             {session
-// Temporarily commented out session check for debugging
-? ( // Check if session exists
-                <UserMenu
-                  email={session.user.email || ""}
-                  isCollapsed={isCollapsed}
-                />
-              )
+              ? <UserMenu email={session.user.email || ""} isCollapsed={isCollapsed} />
               : (
-                <AuthButtons
-                  session={session}
-                  isCollapsed={isCollapsed}
-                  onSignInClick={handleSignInClick}
-                  onSignUpClick={handleSignUpClick}
-                />
+                <div className="flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSignInClick}
+                    className="w-full py-2 px-3 rounded-lg transition-all duration-150 text-xs font-medium bg-gray-100 dark:bg-[#222222] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#1a1a1a] hover:text-[#007BFF] dark:hover:text-[#007BFF]"
+                  >
+                    Sign In
+                  </button>
+                </div>
               )}
           </div>
         </div>
@@ -129,11 +123,6 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
  isOpen={showSignInModal}
         currentLanguage={currentLanguage}
  onClose={handleCloseSignInModal}
-      />
- <SignUpModal
- isOpen={showSignUpModal}
-        currentLanguage={currentLanguage}
- onClose={handleCloseSignUpModal}
       />
     </>
   );

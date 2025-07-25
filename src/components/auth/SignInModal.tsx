@@ -8,6 +8,7 @@ import VerificationModal from './components/VerificationModal.tsx';
 import { Language } from '../../types/language.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import { useTranslation, TranslationKey } from '../../hooks/useTranslation.ts';
+import SignUpModal from './SignUpModal.tsx';
 
 
 interface SignInModalProps {
@@ -22,6 +23,7 @@ export default function SignInModal({ isOpen, onClose, context = 'default' }: Si
   const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
+  const [showSignUp, setShowSignUp] = useState(false);
 
   if (!isOpen) return null;
 
@@ -37,6 +39,10 @@ export default function SignInModal({ isOpen, onClose, context = 'default' }: Si
     return <VerificationModal email={verificationEmail} onClose={onClose} />;
   }
 
+  if (showSignUp) {
+    return <SignUpModal isOpen={true} onClose={() => setShowSignUp(false)} currentLanguage={{ code: 'en', name: 'English', flag: '🇺🇸' }} />;
+  }
+
   return (
     <div className={`fixed inset-0 flex items-center justify-center z-50 ${theme === 'dark' ? 'bg-black/70' : 'bg-gray-200/70'}`}>
       <div className={`${theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'} w-full max-w-[480px] p-10 rounded-2xl relative`}>
@@ -49,6 +55,13 @@ export default function SignInModal({ isOpen, onClose, context = 'default' }: Si
           <X size={20} color={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
         </button>
 
+        <div className="text-center mb-8">
+          <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+            {t("welcome_back" as TranslationKey)}
+          </h2>
+          <p className="text-gray-400 text-sm">Log in to your account</p>
+        </div>
+
         <AuthHeader mode="signin" context={context} />
 
         {error && (
@@ -60,13 +73,23 @@ export default function SignInModal({ isOpen, onClose, context = 'default' }: Si
         <div className="mt-10 space-y-6">
           <GoogleButton 
             onError={handleGoogleError}
-            onSuccess={onClose} // Assuming successful sign-in also closes the modal
+            onSuccess={onClose}
           />
           <Divider text={t("or_continue_with_email" as TranslationKey)} />
           <EmailForm 
             mode="login"
             onSubmit={handleEmailSubmit} 
           />
+          <div className="pt-4 text-center text-xs text-gray-500">
+            Don’t have an account?
+            <button
+              type="button"
+              className="ml-1 font-semibold text-[#007BFF] hover:underline inline-flex items-center gap-1"
+              onClick={() => setShowSignUp(true)}
+            >
+              Sign up for free <span className="ml-0.5" style={{ color: '#007BFF', fontWeight: 700 }}>&rarr;</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

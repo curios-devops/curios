@@ -1,27 +1,27 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import AuthHeader from './components/AuthHeader.tsx';
 import GoogleButton from './buttons/GoogleButton.tsx';
-import { useTranslation } from '../../hooks/useTranslation.ts';
-import EmailForm from './components/EmailForm.tsx'; // Assuming EmailForm is here based on previous errors
+import EmailForm from './components/EmailForm.tsx';
 import Divider from './components/Divider.tsx';
 import VerificationModal from './components/VerificationModal.tsx';
 import { Language } from '../../types/language.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
+import { useTranslation } from '../../hooks/useTranslation.ts';
+import SignInModal from './SignInModal.tsx';
 
 interface SignUpModalProps {
   isOpen: boolean;
   onClose: () => void;
-  context?: 'default' | 'pro';
   currentLanguage: Language;
 }
 
-export default function SignUpModal({ isOpen, onClose, context = 'default' }: SignUpModalProps) {
+export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
+  const [showSignIn, setShowSignIn] = useState(false);
 
-  const { theme } = useTheme(); // _error is never used
+  const { theme } = useTheme();
   const { t } = useTranslation();
-  if (!isOpen) return null;
+  if (!isOpen && !showSignIn) return null;
 
   const handleEmailSubmit = (email: string) => {
     setVerificationEmail(email);
@@ -29,6 +29,9 @@ export default function SignUpModal({ isOpen, onClose, context = 'default' }: Si
 
   if (verificationEmail) {
     return <VerificationModal email={verificationEmail} onClose={onClose} />;
+  }
+  if (showSignIn) {
+    return <SignInModal isOpen={true} onClose={() => { setShowSignIn(false); onClose(); }} currentLanguage={{ code: 'en', name: 'English', flag: '🇺🇸' }} />;
   }
 
   return (
@@ -43,8 +46,11 @@ export default function SignUpModal({ isOpen, onClose, context = 'default' }: Si
           <X size={20} />
         </button> 
 
-        <AuthHeader mode="signup" context={context} />
-      {/* The AuthHeader component itself should handle its own translations */}
+        {/* Custom title and subtitle for sign up */}
+        <div className="text-center mb-8">
+          <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>Welcome</h2>
+          <p className="text-gray-400 text-sm">Create your free account. No credit card needed. Upgrade anytime.</p>
+        </div>
         <div className="mt-10 space-y-6">
           <GoogleButton
             onSuccess={() => { // TODO: Handle successful Google sign-up
@@ -57,6 +63,16 @@ export default function SignUpModal({ isOpen, onClose, context = 'default' }: Si
           />
           <Divider text={t('or_continue_with_email')} />
           <EmailForm onSubmit={handleEmailSubmit} />
+          <div className="pt-4 text-center text-xs text-gray-500">
+            Already have an account?
+            <button
+              type="button"
+              className="ml-1 font-semibold text-[#007BFF] hover:underline inline-flex items-center gap-1"
+              onClick={() => { setShowSignIn(true); }}
+            >
+              Log In <span className="ml-0.5" style={{ color: '#007BFF', fontWeight: 700 }}>&rarr;</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

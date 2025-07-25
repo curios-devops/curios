@@ -13,8 +13,8 @@ export default function AuthHeader({ mode, context = 'default' }: AuthHeaderProp
   const messages = {
     default: {
       signin: {
-        title: t('welcome_back'),
-        subtitle: t('sign_in_to_continue')
+        title: '', // Remove title
+        subtitle: '' // Remove subtitle
       },
       signup: {
         title: t('welcome'),

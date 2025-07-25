@@ -11,13 +11,12 @@ import GuestSignUpBanner from '../components/GuestSignUpBanner.tsx';
 import StandardUserBanner from '../components/StandardUserBanner.tsx';
 import SignUpModal from '../components/auth/SignUpModal.tsx';
 import { useSubscription } from '../hooks/useSubscription.ts';
-import { useTranslation } from '../hooks/useTranslation.ts';
 import { languages } from '../types/language.ts';
+import { useTranslation } from '../hooks/useTranslation.ts';
 
 export default function Home() {
   const { session } = useSession();
   const { subscription } = useSubscription();
-  const { t } = useTranslation();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [bannerEnabled, setBannerEnabled] = useState(false);
   
@@ -45,11 +44,22 @@ export default function Home() {
     setShowSignUpModal(true);
   };
 
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#1a1a1a] relative transition-colors duration-200 pt-40">
-      <div className="absolute top-4 right-16 flex items-center gap-2">
-        <LanguageSelector />
-        <ThemeToggle />
+      {/* Top right: only ThemeToggle */}
+      <div className="absolute top-2 right-4 flex items-start gap-2">
+        <div className="w-7 h-7 flex items-start">
+          <ThemeToggle />
+        </div>
+        <button
+          className="h-7 px-3 rounded-full flex items-center justify-center text-sm font-medium bg-[#007BFF] hover:bg-[#0056b3] text-white transition-colors shadow-md"
+          type="button"
+          onClick={handleShowSignUp}
+        >
+          Get started
+        </button>
       </div>
 
       <div className="max-w-4xl mx-auto px-8 py-12">
@@ -61,7 +71,9 @@ export default function Home() {
         <InputContainer />
       </div>
 
-      <div className="fixed bottom-4 right-4">
+      {/* Bottom near right, not overlapping cookies */}
+      <div className="fixed bottom-1 right-1 flex items-center gap-1 z-[200]">
+        <LanguageSelector />
         <HelpButton />
       </div>
 
@@ -86,7 +98,6 @@ export default function Home() {
         <SignUpModal
           isOpen={showSignUpModal}
           onClose={() => setShowSignUpModal(false)}
-          context="default"
           currentLanguage={languages[0]} // English
         />
       )}
