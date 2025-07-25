@@ -9,6 +9,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script async crossorigin="anonymous" src="https://js.stripe.com/v3/"></script>
     <title>CuriosAI Web Search</title>
+    <!-- Setting CSP in meta tag for development and Stripe compatibility -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self' http://localhost:5173; 
+          script-src 'self' http://localhost:5173 https://js.stripe.com; 
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
+          font-src 'self' https://fonts.gstatic.com; 
+          worker-src 'self' blob: https://m.stripe.network; 
+          frame-src 'self' https://js.stripe.com;">
+    <!-- End of meta tag -->
   </head>
   <body class="bg-[#111111]">
     <div id="root"></div>

@@ -20,6 +20,7 @@ An AI-powered search engine building using Bolt tech stack, designed to provide 
   03.24 - Add Share after adding Pro Search (fix Stripe update)
   07.01 - Ad Researcher
   07.06 - Ad Artifacts
+  07.25 - Ad Three selector, and Homepage UI updates
 ## APP DESCRIPTION
 CuriosAI is an AI-powered searching tool or an multiagent AI-powered search engine that goes deep into the internet to find answers. Inspired by Perplexity AI, it's an option that not just searches the web but understands your questions. It uses advanced machine learning algorithms to refine results and provides clear answers with sources cited.
 
