@@ -1,15 +1,19 @@
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from '../../hooks/useTranslation';
 
-const THEME_OPTIONS = [
-	{ key: 'light', label: 'Light', icon: Sun },
-	{ key: 'dark', label: 'Dark', icon: Moon },
-	{ key: 'system', label: 'System', icon: Monitor }
-];
+
 
 export default function ThemeToggle() {
 	const { theme, setTheme } = useTheme();
+	const { t } = useTranslation();
+
+	const THEME_OPTIONS = [
+		{ key: 'light', label: t('light'), icon: Sun },
+		{ key: 'dark', label: t('dark'), icon: Moon },
+		{ key: 'system', label: t('system'), icon: Monitor }
+	];
 	const [open, setOpen] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
 	// Default to system theme
@@ -41,26 +45,46 @@ export default function ThemeToggle() {
 		<div className="relative" ref={ref}>
 			<button
 				onClick={() => setOpen(!open)}
-				className={`flex items-center justify-center w-7 h-7 rounded-full border border-gray-200 shadow-sm bg-white text-gray-700 text-sm font-medium hover:bg-gray-100 focus:outline-none transition-colors duration-200 ${open ? 'ring-2 ring-gray-300' : ''}`}
+				className={`flex items-center justify-center w-7 h-7 rounded-full border focus:outline-none transition-colors duration-200
+					${(selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+						? 'bg-[#181A1B] border-[#23272A] text-white hover:border-[#33393B]'
+						: 'bg-[#FAFBF9] border-[#E3E6E3] text-[#2A3B39] hover:border-[#007BFF]'}
+					${open ? (selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+						? 'ring-2 ring-[#23272A]' : 'ring-2 ring-[#007BFF]') : ''}`}
 				title="Theme settings"
 			>
-				{selectedTheme === 'light' && <Sun size={16} />}
-				{selectedTheme === 'dark' && <Moon size={16} />}
-				{selectedTheme === 'system' && <Monitor size={16} />}
+				{selectedTheme === 'light' && <Sun size={15} />}
+				{selectedTheme === 'dark' && <Moon size={15} />}
+				{selectedTheme === 'system' && <Monitor size={15} />}
 			</button>
 			{open && (
-				<div className="absolute right-0 top-full mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-2 animate-fade-in text-sm" style={{ zIndex: 9999 }}>
+				<div className={`absolute right-0 top-full mt-2 w-40 rounded-xl shadow-lg z-50 py-1 animate-fade-in text-xs border transition-colors duration-200
+					${(selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+						? 'bg-[#181A1B] border-[#23272A] text-white' : 'bg-[#FAFBF9] border-[#E3E6E3] text-[#2A3B39]'}`}
+				>
 					<div className="flex flex-col">
-						{THEME_OPTIONS.map((option) => (
-							<button
-								key={option.key}
-								className={`flex items-center gap-2 px-4 py-2 text-left rounded transition-colors font-medium text-gray-700 ${selectedTheme === option.key ? 'bg-gray-100 font-bold' : 'hover:bg-gray-50'}`}
-								onClick={() => handleThemeSelect(option.key as 'light' | 'dark' | 'system')}
-							>
-								<option.icon size={18} className="mr-2" />
-								<span>{option.label}</span>
-							</button>
-						))}
+						{THEME_OPTIONS.map((option) => {
+							const isSelected = selectedTheme === option.key;
+							const isDark = (selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+							return (
+								<button
+									key={option.key}
+									className={`flex items-center gap-2 px-4 py-2 text-left rounded-lg transition-colors font-normal text-xs
+										${isSelected && isDark
+											? 'bg-[#23272A] text-white'
+											: isDark
+												? 'bg-transparent text-white hover:bg-[#23272A]'
+												: isSelected
+													? 'bg-[#F3F6F4] text-[#2A3B39]'
+													: 'bg-transparent text-[#2A3B39] hover:bg-[#F3F6F4]'}
+								`}
+									onClick={() => handleThemeSelect(option.key as 'light' | 'dark' | 'system')}
+								>
+									<option.icon size={15} className="mr-2" />
+									<span>{option.label}</span>
+								</button>
+							);
+						})}
 					</div>
 				</div>
 			)}

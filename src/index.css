@@ -118,4 +118,15 @@
     margin-left: 0; /* Remove left margin on small screens */
   }
 
+  /* Hide desktop buttons on mobile */
+  .mobile\:hidden {
+    display: none;
+  }
+}
+
+/* Hide mobile buttons on desktop */
+@media (min-width: 769px) {
+  .desktop\:hidden {
+    display: none;
+  }
 }

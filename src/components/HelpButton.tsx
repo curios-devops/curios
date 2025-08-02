@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { HelpCircle } from "lucide-react";
+import { useTheme } from "./theme/ThemeContext";
+import { useTranslation } from "../hooks/useTranslation";
 
 export default function HelpButton() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
+  const { t } = useTranslation();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -18,11 +22,11 @@ export default function HelpButton() {
   }, []);
 
   const menuItems = [
-    { label: "Help & FAQ", href: "#" },
-    { label: "Release Notes", href: "#" },
-    { label: "Terms & Policies", href: "/policies" },
-    { label: "Keyboard Shortcuts", href: "#" },
-    { label: "Report Illegal Content", href: "#" },
+    { label: t('helpAndFaq'), href: "#" },
+    { label: t('releaseNotes'), href: "#" },
+    { label: t('termsAndPolicies'), href: "/policies" },
+    { label: t('keyboardShortcuts'), href: "#" },
+    { label: t('reportIllegalContent'), href: "#" },
   ];
 
   return (
@@ -30,19 +34,28 @@ export default function HelpButton() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 rounded-full bg-theme-theme-toggle flex items-center justify-center text-gray-700 text-sm font-medium transition-colors"
-        aria-label="Help menu"
+        className="w-7 h-7 rounded-full border flex items-center justify-center bg-theme-theme-toggle text-gray-700 text-sm font-medium transition-colors border-[#23272A] dark:border-[#23272A]/60 border-[#E3E6E3]/60 focus:outline-none"
+        aria-label={`${t('help')} menu`}
       >
-        <HelpCircle size={22} className="text-on-surface text-gray-400" />
+        <HelpCircle size={18} className="text-on-surface text-gray-700 dark:text-[#F3F6F4]" />
+        <span className="sr-only">{t('help')}</span>
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full right-4 mb-2 w-56 bg-surface rounded-lg shadow-lg border-2 border-gray-700 overflow-hidden">
+        <div className={`absolute bottom-full right-0 mb-2 w-56 rounded-xl shadow-lg border transition-colors duration-200 py-1 z-50 animate-fade-in text-xs
+          ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+            ? 'bg-[#181A1B] border-[#23272A] text-white'
+            : 'bg-white border-[#E3E6E3] text-[#222E2A]'}
+        `}>
           {menuItems.map((item, index) => (
             <Link
               key={index}
               to={item.href}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-secondary hover:text-white transition-colors"
+              className={`flex items-center gap-2 px-4 py-2 text-left rounded-lg transition-colors font-normal text-xs
+                ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+                  ? 'bg-transparent text-[#F3F6F4] hover:bg-[#23272A] hover:text-[#F3F6F4]'
+                  : 'bg-transparent text-[#222E2A] hover:bg-[#F5F7F6] hover:text-[#222E2A]'}
+              `}
               onClick={() => setIsOpen(false)}
             >
               <span className="text-base mr-1">

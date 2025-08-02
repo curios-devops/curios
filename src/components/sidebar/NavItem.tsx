@@ -39,7 +39,7 @@ export default function NavItem({
     navigate(to);
   };
 
-  return (
+  const navButton = (
     <a
       href={to}
       onClick={handleClick}
@@ -59,4 +59,18 @@ export default function NavItem({
       )}
     </a>
   );
+
+  // Add tooltip wrapper when collapsed
+  if (isCollapsed) {
+    return (
+      <div className="relative group">
+        {navButton}
+        <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words">
+          {label}
+        </div>
+      </div>
+    );
+  }
+
+  return navButton;
 }

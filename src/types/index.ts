@@ -8,6 +8,7 @@ export interface Source {
   title: string;
   url: string;
   snippet: string;
+  image?: string;
 }
 
 export interface ImageResult {

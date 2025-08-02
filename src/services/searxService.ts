@@ -143,7 +143,7 @@ function processSearchResults(data: SearxResponse) {
   }
 
   return {
-    results: results.slice(0, 5),
-    images: images.slice(0, 5)
+    results: results.slice(0, 9),
+    images: images.slice(0, 9)
   };
 }

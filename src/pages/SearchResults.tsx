@@ -1,32 +1,38 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { performSearch } from '../services/searchService';
 import { formatTimeAgo } from '../utils/time';
-import ShareMenu from '../components/ShareMenu';
 import TopBar from '../components/results/TopBar';
-import MainContent from '../components/results/MainContent';
-import Sidebar from '../components/results/Sidebar';
-import { ArrowLeft } from 'lucide-react';
+import TabbedContent from '../components/results/TabbedContent';
 import type { SearchState } from '../types';
 import { logger } from '../utils/logger';
 
 export default function Results() {
   const location = useLocation();
-  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
   const mode = searchParams.get('mode') || 'focus';
 
   const [searchStartTime] = useState(Date.now());
   const [timeAgo, setTimeAgo] = useState('just now');
-  const [showAllSources, setShowAllSources] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Initializing search...');
+  const [activeTab, setActiveTab] = useState('answer');
   
   const [searchState, setSearchState] = useState<SearchState>({
     isLoading: true,
     error: null,
     data: null
   });
+
+  // Debug: Log state changes
+  useEffect(() => {
+    logger.debug('SearchResults state changed', {
+      isLoading: searchState.isLoading,
+      hasError: !!searchState.error,
+      hasData: !!searchState.data,
+      statusMessage
+    });
+  }, [searchState, statusMessage]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -60,16 +66,30 @@ export default function Results() {
           }
         });
 
-        logger.info('Search completed', {
+        logger.info('Search completed successfully', {
           hasResults: !!response.sources.length,
           imageCount: response.images.length,
-          videoCount: response.videos?.length || 0
+          videoCount: response.videos?.length || 0,
+          hasAnswer: !!response.answer
         });
 
-        setSearchState({
-          isLoading: false,
-          error: null,
-          data: response
+        // Final status update before setting completion
+        setStatusMessage('Search completed!');
+        
+        // Use functional update to ensure state consistency
+        setSearchState(prevState => {
+          const newState = {
+            isLoading: false,
+            error: null,
+            data: response
+          };
+          
+          logger.info('SearchResults state transition', {
+            from: { isLoading: prevState.isLoading, hasData: !!prevState.data },
+            to: { isLoading: newState.isLoading, hasData: !!newState.data }
+          });
+          
+          return newState;
         });
       } catch (error) {
         logger.error('Search failed', {
@@ -91,42 +111,23 @@ export default function Results() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">
-      <TopBar query={query} timeAgo={timeAgo} />
+      <TopBar 
+        query={query} 
+        timeAgo={timeAgo} 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        shareUrl={window.location.href}
+        shareTitle={`CuriosAI Search: ${query || ''}`}
+        shareText={searchState.data?.answer.slice(0, 100) + '...' || ''}
+      />
 
       <main className="max-w-7xl mx-auto px-6 py-6">
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate('/')}
-              className="text-[#0095FF] hover:text-[#0080FF] transition-colors"
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <h1 className="text-2xl font-medium">{query}</h1>
-          </div>
-          <ShareMenu
-            url={window.location.href}
-            title={`CuriosAI Search: ${query || ''}`}
-            text={searchState.data?.answer.slice(0, 100) + '...' || ''}
-          />
-        </div>
-
-        <div className="flex gap-6">
-          <MainContent 
-            searchState={searchState}
-            showAllSources={showAllSources}
-            setShowAllSources={setShowAllSources}
-            statusMessage={statusMessage}
-            isPro={false}
-          />
-
-          {!searchState.error && (
-            <Sidebar 
-              images={searchState.data?.images} 
-              videos={searchState.data?.videos}
-            />
-          )}
-        </div>
+        <TabbedContent
+          searchState={searchState}
+          statusMessage={statusMessage}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
       </main>
     </div>
   );

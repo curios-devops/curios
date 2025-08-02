@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { SearchResult, ImageResult } from '../types';
+import { SearchResult, ImageResult, VideoResult } from '../types';
 import { API_TIMEOUTS, MAX_RESULTS } from '../constants';
 import { logger } from '../../utils/logger';
 
@@ -7,15 +7,7 @@ import { logger } from '../../utils/logger';
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000; // 1 second
 
-interface SearxngResult {
-  title: string;
-  url: string;
-  content?: string;
-  img_src?: string;
-  thumbnail?: string;
-  engine?: string;
-  engines?: string[];
-}
+// SearxngResult interface removed as it's no longer used
 
 interface SearxngResponse {
   query: string;
@@ -25,6 +17,7 @@ interface SearxngResponse {
   infoboxes: any[];
   suggestions: string[];
   unresponsive_engines: string[];
+  videos?: any[];
 }
 
 // Use Vite's import.meta.env for configuration.
@@ -42,7 +35,7 @@ const createSearxngConfig = (query: string) => ({
     pageno: 1,
     count: 15, // Request more results to ensure we get enough valid images
     language: 'en-US',
-    categories: 'general,images'
+    categories: 'general,images,videos'
   },
   headers: {
     'x-rapidapi-key': RAPIDAPI_KEY,
@@ -68,14 +61,15 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-function processJsonResults(results: any): { web: SearchResult[]; images: ImageResult[] } {
+function processJsonResults(results: any, videosData: any[] = []): { web: SearchResult[]; images: ImageResult[]; videos: VideoResult[] } {
   const web: SearchResult[] = [];
   const images: ImageResult[] = [];
+  const videos: VideoResult[] = [];
 
   // Early return if results is not an array
   if (!Array.isArray(results)) {
     logger.error("Unexpected format: 'results' is not iterable", { results });
-    return { web, images };
+    return { web, images, videos };
   }
 
   // Process all results first
@@ -85,7 +79,6 @@ function processJsonResults(results: any): { web: SearchResult[]; images: ImageR
       images.push({
         url: result.img_src || result.thumbnail || result.url,
         alt: result.title || 'Search result image',
-        title: result.title || '',
         source_url: result.url
       });
     } else {
@@ -97,45 +90,67 @@ function processJsonResults(results: any): { web: SearchResult[]; images: ImageR
     }
   }
 
+  // Process video results if available
+  if (Array.isArray(videosData)) {
+    logger.debug('Processing video data from SearXNG API', {
+      videoCount: videosData.length,
+      firstVideo: videosData[0]
+    });
+    
+    for (const video of videosData) {
+      if (!isValidUrl(video.url)) continue;
+      videos.push({
+        title: video.title || 'Untitled Video',
+        url: video.url,
+        thumbnail: video.thumbnail || video.img_src,
+        duration: video.duration
+      });
+    }
+    
+    logger.debug('Processed videos', { processedVideoCount: videos.length });
+  } else {
+    logger.debug('No video data received from SearXNG API', { videosData });
+  }
+
   // Cap results according to MAX_RESULTS constants
+  const cappedWeb = web.slice(0, MAX_RESULTS.WEB);
+  const cappedImages = images
+    .filter(img => img.url.startsWith('https://'))
+    .slice(0, MAX_RESULTS.IMAGES);
+  const cappedVideos = videos.slice(0, MAX_RESULTS.VIDEO);
+  
+  logger.debug('Final result counts', {
+    web: cappedWeb.length,
+    images: cappedImages.length,
+    videos: cappedVideos.length
+  });
+  
   return { 
-    web: web.slice(0, MAX_RESULTS.WEB), 
-    // Ensure we cap images at 7 to match Brave search
-    images: images
-      .filter(img => img.url.startsWith('https://'))
-      .slice(0, MAX_RESULTS.IMAGES)
+    web: cappedWeb, 
+    images: cappedImages,
+    videos: cappedVideos
   };
 }
 
-function processHtmlResults(html: string): { web: SearchResult[]; images: ImageResult[] } {
-  const web: SearchResult[] = [];
-  const images: ImageResult[] = [];
-  
-  // Since we removed cheerio, we'll only support JSON format
-  logger.warn('HTML parsing is no longer supported, please use JSON format');
-  
-  return { web, images };
-}
-
-async function searchWithRetry(query: string, retries = MAX_RETRIES): Promise<{ web: SearchResult[]; images: ImageResult[] }> {
+async function searchWithRetry(query: string, retries = MAX_RETRIES): Promise<{ web: SearchResult[]; images: ImageResult[]; videos: VideoResult[] }> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const response = await axios.request(createSearxngConfig(query));
       
       if (SEARXNG_FORMAT === 'json') {
         const data = response.data as SearxngResponse;
-        const { web, images } = processJsonResults(data.results);
+        const { web, images, videos } = processJsonResults(data.results, data.videos);
         logger.info('SearXNG search completed (JSON)', {
           query,
           webResults: web.length,
           imageResults: images.length,
+          videoResults: videos.length,
           attempt: attempt + 1
         });
-        return { web, images };
+        return { web, images, videos };
       } else {
-        const html = response.data as string;
-        const { web, images } = processHtmlResults(html);
-        return { web, images };
+        // HTML format is no longer supported
+        return { web: [], images: [], videos: [] };
       }
     } catch (error: any) {
       const isLastAttempt = attempt === retries;
@@ -148,41 +163,38 @@ async function searchWithRetry(query: string, retries = MAX_RETRIES): Promise<{ 
           query,
           attempt: attempt + 1
         });
-        return { web: [], images: [] };
+        throw error;
       }
-
-      // Log the error
-      logger.warn(`SearXNG search attempt ${attempt + 1} failed`, {
-        error: error.message,
-        query,
-        status
-      });
-
+      
       if (isLastAttempt) {
         logger.error('SearXNG search failed after all retries', {
           error: error.message,
           query,
-          attempts: attempt + 1
+          attempts: retries + 1
         });
-        return { web: [], images: [] };
+        throw error;
       }
-
-      // Wait before retrying
+      
+      logger.warn('SearXNG search failed, retrying...', {
+        error: error.message,
+        query,
+        attempt: attempt + 1
+      });
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
     }
   }
-
-  return { web: [], images: [] };
+  // This should never be reached due to the throw statements above
+  return { web: [], images: [], videos: [] };
 }
 
-export async function searxngSearch(query: string): Promise<{ web: SearchResult[]; images: ImageResult[] }> {
+export async function searxngSearch(query: string): Promise<{ web: SearchResult[]; images: ImageResult[]; videos: VideoResult[] }> {
   try {
     return await searchWithRetry(query);
   } catch (error: any) {
-    logger.error('Unhandled error in searxngSearch', {
-      error: error instanceof Error ? error.message : 'Unknown error',
+    logger.error('SearXNG search failed', {
+      error: error.message,
       query
     });
-    return { web: [], images: [] };
+    return { web: [], images: [], videos: [] };
   }
 }

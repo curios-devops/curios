@@ -2,7 +2,8 @@
 
 import { API_TIMEOUTS, MAX_RESULTS } from '../constants';
 import { BaseAgent } from './baseAgent';
-import { AgentResponse, SearchResult, ImageResult } from './types';
+import { AgentResponse, SearchResult } from './types';
+import { ImageResult, VideoResult } from '../types';
 import { searxngSearch } from '../searchTools/searxng';
 import { tavilySearch } from '../searchTools/tavily';
 import { rateLimitQueue } from '../rateLimit';
@@ -50,17 +51,23 @@ export class RetrieverAgent extends BaseAgent {
       onStatusUpdate?.(isPro ? 'Searching with Tavily...' : 'Searching with SearxNG...');
 
       // Choose search provider based on isPro flag
-      let searchResults;
+      let searchResults: { web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] };
       try {
         if (isPro) {
           // Pro users: Use Tavily directly
           onStatusUpdate?.('Searching with Tavily...');
-          searchResults = await Promise.race([
+          const tavilyResults = await Promise.race([
             tavilySearch(trimmedQuery),
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error('Tavily search timeout')), API_TIMEOUTS.TAVILY)
             )
-          ]);
+          ]) as { web: SearchResult[]; images: ImageResult[] };
+          // Convert Tavily results to match SearxNG format
+          searchResults = {
+            web: tavilyResults.web,
+            images: tavilyResults.images,
+            videos: [] // Tavily doesn't provide videos
+          };
         } else {
           // Normal users: Use SearxNG
           onStatusUpdate?.('Searching with SearxNG...');
@@ -83,7 +90,7 @@ export class RetrieverAgent extends BaseAgent {
       if (!searchResults.web || searchResults.web.length === 0) {
         const generalQuery = this.generateGeneralQuery(trimmedQuery);
         onStatusUpdate?.('No results found; trying broader search terms...');
-        const generalResults = await safeCall(() =>
+        const generalResults = await safeCall<{ web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] }>(() =>
           isPro ? tavilySearch(generalQuery) : searxngSearch(generalQuery)
         );
         await delay(1000);
@@ -102,25 +109,24 @@ export class RetrieverAgent extends BaseAgent {
 
       // Deduplicate and limit image search results.
       const validImages = this.deduplicateImages(searchResults.images)
-        .map(img => ({
-          title: img.title || '',
-          url: img.url || '',
-          image: img.image || img.properties?.url || img.thumbnail?.src || img.url,
-          source_url: img.url,
-          alt: img.title || 'Search result image'
-        }))
         .slice(0, MAX_RESULTS.IMAGES);
 
       // Process videos
-      const validVideos = searchResults.video || []
+      const validVideos = (searchResults.videos || [])
         .filter(video => video.url && video.title)
+        .map(video => ({
+          title: video.title || 'Untitled Video',
+          url: video.url,
+          thumbnail: video.thumbnail,
+          duration: video.duration
+        }))
         .slice(0, MAX_RESULTS.VIDEO);
 
       // Process perspective-specific text searches sequentially.
       const perspectiveResults = [];
       for (const perspective of perspectives) {
         onStatusUpdate?.(`Exploring perspective: ${perspective.title}...`);
-        const perspectiveSearchResults = await safeCall(() => 
+        const perspectiveSearchResults = await safeCall<{ web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] }>(() => 
           isPro ? tavilySearch(perspective.title) : searxngSearch(perspective.title)
         );
         await delay(1000);

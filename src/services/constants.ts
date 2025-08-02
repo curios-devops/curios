@@ -15,9 +15,9 @@ export const RETRY_OPTIONS = {
 
 // Limit results to reduce token usage
 export const MAX_RESULTS = {
-  WEB: 8,     // Cap at 8 results
-  IMAGES: 7,  // Cap at 7 results
-  VIDEO: 8    // Cap at 8 results
+  WEB: 9,     // Cap at 9 results
+  IMAGES: 9,  // Cap at 9 results
+  VIDEO: 9    // Cap at 9 results
 };
 
 // Limit concurrent requests

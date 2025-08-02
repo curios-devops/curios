@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { performSearch } from '../services/searchService';
 import { formatTimeAgo } from '../utils/time';
-import ShareMenu from '../components/ShareMenu';
 import TopBar from '../components/results/TopBar';
 import MainContent from '../components/results/MainContent';
-import Sidebar from '../components/results/Sidebar';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { SearchState } from '../types';
 import ProSearchSection from '../components/ProSearchSection';
 import { logger } from '../utils/logger';
 
 export default function ProResults() {
   const location = useLocation();
-  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
   
@@ -88,55 +85,36 @@ export default function ProResults() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">
-      <TopBar query={query} timeAgo={timeAgo} />
+      <TopBar 
+        query={query} 
+        timeAgo={timeAgo} 
+        shareUrl={window.location.href}
+        shareTitle={`[PRO] CuriosAI Search: ${query || ''}`}
+        shareText={searchState.data?.answer.slice(0, 100) + '...' || ''}
+      />
       <main className="max-w-7xl mx-auto px-6 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate('/')}
-              className="text-[#0095FF] hover:text-[#0080FF] transition-colors"
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-medium">{query}</h1>
-              <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
-                <Sparkles className="text-[#0095FF]" size={14} />
-                <span className="text-[#0095FF] text-sm font-medium">Pro</span>
-              </div>
-            </div>
+        {/* Pro Search Badge */}
+        <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
+            <Sparkles className="text-[#0095FF]" size={14} />
+            <span className="text-[#0095FF] text-sm font-medium">Pro</span>
           </div>
-          <ShareMenu
-            url={window.location.href}
-            title={`[PRO] CuriosAI Search: ${query || ''}`}
-            text={searchState.data?.answer.slice(0, 100) + '...' || ''}
-          />
         </div>
-        <div className="flex gap-6">
-          <div className="flex-1">
-            {/* Pro Search Section */}
-            <ProSearchSection 
-              query={query}
-              isLoading={searchState.isLoading}
-              perspectives={searchState.data?.perspectives}
-            />
-            {/* Main Content */}
-            <MainContent 
-              searchState={searchState}
-              showAllSources={showAllSources}
-              setShowAllSources={setShowAllSources}
-              statusMessage={statusMessage}
-              isPro={true}
-            />
-          </div>
-          {/* Sidebar */}
-          {!searchState.error && (
-            <Sidebar 
-              images={searchState.data?.images}
-              videos={searchState.data?.videos}
-            />
-          )}
+        <div className="space-y-6">
+          {/* Pro Search Section */}
+          <ProSearchSection 
+            query={query}
+            isLoading={searchState.isLoading}
+            perspectives={searchState.data?.perspectives}
+          />
+          {/* Main Content */}
+          <MainContent 
+            searchState={searchState}
+            showAllSources={showAllSources}
+            setShowAllSources={setShowAllSources}
+            statusMessage={statusMessage}
+            isPro={true}
+          />
         </div>
       </main>
     </div>

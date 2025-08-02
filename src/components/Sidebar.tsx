@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderKanban, Globe2, HomeIcon, Library } from "lucide-react";
+import { FolderKanban, Globe2, HomeIcon, Library, User } from "lucide-react";
 import * as ReactRouterDom from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation.ts";
 import { useSession } from "../hooks/useSession.ts";
@@ -7,7 +7,6 @@ import NavItem from "./sidebar/NavItem.tsx";
 import CollapseButton from "./sidebar/CollapseButton.tsx";
 import SignInModal from "./auth/SignInModal.tsx";
 import { useLanguage } from "../contexts/LanguageContext.tsx";
-import AuthButtons from "./auth/AuthButtons.tsx";
 import Logo from "./sidebar/Logo.tsx";
 import UserMenu from "./auth/UserMenu.tsx";
 // Define SidebarProps interface
@@ -105,13 +104,31 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
               ? <UserMenu email={session.user.email || ""} isCollapsed={isCollapsed} />
               : (
                 <div className="flex flex-col gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSignInClick}
-                    className="w-full py-2 px-3 rounded-lg transition-all duration-150 text-xs font-medium bg-gray-100 dark:bg-[#222222] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#1a1a1a] hover:text-[#007BFF] dark:hover:text-[#007BFF]"
-                  >
-                    Sign In
-                  </button>
+                  {isCollapsed ? (
+                    <div className="relative group">
+                      <button
+                        type="button"
+                        onClick={handleSignInClick}
+                        className={`flex items-center justify-center p-2.5 rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-400 hover:text-[#007BFF] dark:hover:text-[#007BFF] hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a] w-full`}
+                      >
+                        <User size={24} className="transition-colors duration-200" />
+                      </button>
+                      <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words">
+                        {t('logIn')}
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSignInClick}
+                      className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-400 hover:text-[#007BFF] dark:hover:text-[#007BFF] hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a] w-full`}
+                    >
+                      <User size={24} className="transition-colors duration-200" />
+                      <span className="text-sm font-medium tracking-[-0.01em]">
+                        {t('logIn')}
+                      </span>
+                    </button>
+                  )}
                 </div>
               )}
           </div>

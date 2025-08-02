@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "../../hooks/useTranslation.ts";
 
 interface CollapseButtonProps {
   isCollapsed: boolean;
@@ -9,6 +10,7 @@ interface CollapseButtonProps {
 export default function CollapseButton(
   { isCollapsed, onClick, position = "top" }: CollapseButtonProps,
 ) {
+  const { t } = useTranslation();
   const Icon = isCollapsed ? ChevronRight : ChevronLeft;
 
   const button = (
@@ -44,7 +46,7 @@ export default function CollapseButton(
       <div className="relative group">
         {button}
         <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words">
-          Expand
+          {t('expand')}
         </div>
       </div>
     );
@@ -56,7 +58,7 @@ export default function CollapseButton(
       <div className="relative group">
         {button}
         <div className="absolute left-1/2 -translate-x-1/2 -bottom-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words">
-          Collapse
+          {t('collapse')}
         </div>
       </div>
     );

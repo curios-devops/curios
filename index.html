@@ -11,10 +11,12 @@
     <title>CuriosAI Web Search</title>
     <!-- Setting CSP in meta tag for development and Stripe compatibility -->
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'self' http://localhost:5173; 
-          script-src 'self' http://localhost:5173 https://js.stripe.com; 
+          content="default-src 'self' http://localhost:5173 http://localhost:5174 https://searx-search-api.p.rapidapi.com; 
+          script-src 'self' http://localhost:5173 http://localhost:5174 https://js.stripe.com; 
           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
           font-src 'self' https://fonts.gstatic.com; 
+          img-src 'self' data: https: http:; 
+          connect-src 'self' http://localhost:5173 http://localhost:5174 https://searx-search-api.p.rapidapi.com https://api.openai.com; 
           worker-src 'self' blob: https://m.stripe.network; 
           frame-src 'self' https://js.stripe.com;">
     <!-- End of meta tag -->

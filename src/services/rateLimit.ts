@@ -1,15 +1,13 @@
 import { logger } from '../utils/logger.ts';
 
-interface QueueTask<T> {
-  operation: () => Promise<T>;
-  resolve: (value: T) => void;
-  reject: (error: Error) => void;
-  retryCount: number;
-  abortController: AbortController;
-}
-
 export class RateLimitQueue {
-  private queue: QueueTask<unknown>[] = []; // Queue of tasks
+  private queue: Array<{
+    operation: () => Promise<unknown>;
+    resolve: (value: unknown) => void;
+    reject: (error: Error) => void;
+    retryCount: number;
+    abortController: AbortController;
+  }> = []; // Queue of tasks
   private processing = false
   private lastCallTime = 0; // timestamp of the last API call
   private readonly callInterval = 1000; // 1 second interval between API calls
@@ -23,13 +21,13 @@ export class RateLimitQueue {
     'status code 526'
   ];
 
-   add(operation: () => Promise<unknown>): Promise<unknown> {
+   add<T>(operation: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
       const abortController = new AbortController();
 
       this.queue.push({
         operation,
-        resolve: (value) => resolve(value),
+        resolve: resolve as (value: unknown) => void,
         reject,
         retryCount: 0,
         abortController,

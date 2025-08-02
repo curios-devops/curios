@@ -48,8 +48,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#1a1a1a] relative transition-colors duration-200 pt-40">
-      {/* Top right: only ThemeToggle */}
-      <div className="absolute top-2 right-4 flex items-start gap-2">
+      {/* Top right: only ThemeToggle and Get Started button */}
+      {/* On desktop, show in current position. On mobile, these are hidden and shown in the header */}
+      <div className="absolute top-2 right-4 flex items-start gap-2 mobile:hidden">
         <div className="w-7 h-7 flex items-start">
           <ThemeToggle />
         </div>
@@ -58,7 +59,7 @@ export default function Home() {
           type="button"
           onClick={handleShowSignUp}
         >
-          Get started
+          {t('getStarted')}
         </button>
       </div>
 
@@ -72,7 +73,7 @@ export default function Home() {
       </div>
 
       {/* Bottom near right, not overlapping cookies */}
-      <div className="fixed bottom-1 right-1 flex items-center gap-1 z-[200]">
+      <div className="fixed bottom-2 right-4 flex items-center gap-2 z-[200]">
         <LanguageSelector />
         <HelpButton />
       </div>
@@ -100,7 +101,7 @@ export default function Home() {
           onClose={() => setShowSignUpModal(false)}
           currentLanguage={languages[0]} // English
         />
-      )}
+            )}
     </div>
   );
 }

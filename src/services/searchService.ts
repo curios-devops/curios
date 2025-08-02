@@ -28,7 +28,7 @@ export async function performSearch(
       throw new SearchError('Search query cannot be empty');
     }
 
-    const { mode = 'focus', isPro = false, onStatusUpdate } = options;
+    const { isPro = false, onStatusUpdate } = options;
 
     // Wrap the search operation with Supabase error handling.
     return await handleSupabaseOperation(
@@ -39,6 +39,13 @@ export async function performSearch(
           onStatusUpdate,
           isPro
         );
+        
+        logger.debug('Search service received data from swarm controller', {
+          hasResearch: !!research,
+          hasVideos: !!videos,
+          videoCount: videos?.length,
+          isPro
+        });
 
         // Ensure images array is always defined and valid.
         const validatedImages = images?.filter((img) => {
@@ -50,30 +57,40 @@ export async function performSearch(
           }
         }) || [];
 
-        // Map the research data to the expected response format.
-        const response: SearchResponse = {
-          answer: article.content || 'No results found. Please try again.',
-          sources: research.results?.map((result) => ({
+        // Extract images from sources when available
+        const sourcesWithImages = research.results?.map((result) => {
+          return {
             title: result.title,
             url: result.url,
             snippet: result.content,
-          })) || [],
+          };
+        }) || [];
+
+        // Map the research data to the expected response format.
+        const response: SearchResponse = {
+          answer: article.content || 'No results found. Please try again.',
+          sources: sourcesWithImages,
           images: validatedImages,
-          videos: research.videos || [],
+          videos: videos || [],
           provider: isPro ? 'Pro Search' : 'Standard Search',
           perspectives: isPro
-            ? research.perspectives?.map((perspective) => perspective ? {
+            ? research.perspectives?.map((perspective) => ({
                 id: perspective.id,
                 title: perspective.title,
                 description: perspective.description,
-                sources: perspective.results?.map((result) => result ? {
+                sources: perspective.results?.map((result) => ({
                   title: result.title,
                   url: result.url,
                   snippet: result.content,
-                } : null).filter(Boolean),
-              } : null).filter(Boolean)
+                })) || [],
+              })).filter(p => p.id && p.title) || []
             : undefined,
         };
+        
+        logger.debug('Search service response', {
+          videoCount: response.videos.length,
+          provider: response.provider
+        });
 
         return response;
       },

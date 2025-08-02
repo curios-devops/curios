@@ -1,9 +1,11 @@
 import { useLanguage } from '../../contexts/LanguageContext.tsx';
 import { languages as _languages, Language } from '../../types/language.ts';
 import { useState, useRef, useEffect } from 'react';
+import { useTheme } from '../theme/ThemeContext';
 
 export function LanguageSelector() {
   const { currentLanguage, setLanguage } = useLanguage();
+  const { theme } = useTheme();
   console.log('Current Language:', currentLanguage);
 
   const [open, setOpen] = useState(false);
@@ -39,11 +41,15 @@ export function LanguageSelector() {
               <span style={{ fontSize: '18px', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.3)' }}>{currentLanguage.flag}</span>
             </div>
           )}
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-100 uppercase">{currentLanguage.code}</span>
+          <span className="text-xs font-medium text-gray-700 dark:text-gray-100 uppercase">{currentLanguage.code}</span>
         </div>
       </button>
       {open && (
-        <div className="absolute right-0 bottom-full mb-2 w-44 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-lg border-2 border-gray-700 z-50 py-2 animate-fade-in text-sm">
+        <div className={`absolute right-0 bottom-full mb-2 w-44 rounded-xl shadow-lg border transition-colors duration-200 py-1 z-50 animate-fade-in text-xs
+          ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+            ? 'bg-[#181A1B] border-[#23272A] text-white'
+            : 'bg-white border-[#E3E6E3] text-[#222E2A]'}
+        `}>
           <div className="flex flex-col">
             {_languages
               .filter((l: Language) => l.code !== currentLanguage.code)
@@ -55,7 +61,11 @@ export function LanguageSelector() {
                     setLanguage(lang);
                     setOpen(false);
                   }}
-                  className="flex items-center gap-2 px-4 py-2 text-left rounded transition-colors font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-[#2a2a2a]"
+                  className={`flex items-center gap-2 px-4 py-2 text-left rounded-lg transition-colors font-normal text-xs
+                    ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+                      ? 'bg-transparent text-[#F3F6F4] hover:bg-[#23272A] hover:text-[#F3F6F4]'
+                      : 'bg-transparent text-[#222E2A] hover:bg-[#F5F7F6] hover:text-[#222E2A]'}
+                  `}
                   title={lang.name}
                 >
                   {lang.code === 'ca' ? (
@@ -67,7 +77,7 @@ export function LanguageSelector() {
                       <span style={{ fontSize: '22px', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.6)' }}>{lang.flag}</span>
                     </div>
                   )}
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-100 capitalize">{lang.name}</span>
+                  <span className="text-xs font-normal capitalize">{lang.name}</span>
                 </button>
               ))}
           </div>

@@ -1,6 +1,7 @@
 import { BaseAgent } from './baseAgent';
 import { AgentResponse, ResearchResult, ArticleResult } from './types';
 import { logger } from '../../utils/logger';
+import { env } from '../../config/env';
 
 export class WriterAgent extends BaseAgent {
   constructor() {
@@ -17,21 +18,33 @@ export class WriterAgent extends BaseAgent {
    */
   async execute(research: ResearchResult): Promise<AgentResponse> {
     try {
+      logger.info('WriterAgent.execute called', {
+        hasOpenAI: !!this.openai,
+        apiKey: env.openai.apiKey ? 'present' : 'missing',
+        resultsCount: research?.results?.length || 0,
+        query: research?.query
+      });
+
       // If no OpenAI client is configured or there are no research results,
       // immediately return fallback data.
       if (!this.openai || !research?.results?.length) {
+        logger.info('WriterAgent using fallback', {
+          reason: !this.openai ? 'no openai client' : 'no results'
+        });
         return {
           success: true,
           data: this.getFallbackData(research)
         };
       }
 
+      logger.info('WriterAgent calling generateArticle...');
       // Generate the article using safeOpenAICall with a fallback.
       const article = await this.safeOpenAICall(
         async () => this.generateArticle(research),
         this.getFallbackData(research)
       );
 
+      logger.info('WriterAgent completed successfully');
       return {
         success: true,
         data: article
@@ -54,7 +67,7 @@ export class WriterAgent extends BaseAgent {
    * Note: Video information is intentionally omitted from the output for now.
    */
   protected getFallbackData(research?: ResearchResult): ArticleResult {
-    if (research?.results?.length > 0) {
+    if (research?.results && research.results.length > 0) {
       const summary = research.results
         .slice(0, 3)
         .map(result => result.content.slice(0, 200))
