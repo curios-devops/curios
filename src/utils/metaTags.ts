@@ -53,12 +53,78 @@ export function generateShareableMetaTags(query: string, answer?: string, imageU
   const baseUrl = window.location.origin;
   const currentUrl = window.location.href;
   
+  // Dynamic title: Just the user query
+  const title = query || 'CuriosAI Web Search';
+  
+  // Dynamic description: Short snippet from AI overview
+  const description = answer ? 
+    `${answer.slice(0, 155)}...` : 
+    `Search results for "${query}" - AI-powered insights and comprehensive analysis`;
+  
+  // Dynamic image: Use actual search result image if available
+  const image = imageUrl || `${baseUrl}/og-image.svg`;
+  
   return {
-    title: query,
-    description: answer ? 
-      `${answer.slice(0, 150)}...` : 
-      'CuriosAI Web Search - Advanced AI-powered search results',
-    image: imageUrl || `${baseUrl}/compass.svg`,
+    title,
+    description,
+    image,
     url: currentUrl
   };
+}
+
+// Enhanced LinkedIn meta tag update for dynamic content
+export function updateLinkedInMetaTags(data: MetaTagData) {
+  // Standard meta tags
+  updateMetaTags(data);
+  
+  // LinkedIn-specific requirements
+  updateMetaTag('og:type', 'article');
+  updateMetaTag('og:site_name', 'CuriosAI');
+  updateMetaTag('twitter:card', 'summary_large_image');
+  updateMetaTag('twitter:site', '@CuriosAI');
+  
+  // Dynamic content for better engagement
+  updateMetaTag('article:author', 'CuriosAI');
+  updateMetaTag('article:publisher', 'https://curiosai.com');
+  updateMetaTag('article:section', 'Search Results');
+  
+  // Image specifications for LinkedIn
+  if (data.image) {
+    updateMetaTag('og:image:width', '1200');
+    updateMetaTag('og:image:height', '630');
+    // Detect image type
+    const imageType = data.image.includes('.png') ? 'image/png' : 
+                     data.image.includes('.jpg') || data.image.includes('.jpeg') ? 'image/jpeg' :
+                     'image/svg+xml';
+    updateMetaTag('og:image:type', imageType);
+    updateMetaTag('og:image:alt', `Search results for: ${data.title}`);
+  }
+}
+
+// Function to generate a dynamic Open Graph image URL based on query and results
+export function generateDynamicOGImage(query: string, snippet?: string, searchImage?: string): string {
+  const baseUrl = window.location.origin;
+  
+  // If we have a search result image that's valid, use it
+  if (searchImage && isValidImageUrl(searchImage)) {
+    return searchImage;
+  }
+  
+  // Otherwise, generate a dynamic OG image using our Netlify function
+  const encodedQuery = encodeURIComponent(query);
+  const encodedSnippet = snippet ? encodeURIComponent(snippet.slice(0, 200)) : '';
+  
+  // Use Netlify function for dynamic image generation
+  return `${baseUrl}/.netlify/functions/og-image?query=${encodedQuery}&snippet=${encodedSnippet}`;
+}
+
+// Helper function to validate image URLs
+function isValidImageUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.protocol === 'https:' && 
+           (url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') || url.includes('.webp'));
+  } catch {
+    return false;
+  }
 }

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { createHtmlPlugin } from "vite-plugin-html";
 import path from "path";
 import process from "node:process";
 
@@ -17,11 +18,25 @@ const securityHeaders = {
 
 export default defineConfig(({ mode }) => {
   // Load env file based on mode
-  const _env = loadEnv(mode, process.cwd(), "");
+  const env = loadEnv(mode, process.cwd(), "");
   
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      createHtmlPlugin({
+        inject: {
+          data: {
+            ogTitle: env.VITE_OG_TITLE || 'CuriosAI Web Search - Advanced AI-powered search',
+            ogDescription: env.VITE_OG_DESCRIPTION || 'Get comprehensive search results with AI-powered insights, images, and analysis from multiple sources.',
+            ogImage: env.VITE_OG_IMAGE || 'https://curiosai.com/og-image.png',
+            ogUrl: env.VITE_OG_URL || 'https://curiosai.com',
+            ogSiteName: env.VITE_OG_SITE_NAME || 'CuriosAI',
+            twitterSite: env.VITE_TWITTER_SITE || '@CuriosAI'
+          }
+        }
+      })
+    ],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
@@ -54,13 +69,13 @@ export default defineConfig(({ mode }) => {
         usePolling: true,
         interval: 1000,
       },
-      port: parseInt(_env.PORT || "5173", 10),
+      port: parseInt(env.PORT || "5173", 10),
     },
     preview: {
       headers: securityHeaders,
       host: true,
       strictPort: true,
-      port: parseInt(_env.PORT || "5173", 10),
+      port: parseInt(env.PORT || "5173", 10),
       open: false,
     },
     optimizeDeps: {
@@ -72,8 +87,15 @@ export default defineConfig(({ mode }) => {
         "@supabase/supabase-js",
         "@supabase/ssr",
         "lucide-react",
+        "axios",
+        "zod",
+        "react-markdown"
       ],
-      exclude: [],
+      exclude: [
+        // Exclude large dependencies that should be lazy loaded
+        "pdf-lib",
+        "@openai/agents"
+      ],
       esbuildOptions: {
         target: "esnext",
         supported: {
@@ -89,14 +111,38 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
+            // Core React libraries
             "react-vendor": ["react", "react-dom", "react-router-dom"],
+            
+            // UI and styling libraries
             "ui-vendor": ["lucide-react"],
-            "search-vendor": ["openai", "axios"],
-            "auth-vendor": ["@supabase/supabase-js"],
+            
+            // Large utility libraries
+            "utility-vendor": ["axios", "zod"],
+            
+            // AI and search related
+            "ai-vendor": ["openai", "@openai/agents"],
+            
+            // Authentication and backend
+            "auth-vendor": ["@supabase/supabase-js", "@supabase/ssr"],
+            
+            // Payment processing
+            "payment-vendor": ["@stripe/stripe-js"],
+            
+            // Document processing (if used)
+            "document-vendor": ["pdf-lib", "react-markdown"],
+            
+            // Split page components into separate chunks
+            "page-search": ["./src/pages/SearchResults.tsx", "./src/pages/ProSearchResults.tsx"],
+            "page-research": ["./src/pages/DeepResearchResults.tsx", "./src/pages/ResearcherResults.tsx", "./src/pages/InsightsResults.tsx"],
+            "page-labs": ["./src/pages/LabsResults.tsx"],
+            "page-settings": ["./src/pages/Settings.tsx", "./src/pages/Policies.tsx"],
+            "page-auth": ["./src/pages/SubscriptionSuccess.tsx", "./src/components/auth/AuthCallback.tsx"]
           },
         },
-        maxParallelFileOps: 2,
+        maxParallelFileOps: 4,
       },
+      chunkSizeWarningLimit: 1000, // Increase warning limit to 1MB
     },
   };
 });

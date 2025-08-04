@@ -1,21 +1,40 @@
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './components/auth/AuthContext.tsx';
 import App from './App.tsx';
-import Home from './pages/Home.tsx';
-import SearchResults from './pages/SearchResults.tsx';
-import DeepResearchResults from './pages/DeepResearchResults.tsx';
-import ProSearchResults from './pages/ProSearchResults.tsx';
-import Settings from './pages/Settings.tsx';
-import Policies from './pages/Policies.tsx';
-import AuthCallback from './components/auth/AuthCallback.tsx';
-import SubscriptionSuccess from './pages/SubscriptionSuccess.tsx';
+import Home from './pages/Home.tsx'; // Keep Home page eager loaded as it's the landing page
 import { logger } from './utils/logger.ts';
-import InsightsResults from './pages/InsightsResults.tsx';
-import ResearcherResults from './pages/ResearcherResults.tsx';
-import LabsResults from './pages/LabsResults.tsx';
 import './index.css';
+
+// Lazy load page components for better code splitting
+const SearchResults = lazy(() => import('./pages/SearchResults.tsx'));
+const DeepResearchResults = lazy(() => import('./pages/DeepResearchResults.tsx'));
+const ProSearchResults = lazy(() => import('./pages/ProSearchResults.tsx'));
+const InsightsResults = lazy(() => import('./pages/InsightsResults.tsx'));
+const ResearcherResults = lazy(() => import('./pages/ResearcherResults.tsx'));
+const LabsResults = lazy(() => import('./pages/LabsResults.tsx'));
+const Settings = lazy(() => import('./pages/Settings.tsx'));
+const Policies = lazy(() => import('./pages/Policies.tsx'));
+const AuthCallback = lazy(() => import('./components/auth/AuthCallback.tsx'));
+const SubscriptionSuccess = lazy(() => import('./pages/SubscriptionSuccess.tsx'));
+
+// Loading component for lazy loaded routes
+const PageLoader = () => (
+  <div className="min-h-screen bg-white dark:bg-[#1a1a1a] flex items-center justify-center">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-8 h-8 border-2 border-[#0095FF] border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+    </div>
+  </div>
+);
+
+// Wrapper component for lazy loaded pages
+const LazyPageWrapper = ({ children }: { children: ReactNode }) => (
+  <Suspense fallback={<PageLoader />}>
+    {children}
+  </Suspense>
+);
 
 // Configure router with future flags
 const router = createBrowserRouter(
@@ -24,18 +43,18 @@ const router = createBrowserRouter(
       element: <App />,
       children: [
         { path: '/', element: <Home /> },
-        { path: '/search', element: <SearchResults /> },
-        { path: '/pro-search', element: <ProSearchResults /> },
-        { path: '/deep-research', element: <DeepResearchResults /> },
-        { path: '/insights-results', element: <InsightsResults /> },
-        { path: '/research-results', element: <ResearcherResults /> },
-        { path: '/researcher-results', element: <ResearcherResults /> },
-        { path: '/labs-results', element: <LabsResults /> },
-        { path: '/pro-labs-results', element: <LabsResults /> },
-        { path: '/settings', element: <Settings /> },
-        { path: '/policies', element: <Policies /> },
-        { path: '/auth/callback', element: <AuthCallback /> },
-        { path: '/subscription/success', element: <SubscriptionSuccess /> }
+        { path: '/search', element: <LazyPageWrapper><SearchResults /></LazyPageWrapper> },
+        { path: '/pro-search', element: <LazyPageWrapper><ProSearchResults /></LazyPageWrapper> },
+        { path: '/deep-research', element: <LazyPageWrapper><DeepResearchResults /></LazyPageWrapper> },
+        { path: '/insights-results', element: <LazyPageWrapper><InsightsResults /></LazyPageWrapper> },
+        { path: '/research-results', element: <LazyPageWrapper><ResearcherResults /></LazyPageWrapper> },
+        { path: '/researcher-results', element: <LazyPageWrapper><ResearcherResults /></LazyPageWrapper> },
+        { path: '/labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
+        { path: '/pro-labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
+        { path: '/settings', element: <LazyPageWrapper><Settings /></LazyPageWrapper> },
+        { path: '/policies', element: <LazyPageWrapper><Policies /></LazyPageWrapper> },
+        { path: '/auth/callback', element: <LazyPageWrapper><AuthCallback /></LazyPageWrapper> },
+        { path: '/subscription/success', element: <LazyPageWrapper><SubscriptionSuccess /></LazyPageWrapper> }
       ]
     }
   ]

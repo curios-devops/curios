@@ -8,22 +8,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script async crossorigin="anonymous" src="https://js.stripe.com/v3/"></script>
-    <title>CuriosAI Web Search</title>
+    <title><%- ogTitle %></title>
     
     <!-- Open Graph meta tags for social sharing -->
-    <meta property="og:site_name" content="CuriosAI" />
+    <meta property="og:site_name" content="<%- ogSiteName %>" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://curiosai.com" />
-    <meta property="og:title" content="CuriosAI Web Search" />
-    <meta property="og:description" content="Advanced AI-powered web search with comprehensive results and insights" />
-    <meta property="og:image" content="https://curiosai.com/compass.svg" />
+    <meta property="og:url" content="<%- ogUrl %>" />
+    <meta property="og:title" content="<%- ogTitle %>" />
+    <meta property="og:description" content="<%- ogDescription %>" />
+    <meta property="og:image" content="<%- ogImage %>" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
     
     <!-- Twitter Card meta tags -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@CuriosAI" />
-    <meta name="twitter:title" content="CuriosAI Web Search" />
-    <meta name="twitter:description" content="Advanced AI-powered web search with comprehensive results and insights" />
-    <meta name="twitter:image" content="https://curiosai.com/compass.svg" />
+    <meta name="twitter:site" content="<%- twitterSite %>" />
+    <meta name="twitter:title" content="<%- ogTitle %>" />
+    <meta name="twitter:description" content="<%- ogDescription %>" />
+    <meta name="twitter:image" content="<%- ogImage %>" />
     
     <!-- Setting CSP in meta tag for development and Stripe compatibility -->
     <meta http-equiv="Content-Security-Policy"

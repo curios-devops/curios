@@ -28,6 +28,11 @@
   to = "/index.html"
   status = 200
 
+# Edge Functions configuration
+[[edge_functions]]
+  function = "social-meta"
+  path = "/search/*"
+
 # Add security headers
 [[headers]]
   for = "/*"

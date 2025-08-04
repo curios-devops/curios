@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { performSearch } from '../services/searchService';
 import { formatTimeAgo } from '../utils/time';
-import { updateMetaTags, generateShareableMetaTags } from '../utils/metaTags';
+import { generateShareableMetaTags, updateLinkedInMetaTags, generateDynamicOGImage } from '../utils/metaTags';
 import TopBar from '../components/results/TopBar';
 import TabbedContent from '../components/results/TabbedContent';
 import type { SearchState } from '../types';
@@ -43,13 +43,32 @@ export default function Results() {
     return () => clearInterval(interval);
   }, [searchStartTime]);  // Update meta tags when search data loads
   useEffect(() => {
-    if (searchState.data && !searchState.isLoading) {
-      const metaTags = generateShareableMetaTags(
-        `CuriosAI Search: ${query}`,
+    if (searchState.data && !searchState.isLoading && query) {
+      // Get the first search result image for dynamic OG image
+      const firstResultImage = searchState.data.images?.[0]?.url;
+      const firstSourceImage = searchState.data.sources?.find(source => source.image)?.image;
+      const dynamicImage = generateDynamicOGImage(
+        query, 
         searchState.data.answer,
-        searchState.data.images[0]?.url
+        firstResultImage || firstSourceImage
       );
-      updateMetaTags(metaTags);
+      
+      const metaTags = generateShareableMetaTags(
+        query,
+        searchState.data.answer,
+        dynamicImage
+      );
+      
+      // Use LinkedIn-optimized meta tags for better social sharing
+      updateLinkedInMetaTags(metaTags);
+      
+      logger.debug('Updated meta tags for LinkedIn sharing', {
+        title: metaTags.title,
+        description: metaTags.description.slice(0, 50) + '...',
+        image: metaTags.image,
+        hasSearchImage: !!firstResultImage,
+        hasSourceImage: !!firstSourceImage
+      });
     }
   }, [searchState.data, searchState.isLoading, query]);
 
