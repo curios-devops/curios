@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link2 } from 'lucide-react';
 import SourceCard from './SourceCard';
 import ShowAllCard from './ShowAllCard';
@@ -8,14 +7,12 @@ interface SourcesSectionProps {
   sources: Source[];
   showAllSources: boolean;
   setShowAllSources: (show: boolean) => void;
-  maxSources?: number;
 }
 
 export default function SourcesSection({ 
   sources, 
   showAllSources, 
-  setShowAllSources,
-  maxSources = 3
+  setShowAllSources
 }: SourcesSectionProps) {
   // Always show 3 sources + ShowAllCard, or all sources if showAllSources is true
   const displayedSources = showAllSources ? sources : sources.slice(0, 3);
@@ -23,13 +20,29 @@ export default function SourcesSection({
 
   return (
     <div className="mb-6">
+      {/* CuriosAI Header Section */}
+      <div className="mb-6 p-6 bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          CuriosAI Web Search
+        </h1>
+        <p className="text-[#0095FF] text-lg font-medium mb-3">
+          curiosai.com
+        </p>
+        <p className="text-gray-600 dark:text-gray-400 text-base">
+          Advanced AI-powered web search with comprehensive results and insights
+        </p>
+      </div>
+
+      {/* Sources Header */}
       <div className="flex items-center gap-2 mb-4">
         <Link2 className="text-[#0095FF]" size={22} />
-        <h2 className="text-xl font-medium text-white">Sources</h2>
+        <h2 className="text-xl font-medium text-gray-900 dark:text-white">Sources</h2>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      
+      {/* Sources Grid - Updated for better layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {displayedSources?.slice(0, 3).map((source, index) => (
-          <SourceCard key={index} source={source} index={index} />
+          <SourceCard key={index} source={source} />
         ))}
         {!showAllSources && remainingSources > 0 && sources.length > 3 && (
           <ShowAllCard 
@@ -39,7 +52,7 @@ export default function SourcesSection({
           />
         )}
         {showAllSources && sources?.slice(3).map((source, index) => (
-          <SourceCard key={index + 3} source={source} index={index + 3} />
+          <SourceCard key={index + 3} source={source} />
         ))}
       </div>
     </div>

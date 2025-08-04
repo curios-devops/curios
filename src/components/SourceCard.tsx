@@ -1,4 +1,3 @@
-import React from 'react';
 import { Globe, ExternalLink } from 'lucide-react';
 
 // Helper function to get domain info
@@ -25,6 +24,7 @@ interface SourceCardProps {
     url: string;
     title: string;
     snippet: string;
+    image?: string;
   };
 }
 
@@ -44,49 +44,64 @@ export default function SourceCard({ source }: SourceCardProps) {
           }
         }}
       >
-        {/* Compact View */}
-        <div className="flex flex-col justify-between p-3 rounded-lg transition-all duration-300 border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#222222] group-hover:bg-gray-200 dark:group-hover:bg-[#333333] group-hover:border-[#0095FF]/20 h-[88px]">
-          <h3 className="text-gray-900 dark:text-white text-xs font-medium line-clamp-3 min-h-[48px]">
-            {source.title}
-          </h3>
-          <div className="flex items-center gap-2 text-xs mt-auto">
-            {hostname ? (
+        {/* Enhanced Card Layout */}
+        <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:border-[#0095FF]/30 transition-all duration-300 group-hover:shadow-lg">
+          {/* Image Section */}
+          <div className="aspect-video bg-gray-100 dark:bg-gray-800 overflow-hidden">
+            {source.image || hostname ? (
               <img
-                src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+                src={source.image || `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`}
                 alt=""
-                className="w-4 h-4 opacity-75 group-hover:opacity-100 transition-opacity"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
+                onError={(e) => {
+                  // Fallback to a placeholder if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement!.innerHTML = `
+                    <div class="w-full h-full bg-gradient-to-br from-[#0095FF]/20 to-[#0095FF]/5 flex items-center justify-center">
+                      <svg class="w-12 h-12 text-[#0095FF]/40" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                      </svg>
+                    </div>
+                  `;
+                }}
               />
             ) : (
-              <Globe size={12} className="text-gray-400 group-hover:text-[#0095FF]" />
+              <div className="w-full h-full bg-gradient-to-br from-[#0095FF]/20 to-[#0095FF]/5 flex items-center justify-center">
+                <Globe size={32} className="text-[#0095FF]/40" />
+              </div>
             )}
-            <span className="text-gray-500 dark:text-gray-400 group-hover:text-[#0095FF]">{domain}</span>
+          </div>
+
+          {/* Content Section */}
+          <div className="p-4">
+            {/* Title */}
+            <h3 className="text-gray-900 dark:text-white text-base font-medium mb-2 line-clamp-2 group-hover:text-[#0095FF] transition-colors">
+              {source.title}
+            </h3>
+
+            {/* Domain */}
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              {hostname && (
+                <img
+                  src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=16`}
+                  alt=""
+                  className="w-4 h-4 opacity-75"
+                  loading="lazy"
+                />
+              )}
+              <span className="font-medium">{domain}</span>
+              <ExternalLink size={12} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+            </div>
+
+            {/* Snippet - only show on larger screens */}
+            <p className="hidden md:block text-gray-600 dark:text-gray-400 text-sm mt-2 line-clamp-2">
+              {source.snippet}
+            </p>
           </div>
         </div>
-
-        {/* Expanded View (Shows on Hover) */}
-        {source.url !== '#' && (
-          <div className="absolute left-[-50%] right-[-50%] top-full mt-2 z-10 bg-white dark:bg-[#333333] rounded-lg p-4 border border-[#0095FF]/20 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-xl pointer-events-none">
-            <div className="flex items-center justify-between mb-3"> 
-              <div className="flex items-center gap-2">
-                {hostname ? (
-                  <img
-                    src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
-                    alt=""
-                    className="w-4 h-4"
-                    loading="lazy"
-                  />
-                ) : (
-                  <Globe size={14} className="text-[#0095FF]" />
-                )}
-                <span className="text-[#0095FF] text-xs">{domain}</span>
-              </div>
-              <ExternalLink size={12} className="text-[#0095FF]" />
-            </div>
-            <h3 className="text-gray-900 dark:text-white text-sm font-medium mb-2">{source.title}</h3>
-            <p className="text-gray-600 dark:text-gray-400 text-xs line-clamp-3">{source.snippet}</p>
-          </div>
-        )}
       </a>
     </div>
   );
