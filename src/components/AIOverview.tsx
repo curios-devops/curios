@@ -71,18 +71,12 @@ export default function AIOverview({ answer, sources, query }: AIOverviewProps) 
 
   const handleShare = async () => {
     try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `AI Overview: ${query}`,
-          text: answer.slice(0, 200) + '...',
-          url: window.location.href
-        });
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        showNotificationMessage('Link copied to clipboard');
-      }
+      await navigator.clipboard.writeText(window.location.href);
+      showNotificationMessage('Link copied to clipboard');
     } catch (error) {
       console.error('Share failed:', error);
+      // Fallback: show the URL in an alert if clipboard fails
+      alert(`Copy this link: ${window.location.href}`);
     }
   };
 
@@ -130,6 +124,7 @@ export default function AIOverview({ answer, sources, query }: AIOverviewProps) 
             <div className="flex items-center gap-2">
               <button 
                 onClick={handleShare}
+                title="Copy link to clipboard"
                 className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <Share size={16} />

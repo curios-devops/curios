@@ -1,25 +1,91 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Share2, Link2, Check } from 'lucide-react';
 import Notification from './Notification';
+import { updateMetaTags } from '../utils/metaTags';
 
 interface ShareMenuProps {
   url: string;
   title: string;
   text: string;
+  query?: string;
+  images?: Array<{ url: string; alt?: string }>;
 }
 
 type SharePlatform = 'linkedin' | 'email' | 'whatsapp' | 'facebook' | 'twitter' | 'copy';
 
-export default function ShareMenu({ url, title, text }: ShareMenuProps) {
+export default function ShareMenu({ url, title, text, query, images }: ShareMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
+
+  // SUPER EXPLICIT DEBUG - This should ALWAYS show
+  console.log('🚨🚨🚨 SHAREMENU COMPONENT IS RENDERING 🚨🚨🚨');
+  console.log('Props received:', { url, title, text, query, images });
+  console.log('Current timestamp:', new Date().toISOString());
+  console.log('🚨🚨🚨 END SHAREMENU DEBUG 🚨🚨🚨');
+
+  // Debug when isOpen changes
+  useEffect(() => {
+    console.log('📱 ShareMenu isOpen changed to:', isOpen);
+  }, [isOpen]);
 
   const handleShare = async (platform: SharePlatform) => {
     try {
       switch (platform) {
         case 'linkedin':
-          window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`, '_blank');
+          console.log('=== LinkedIn Share Debug START ===');
+          console.log('Raw props received:');
+          console.log('- url:', url);
+          console.log('- title:', title);
+          console.log('- text:', text);
+          console.log('- query:', query);
+          console.log('- images:', images);
+          
+          // Update meta tags before sharing for better social preview
+          const imageUrl = images && images.length > 0 ? images[0].url : '';
+          updateMetaTags({
+            title: query ? `CuriosAI Search: ${query}` : title,
+            description: text || 'Discover comprehensive search results powered by AI',
+            image: imageUrl,
+            url: url
+          });
+          
+          // Clean the URL - remove any fragments
+          const cleanUrl = url.split('#')[0];
+          console.log('- cleanUrl:', cleanUrl);
+          
+          // Improve LinkedIn title and text
+          const linkedInTitle = query ? `${query}` : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          const shareableText = text || 'Discover comprehensive search results powered by AI';
+          
+          // Truncate text for LinkedIn (max ~200 chars for summary)
+          const truncatedText = shareableText.length > 200 ? 
+            shareableText.substring(0, 197) + '...' : shareableText;
+          
+          console.log('After processing:');
+          console.log('- linkedInTitle:', linkedInTitle);
+          console.log('- truncatedText:', truncatedText);
+          console.log('- cleanUrl:', cleanUrl);
+          console.log('- imageUrl:', imageUrl);
+          
+          // Enhanced LinkedIn sharing parameters
+          const linkedInParams = new URLSearchParams({
+            mini: 'true',
+            url: cleanUrl,
+            title: linkedInTitle,
+            summary: `${truncatedText} | Powered by CuriosAI Web Search`,
+            source: 'CuriosAI'
+          });
+          
+          const linkedInUrl = `https://www.linkedin.com/shareArticle?${linkedInParams.toString()}`;
+          
+          console.log('=== Final LinkedIn URL ===');
+          console.log(linkedInUrl);
+          console.log('URL length:', linkedInUrl.length);
+          console.log('=== LinkedIn Share Debug END ===');
+          
+          window.open(linkedInUrl, '_blank', 'width=600,height=500');
+          setIsOpen(false);
           break;
         case 'email':
           window.open(`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}%0A%0A${encodeURIComponent(url)}`, '_blank');
@@ -53,9 +119,13 @@ export default function ShareMenu({ url, title, text }: ShareMenuProps) {
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          console.log('📤 Share button clicked, current isOpen:', isOpen);
+          setIsOpen(!isOpen);
+        }}
         className="bg-[#007BFF] hover:bg-[#0056b3] text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm"
         aria-label="Share menu"
+        style={{ border: '3px solid yellow' }} // Temporary visual debugging
       >
         <Share2 size={16} />
         <span>Share</span>
@@ -64,11 +134,27 @@ export default function ShareMenu({ url, title, text }: ShareMenuProps) {
       {isOpen && (
         <div className="absolute top-full right-0 mt-1.5 bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-200 dark:border-gray-800 shadow-xl p-4 w-[320px] animate-fade-in transition-colors duration-200">
           <h2 className="text-base font-medium text-gray-900 dark:text-white mb-3 transition-colors duration-200">Share</h2>
+          
+          {/* Development notice for localhost URLs */}
+          {url.includes('localhost') && (
+            <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                <strong>Development Mode:</strong> Link previews won't show on social media from localhost URLs. 
+                The link and content will still share correctly.
+              </p>
+            </div>
+          )}
+          
           <div className="grid grid-cols-2 gap-2">
             {/* LinkedIn Button */}
             <button
-              onClick={() => handleShare('linkedin')}
+              onClick={() => {
+                console.log('🔥 LinkedIn button clicked at:', new Date().toISOString());
+                console.log('🔥 Event triggered, calling handleShare');
+                handleShare('linkedin');
+              }}
               className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-[#222222] hover:bg-gray-200 dark:hover:bg-[#2a2a2a] rounded-lg transition-colors text-left"
+              style={{ backgroundColor: 'red', color: 'white' }} // Temporary visual debugging
             >
               <svg className="w-5 h-5 text-gray-900 dark:text-white" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/>

@@ -10,6 +10,7 @@ interface TopBarProps {
   shareUrl?: string;
   shareTitle?: string;
   shareText?: string;
+  images?: Array<{ url: string; alt?: string }>;
 }
 
 export default function TopBar({ 
@@ -19,9 +20,31 @@ export default function TopBar({
   onTabChange,
   shareUrl = '',
   shareTitle = '',
-  shareText = ''
+  shareText = '',
+  images
 }: TopBarProps) {
   const navigate = useNavigate();
+  
+  // Debug TopBar props
+  console.log('🏁 TopBar component rendered with props:', {
+    query,
+    timeAgo,
+    activeTab,
+    shareUrl,
+    shareTitle,
+    shareText,
+    images,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Debug TopBar props
+  console.log('TopBar component rendered with props:', {
+    query,
+    shareUrl,
+    shareTitle,
+    shareText,
+    images
+  });
   
   const tabs = [
     { id: 'answer', label: 'Overview', icon: Search },
@@ -48,10 +71,22 @@ export default function TopBar({
               <span className="text-xs">{timeAgo}</span>
             </div>
           </div>
+          {(() => {
+            console.log('🎯 About to render ShareMenu with props:', {
+              url: shareUrl,
+              title: shareTitle,
+              text: shareText,
+              query: query,
+              images: images
+            });
+            return null;
+          })()}
           <ShareMenu
             url={shareUrl}
             title={shareTitle}
             text={shareText}
+            query={query}
+            images={images}
           />
         </div>
       </div>

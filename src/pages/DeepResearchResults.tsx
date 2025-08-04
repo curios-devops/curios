@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { logger } from '../utils/logger.ts';
 import { formatTimeAgo } from '../utils/time';
+import { updateMetaTags, generateShareableMetaTags } from '../utils/metaTags';
 import TopBar from '../components/results/TopBar.tsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ResearchManager } from '../services/research/researchManager.ts';
@@ -49,6 +50,18 @@ export default function DeepResearchResults() {
     return () => clearInterval(interval);
   }, [searchStartTime]);
 
+  // Update meta tags when research data loads
+  useEffect(() => {
+    if (researchState.data && !researchState.isLoading) {
+      const metaTags = generateShareableMetaTags(
+        `Deep Research: ${query}`,
+        researchState.data.content,
+        researchState.data.images?.[0]?.url
+      );
+      updateMetaTags(metaTags);
+    }
+  }, [researchState.data, researchState.isLoading, query]);
+
   useEffect(() => {
     const conductResearch = async () => {
       if (!query.trim()) {
@@ -94,7 +107,14 @@ export default function DeepResearchResults() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">
-      <TopBar query={query} timeAgo={timeAgo} />
+      <TopBar 
+        query={query} 
+        timeAgo={timeAgo} 
+        shareUrl={window.location.href}
+        shareTitle={`Deep Research: ${query || ''}`}
+        shareText={researchState.data?.content.slice(0, 100) + '...' || ''}
+        images={researchState.data?.images.slice(0, 1) || []}
+      />
       
       <React.Suspense fallback={null}>
         {researchState.data && (

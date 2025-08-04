@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { performSearch } from '../services/searchService';
 import { formatTimeAgo } from '../utils/time';
+import { updateMetaTags, generateShareableMetaTags } from '../utils/metaTags';
 import TopBar from '../components/results/TopBar';
 import MainContent from '../components/results/MainContent';
 import { Sparkles } from 'lucide-react';
@@ -31,6 +32,38 @@ export default function ProResults() {
     }, 1000);
     return () => clearInterval(interval);
   }, [searchStartTime]);
+
+  // Update meta tags when search data loads
+  useEffect(() => {
+    if (searchState.data && !searchState.isLoading) {
+      console.log('=== Pro Search Data Available ===');
+      console.log('searchState.data:', searchState.data);
+      console.log('Answer field:', searchState.data.answer);
+      console.log('Images field:', searchState.data.images);
+      console.log('Sources field:', searchState.data.sources);
+      console.log('All available fields:', Object.keys(searchState.data));
+      
+      const metaTags = generateShareableMetaTags(
+        `[PRO] CuriosAI Search: ${query}`,
+        searchState.data.answer || 'Professional search results powered by CuriosAI',
+        searchState.data.images?.[0]?.url || ''
+      );
+      updateMetaTags(metaTags);
+    }
+  }, [searchState.data, searchState.isLoading, query]);
+
+  // Debug TopBar props when they change
+  useEffect(() => {
+    console.log('ProSearchResults TopBar props:', {
+      query,
+      shareUrl: window.location.href,
+      shareTitle: `[PRO] CuriosAI Search: ${query || 'Professional Search'}`,
+      shareText: searchState.data?.answer?.slice(0, 100) + '...' || 
+                 searchState.data?.sources?.[0]?.snippet?.slice(0, 100) + '...' ||
+                 `Professional search results for "${query}" powered by CuriosAI`,
+      images: searchState.data?.images?.slice(0, 1) || []
+    });
+  }, [query, searchState.data]);
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -89,9 +122,15 @@ export default function ProResults() {
         query={query} 
         timeAgo={timeAgo} 
         shareUrl={window.location.href}
-        shareTitle={`[PRO] CuriosAI Search: ${query || ''}`}
-        shareText={searchState.data?.answer.slice(0, 100) + '...' || ''}
+        shareTitle={`[PRO] CuriosAI Search: ${query || 'Professional Search'}`}
+        shareText={
+          searchState.data?.answer?.slice(0, 100) + '...' || 
+          searchState.data?.sources?.[0]?.snippet?.slice(0, 100) + '...' ||
+          `Professional search results for "${query}" powered by CuriosAI`
+        }
+        images={searchState.data?.images?.slice(0, 1) || []}
       />
+      
       <main className="max-w-7xl mx-auto px-6 py-6">
         {/* Pro Search Badge */}
         <div className="flex items-center gap-2 mb-6">

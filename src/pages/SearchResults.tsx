@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { performSearch } from '../services/searchService';
 import { formatTimeAgo } from '../utils/time';
+import { updateMetaTags, generateShareableMetaTags } from '../utils/metaTags';
 import TopBar from '../components/results/TopBar';
 import TabbedContent from '../components/results/TabbedContent';
 import type { SearchState } from '../types';
@@ -40,7 +41,31 @@ export default function Results() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [searchStartTime]);
+  }, [searchStartTime]);  // Update meta tags when search data loads
+  useEffect(() => {
+    if (searchState.data && !searchState.isLoading) {
+      const metaTags = generateShareableMetaTags(
+        `CuriosAI Search: ${query}`,
+        searchState.data.answer,
+        searchState.data.images[0]?.url
+      );
+      updateMetaTags(metaTags);
+    }
+  }, [searchState.data, searchState.isLoading, query]);
+
+  // Debug TopBar props when they change
+  useEffect(() => {
+    console.log('🔍 SearchResults TopBar props useEffect triggered:');
+    console.log('- query:', query);
+    console.log('- searchState.data exists:', !!searchState.data);
+    console.log('- Full props object:', {
+      query,
+      shareUrl: window.location.href,
+      shareTitle: `CuriosAI Search: ${query || ''}`,
+      shareText: searchState.data?.answer?.slice(0, 100) + '...' || '',
+      images: searchState.data?.images?.slice(0, 1) || []
+    });
+  }, [query, searchState.data]);
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -97,7 +122,6 @@ export default function Results() {
           query,
           mode
         });
-
         setSearchState({
           isLoading: false,
           error: error instanceof Error ? error.message : 'Search services are currently unavailable',
@@ -118,7 +142,8 @@ export default function Results() {
         onTabChange={setActiveTab}
         shareUrl={window.location.href}
         shareTitle={`CuriosAI Search: ${query || ''}`}
-        shareText={searchState.data?.answer.slice(0, 100) + '...' || ''}
+        shareText={searchState.data?.answer?.slice(0, 100) + '...' || ''}
+        images={searchState.data?.images?.slice(0, 1) || []}
       />
 
       <main className="max-w-7xl mx-auto px-6 py-6">
