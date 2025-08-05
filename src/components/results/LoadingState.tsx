@@ -6,15 +6,10 @@ interface LoadingStateProps {
 
 export default function LoadingState({ message }: LoadingStateProps) {
   return (
-    <div
-      className="flex flex-col items-center justify-center p-12 rounded-xl border border-gray-800"      
-      style={{
-        backgroundColor: 'var(--bg-theme-loading)'
-      }}
-    >
+    <div className="flex flex-col items-center justify-center p-12 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111111] transition-colors duration-200">
       <Loader2 className="animate-spin text-[#0095FF] mb-4" size={28} />
-      <p className="dark:text-gray-400 text-gray-700 text-sm">{message}</p>
-      <p className="text-xs dark:text-gray-500 text-gray-600 mt-2">This might take a few moments</p>
+      <p className="text-gray-700 dark:text-gray-400 text-sm transition-colors duration-200">{message}</p>
+      <p className="text-xs text-gray-600 dark:text-gray-500 mt-2 transition-colors duration-200">This might take a few moments</p>
     </div>
   );
 }
