@@ -1,7 +1,13 @@
 # 📦 Files to Copy to curiosai.com Production Project
 
 ## 🎯 **Quick Summary**
-Copy these files to fix both the modal theme issue and enable dynamic LinkedIn sharing.
+Copy these files to fix both the modal theme issue and enable dynamic LinkedIn sharing with enhanced AI overview snippets.
+
+## 🆕 **LATEST ENHANCEMENT: AI Overview Snippet Teasers**
+- ✅ **Smart Snippet Processing**: First 1-2 sentences + "..." to motivate clicks
+- ✅ **URL Parameter Integration**: Snippets passed to edge function
+- ✅ **Dynamic OG Images**: Include snippet content in generated images
+- ✅ **Higher Engagement**: Teaser descriptions drive more clicks
 
 ---
 

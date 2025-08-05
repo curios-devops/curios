@@ -41,39 +41,99 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           console.log('- query:', query);
           console.log('- images:', images);
           
-          // Update meta tags before sharing for better social preview
-          const imageUrl = images && images.length > 0 ? images[0].url : '';
-          updateMetaTags({
-            title: query ? `CuriosAI Search: ${query}` : title,
-            description: text || 'Discover comprehensive search results powered by AI',
-            image: imageUrl,
-            url: url
-          });
+          // Enhanced LinkedIn sharing with first search result image
+          const firstSearchImage = images && images.length > 0 ? images[0].url : '';
           
-          // Clean the URL - remove any fragments
-          const cleanUrl = url.split('#')[0];
+          // Clean the URL - remove any fragments and add snippet for edge function
+          let cleanUrl = url.split('#')[0];
+          
+          // Add AI overview snippet to URL for edge function processing
+          if (text && text.length > 50) {
+            // Create teaser snippet for URL parameter
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+            let snippetForUrl = '';
+            
+            if (sentences.length >= 1) {
+              // Use first sentence as URL snippet
+              snippetForUrl = sentences[0].trim();
+              if (snippetForUrl.length > 200) {
+                snippetForUrl = snippetForUrl.substring(0, 197) + '...';
+              }
+            } else {
+              snippetForUrl = text.substring(0, 200);
+            }
+            
+            // Add snippet as URL parameter for edge function
+            const urlObj = new URL(cleanUrl);
+            urlObj.searchParams.set('snippet', snippetForUrl);
+            cleanUrl = urlObj.toString();
+          }
           console.log('- cleanUrl:', cleanUrl);
           
-          // Improve LinkedIn title and text
-          const linkedInTitle = query ? `${query}` : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
-          const shareableText = text || 'Discover comprehensive search results powered by AI';
+          // LinkedIn title: Just the search query (clean and simple)
+          const linkedInTitle = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
           
-          // Truncate text for LinkedIn (max ~200 chars for summary)
-          const truncatedText = shareableText.length > 200 ? 
-            shareableText.substring(0, 197) + '...' : shareableText;
+          // Enhanced description: Create teaser snippet from AI overview to motivate clicks
+          let shareableText = '';
+          if (text && text.length > 50) {
+            // Create a teaser from the first 1-2 sentences of AI overview
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+            
+            if (sentences.length >= 2) {
+              // Use first two sentences as teaser
+              const teaser = sentences.slice(0, 2).join('. ').trim();
+              if (teaser.length > 140) {
+                shareableText = teaser.substring(0, 137) + '...';
+              } else {
+                shareableText = teaser + '...';
+              }
+            } else if (sentences.length === 1) {
+              // Use first sentence if it's substantial
+              const firstSentence = sentences[0].trim();
+              if (firstSentence.length > 100) {
+                shareableText = firstSentence.substring(0, 137) + '...';
+              } else {
+                shareableText = firstSentence + '...';
+              }
+            } else {
+              // Fallback to truncated text
+              shareableText = text.length > 140 ? text.substring(0, 137) + '...' : text + '...';
+            }
+          } else if (query) {
+            // Fallback to query-based description
+            shareableText = `Comprehensive AI-powered search results and insights for "${query}". Discover detailed analysis, sources, and expert perspectives.`;
+          } else {
+            shareableText = 'Discover comprehensive search results powered by AI with detailed insights and analysis.';
+          }
+          
+          // Update meta tags for better social preview with dynamic OG image
+          const dynamicImage = firstSearchImage || (() => {
+            // Generate dynamic OG image URL with snippet
+            const baseUrl = window.location.origin;
+            const encodedQuery = encodeURIComponent(query || 'Search');
+            const encodedSnippet = text ? encodeURIComponent(text.substring(0, 150)) : '';
+            return `${baseUrl}/.netlify/functions/og-image?query=${encodedQuery}&snippet=${encodedSnippet}`;
+          })();
+          
+          updateMetaTags({
+            title: linkedInTitle,
+            description: shareableText,
+            image: dynamicImage,
+            url: cleanUrl
+          });
           
           console.log('After processing:');
           console.log('- linkedInTitle:', linkedInTitle);
-          console.log('- truncatedText:', truncatedText);
+          console.log('- shareableText:', shareableText);
           console.log('- cleanUrl:', cleanUrl);
-          console.log('- imageUrl:', imageUrl);
+          console.log('- firstSearchImage:', firstSearchImage);
           
-          // Enhanced LinkedIn sharing parameters
+          // Enhanced LinkedIn sharing parameters with better formatting
           const linkedInParams = new URLSearchParams({
             mini: 'true',
             url: cleanUrl,
             title: linkedInTitle,
-            summary: `${truncatedText} | Powered by CuriosAI Web Search`,
+            summary: shareableText, // Clean summary without "Powered by" suffix
             source: 'CuriosAI'
           });
           

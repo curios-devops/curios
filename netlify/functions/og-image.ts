@@ -11,6 +11,26 @@ export const handler: Handler = async (event) => {
     };
   }
   
+  // Process snippet for display - create teaser
+  let displaySnippet = '';
+  if (snippet) {
+    // Create teaser from first sentence or two to motivate clicks
+    const sentences = snippet.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    
+    if (sentences.length >= 1) {
+      const teaser = sentences[0].trim();
+      // Limit teaser length for image display
+      displaySnippet = teaser.length > 90 ? teaser.substring(0, 87) + '...' : teaser + '...';
+    } else {
+      displaySnippet = snippet.slice(0, 90) + (snippet.length > 90 ? '...' : '');
+    }
+  }
+  
+  // Split snippet into lines for better display
+  const words = displaySnippet.split(' ');
+  const line1 = words.slice(0, Math.ceil(words.length / 2)).join(' ');
+  const line2 = words.slice(Math.ceil(words.length / 2)).join(' ');
+  
   // Generate dynamic SVG based on query and snippet
   const svg = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
     <!-- Background Gradient -->
@@ -45,17 +65,20 @@ export const handler: Handler = async (event) => {
     </text>
     
     <!-- CuriosAI Branding -->
-    <text x="220" y="190" font-family="Arial, sans-serif" font-size="24" font-weight="500" fill="#0095FF">
-      CuriosAI Web Search
+    <text x="220" y="190" font-family="Arial, sans-serif" font-size="20" font-weight="500" fill="#0095FF">
+      curiosai.com
     </text>
     
-    <!-- Dynamic Snippet -->
-    ${snippet ? `
+    <!-- Dynamic Snippet with Teaser -->
+    ${displaySnippet ? `
       <text x="220" y="250" font-family="Arial, sans-serif" font-size="18" fill="#666666">
-        ${snippet.slice(0, 85)}${snippet.length > 85 ? '...' : ''}
+        ${line1}
       </text>
-      <text x="220" y="280" font-family="Arial, sans-serif" font-size="18" fill="#666666">
-        ${snippet.slice(85, 170)}${snippet.length > 170 ? '...' : ''}
+      ${line2 ? `<text x="220" y="280" font-family="Arial, sans-serif" font-size="18" fill="#666666">
+        ${line2}
+      </text>` : ''}
+      <text x="220" y="320" font-family="Arial, sans-serif" font-size="16" fill="#0095FF" font-style="italic">
+        Read full analysis →
       </text>
     ` : `
       <text x="220" y="250" font-family="Arial, sans-serif" font-size="18" fill="#666666">
@@ -64,10 +87,13 @@ export const handler: Handler = async (event) => {
       <text x="220" y="280" font-family="Arial, sans-serif" font-size="18" fill="#666666">
         insights and analysis
       </text>
+      <text x="220" y="320" font-family="Arial, sans-serif" font-size="16" fill="#0095FF" font-style="italic">
+        Discover more →
+      </text>
     `}
     
     <!-- Domain -->
-    <text x="220" y="350" font-family="Arial, sans-serif" font-size="16" fill="#999999">
+    <text x="220" y="380" font-family="Arial, sans-serif" font-size="16" fill="#999999">
       curiosai.com
     </text>
     

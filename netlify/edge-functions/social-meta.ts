@@ -32,11 +32,39 @@ export default async (request: Request, context: any) => {
   
   // Extract query from URL
   const query = url.searchParams.get('q') || 'Search Results';
+  const snippet = url.searchParams.get('snippet') || null;
   
   // Generate dynamic meta tags for social crawlers
   const title = query;
-  const description = `AI-powered search results for "${query}" - Comprehensive insights and analysis from CuriosAI Web Search`;
-  const ogImage = `${url.origin}/.netlify/functions/og-image?query=${encodeURIComponent(query)}`;
+  
+  // Create teaser description to motivate clicks
+  let description = '';
+  if (snippet) {
+    // Create teaser from AI overview snippet
+    const sentences = snippet.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    
+    if (sentences.length >= 2) {
+      // Use first two sentences as teaser
+      const teaser = sentences.slice(0, 2).join('. ').trim();
+      description = teaser.length > 140 ? teaser.substring(0, 137) + '...' : teaser + '...';
+    } else if (sentences.length === 1) {
+      // Use first sentence if substantial
+      const firstSentence = sentences[0].trim();
+      description = firstSentence.length > 100 ? firstSentence.substring(0, 137) + '...' : firstSentence + '...';
+    } else {
+      // Fallback to truncated snippet
+      description = snippet.slice(0, 140) + (snippet.length > 140 ? '...' : '');
+    }
+  } else {
+    description = `AI-powered search results for "${query}" - Comprehensive insights and analysis with expert sources and detailed information.`;
+  }
+  
+  // Use snippet in OG image if available
+  const ogImageParams = new URLSearchParams({ query });
+  if (snippet) {
+    ogImageParams.set('snippet', snippet.slice(0, 200));
+  }
+  const ogImage = `${url.origin}/.netlify/functions/og-image?${ogImageParams.toString()}`;
   const canonicalUrl = request.url;
   
   // Create HTML with proper meta tags
