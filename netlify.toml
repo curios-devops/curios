@@ -31,7 +31,27 @@
 # Edge Functions configuration
 [[edge_functions]]
   function = "social-meta"
+  path = "/search"
+
+[[edge_functions]]
+  function = "social-meta"
   path = "/search/*"
+
+[[edge_functions]]
+  function = "social-meta"
+  path = "/pro-search"
+
+[[edge_functions]]
+  function = "social-meta"
+  path = "/deep-research"
+
+[[edge_functions]]
+  function = "social-meta"
+  path = "/insights-results"
+
+[[edge_functions]]
+  function = "social-meta"
+  path = "/research-results"
 
 # Add security headers
 [[headers]]

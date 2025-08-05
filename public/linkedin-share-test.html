@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Sharing Test - CuriosAI</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background: #f5f5f5; 
+            line-height: 1.6;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-url { 
+            background: #f0f0f0; 
+            padding: 10px; 
+            border-radius: 5px; 
+            font-family: monospace; 
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        .status { 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 10px 0; 
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .test-section { 
+            margin: 30px 0; 
+            padding: 20px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+        }
+        button {
+            background: #0095FF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0080FF; }
+        .share-buttons { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 LinkedIn Sharing Test</h1>
+        <p><strong>Status:</strong> Testing CuriosAI dynamic LinkedIn previews</p>
+        
+        <!-- Current Status -->
+        <div class="test-section">
+            <h2>📊 Current Environment</h2>
+            <div id="env-status">Loading...</div>
+            
+            <div class="test-url">
+                <strong>Current URL:</strong> <span id="current-url"></span>
+            </div>
+            
+            <div class="test-url">
+                <strong>User Agent:</strong> <span id="user-agent"></span>
+            </div>
+        </div>
+
+        <!-- Test URLs -->
+        <div class="test-section">
+            <h2>🧪 Test URLs</h2>
+            <p>Test these URLs in LinkedIn Post Inspector: <a href="https://www.linkedin.com/post-inspector/" target="_blank">https://www.linkedin.com/post-inspector/</a></p>
+            
+            <div class="test-url">
+                <strong>Search Page:</strong><br>
+                <span id="search-url"></span>
+            </div>
+            
+            <div class="test-url">
+                <strong>OG Image API:</strong><br>
+                <span id="og-image-url"></span>
+            </div>
+        </div>
+
+        <!-- Share Buttons Test -->
+        <div class="test-section">
+            <h2>📱 Share Button Test</h2>
+            <p>Test the actual share functionality:</p>
+            
+            <div class="share-buttons">
+                <button onclick="testLinkedInShare()">🔗 Share on LinkedIn</button>
+                <button onclick="testOGImage()">🖼️ Test OG Image</button>
+                <button onclick="copyTestURL()">📋 Copy Test URL</button>
+            </div>
+            
+            <div id="share-result"></div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="test-section">
+            <h2>📋 Testing Instructions</h2>
+            
+            <div class="warning">
+                <strong>⚠️ Local Development Limitation:</strong><br>
+                LinkedIn cannot access localhost URLs. For real testing, deploy to Netlify first.
+            </div>
+            
+            <h3>Steps to Test:</h3>
+            <ol>
+                <li><strong>Deploy to Netlify:</strong> <code>netlify deploy --prod</code></li>
+                <li><strong>Update URLs below</strong> with your deployed URL</li>
+                <li><strong>Test OG Image generation</strong> by visiting the OG Image URL</li>
+                <li><strong>Test in LinkedIn Post Inspector</strong> with your search URL</li>
+                <li><strong>Share on LinkedIn</strong> and check if dynamic preview appears</li>
+            </ol>
+            
+            <h3>Expected Results:</h3>
+            <ul>
+                <li>✅ OG Image should show query-specific content</li>
+                <li>✅ LinkedIn preview should show dynamic title and description</li>
+                <li>✅ Edge function should detect social crawlers</li>
+                <li>✅ Meta tags should be injected server-side</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Set current environment info
+        document.getElementById('current-url').textContent = window.location.href;
+        document.getElementById('user-agent').textContent = navigator.userAgent;
+        
+        // Generate test URLs
+        const baseUrl = window.location.origin;
+        const searchUrl = `${baseUrl}/search?q=artificial%20intelligence`;
+        const ogImageUrl = `${baseUrl}/.netlify/functions/og-image?query=artificial%20intelligence&snippet=AI%20is%20transforming%20technology`;
+        
+        document.getElementById('search-url').textContent = searchUrl;
+        document.getElementById('og-image-url').textContent = ogImageUrl;
+        
+        // Check environment
+        const isLocalhost = window.location.hostname === 'localhost';
+        const envStatus = document.getElementById('env-status');
+        
+        if (isLocalhost) {
+            envStatus.innerHTML = `
+                <div class="warning">
+                    <strong>🏠 Local Development</strong><br>
+                    You're running on localhost. LinkedIn previews won't work until deployed.
+                </div>
+            `;
+        } else {
+            envStatus.innerHTML = `
+                <div class="success">
+                    <strong>🌐 Production Environment</strong><br>
+                    You're on a deployed site. LinkedIn previews should work!
+                </div>
+            `;
+        }
+        
+        // Test functions
+        function testLinkedInShare() {
+            const query = 'Artificial Intelligence';
+            const shareText = 'Testing CuriosAI dynamic LinkedIn previews with AI-powered search results';
+            
+            const linkedInParams = new URLSearchParams({
+                mini: 'true',
+                url: searchUrl,
+                title: query,
+                summary: shareText,
+                source: 'CuriosAI'
+            });
+            
+            const linkedInShareUrl = `https://www.linkedin.com/shareArticle?${linkedInParams.toString()}`;
+            
+            // Show the URL that would be used
+            document.getElementById('share-result').innerHTML = `
+                <div class="test-url">
+                    <strong>LinkedIn Share URL:</strong><br>
+                    ${linkedInShareUrl}
+                </div>
+                <p>Opening LinkedIn share dialog...</p>
+            `;
+            
+            // Open LinkedIn share
+            window.open(linkedInShareUrl, '_blank', 'width=600,height=500');
+        }
+        
+        function testOGImage() {
+            // Open OG image in new tab
+            window.open(ogImageUrl, '_blank');
+            
+            document.getElementById('share-result').innerHTML = `
+                <div class="success">
+                    <strong>✅ OG Image Test</strong><br>
+                    Opened OG image URL in new tab. Check if dynamic image loads.
+                </div>
+            `;
+        }
+        
+        function copyTestURL() {
+            navigator.clipboard.writeText(searchUrl).then(() => {
+                document.getElementById('share-result').innerHTML = `
+                    <div class="success">
+                        <strong>📋 URL Copied!</strong><br>
+                        Test URL copied to clipboard. Paste it in LinkedIn Post Inspector.
+                    </div>
+                `;
+            });
+        }
+        
+        // Auto-test on page load
+        console.log('🔗 LinkedIn Sharing Test Page Loaded');
+        console.log('Search URL:', searchUrl);
+        console.log('OG Image URL:', ogImageUrl);
+        console.log('Is Localhost:', isLocalhost);
+    </script>
+</body>
+</html>

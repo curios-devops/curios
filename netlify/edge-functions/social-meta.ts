@@ -3,8 +3,16 @@
 export default async (request: Request, context: any) => {
   const url = new URL(request.url);
   
-  // Only handle search pages for social media crawlers
-  if (!url.pathname.includes('/search')) {
+  // Handle multiple search page patterns
+  const isSearchPage = url.pathname === '/search' || 
+                      url.pathname.startsWith('/search/') ||
+                      url.pathname === '/pro-search' ||
+                      url.pathname === '/deep-research' ||
+                      url.pathname === '/insights-results' ||
+                      url.pathname === '/research-results' ||
+                      url.pathname === '/researcher-results';
+  
+  if (!isSearchPage) {
     return; // Continue to normal page
   }
   
@@ -12,7 +20,11 @@ export default async (request: Request, context: any) => {
   const isSocialCrawler = userAgent.includes('linkedinbot') || 
                          userAgent.includes('facebookexternalhit') || 
                          userAgent.includes('twitterbot') || 
-                         userAgent.includes('whatsapp');
+                         userAgent.includes('whatsapp') ||
+                         userAgent.includes('slackbot') ||
+                         userAgent.includes('discordbot');
+  
+  console.log(`Edge Function: ${url.pathname}, User-Agent: ${userAgent}, isSocialCrawler: ${isSocialCrawler}`);
   
   if (!isSocialCrawler) {
     return; // Let normal users get the SPA
