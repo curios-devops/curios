@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Result Image to LinkedIn Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background: #f5f5f5; 
+            line-height: 1.6;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .image-test {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin: 15px 0;
+        }
+        .original-image {
+            max-width: 200px;
+            max-height: 150px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+        .linkedin-image {
+            max-width: 300px;
+            max-height: 157px; /* Maintain 1200x627 aspect ratio (1.91:1) */
+            border: 2px solid #0077B5;
+            border-radius: 5px;
+        }
+        .button {
+            background: #0077B5;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #005582;
+        }
+        .url-display {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Search Result Image → LinkedIn Format Test</h1>
+        <p>Testing how search result images are converted to LinkedIn-optimized format</p>
+        
+        <!-- Test Case 1 -->
+        <div class="test-section">
+            <h2>Test 1: Technology Image</h2>
+            <div class="image-test">
+                <div>
+                    <strong>Original:</strong><br>
+                    <img id="orig1" class="original-image" alt="Original image" />
+                </div>
+                <div>
+                    <strong>LinkedIn Format:</strong><br>
+                    <img id="linkedin1" class="linkedin-image" alt="LinkedIn optimized" />
+                </div>
+            </div>
+            <button onclick="testImage1()">Generate LinkedIn Image</button>
+            <div id="url1" class="url-display" style="display: none;"></div>
+        </div>
+
+        <!-- Test Case 2 -->
+        <div class="test-section">
+            <h2>Test 2: News Image</h2>
+            <div class="image-test">
+                <div>
+                    <strong>Original:</strong><br>
+                    <img id="orig2" class="original-image" alt="Original image" />
+                </div>
+                <div>
+                    <strong>LinkedIn Format:</strong><br>
+                    <img id="linkedin2" class="linkedin-image" alt="LinkedIn optimized" />
+                </div>
+            </div>
+            <button onclick="testImage2()">Generate LinkedIn Image</button>
+            <div id="url2" class="url-display" style="display: none;"></div>
+        </div>
+
+        <!-- Test Case 3 -->
+        <div class="test-section">
+            <h2>Test 3: Custom Image URL</h2>
+            <input type="text" id="customImageUrl" placeholder="Enter image URL..." style="width: 70%; padding: 8px; margin-right: 10px;">
+            <input type="text" id="customQuery" placeholder="Query text..." style="width: 25%; padding: 8px;">
+            <br><br>
+            <div class="image-test">
+                <div>
+                    <strong>Original:</strong><br>
+                    <img id="orig3" class="original-image" alt="Original image" />
+                </div>
+                <div>
+                    <strong>LinkedIn Format:</strong><br>
+                    <img id="linkedin3" class="linkedin-image" alt="LinkedIn optimized" />
+                </div>
+            </div>
+            <button onclick="testCustomImage()">Generate LinkedIn Image</button>
+            <div id="url3" class="url-display" style="display: none;"></div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="test-section">
+            <h2>📋 How It Works</h2>
+            <ol>
+                <li><strong>Original Image:</strong> The search result image from APIs</li>
+                <li><strong>Processing:</strong> Our function overlays the query text and CuriosAI branding</li>
+                <li><strong>LinkedIn Format:</strong> 1200x627 optimized image with text overlay</li>
+                <li><strong>Result:</strong> Professional LinkedIn preview with search context</li>
+            </ol>
+            
+            <p><strong>Benefits:</strong></p>
+            <ul>
+                <li>✅ Uses actual search result images (more relevant)</li>
+                <li>✅ Optimal LinkedIn dimensions (1200x627, 1.91:1 aspect ratio)</li>
+                <li>✅ Query text overlay for context</li>
+                <li>✅ CuriosAI branding</li>
+                <li>✅ Fallback handling for failed images</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const baseUrl = window.location.origin;
+
+        function testImage1() {
+            const imageUrl = 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800';
+            const query = "Meta's Smart Wristband Technology";
+            
+            document.getElementById('orig1').src = imageUrl;
+            
+            const linkedinUrl = `${baseUrl}/.netlify/functions/og-image-from-search?imageUrl=${encodeURIComponent(imageUrl)}&query=${encodeURIComponent(query)}`;
+            document.getElementById('linkedin1').src = linkedinUrl;
+            document.getElementById('url1').textContent = linkedinUrl;
+            document.getElementById('url1').style.display = 'block';
+        }
+
+        function testImage2() {
+            const imageUrl = 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800';
+            const query = "Climate Change Solutions and Innovation";
+            
+            document.getElementById('orig2').src = imageUrl;
+            
+            const linkedinUrl = `${baseUrl}/.netlify/functions/og-image-from-search?imageUrl=${encodeURIComponent(imageUrl)}&query=${encodeURIComponent(query)}`;
+            document.getElementById('linkedin2').src = linkedinUrl;
+            document.getElementById('url2').textContent = linkedinUrl;
+            document.getElementById('url2').style.display = 'block';
+        }
+
+        function testCustomImage() {
+            const imageUrl = document.getElementById('customImageUrl').value;
+            const query = document.getElementById('customQuery').value || 'Custom Search Query';
+            
+            if (!imageUrl) {
+                alert('Please enter an image URL');
+                return;
+            }
+            
+            document.getElementById('orig3').src = imageUrl;
+            
+            const linkedinUrl = `${baseUrl}/.netlify/functions/og-image-from-search?imageUrl=${encodeURIComponent(imageUrl)}&query=${encodeURIComponent(query)}`;
+            document.getElementById('linkedin3').src = linkedinUrl;
+            document.getElementById('url3').textContent = linkedinUrl;
+            document.getElementById('url3').style.display = 'block';
+        }
+
+        // Auto-test first example on load
+        window.addEventListener('load', () => {
+            setTimeout(testImage1, 1000);
+        });
+
+        console.log('🖼️ Search Result Image Test Page Loaded');
+        console.log('Base URL:', baseUrl);
+    </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate LinkedIn Fallback Image</title>
+</head>
+<body>
+    <canvas id="canvas" width="1200" height="630" style="border: 1px solid #ccc;"></canvas>
+    <br>
+    <button onclick="downloadImage()">Download PNG</button>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Create gradient background
+        const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+        gradient.addColorStop(0, '#0095FF');
+        gradient.addColorStop(1, '#007ACC');
+        
+        // Fill background
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 1200, 630);
+        
+        // Add semi-transparent overlay
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(60, 60, 1080, 510);
+        
+        // Add border
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(60, 60, 1080, 510);
+        
+        // CuriosAI Brand
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 40px Arial, sans-serif';
+        ctx.fillText('CuriosAI', 100, 140);
+        
+        // Main title
+        ctx.font = 'bold 48px Arial, sans-serif';
+        ctx.fillText('AI-Powered Search Results', 100, 250);
+        
+        // Subtitle
+        ctx.font = '24px Arial, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillText('Comprehensive insights and analysis', 100, 300);
+        
+        // Domain
+        ctx.font = '20px Arial, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillText('curiosai.com', 100, 480);
+        
+        // Search icon
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(1050, 200, 25, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        // Search handle
+        ctx.beginPath();
+        ctx.moveTo(1070, 220);
+        ctx.lineTo(1080, 230);
+        ctx.stroke();
+        
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = 'linkedin-fallback.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        console.log('✅ LinkedIn fallback image generated');
+    </script>
+</body>
+</html>

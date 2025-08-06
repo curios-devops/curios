@@ -21,9 +21,9 @@ export function updateMetaTags(data: MetaTagData) {
   
   if (data.image) {
     updateMetaTag('og:image', data.image);
-    // Add image dimensions for better LinkedIn compatibility
+    // Add optimal LinkedIn image dimensions (1.91:1 aspect ratio)
     updateMetaTag('og:image:width', '1200');
-    updateMetaTag('og:image:height', '630');
+    updateMetaTag('og:image:height', '627');
   }
 
   // Ensure og:type is set for LinkedIn
@@ -107,10 +107,10 @@ export function updateLinkedInMetaTags(data: MetaTagData) {
   updateMetaTag('article:publisher', 'https://curiosai.com');
   updateMetaTag('article:section', 'Search Results');
   
-  // Image specifications for LinkedIn
+  // Image specifications for LinkedIn (optimal dimensions and size limits)
   if (data.image) {
     updateMetaTag('og:image:width', '1200');
-    updateMetaTag('og:image:height', '630');
+    updateMetaTag('og:image:height', '627');
     // Detect image type
     const imageType = data.image.includes('.png') ? 'image/png' : 
                      data.image.includes('.jpg') || data.image.includes('.jpeg') ? 'image/jpeg' :

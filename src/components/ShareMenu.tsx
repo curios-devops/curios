@@ -106,27 +106,32 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
             shareableText = 'Discover comprehensive search results powered by AI with detailed insights and analysis.';
           }
           
-          // Update meta tags for better social preview with dynamic OG image
+          // Update meta tags with search result image for LinkedIn
           const dynamicImage = (() => {
-            // First try: Use first search result image if it's from a reliable source
+            const baseUrl = window.location.origin;
+            
+            // Strategy 1: Use first search result image if available
             if (firstSearchImage) {
               try {
+                // Validate the image URL
                 const imageUrl = new URL(firstSearchImage);
-                // Only use HTTPS images from reliable domains
                 if (imageUrl.protocol === 'https:' && 
                     !imageUrl.hostname.includes('localhost') &&
                     !imageUrl.hostname.includes('placeholder')) {
-                  return firstSearchImage;
+                  
+                  // Create LinkedIn-optimized version of the search result image
+                  const encodedImageUrl = encodeURIComponent(firstSearchImage);
+                  const encodedQuery = encodeURIComponent(query || 'Search');
+                  return `${baseUrl}/.netlify/functions/og-image-from-search?imageUrl=${encodedImageUrl}&query=${encodedQuery}`;
                 }
               } catch {
-                // Invalid URL, fall through to generated image
+                // Invalid URL, fall through to fallback
               }
             }
             
-            // Second try: Generate dynamic OG image with snippet
-            const baseUrl = window.location.origin;
+            // Strategy 2: Fallback to our generated image with snippet
             const encodedQuery = encodeURIComponent(query || 'Search');
-            const encodedSnippet = text ? encodeURIComponent(text.substring(0, 150)) : '';
+            const encodedSnippet = text ? encodeURIComponent(text.substring(0, 100)) : '';
             return `${baseUrl}/.netlify/functions/og-image?query=${encodedQuery}&snippet=${encodedSnippet}`;
           })();
           
@@ -142,6 +147,16 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           console.log('- shareableText:', shareableText);
           console.log('- cleanUrl:', cleanUrl);
           console.log('- firstSearchImage:', firstSearchImage);
+          console.log('- firstSearchImage valid:', firstSearchImage ? 'YES' : 'NO');
+          if (firstSearchImage) {
+            try {
+              const testUrl = new URL(firstSearchImage);
+              console.log('- firstSearchImage protocol:', testUrl.protocol);
+              console.log('- firstSearchImage hostname:', testUrl.hostname);
+            } catch (e) {
+              console.log('- firstSearchImage URL parsing error:', e);
+            }
+          }
           console.log('- dynamicImage:', dynamicImage);
           console.log('- Meta tags that will be set:', {
             title: linkedInTitle,
@@ -150,12 +165,12 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
             url: cleanUrl
           });
           
-          // LinkedIn's modern API - only URL and text parameters work reliably
-          // LinkedIn ignores title/summary parameters and relies on Open Graph meta tags
+          // LinkedIn's modern API - following singularityhub.com approach
+          // Use only URL parameter - LinkedIn will read title from meta tags
           const linkedInParams = new URLSearchParams({
             mini: 'true',
-            url: cleanUrl,
-            text: `${linkedInTitle} - ${shareableText}` // Combined text for fallback
+            url: cleanUrl
+            // No text parameter - let LinkedIn read from meta tags
           });
           
           const linkedInUrl = `https://www.linkedin.com/shareArticle?${linkedInParams.toString()}`;
