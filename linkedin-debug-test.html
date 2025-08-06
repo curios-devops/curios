@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Debug Test - CuriosAI</title>
+    
+    <!-- Static Meta Tags for Testing -->
+    <meta property="og:title" content="Meta's Smart Wristband Technology" />
+    <meta property="og:description" content="Meta has developed a new smart wristband that can control devices using neural signals, similar to the interface seen in Minority Report. The device represents a significant advancement in brain-computer interfaces..." />
+    <meta property="og:image" content="https://img.freepik.com/free-photo/futuristic-wristband-smartwatch_23-2150896893.jpg" />
+    <meta property="og:url" content="https://curiosai.com/search?q=meta+smart+wristband" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="CuriosAI" />
+    
+    <!-- LinkedIn-specific meta tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Meta's Smart Wristband Technology" />
+    <meta name="twitter:description" content="Meta has developed a new smart wristband that can control devices using neural signals, similar to the interface seen in Minority Report..." />
+    <meta name="twitter:image" content="https://img.freepik.com/free-photo/futuristic-wristband-smartwatch_23-2150896893.jpg" />
+    
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background: #f5f5f5; 
+            line-height: 1.6;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-url { 
+            background: #f0f0f0; 
+            padding: 10px; 
+            border-radius: 5px; 
+            font-family: monospace; 
+            margin: 10px 0;
+            word-break: break-all;
+            font-size: 12px;
+        }
+        .button {
+            background: #0077B5;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #005582;
+        }
+        .success { 
+            background: #d4edda; 
+            color: #155724; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 10px 0;
+        }
+        .warning { 
+            background: #fff3cd; 
+            color: #856404; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 10px 0;
+        }
+        .error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 10px 0;
+        }
+        img.test-image {
+            max-width: 200px;
+            max-height: 200px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 LinkedIn Sharing Debug Test</h1>
+        <p><strong>Purpose:</strong> Test why LinkedIn isn't showing correct title and image</p>
+        
+        <!-- Current Meta Tags -->
+        <div class="test-section">
+            <h2>📋 Current Page Meta Tags</h2>
+            <p>This page has static meta tags that LinkedIn should read:</p>
+            <ul>
+                <li><strong>Title:</strong> "Meta's Smart Wristband Technology"</li>
+                <li><strong>Description:</strong> "Meta has developed a new smart wristband..."</li>
+                <li><strong>Image:</strong> External reliable image URL</li>
+                <li><strong>Type:</strong> article</li>
+            </ul>
+            
+            <div class="test-url">
+                <strong>Current URL:</strong> <span id="current-url"></span>
+            </div>
+        </div>
+
+        <!-- Image Test -->
+        <div class="test-section">
+            <h2>🖼️ Image Accessibility Test</h2>
+            <p>Testing if our meta image loads properly:</p>
+            <img src="https://img.freepik.com/free-photo/futuristic-wristband-smartwatch_23-2150896893.jpg" 
+                 alt="Test Image" 
+                 class="test-image"
+                 onload="imageLoadSuccess()" 
+                 onerror="imageLoadError()" />
+            <div id="image-result"></div>
+        </div>
+
+        <!-- LinkedIn Share Test -->
+        <div class="test-section">
+            <h2>🔗 LinkedIn Share Test</h2>
+            <p>Test different LinkedIn share URL approaches:</p>
+            
+            <button class="button" onclick="testMethod1()">Method 1: URL Only</button>
+            <button class="button" onclick="testMethod2()">Method 2: URL + Text</button>
+            <button class="button" onclick="testMethod3()">Method 3: Original Parameters</button>
+            
+            <div id="share-result"></div>
+        </div>
+
+        <!-- LinkedIn Post Inspector -->
+        <div class="test-section">
+            <h2>🔍 LinkedIn Post Inspector Test</h2>
+            <p>Use LinkedIn's official tool to check how this page appears:</p>
+            
+            <div class="test-url">
+                <strong>Test this URL in LinkedIn Post Inspector:</strong><br>
+                <span id="inspector-url"></span>
+            </div>
+            
+            <a href="https://www.linkedin.com/post-inspector/" target="_blank" class="button">
+                🔍 Open LinkedIn Post Inspector
+            </a>
+            
+            <button class="button" onclick="copyInspectorURL()">📋 Copy URL</button>
+        </div>
+
+        <!-- Expected vs Actual -->
+        <div class="test-section">
+            <h2>📊 Expected vs Actual Results</h2>
+            
+            <div class="success">
+                <strong>✅ Expected LinkedIn Preview:</strong><br>
+                • Title: "Meta's Smart Wristband Technology"<br>
+                • Description: "Meta has developed a new smart wristband..."<br>
+                • Image: Wristband photo<br>
+                • Domain: Current page URL
+            </div>
+            
+            <div class="warning">
+                <strong>❓ Current Issue:</strong><br>
+                • Title shows "What do you want to talk about?" instead<br>
+                • Image not displaying<br>
+                • Description may be generic
+            </div>
+        </div>
+
+        <!-- Troubleshooting -->
+        <div class="test-section">
+            <h2>🔧 Troubleshooting Steps</h2>
+            <ol>
+                <li><strong>Check Meta Tags:</strong> View page source to confirm meta tags are present</li>
+                <li><strong>Test Image:</strong> Verify image loads without authentication</li>
+                <li><strong>LinkedIn Cache:</strong> LinkedIn caches previews for ~7 days</li>
+                <li><strong>Post Inspector:</strong> Force LinkedIn to re-scrape the page</li>
+                <li><strong>HTTPS Required:</strong> LinkedIn requires secure URLs</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Set current URL
+        document.getElementById('current-url').textContent = window.location.href;
+        document.getElementById('inspector-url').textContent = window.location.href;
+        
+        // Image loading tests
+        function imageLoadSuccess() {
+            document.getElementById('image-result').innerHTML = `
+                <div class="success">
+                    ✅ <strong>Image loads successfully!</strong><br>
+                    LinkedIn should be able to access this image.
+                </div>
+            `;
+        }
+        
+        function imageLoadError() {
+            document.getElementById('image-result').innerHTML = `
+                <div class="error">
+                    ❌ <strong>Image failed to load!</strong><br>
+                    This could be why LinkedIn isn't showing images.
+                </div>
+            `;
+        }
+        
+        // LinkedIn share tests
+        function testMethod1() {
+            const url = window.location.href;
+            const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(url)}`;
+            
+            showShareResult('Method 1', linkedInUrl, 'Only URL parameter - relies entirely on meta tags');
+            window.open(linkedInUrl, '_blank', 'width=600,height=500');
+        }
+        
+        function testMethod2() {
+            const url = window.location.href;
+            const text = "Testing CuriosAI LinkedIn sharing with static meta tags";
+            const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+            
+            showShareResult('Method 2', linkedInUrl, 'URL + text parameter');
+            window.open(linkedInUrl, '_blank', 'width=600,height=500');
+        }
+        
+        function testMethod3() {
+            const url = window.location.href;
+            const title = "Meta's Smart Wristband Technology";
+            const summary = "Meta has developed a new smart wristband that can control devices using neural signals";
+            
+            const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&summary=${encodeURIComponent(summary)}`;
+            
+            showShareResult('Method 3', linkedInUrl, 'URL + title + summary (may be ignored by LinkedIn)');
+            window.open(linkedInUrl, '_blank', 'width=600,height=500');
+        }
+        
+        function showShareResult(method, url, description) {
+            document.getElementById('share-result').innerHTML = `
+                <div class="success">
+                    <strong>${method} URL Generated:</strong><br>
+                    ${description}<br><br>
+                    <div style="font-size: 11px; background: #f0f0f0; padding: 5px; border-radius: 3px; word-break: break-all;">
+                        ${url}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function copyInspectorURL() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                document.getElementById('share-result').innerHTML = `
+                    <div class="success">
+                        <strong>📋 URL Copied!</strong><br>
+                        Paste it in LinkedIn Post Inspector to test how LinkedIn sees this page.
+                    </div>
+                `;
+            });
+        }
+        
+        // Auto-test image loading
+        console.log('🔍 LinkedIn Debug Test Page Loaded');
+        console.log('Page URL:', window.location.href);
+        console.log('Meta tags should be visible in page source');
+    </script>
+</body>
+</html>

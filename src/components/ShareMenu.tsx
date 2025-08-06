@@ -107,8 +107,23 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           }
           
           // Update meta tags for better social preview with dynamic OG image
-          const dynamicImage = firstSearchImage || (() => {
-            // Generate dynamic OG image URL with snippet
+          const dynamicImage = (() => {
+            // First try: Use first search result image if it's from a reliable source
+            if (firstSearchImage) {
+              try {
+                const imageUrl = new URL(firstSearchImage);
+                // Only use HTTPS images from reliable domains
+                if (imageUrl.protocol === 'https:' && 
+                    !imageUrl.hostname.includes('localhost') &&
+                    !imageUrl.hostname.includes('placeholder')) {
+                  return firstSearchImage;
+                }
+              } catch {
+                // Invalid URL, fall through to generated image
+              }
+            }
+            
+            // Second try: Generate dynamic OG image with snippet
             const baseUrl = window.location.origin;
             const encodedQuery = encodeURIComponent(query || 'Search');
             const encodedSnippet = text ? encodeURIComponent(text.substring(0, 150)) : '';
@@ -127,14 +142,20 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           console.log('- shareableText:', shareableText);
           console.log('- cleanUrl:', cleanUrl);
           console.log('- firstSearchImage:', firstSearchImage);
+          console.log('- dynamicImage:', dynamicImage);
+          console.log('- Meta tags that will be set:', {
+            title: linkedInTitle,
+            description: shareableText,
+            image: dynamicImage,
+            url: cleanUrl
+          });
           
-          // Enhanced LinkedIn sharing parameters with better formatting
+          // LinkedIn's modern API - only URL and text parameters work reliably
+          // LinkedIn ignores title/summary parameters and relies on Open Graph meta tags
           const linkedInParams = new URLSearchParams({
             mini: 'true',
             url: cleanUrl,
-            title: linkedInTitle,
-            summary: shareableText, // Clean summary without "Powered by" suffix
-            source: 'CuriosAI'
+            text: `${linkedInTitle} - ${shareableText}` // Combined text for fallback
           });
           
           const linkedInUrl = `https://www.linkedin.com/shareArticle?${linkedInParams.toString()}`;
@@ -144,7 +165,10 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           console.log('URL length:', linkedInUrl.length);
           console.log('=== LinkedIn Share Debug END ===');
           
-          window.open(linkedInUrl, '_blank', 'width=600,height=500');
+          // Give a small delay to ensure meta tags are updated before opening LinkedIn
+          setTimeout(() => {
+            window.open(linkedInUrl, '_blank', 'width=600,height=500');
+          }, 100);
           setIsOpen(false);
           break;
         case 'email':

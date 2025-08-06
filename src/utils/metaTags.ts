@@ -8,8 +8,11 @@ export interface MetaTagData {
 }
 
 export function updateMetaTags(data: MetaTagData) {
+  console.log('🏷️ updateMetaTags called with:', data);
+  
   // Update document title
   document.title = data.title;
+  console.log('📝 Document title set to:', document.title);
 
   // Update or create Open Graph meta tags
   updateMetaTag('og:title', data.title);
@@ -18,18 +21,30 @@ export function updateMetaTags(data: MetaTagData) {
   
   if (data.image) {
     updateMetaTag('og:image', data.image);
+    // Add image dimensions for better LinkedIn compatibility
+    updateMetaTag('og:image:width', '1200');
+    updateMetaTag('og:image:height', '630');
   }
 
+  // Ensure og:type is set for LinkedIn
+  updateMetaTag('og:type', 'article');
+  updateMetaTag('og:site_name', 'CuriosAI');
+
   // Update Twitter Card meta tags
+  updateMetaTag('twitter:card', 'summary_large_image');
   updateMetaTag('twitter:title', data.title);
   updateMetaTag('twitter:description', data.description);
   
   if (data.image) {
     updateMetaTag('twitter:image', data.image);
   }
+  
+  console.log('✅ All meta tags updated successfully');
 }
 
 function updateMetaTag(property: string, content: string) {
+  console.log(`🏷️ Setting meta tag: ${property} = "${content}"`);
+  
   let metaTag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
   
   if (!metaTag) {
@@ -37,6 +52,7 @@ function updateMetaTag(property: string, content: string) {
   }
   
   if (!metaTag) {
+    console.log(`📝 Creating new meta tag for: ${property}`);
     metaTag = document.createElement('meta');
     if (property.startsWith('og:') || property === 'twitter:card') {
       metaTag.setAttribute('property', property);
@@ -44,9 +60,12 @@ function updateMetaTag(property: string, content: string) {
       metaTag.setAttribute('name', property);
     }
     document.head.appendChild(metaTag);
+  } else {
+    console.log(`♻️ Updating existing meta tag for: ${property}`);
   }
   
   metaTag.setAttribute('content', content);
+  console.log(`✅ Meta tag set: ${property} = "${metaTag.getAttribute('content')}"`);
 }
 
 export function generateShareableMetaTags(query: string, answer?: string, imageUrl?: string) {
