@@ -32,9 +32,33 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           // Update meta tags for LinkedIn to pick up title and image
           const firstSearchImage = images && images.length > 0 ? images[0].url : '';
           
+          // Create compelling snippet from AI response text for LinkedIn description
+          let compellingDescription = '';
+          if (text && text.length > 50) {
+            // Extract first 1-2 sentences to create intrigue
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+            if (sentences.length >= 2) {
+              compellingDescription = sentences.slice(0, 2).join('. ').trim();
+            } else if (sentences.length === 1) {
+              compellingDescription = sentences[0].trim();
+            } else {
+              compellingDescription = text.substring(0, 150).trim();
+            }
+            
+            // Truncate to LinkedIn optimal length and add intrigue
+            if (compellingDescription.length > 140) {
+              compellingDescription = compellingDescription.substring(0, 137) + '...';
+            } else if (!compellingDescription.endsWith('.')) {
+              compellingDescription += '...';
+            }
+          } else {
+            // Fallback if no AI text available
+            compellingDescription = `Discover comprehensive insights and analysis about "${linkedInTitle}". Explore detailed research, expert sources, and AI-powered findings.`;
+          }
+          
           updateMetaTags({
             title: linkedInTitle,
-            description: text || `AI-powered search results for "${linkedInTitle}"`,
+            description: compellingDescription,
             image: firstSearchImage || `${window.location.origin}/og-image.svg`,
             url: cleanUrl
           });
