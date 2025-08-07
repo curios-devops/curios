@@ -32,9 +32,7 @@ export function generateShareableMetaTags(query: string, answer?: string, imageU
   const description = answer ? 
     `${answer.slice(0, 155)}...` : 
     `Search results for "${query}" - AI-powered insights and comprehensive analysis`;
-  
-  // Use provided imageUrl or fallback to static PNG - reliable for all social platforms
-  const image = imageUrl || `${baseUrl}/og-image.png`;
+  const image = imageUrl || `${baseUrl}/og-image.svg`;
   
   return {
     title,
@@ -56,18 +54,11 @@ export function updateMetaTags(data: MetaTagData) {
   updateMetaTag('twitter:image', data.image);
 }
 
-// LinkedIn-specific meta tag update (backward compatibility)
-export function updateLinkedInMetaTags(data: MetaTagData) {
-  updateMetaTags(data); // Use the simplified version
-  updateMetaTag('og:type', 'article');
-  updateMetaTag('og:site_name', 'CuriosAI');
-  updateMetaTag('twitter:card', 'summary_large_image');
-}
-
-// Static OG image for reliable social media sharing
-export function generateDynamicOGImage(_query?: string, _snippet?: string): string {
+// Dynamic OG image generation - simplified
+export function generateDynamicOGImage(query: string, snippet?: string): string {
   const baseUrl = window.location.origin;
+  const encodedQuery = encodeURIComponent(query);
+  const encodedSnippet = snippet ? encodeURIComponent(snippet.slice(0, 200)) : '';
   
-  // Always use static PNG for reliable social media sharing
-  return `${baseUrl}/og-image.png`;
+  return `${baseUrl}/.netlify/functions/og-image?query=${encodedQuery}${encodedSnippet ? `&snippet=${encodedSnippet}` : ''}`;
 }

@@ -1,161 +1,57 @@
-// Simplified Netlify Edge Function for Dynamic Meta Tag Injection
-export default async (request: Request, context: any) => {
+// Edge Function for Dynamic Social Media Meta Tags
+
+export default async function handler(request: Request, context: any) {
   const url = new URL(request.url);
-  
-  // Only handle search pages
-  const isSearchPage = url.pathname === '/search' || url.pathname.startsWith('/search/');
-  
-  if (!isSearchPage) {
-    return; // Continue to normal page
+  const query = url.searchParams.get('q') || url.searchParams.get('query') || '';
+  const snippet = url.searchParams.get('snippet') || '';
+
+  // Get original HTML
+  const response = await context.next();
+  let html = await response.text();
+
+  // Extract title and description for social sharing
+  const title = query 
+    ? `${query} - CuriosAI Search Results` 
+    : 'CuriosAI - AI-Powered Web Search';
+    
+  const description = snippet 
+    ? `${snippet.slice(0, 155)}...`
+    : `Search results for "${query}" - AI-powered insights and comprehensive analysis`;
+
+  // Generate dynamic OG image URL with LinkedIn optimization
+  const baseUrl = url.origin;
+  const imageUrl = query 
+    ? `${baseUrl}/.netlify/functions/og-image?query=${encodeURIComponent(query)}${snippet ? `&snippet=${encodeURIComponent(snippet.slice(0, 200))}` : ''}`
+    : `${baseUrl}/og-image.png`;
+
+  // Inject LinkedIn-optimized meta tags
+  const metaTags = `
+    <meta property="og:title" content="${title.replace(/"/g, '&quot;')}">
+    <meta property="og:description" content="${description.replace(/"/g, '&quot;')}">
+    <meta property="og:image" content="${imageUrl}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="627">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="CuriosAI">
+    <meta property="og:url" content="${url.href}">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${title.replace(/"/g, '&quot;')}">
+    <meta name="twitter:description" content="${description.replace(/"/g, '&quot;')}">
+    <meta name="twitter:image" content="${imageUrl}">
+    
+    <title>${title.replace(/"/g, '&quot;')}</title>
+  `;
+
+  // Replace existing meta tags or inject before </head>
+  if (html.includes('</head>')) {
+    html = html.replace('</head>', `${metaTags}</head>`);
   }
-  
-  // Only serve custom HTML to social media crawlers
-  const userAgent = request.headers.get('user-agent')?.toLowerCase() || '';
-  const isSocialCrawler = userAgent.includes('linkedinbot') || 
-                         userAgent.includes('facebookexternalhit') || 
-                         userAgent.includes('twitterbot') || 
-                         userAgent.includes('whatsapp');
-  
-  if (!isSocialCrawler) {
-    return; // Let normal users get the SPA
-  }
-  
-  // Extract query from URL
-  const query = url.searchParams.get('q') || 'Search Results';
-  const snippet = url.searchParams.get('snippet') || null;
-  
-  // Generate dynamic meta tags for social crawlers
-  const title = query;
-  let description = snippet ? 
-    `${snippet.slice(0, 155)}...` : 
-    `AI search results for "${query}" - Comprehensive insights and analysis.`;
-  
-  const ogImage = `${url.origin}/.netlify/functions/og-image?query=${encodeURIComponent(query)}${snippet ? `&snippet=${encodeURIComponent(snippet.slice(0, 200))}` : ''}`;
-  const canonicalUrl = request.url;
-  
-  // Simplified HTML with essential meta tags
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${title} - CuriosAI</title>
-    
-    <!-- Open Graph meta tags -->
-    <meta property="og:title" content="${title}" />
-    <meta property="og:description" content="${description}" />
-    <meta property="og:image" content="${ogImage}" />
-    <meta property="og:url" content="${canonicalUrl}" />
-    <meta property="og:type" content="article" />
-    <meta property="og:site_name" content="CuriosAI" />
-    
-    <!-- Twitter Card meta tags -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="${title}" />
-    <meta name="twitter:description" content="${description}" />
-    <meta name="twitter:image" content="${ogImage}" />
-    
-    <!-- Redirect crawlers that support it -->
-    <meta http-equiv="refresh" content="0;url=${canonicalUrl}" />
-</head>
-<body>
-    <h1>${title}</h1>
-    <p>${description}</p>
-    <p>If you are not redirected automatically, <a href="${canonicalUrl}">click here</a>.</p>
-</body>
-</html>`;
 
   return new Response(html, {
     headers: {
-      'Content-Type': 'text/html',
-      'Cache-Control': 'public, max-age=300'
-    }
+      ...response.headers,
+      "content-type": "text/html; charset=utf-8",
+    },
   });
-};
-  
-  // Create teaser description to motivate clicks
-  let description = '';
-  if (snippet) {
-    // Create teaser from AI overview snippet
-    const sentences = snippet.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    
-    if (sentences.length >= 2) {
-      // Use first two sentences as teaser
-      const teaser = sentences.slice(0, 2).join('. ').trim();
-      description = teaser.length > 140 ? teaser.substring(0, 137) + '...' : teaser + '...';
-    } else if (sentences.length === 1) {
-      // Use first sentence if substantial
-      const firstSentence = sentences[0].trim();
-      description = firstSentence.length > 100 ? firstSentence.substring(0, 137) + '...' : firstSentence + '...';
-    } else {
-      // Fallback to truncated snippet
-      description = snippet.slice(0, 140) + (snippet.length > 140 ? '...' : '');
-    }
-  } else {
-    description = `AI search results for "${query}" - Comprehensive insights and analysis with expert sources and detailed information.`;
-  }
-  
-  // Use snippet in OG image if available
-  const ogImageParams = new URLSearchParams({ query });
-  if (snippet) {
-    ogImageParams.set('snippet', snippet.slice(0, 200));
-  }
-  const ogImage = `${url.origin}/.netlify/functions/og-image?${ogImageParams.toString()}`;
-  const canonicalUrl = request.url;
-  
-  // Create HTML with proper meta tags
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${title} - CuriosAI</title>
-    
-    <!-- Open Graph meta tags for LinkedIn -->
-    <meta property="og:title" content="${title}" />
-    <meta property="og:description" content="${description}" />
-    <meta property="og:image" content="${ogImage}" />
-    <meta property="og:url" content="${canonicalUrl}" />
-    <meta property="og:type" content="article" />
-    <meta property="og:site_name" content="CuriosAI" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="627" />
-    <meta property="og:image:type" content="image/svg+xml" />
-    
-    <!-- Twitter Card meta tags -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@CuriosAI" />
-    <meta name="twitter:title" content="${title}" />
-    <meta name="twitter:description" content="${description}" />
-    <meta name="twitter:image" content="${ogImage}" />
-    
-    <!-- Standard meta tags -->
-    <meta name="description" content="${description}" />
-    <meta name="author" content="CuriosAI" />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="${canonicalUrl}" />
-    
-    <!-- Refresh to actual page for crawlers that follow redirects -->
-    <meta http-equiv="refresh" content="0;url=${canonicalUrl}" />
-</head>
-<body>
-    <h1>${title}</h1>
-    <p>${description}</p>
-    <p>If you are not redirected automatically, <a href="${canonicalUrl}">click here</a>.</p>
-    
-    <script>
-        // Redirect browsers to the actual SPA
-        if (!navigator.userAgent.match(/LinkedInBot|facebookexternalhit|Twitterbot|WhatsApp/i)) {
-            window.location.href = '${canonicalUrl}';
-        }
-    </script>
-</body>
-</html>`;
-
-  return new Response(html, {
-    headers: {
-      'Content-Type': 'text/html',
-      'Cache-Control': 'public, max-age=300' // 5 minutes cache
-    }
-  });
-};
+}
