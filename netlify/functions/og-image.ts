@@ -1,4 +1,4 @@
-// Netlify Function for Dynamic Open Graph Images
+// Netlify Function for Dynamic Open Graph Images - Consolidated Version
 import type { Handler } from '@netlify/functions';
 
 export const handler: Handler = async (event) => {
@@ -14,40 +14,52 @@ export const handler: Handler = async (event) => {
   // Process snippet for display - create teaser
   let displaySnippet = '';
   if (snippet) {
-    // Create teaser from first sentence or two to motivate clicks
     const sentences = snippet.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    
     if (sentences.length >= 1) {
       const teaser = sentences[0].trim();
-      // Limit teaser length for image display
       displaySnippet = teaser.length > 90 ? teaser.substring(0, 87) + '...' : teaser + '...';
     } else {
       displaySnippet = snippet.slice(0, 90) + (snippet.length > 90 ? '...' : '');
     }
   }
   
-  // Split snippet into lines for better display
-  const words = displaySnippet.split(' ');
-  const line1 = words.slice(0, Math.ceil(words.length / 2)).join(' ');
-  const line2 = words.slice(Math.ceil(words.length / 2)).join(' ');
-  
-  // Generate dynamic SVG based on query and snippet
+  // Generate dynamic SVG (optimized for social sharing)
   const svg = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
-    <!-- Background Gradient -->
     <defs>
       <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" style="stop-color:#0095FF;stop-opacity:0.1" />
         <stop offset="100%" style="stop-color:#0095FF;stop-opacity:0.05" />
       </linearGradient>
-      <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" style="stop-color:#0095FF" />
-        <stop offset="100%" style="stop-color:#0080FF" />
-      </linearGradient>
     </defs>
     
-    <!-- Background -->
     <rect width="1200" height="630" fill="#ffffff"/>
     <rect width="1200" height="630" fill="url(#bg)"/>
+    
+    <!-- CuriosAI Branding -->
+    <text x="80" y="120" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#0095FF">CuriosAI</text>
+    
+    <!-- Query Title -->
+    <text x="80" y="200" font-family="Arial, sans-serif" font-size="36" font-weight="bold" fill="#1a1a1a">${query.slice(0, 60).replace(/[<>&]/g, (c) => ({'<': '&lt;', '>': '&gt;', '&': '&amp;'}[c] || c))}</text>
+    
+    ${displaySnippet ? `
+    <!-- Snippet -->
+    <text x="80" y="280" font-family="Arial, sans-serif" font-size="20" fill="#666">${displaySnippet.replace(/[<>&]/g, (c) => ({'<': '&lt;', '>': '&gt;', '&': '&amp;'}[c] || c))}</text>
+    ` : ''}
+    
+    <!-- Bottom accent -->
+    <rect x="80" y="580" width="200" height="4" fill="#0095FF"/>
+  </svg>`;
+
+  return {
+    statusCode: 200,
+    headers: {
+      'Content-Type': 'image/svg+xml',
+      'Cache-Control': 'public, max-age=31536000', // 1 year cache
+      'Content-Disposition': 'inline; filename="og-image.svg"'
+    },
+    body: svg
+  };
+};
     
     <!-- Logo -->
     <circle cx="120" cy="120" r="60" fill="url(#accent)" opacity="0.1"/>

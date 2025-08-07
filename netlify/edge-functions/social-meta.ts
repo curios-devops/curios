@@ -1,29 +1,20 @@
-// Netlify Edge Function for Dynamic Meta Tag Injection
-
+// Simplified Netlify Edge Function for Dynamic Meta Tag Injection
 export default async (request: Request, context: any) => {
   const url = new URL(request.url);
   
-  // Handle multiple search page patterns
-  const isSearchPage = url.pathname === '/search' || 
-                      url.pathname.startsWith('/search/') ||
-                      url.pathname === '/pro-search' ||
-                      url.pathname === '/deep-research' ||
-                      url.pathname === '/insights-results' ||
-                      url.pathname === '/research-results' ||
-                      url.pathname === '/researcher-results';
+  // Only handle search pages
+  const isSearchPage = url.pathname === '/search' || url.pathname.startsWith('/search/');
   
   if (!isSearchPage) {
     return; // Continue to normal page
   }
   
+  // Only serve custom HTML to social media crawlers
   const userAgent = request.headers.get('user-agent')?.toLowerCase() || '';
   const isSocialCrawler = userAgent.includes('linkedinbot') || 
                          userAgent.includes('facebookexternalhit') || 
                          userAgent.includes('twitterbot') || 
-                         userAgent.includes('whatsapp') ||
-                         userAgent.includes('slackbot') ||
-                         userAgent.includes('discordbot') ||
-                         userAgent.includes('linkedin');
+                         userAgent.includes('whatsapp');
   
   if (!isSocialCrawler) {
     return; // Let normal users get the SPA
@@ -35,6 +26,52 @@ export default async (request: Request, context: any) => {
   
   // Generate dynamic meta tags for social crawlers
   const title = query;
+  let description = snippet ? 
+    `${snippet.slice(0, 155)}...` : 
+    `AI search results for "${query}" - Comprehensive insights and analysis.`;
+  
+  const ogImage = `${url.origin}/.netlify/functions/og-image?query=${encodeURIComponent(query)}${snippet ? `&snippet=${encodeURIComponent(snippet.slice(0, 200))}` : ''}`;
+  const canonicalUrl = request.url;
+  
+  // Simplified HTML with essential meta tags
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${title} - CuriosAI</title>
+    
+    <!-- Open Graph meta tags -->
+    <meta property="og:title" content="${title}" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:image" content="${ogImage}" />
+    <meta property="og:url" content="${canonicalUrl}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="CuriosAI" />
+    
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${title}" />
+    <meta name="twitter:description" content="${description}" />
+    <meta name="twitter:image" content="${ogImage}" />
+    
+    <!-- Redirect crawlers that support it -->
+    <meta http-equiv="refresh" content="0;url=${canonicalUrl}" />
+</head>
+<body>
+    <h1>${title}</h1>
+    <p>${description}</p>
+    <p>If you are not redirected automatically, <a href="${canonicalUrl}">click here</a>.</p>
+</body>
+</html>`;
+
+  return new Response(html, {
+    headers: {
+      'Content-Type': 'text/html',
+      'Cache-Control': 'public, max-age=300'
+    }
+  });
+};
   
   // Create teaser description to motivate clicks
   let description = '';
@@ -55,7 +92,7 @@ export default async (request: Request, context: any) => {
       description = snippet.slice(0, 140) + (snippet.length > 140 ? '...' : '');
     }
   } else {
-    description = `AI-powered search results for "${query}" - Comprehensive insights and analysis with expert sources and detailed information.`;
+    description = `AI search results for "${query}" - Comprehensive insights and analysis with expert sources and detailed information.`;
   }
   
   // Use snippet in OG image if available
