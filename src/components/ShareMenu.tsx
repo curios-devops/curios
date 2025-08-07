@@ -22,59 +22,55 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
     try {
       switch (platform) {
         case 'linkedin':
-          // Simple LinkedIn sharing - following singularityhub.com example pattern
-          // Create clean title from search query
-          const linkedInTitle = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          // LinkedIn Preview Elements Order:
+          // 1. Post Title → User's search query 
+          // 2. Link Box Image → First search result image with proper dimensions
+          // 3. Link Box Subtitle → User's search query (repeated)
+          // 4. Link Box Description → Dynamic AI response snippet with "..." for intrigue
+          // 5. Link Box Domain → curiosai.com (automatic from URL)
           
-          // Clean the URL - remove any fragments
-          const cleanUrl = url.split('#')[0];
-          
-          // Update meta tags for LinkedIn to pick up title and image
+          // Get first search result image directly (Element 2)
           const firstSearchImage = images && images.length > 0 ? images[0].url : '';
           
-          // Create compelling snippet from AI response text for LinkedIn description
-          let compellingDescription = '';
+          // Clean query for both Post Title (Element 1) and Link Box Subtitle (Element 3)
+          const linkedInTitle = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          
+          // Create dynamic snippet from actual response (Element 4 - not generic text)
+          let dynamicSnippet = '';
           if (text && text.length > 50) {
-            // Extract first 1-2 sentences to create intrigue
+            // Extract first compelling sentence to create intrigue
             const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
-            if (sentences.length >= 2) {
-              compellingDescription = sentences.slice(0, 2).join('. ').trim();
-            } else if (sentences.length === 1) {
-              compellingDescription = sentences[0].trim();
-            } else {
-              compellingDescription = text.substring(0, 150).trim();
+            if (sentences.length >= 1) {
+              dynamicSnippet = sentences[0].trim();
+              // Add intrigue dots if under optimal length
+              if (dynamicSnippet.length < 120 && !dynamicSnippet.endsWith('.')) {
+                dynamicSnippet += '...';
+              }
             }
-            
-            // Truncate to LinkedIn optimal length and add intrigue
-            if (compellingDescription.length > 140) {
-              compellingDescription = compellingDescription.substring(0, 137) + '...';
-            } else if (!compellingDescription.endsWith('.')) {
-              compellingDescription += '...';
-            }
-          } else {
-            // Fallback if no AI text available
-            compellingDescription = `Discover comprehensive insights and analysis about "${linkedInTitle}". Explore detailed research, expert sources, and AI-powered findings.`;
           }
           
+          // Fallback to descriptive snippet if no good content
+          if (!dynamicSnippet) {
+            dynamicSnippet = `Explore comprehensive search results for "${linkedInTitle}"`;
+          }
+          
+          // Clean the URL - remove any fragments (Element 5 domain automatic)
+          const cleanUrl = url.split('#')[0];
+          
+          // Update meta tags for LinkedIn crawler - 5 element structure
           updateMetaTags({
-            title: linkedInTitle,
-            description: compellingDescription,
-            image: firstSearchImage || `${window.location.origin}/og-image.svg`,
-            url: cleanUrl
+            title: linkedInTitle,                    // Elements 1 & 3: User query (post title + link subtitle)
+            description: dynamicSnippet,             // Element 4: Dynamic snippet from AI response
+            image: firstSearchImage,                 // Element 2: First search result image
+            url: cleanUrl                            // Element 5: curiosai.com domain (automatic)
           });
           
-          // LinkedIn URL following the exact pattern from singularityhub.com
-          const linkedInParams = new URLSearchParams({
-            mini: 'true',
-            url: cleanUrl,
-            text: linkedInTitle // This is key - the title appears in the "What do you want to talk about?" field
-          });
-          
-          const linkedInUrl = `https://www.linkedin.com/shareArticle?${linkedInParams.toString()}`;
+          // Simple LinkedIn URL with explicit parameters
+          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(cleanUrl)}&title=${encodeURIComponent(linkedInTitle)}&summary=${encodeURIComponent(dynamicSnippet)}`;
           
           // Small delay to ensure meta tags are updated
           setTimeout(() => {
-            window.open(linkedInUrl, '_blank', 'width=600,height=500');
+            window.open(linkedInUrl, '_blank', 'width=600,height=600');
           }, 100);
           setIsOpen(false);
           break;

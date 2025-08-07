@@ -15,50 +15,63 @@ export function updateMetaTags(data: MetaTagData) {
   updateMetaTag('og:title', data.title);
   updateMetaTag('og:description', data.description);
   updateMetaTag('og:url', data.url);
-  
-  if (data.image) {
-    updateMetaTag('og:image', data.image);
-    // LinkedIn optimal image dimensions
-    updateMetaTag('og:image:width', '1200');
-    updateMetaTag('og:image:height', '627');
-  }
-
-  // Essential meta tags for LinkedIn
   updateMetaTag('og:type', 'article');
   updateMetaTag('og:site_name', 'CuriosAI');
+  
+  // Image handling - straightforward approach
+  if (data.image && data.image.trim()) {
+    updateMetaTag('og:image', data.image);
+    updateMetaTag('og:image:width', '1200');
+    updateMetaTag('og:image:height', '627');
+    updateMetaTag('og:image:type', 'image/jpeg');
+    updateMetaTag('og:image:alt', data.title);
+    
+    // Twitter meta tags for better compatibility
+    updateMetaTag('twitter:card', 'summary_large_image');
+    updateMetaTag('twitter:image', data.image);
+    updateMetaTag('twitter:image:alt', data.title);
+  } else {
+    // Fallback to site logo if no image
+    const fallbackImage = `${window.location.origin}/og-image.svg`;
+    updateMetaTag('og:image', fallbackImage);
+    updateMetaTag('twitter:card', 'summary_large_image');
+    updateMetaTag('twitter:image', fallbackImage);
+  }
 
   // Twitter Card meta tags
-  updateMetaTag('twitter:card', 'summary_large_image');
   updateMetaTag('twitter:title', data.title);
   updateMetaTag('twitter:description', data.description);
+  updateMetaTag('twitter:site', '@CuriosAI');
   
-  if (data.image) {
-    updateMetaTag('twitter:image', data.image);
-  }
+  // LinkedIn specific optimizations
+  updateMetaTag('article:author', 'CuriosAI');
+  updateMetaTag('og:locale', 'en_US');
 }
 
 function updateMetaTag(property: string, content: string) {
-  let metaTag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
-  
-  if (!metaTag) {
-    metaTag = document.querySelector(`meta[name="${property}"]`) as HTMLMetaElement;
+  // Remove existing tags (both property and name attributes)
+  let existingTag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
+  if (existingTag) {
+    existingTag.remove();
   }
   
-  if (!metaTag) {
-    console.log(`📝 Creating new meta tag for: ${property}`);
-    metaTag = document.createElement('meta');
-    if (property.startsWith('og:') || property === 'twitter:card') {
-      metaTag.setAttribute('property', property);
-    } else {
-      metaTag.setAttribute('name', property);
-    }
-    document.head.appendChild(metaTag);
+  existingTag = document.querySelector(`meta[name="${property}"]`) as HTMLMetaElement;
+  if (existingTag) {
+    existingTag.remove();
+  }
+  
+  // Create new meta tag
+  const metaTag = document.createElement('meta');
+  
+  // Use 'property' for Open Graph tags, 'name' for Twitter and others
+  if (property.startsWith('og:') || property.startsWith('article:')) {
+    metaTag.setAttribute('property', property);
   } else {
-    console.log(`♻️ Updating existing meta tag for: ${property}`);
+    metaTag.setAttribute('name', property);
   }
   
   metaTag.setAttribute('content', content);
-  console.log(`✅ Meta tag set: ${property} = "${metaTag.getAttribute('content')}"`);
+  document.head.appendChild(metaTag);
 }
 
 export function generateShareableMetaTags(query: string, answer?: string, imageUrl?: string) {
