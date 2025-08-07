@@ -22,13 +22,17 @@ export default async (request: Request, context: any) => {
                          userAgent.includes('twitterbot') || 
                          userAgent.includes('whatsapp') ||
                          userAgent.includes('slackbot') ||
-                         userAgent.includes('discordbot');
+                         userAgent.includes('discordbot') ||
+                         userAgent.includes('linkedin');
   
-  console.log(`Edge Function: ${url.pathname}, User-Agent: ${userAgent}, isSocialCrawler: ${isSocialCrawler}`);
+  console.log(`🤖 Edge Function - Path: ${url.pathname}, User-Agent: ${userAgent}, isSocialCrawler: ${isSocialCrawler}`);
   
   if (!isSocialCrawler) {
+    console.log('👤 Normal user - serving SPA');
     return; // Let normal users get the SPA
   }
+  
+  console.log('🕷️ Social crawler detected - serving meta tags');
   
   // Extract query from URL
   const query = url.searchParams.get('q') || 'Search Results';
@@ -83,7 +87,7 @@ export default async (request: Request, context: any) => {
     <meta property="og:type" content="article" />
     <meta property="og:site_name" content="CuriosAI" />
     <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+    <meta property="og:image:height" content="627" />
     <meta property="og:image:type" content="image/svg+xml" />
     
     <!-- Twitter Card meta tags -->

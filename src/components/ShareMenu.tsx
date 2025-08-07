@@ -44,27 +44,13 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           // Enhanced LinkedIn sharing with first search result image
           const firstSearchImage = images && images.length > 0 ? images[0].url : '';
           
-          // Clean the URL - remove any fragments and add snippet for edge function
+          // Clean the URL - remove any fragments
           let cleanUrl = url.split('#')[0];
           
-          // Add AI overview snippet to URL for edge function processing
+          // CRITICAL: Add the snippet to the URL for meta tag processing
           if (text && text.length > 50) {
-            // Create teaser snippet for URL parameter
-            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-            let snippetForUrl = '';
-            
-            if (sentences.length >= 1) {
-              // Use first sentence as URL snippet
-              snippetForUrl = sentences[0].trim();
-              if (snippetForUrl.length > 200) {
-                snippetForUrl = snippetForUrl.substring(0, 197) + '...';
-              }
-            } else {
-              snippetForUrl = text.substring(0, 200);
-            }
-            
-            // Add snippet as URL parameter for edge function
             const urlObj = new URL(cleanUrl);
+            const snippetForUrl = text.substring(0, 200);
             urlObj.searchParams.set('snippet', snippetForUrl);
             cleanUrl = urlObj.toString();
           }
@@ -73,7 +59,7 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           // LinkedIn title: Just the search query (clean and simple)
           const linkedInTitle = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
           
-          // Enhanced description: Create teaser snippet from AI overview to motivate clicks
+          // CRITICAL FIX: Don't strip snippet for title
           let shareableText = '';
           if (text && text.length > 50) {
             // Create a teaser from the first 1-2 sentences of AI overview
@@ -106,34 +92,47 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
             shareableText = 'Discover comprehensive search results powered by AI with detailed insights and analysis.';
           }
           
+          // CRITICAL: Add the snippet to the URL for meta tag processing
+          if (text && text.length > 50) {
+            const urlObj = new URL(cleanUrl);
+            const snippetForUrl = text.substring(0, 200);
+            urlObj.searchParams.set('snippet', snippetForUrl);
+            cleanUrl = urlObj.toString();
+          }
+          
           // Update meta tags with search result image for LinkedIn
           const dynamicImage = (() => {
             const baseUrl = window.location.origin;
             
-            // Strategy 1: Use first search result image if available
-            if (firstSearchImage) {
+            // Helper function to validate HTTPS image URLs
+            const isValidHttpsUrl = (urlString: string): boolean => {
               try {
-                // Validate the image URL
-                const imageUrl = new URL(firstSearchImage);
-                if (imageUrl.protocol === 'https:' && 
-                    !imageUrl.hostname.includes('localhost') &&
-                    !imageUrl.hostname.includes('placeholder')) {
-                  
-                  // Create LinkedIn-optimized version of the search result image
-                  const encodedImageUrl = encodeURIComponent(firstSearchImage);
-                  const encodedQuery = encodeURIComponent(query || 'Search');
-                  return `${baseUrl}/.netlify/functions/og-image-from-search?imageUrl=${encodedImageUrl}&query=${encodedQuery}`;
-                }
+                const url = new URL(urlString);
+                return url.protocol === 'https:' && 
+                       !url.hostname.includes('localhost') &&
+                       !url.hostname.includes('placeholder') &&
+                       !url.hostname.includes('example.com');
               } catch {
-                // Invalid URL, fall through to fallback
+                return false;
               }
+            };
+            
+            // Strategy 1: Use first search result image if available and valid
+            if (firstSearchImage && isValidHttpsUrl(firstSearchImage)) {
+              console.log('✅ Using search result image:', firstSearchImage);
+              const encodedImageUrl = encodeURIComponent(firstSearchImage);
+              const encodedQuery = encodeURIComponent(query || linkedInTitle);
+              return `${baseUrl}/.netlify/functions/og-image-from-search?imageUrl=${encodedImageUrl}&query=${encodedQuery}`;
             }
             
-            // Strategy 2: Fallback to our generated image with snippet
-            const encodedQuery = encodeURIComponent(query || 'Search');
-            const encodedSnippet = text ? encodeURIComponent(text.substring(0, 100)) : '';
-            return `${baseUrl}/.netlify/functions/og-image?query=${encodedQuery}&snippet=${encodedSnippet}`;
+            // Strategy 2: Fallback to generated text-based image
+            console.log('🔄 Using fallback text-based image');
+            const encodedQuery = encodeURIComponent(query || linkedInTitle);
+            const encodedSnippet = shareableText ? encodeURIComponent(shareableText.substring(0, 100)) : '';
+            return `${baseUrl}/.netlify/functions/og-image-png?query=${encodedQuery}&snippet=${encodedSnippet}`;
           })();
+          
+          console.log('🖼️ Dynamic image URL:', dynamicImage);
           
           updateMetaTags({
             title: linkedInTitle,

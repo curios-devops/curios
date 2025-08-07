@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Sharing Debug Tool</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background: #f5f5f5; 
+            line-height: 1.6;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .error { color: #d32f2f; font-weight: bold; }
+        .success { color: #2e7d32; font-weight: bold; }
+        .warning { color: #f57c00; font-weight: bold; }
+        .code { 
+            background: #f0f0f0; 
+            padding: 10px; 
+            border-radius: 5px; 
+            font-family: monospace; 
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            background: #0077B5;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #005582; }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-image {
+            max-width: 300px;
+            max-height: 200px;
+            border: 2px solid #0077B5;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 LinkedIn Sharing Debug Tool</h1>
+        <p>Comprehensive testing for title and image issues</p>
+
+        <!-- Test 1: Meta Tags Verification -->
+        <div class="debug-section">
+            <h2>🏷️ Test 1: Current Meta Tags</h2>
+            <button onclick="checkCurrentMetaTags()">Check Current Meta Tags</button>
+            <div id="metaTagsResult" class="code"></div>
+        </div>
+
+        <!-- Test 2: Title Update Test -->
+        <div class="debug-section">
+            <h2>📝 Test 2: Title Update Test</h2>
+            <input type="text" id="testTitle" placeholder="Enter test title..." value="Meta's Smart Wristband Technology">
+            <button onclick="testTitleUpdate()">Update Title & Check</button>
+            <div id="titleResult" class="code"></div>
+        </div>
+
+        <!-- Test 3: Image URL Testing -->
+        <div class="debug-section">
+            <h2>🖼️ Test 3: Image Generation Testing</h2>
+            <input type="text" id="testQuery" placeholder="Enter search query..." value="artificial intelligence">
+            <input type="text" id="testImageUrl" placeholder="Enter image URL..." value="https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800">
+            <button onclick="testImageGeneration()">Test Image Generation</button>
+            <div id="imageResult" class="code"></div>
+            <div id="imagePreview"></div>
+        </div>
+
+        <!-- Test 4: LinkedIn URL Generation -->
+        <div class="debug-section">
+            <h2>🔗 Test 4: LinkedIn URL Generation</h2>
+            <button onclick="testLinkedInURL()">Generate LinkedIn URL</button>
+            <div id="linkedinResult" class="code"></div>
+        </div>
+
+        <!-- Test 5: Complete Share Simulation -->
+        <div class="debug-section">
+            <h2>🚀 Test 5: Complete Share Flow Simulation</h2>
+            <button onclick="simulateCompleteShare()">Simulate Complete Share</button>
+            <div id="shareResult" class="code"></div>
+        </div>
+
+        <!-- Test 6: LinkedIn Post Inspector -->
+        <div class="debug-section">
+            <h2>🔍 Test 6: LinkedIn Post Inspector</h2>
+            <p>Test your URLs with LinkedIn's official tool:</p>
+            <button onclick="openLinkedInInspector()">Open LinkedIn Post Inspector</button>
+            <p>Test these URLs:</p>
+            <div class="code" id="testUrls"></div>
+        </div>
+    </div>
+
+    <script>
+        const baseUrl = window.location.origin;
+        
+        function log(message, type = 'info') {
+            console.log(message);
+            return `[${new Date().toLocaleTimeString()}] ${message}\n`;
+        }
+
+        function checkCurrentMetaTags() {
+            let result = 'Current Meta Tags:\n\n';
+            
+            const metaTags = [
+                'og:title', 'og:description', 'og:image', 'og:url', 'og:type', 'og:site_name',
+                'twitter:card', 'twitter:title', 'twitter:description', 'twitter:image'
+            ];
+            
+            metaTags.forEach(tag => {
+                const meta = document.querySelector(`meta[property="${tag}"]`) || 
+                           document.querySelector(`meta[name="${tag}"]`);
+                if (meta) {
+                    result += `✅ ${tag}: "${meta.getAttribute('content')}"\n`;
+                } else {
+                    result += `❌ ${tag}: NOT FOUND\n`;
+                }
+            });
+            
+            result += `\n📝 Document Title: "${document.title}"\n`;
+            
+            document.getElementById('metaTagsResult').textContent = result;
+        }
+
+        function testTitleUpdate() {
+            const testTitle = document.getElementById('testTitle').value;
+            let result = `Testing title update with: "${testTitle}"\n\n`;
+            
+            // Simulate the updateMetaTags function
+            document.title = testTitle;
+            updateMetaTag('og:title', testTitle);
+            updateMetaTag('og:type', 'article');
+            updateMetaTag('og:site_name', 'CuriosAI');
+            
+            result += `✅ Document title set to: "${document.title}"\n`;
+            result += `✅ og:title meta tag updated\n`;
+            
+            // Verify the changes
+            const ogTitle = document.querySelector('meta[property="og:title"]');
+            if (ogTitle) {
+                result += `✅ Verification: og:title = "${ogTitle.getAttribute('content')}"\n`;
+            } else {
+                result += `❌ Verification failed: og:title meta tag not found\n`;
+            }
+            
+            document.getElementById('titleResult').textContent = result;
+        }
+
+        function testImageGeneration() {
+            const query = document.getElementById('testQuery').value;
+            const imageUrl = document.getElementById('testImageUrl').value;
+            let result = `Testing image generation...\n\n`;
+            
+            // Test the search result image processing function
+            const encodedImageUrl = encodeURIComponent(imageUrl);
+            const encodedQuery = encodeURIComponent(query);
+            const processedImageUrl = `${baseUrl}/.netlify/functions/og-image-from-search?imageUrl=${encodedImageUrl}&query=${encodedQuery}`;
+            
+            result += `🔗 Original Image: ${imageUrl}\n`;
+            result += `🔗 Processed Image: ${processedImageUrl}\n\n`;
+            
+            // Test if the function is accessible
+            fetch(processedImageUrl)
+                .then(response => {
+                    if (response.ok) {
+                        result += `✅ Function accessible (Status: ${response.status})\n`;
+                        result += `✅ Content-Type: ${response.headers.get('content-type')}\n`;
+                        
+                        // Show the image
+                        const img = document.createElement('img');
+                        img.src = processedImageUrl;
+                        img.className = 'test-image';
+                        img.onerror = () => {
+                            result += `❌ Image failed to load\n`;
+                            document.getElementById('imageResult').textContent = result;
+                        };
+                        img.onload = () => {
+                            result += `✅ Image loaded successfully\n`;
+                            document.getElementById('imageResult').textContent = result;
+                        };
+                        
+                        const preview = document.getElementById('imagePreview');
+                        preview.innerHTML = '';
+                        preview.appendChild(img);
+                    } else {
+                        result += `❌ Function error (Status: ${response.status})\n`;
+                        document.getElementById('imageResult').textContent = result;
+                    }
+                })
+                .catch(error => {
+                    result += `❌ Network error: ${error.message}\n`;
+                    document.getElementById('imageResult').textContent = result;
+                });
+            
+            document.getElementById('imageResult').textContent = result;
+        }
+
+        function testLinkedInURL() {
+            const testUrl = window.location.href;
+            const testTitle = "Test LinkedIn Share";
+            
+            let result = `Testing LinkedIn URL generation...\n\n`;
+            
+            // Clean URL
+            const cleanUrl = testUrl.split('#')[0];
+            result += `🔗 Clean URL: ${cleanUrl}\n`;
+            
+            // FIXED: Use sharing/share-offsite for better compatibility
+            const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(cleanUrl)}`;
+            
+            result += `🔗 FIXED LinkedIn URL: ${linkedInUrl}\n`;
+            result += `📏 URL Length: ${linkedInUrl.length} characters\n`;
+            
+            // Alternative method (commented out)
+            result += `\n📝 Alternative method (shareArticle):\n`;
+            const linkedInParams = new URLSearchParams({
+                mini: 'true',
+                url: cleanUrl,
+                title: testTitle,
+                summary: 'Test LinkedIn sharing from CuriosAI'
+            });
+            const altLinkedInUrl = `https://www.linkedin.com/shareArticle?${linkedInParams.toString()}`;
+            result += `🔗 Alternative URL: ${altLinkedInUrl}\n`;
+            
+            if (linkedInUrl.length > 2048) {
+                result += `⚠️ WARNING: URL may be too long for some browsers\n`;
+            } else {
+                result += `✅ URL length is acceptable\n`;
+            }
+            
+            result += `\n✅ FIXED: Now using sharing/share-offsite endpoint for better Post Inspector compatibility\n`;
+            
+            document.getElementById('linkedinResult').textContent = result;
+        }
+
+        function simulateCompleteShare() {
+            let result = `Simulating complete LinkedIn share flow...\n\n`;
+            
+            const testData = {
+                title: "Meta's Smart Wristband Technology",
+                description: "Meta has recently unveiled a smart wristband that allows users to control devices through hand gestures...",
+                query: "Meta smart wristband",
+                imageUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800"
+            };
+            
+            result += `📝 Test Data:\n`;
+            result += `- Title: ${testData.title}\n`;
+            result += `- Query: ${testData.query}\n`;
+            result += `- Image: ${testData.imageUrl}\n\n`;
+            
+            // Step 1: Update meta tags
+            result += `Step 1: Updating meta tags...\n`;
+            updateMetaTag('og:title', testData.title);
+            updateMetaTag('og:description', testData.description);
+            updateMetaTag('og:type', 'article');
+            updateMetaTag('og:site_name', 'CuriosAI');
+            
+            // Step 2: Generate dynamic image
+            const encodedImageUrl = encodeURIComponent(testData.imageUrl);
+            const encodedQuery = encodeURIComponent(testData.query);
+            const dynamicImage = `${baseUrl}/.netlify/functions/og-image-from-search?imageUrl=${encodedImageUrl}&query=${encodedQuery}`;
+            updateMetaTag('og:image', dynamicImage);
+            updateMetaTag('og:image:width', '1200');
+            updateMetaTag('og:image:height', '627');
+            
+            result += `✅ Meta tags updated\n`;
+            result += `✅ Dynamic image: ${dynamicImage}\n`;
+            
+            // Step 3: Verify meta tags
+            const ogTitle = document.querySelector('meta[property="og:title"]');
+            const ogImage = document.querySelector('meta[property="og:image"]');
+            
+            if (ogTitle && ogImage) {
+                result += `✅ Verification: Title = "${ogTitle.getAttribute('content')}"\n`;
+                result += `✅ Verification: Image = "${ogImage.getAttribute('content')}"\n`;
+            } else {
+                result += `❌ Verification failed: Meta tags not found\n`;
+            }
+            
+            // Step 4: Generate FIXED LinkedIn URL
+            const cleanUrl = window.location.href.split('#')[0];
+            // FIXED: Use sharing/share-offsite for better compatibility
+            const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(cleanUrl)}`;
+            
+            result += `\n🚀 FIXED LinkedIn URL: ${linkedInUrl}\n`;
+            result += `\n🎯 Ready for testing! Use LinkedIn Post Inspector to verify.\n`;
+            result += `\n✅ FIXED: Now using sharing/share-offsite endpoint for better Post Inspector compatibility\n`;
+            
+            document.getElementById('shareResult').textContent = result;
+        }
+
+        function openLinkedInInspector() {
+            window.open('https://www.linkedin.com/post-inspector/', '_blank');
+            
+            const testUrls = `
+🔍 TEST THESE CURIOS AI URLS IN LINKEDIN POST INSPECTOR:
+
+❗ IMPORTANT: Test the actual CuriosAI URLs below, NOT the LinkedIn share URLs!
+LinkedIn Post Inspector needs to crawl the actual content, not the share URLs.
+
+1. 🏠 Homepage: https://curios-ai.netlify.app/
+2. 🔍 Search example: https://curios-ai.netlify.app/?q=artificial+intelligence
+3. 🧪 Test query: https://curios-ai.netlify.app/?q=Meta+smart+wristband
+4. 📱 Mobile test: https://curios-ai.netlify.app/?q=technology+trends
+5. 🎯 Debug mode: https://curios-ai.netlify.app/?q=test&debug=linkedin
+
+⚠️ CRITICAL: Do NOT test LinkedIn share URLs like:
+❌ https://www.linkedin.com/sharing/share-offsite/?url=...
+❌ https://www.linkedin.com/shareArticle?...
+
+✅ ONLY test the actual CuriosAI URLs above!
+
+📋 Testing Checklist:
+- Copy each URL above into LinkedIn Post Inspector
+- Verify title shows the search query (not "What do you want to talk about?")
+- Verify image appears (processed search result image)
+- Check image dimensions are 1200x627
+- Ensure no redirects to LinkedIn login page
+`;
+            
+            document.getElementById('testUrls').textContent = testUrls;
+        }
+
+        // Helper function to update meta tags
+        function updateMetaTag(property, content) {
+            let metaTag = document.querySelector(`meta[property="${property}"]`);
+            
+            if (!metaTag) {
+                metaTag = document.querySelector(`meta[name="${property}"]`);
+            }
+            
+            if (!metaTag) {
+                metaTag = document.createElement('meta');
+                if (property.startsWith('og:') || property === 'twitter:card') {
+                    metaTag.setAttribute('property', property);
+                } else {
+                    metaTag.setAttribute('name', property);
+                }
+                document.head.appendChild(metaTag);
+            }
+            
+            metaTag.setAttribute('content', content);
+        }
+
+        // Auto-check meta tags on load
+        window.addEventListener('load', () => {
+            setTimeout(checkCurrentMetaTags, 1000);
+        });
+
+        console.log('🔧 LinkedIn Debug Tool Loaded');
+        console.log('Base URL:', baseUrl);
+    </script>
+</body>
+</html>
