@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Share2, Link2, Check } from 'lucide-react';
 import Notification from './Notification';
 import { updateMetaTags } from '../utils/metaTags';
@@ -18,168 +18,37 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
 
-  // SUPER EXPLICIT DEBUG - This should ALWAYS show
-  console.log('🚨🚨🚨 SHAREMENU COMPONENT IS RENDERING 🚨🚨🚨');
-  console.log('Props received:', { url, title, text, query, images });
-  console.log('Current timestamp:', new Date().toISOString());
-  console.log('🚨🚨🚨 END SHAREMENU DEBUG 🚨🚨🚨');
-
-  // Debug when isOpen changes
-  useEffect(() => {
-    console.log('📱 ShareMenu isOpen changed to:', isOpen);
-  }, [isOpen]);
-
   const handleShare = async (platform: SharePlatform) => {
     try {
       switch (platform) {
         case 'linkedin':
-          console.log('=== LinkedIn Share Debug START ===');
-          console.log('Raw props received:');
-          console.log('- url:', url);
-          console.log('- title:', title);
-          console.log('- text:', text);
-          console.log('- query:', query);
-          console.log('- images:', images);
-          
-          // Enhanced LinkedIn sharing with first search result image
-          const firstSearchImage = images && images.length > 0 ? images[0].url : '';
-          
-          // Clean the URL - remove any fragments
-          let cleanUrl = url.split('#')[0];
-          
-          // CRITICAL: Add the snippet to the URL for meta tag processing
-          if (text && text.length > 50) {
-            const urlObj = new URL(cleanUrl);
-            const snippetForUrl = text.substring(0, 200);
-            urlObj.searchParams.set('snippet', snippetForUrl);
-            cleanUrl = urlObj.toString();
-          }
-          console.log('- cleanUrl:', cleanUrl);
-          
-          // LinkedIn title: Just the search query (clean and simple)
+          // Simple LinkedIn sharing - following singularityhub.com example pattern
+          // Create clean title from search query
           const linkedInTitle = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
           
-          // CRITICAL FIX: Don't strip snippet for title
-          let shareableText = '';
-          if (text && text.length > 50) {
-            // Create a teaser from the first 1-2 sentences of AI overview
-            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-            
-            if (sentences.length >= 2) {
-              // Use first two sentences as teaser
-              const teaser = sentences.slice(0, 2).join('. ').trim();
-              if (teaser.length > 140) {
-                shareableText = teaser.substring(0, 137) + '...';
-              } else {
-                shareableText = teaser + '...';
-              }
-            } else if (sentences.length === 1) {
-              // Use first sentence if it's substantial
-              const firstSentence = sentences[0].trim();
-              if (firstSentence.length > 100) {
-                shareableText = firstSentence.substring(0, 137) + '...';
-              } else {
-                shareableText = firstSentence + '...';
-              }
-            } else {
-              // Fallback to truncated text
-              shareableText = text.length > 140 ? text.substring(0, 137) + '...' : text + '...';
-            }
-          } else if (query) {
-            // Fallback to query-based description
-            shareableText = `Comprehensive AI-powered search results and insights for "${query}". Discover detailed analysis, sources, and expert perspectives.`;
-          } else {
-            shareableText = 'Discover comprehensive search results powered by AI with detailed insights and analysis.';
-          }
+          // Clean the URL - remove any fragments
+          const cleanUrl = url.split('#')[0];
           
-          // CRITICAL: Add the snippet to the URL for meta tag processing
-          if (text && text.length > 50) {
-            const urlObj = new URL(cleanUrl);
-            const snippetForUrl = text.substring(0, 200);
-            urlObj.searchParams.set('snippet', snippetForUrl);
-            cleanUrl = urlObj.toString();
-          }
-          
-          // Update meta tags with search result image for LinkedIn
-          const dynamicImage = (() => {
-            const baseUrl = window.location.origin;
-            
-            // Helper function to validate HTTPS image URLs
-            const isValidHttpsUrl = (urlString: string): boolean => {
-              try {
-                const url = new URL(urlString);
-                return url.protocol === 'https:' && 
-                       !url.hostname.includes('localhost') &&
-                       !url.hostname.includes('placeholder') &&
-                       !url.hostname.includes('example.com');
-              } catch {
-                return false;
-              }
-            };
-            
-            // Strategy 1: Use first search result image if available and valid
-            if (firstSearchImage && isValidHttpsUrl(firstSearchImage)) {
-              console.log('✅ Using search result image:', firstSearchImage);
-              const encodedImageUrl = encodeURIComponent(firstSearchImage);
-              const encodedQuery = encodeURIComponent(query || linkedInTitle);
-              return `${baseUrl}/.netlify/functions/og-image-from-search?imageUrl=${encodedImageUrl}&query=${encodedQuery}`;
-            }
-            
-            // Strategy 2: Fallback to generated text-based image
-            console.log('🔄 Using fallback text-based image');
-            const encodedQuery = encodeURIComponent(query || linkedInTitle);
-            const encodedSnippet = shareableText ? encodeURIComponent(shareableText.substring(0, 100)) : '';
-            return `${baseUrl}/.netlify/functions/og-image-png?query=${encodedQuery}&snippet=${encodedSnippet}`;
-          })();
-          
-          console.log('🖼️ Dynamic image URL:', dynamicImage);
+          // Update meta tags for LinkedIn to pick up title and image
+          const firstSearchImage = images && images.length > 0 ? images[0].url : '';
           
           updateMetaTags({
             title: linkedInTitle,
-            description: shareableText,
-            image: dynamicImage,
+            description: text || `AI-powered search results for "${linkedInTitle}"`,
+            image: firstSearchImage || `${window.location.origin}/og-image.svg`,
             url: cleanUrl
           });
           
-          console.log('After processing:');
-          console.log('- linkedInTitle:', linkedInTitle);
-          console.log('- shareableText:', shareableText);
-          console.log('- cleanUrl:', cleanUrl);
-          console.log('- firstSearchImage:', firstSearchImage);
-          console.log('- firstSearchImage valid:', firstSearchImage ? 'YES' : 'NO');
-          if (firstSearchImage) {
-            try {
-              const testUrl = new URL(firstSearchImage);
-              console.log('- firstSearchImage protocol:', testUrl.protocol);
-              console.log('- firstSearchImage hostname:', testUrl.hostname);
-            } catch (e) {
-              console.log('- firstSearchImage URL parsing error:', e);
-            }
-          }
-          console.log('- dynamicImage:', dynamicImage);
-          console.log('- Meta tags that will be set:', {
-            title: linkedInTitle,
-            description: shareableText,
-            image: dynamicImage,
-            url: cleanUrl
-          });
-          
-          // LinkedIn's modern API - following singularityhub.com approach
-          // Use only URL parameter - LinkedIn will read title from meta tags
+          // LinkedIn URL following the exact pattern from singularityhub.com
           const linkedInParams = new URLSearchParams({
             mini: 'true',
-            url: cleanUrl
-            // No text parameter - let LinkedIn read from meta tags
+            url: cleanUrl,
+            text: linkedInTitle // This is key - the title appears in the "What do you want to talk about?" field
           });
           
           const linkedInUrl = `https://www.linkedin.com/shareArticle?${linkedInParams.toString()}`;
           
-          console.log('=== Final LinkedIn URL ===');
-          console.log(linkedInUrl);
-          console.log('URL length:', linkedInUrl.length);
-          console.log('=== LinkedIn Share Debug END ===');
-          
-          // Give a small delay to ensure meta tags are updated before opening LinkedIn
+          // Small delay to ensure meta tags are updated
           setTimeout(() => {
             window.open(linkedInUrl, '_blank', 'width=600,height=500');
           }, 100);

@@ -8,11 +8,8 @@ export interface MetaTagData {
 }
 
 export function updateMetaTags(data: MetaTagData) {
-  console.log('🏷️ updateMetaTags called with:', data);
-  
   // Update document title
   document.title = data.title;
-  console.log('📝 Document title set to:', document.title);
 
   // Update or create Open Graph meta tags
   updateMetaTag('og:title', data.title);
@@ -21,16 +18,16 @@ export function updateMetaTags(data: MetaTagData) {
   
   if (data.image) {
     updateMetaTag('og:image', data.image);
-    // Add optimal LinkedIn image dimensions (1.91:1 aspect ratio)
+    // LinkedIn optimal image dimensions
     updateMetaTag('og:image:width', '1200');
     updateMetaTag('og:image:height', '627');
   }
 
-  // Ensure og:type is set for LinkedIn
+  // Essential meta tags for LinkedIn
   updateMetaTag('og:type', 'article');
   updateMetaTag('og:site_name', 'CuriosAI');
 
-  // Update Twitter Card meta tags
+  // Twitter Card meta tags
   updateMetaTag('twitter:card', 'summary_large_image');
   updateMetaTag('twitter:title', data.title);
   updateMetaTag('twitter:description', data.description);
@@ -38,13 +35,9 @@ export function updateMetaTags(data: MetaTagData) {
   if (data.image) {
     updateMetaTag('twitter:image', data.image);
   }
-  
-  console.log('✅ All meta tags updated successfully');
 }
 
 function updateMetaTag(property: string, content: string) {
-  console.log(`🏷️ Setting meta tag: ${property} = "${content}"`);
-  
   let metaTag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
   
   if (!metaTag) {

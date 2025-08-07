@@ -25,14 +25,9 @@ export default async (request: Request, context: any) => {
                          userAgent.includes('discordbot') ||
                          userAgent.includes('linkedin');
   
-  console.log(`🤖 Edge Function - Path: ${url.pathname}, User-Agent: ${userAgent}, isSocialCrawler: ${isSocialCrawler}`);
-  
   if (!isSocialCrawler) {
-    console.log('👤 Normal user - serving SPA');
     return; // Let normal users get the SPA
   }
-  
-  console.log('🕷️ Social crawler detected - serving meta tags');
   
   // Extract query from URL
   const query = url.searchParams.get('q') || 'Search Results';
