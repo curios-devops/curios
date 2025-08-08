@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Sharing Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .button {
+            background: #0095FF;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 10px 10px 0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .button:hover {
+            background: #0080FF;
+        }
+        .url-display {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .status {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 LinkedIn Sharing Implementation Test</h1>
+        <p><span class="status">✅ Clean Implementation Complete!</span></p>
+        
+        <div class="test-section">
+            <h2>📋 Current Implementation</h2>
+            <ul>
+                <li><strong>ShareMenu.tsx</strong> - Main LinkedIn sharing in search results</li>
+                <li><strong>share.js</strong> - Netlify function for dynamic OG tags</li>
+                <li><strong>social-meta.ts</strong> - Edge function for search page meta injection</li>
+                <li><strong>og-image.ts</strong> - Dynamic image generation (1200x627)</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Test LinkedIn Sharing</h2>
+            <p>Click the buttons below to test different sharing scenarios:</p>
+            
+            <button class="button" onclick="testBasicShare()">
+                📝 Test Basic Query Share
+            </button>
+            
+            <button class="button" onclick="testWithSnippet()">
+                📖 Test with AI Response Snippet
+            </button>
+            
+            <button class="button" onclick="testWithImage()">
+                🖼️ Test with Custom Image
+            </button>
+
+            <div id="test-urls"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔧 How It Works</h2>
+            <ol>
+                <li><strong>User clicks share</strong> in SearchResults → ShareMenu</li>
+                <li><strong>ShareMenu creates URL</strong>: <code>/.netlify/functions/share?query=...&snippet=...</code></li>
+                <li><strong>LinkedIn opens</strong> with the sharing dialog</li>
+                <li><strong>LinkedIn crawler</strong> fetches the share.js function</li>
+                <li><strong>Dynamic HTML</strong> with optimized meta tags is returned</li>
+                <li><strong>Rich preview</strong> displays: title, snippet, and 1200x627 image</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Expected LinkedIn Preview</h2>
+            <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9;">
+                <strong>🔗 How does AI impact modern business? - CuriosAI Search Results</strong><br>
+                <span style="color: #666;">Artificial intelligence is transforming business operations through automation...</span><br>
+                <em style="color: #999; font-size: 12px;">🖼️ [Custom 1200x627 CuriosAI branded image]</em><br>
+                <small style="color: #999;">curios.netlify.app</small>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>✅ Cleanup Summary</h2>
+            <ul>
+                <li>❌ Removed: LinkedInShareButton.tsx (duplicate)</li>
+                <li>❌ Removed: useLinkedInShare.ts (duplicate)</li>
+                <li>❌ Removed: LinkedInTest.tsx (no longer needed)</li>
+                <li>✅ Kept: ShareMenu.tsx (main implementation)</li>
+                <li>✅ Improved: social-meta.ts (better error handling)</li>
+                <li>✅ Kept: share.js (dynamic sharing URLs)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const baseUrl = 'https://curios.netlify.app';
+        
+        function createShareUrl(query, snippet = '', image = '') {
+            let url = `${baseUrl}/.netlify/functions/share?query=${encodeURIComponent(query)}`;
+            if (snippet) url += `&snippet=${encodeURIComponent(snippet)}`;
+            if (image) url += `&image=${encodeURIComponent(image)}`;
+            return url;
+        }
+        
+        function openLinkedIn(shareUrl) {
+            const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+            window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
+        }
+        
+        function displayUrl(title, url) {
+            const container = document.getElementById('test-urls');
+            container.innerHTML += `
+                <div style="margin: 10px 0;">
+                    <strong>${title}:</strong>
+                    <div class="url-display">${url}</div>
+                </div>
+            `;
+        }
+        
+        function testBasicShare() {
+            const query = "How does machine learning work?";
+            const shareUrl = createShareUrl(query);
+            displayUrl('Basic Share URL', shareUrl);
+            openLinkedIn(shareUrl);
+        }
+        
+        function testWithSnippet() {
+            const query = "Benefits of renewable energy";
+            const snippet = "Renewable energy sources like solar and wind power provide clean alternatives to fossil fuels, reducing carbon emissions and creating sustainable energy solutions for the future.";
+            const shareUrl = createShareUrl(query, snippet);
+            displayUrl('Share with Snippet URL', shareUrl);
+            openLinkedIn(shareUrl);
+        }
+        
+        function testWithImage() {
+            const query = "AI trends 2024";
+            const snippet = "Artificial intelligence continues to evolve with breakthroughs in generative AI, autonomous systems, and machine learning applications.";
+            const image = `${baseUrl}/.netlify/functions/og-image?query=${encodeURIComponent(query)}`;
+            const shareUrl = createShareUrl(query, snippet, image);
+            displayUrl('Share with Custom Image URL', shareUrl);
+            openLinkedIn(shareUrl);
+        }
+    </script>
+</body>
+</html>

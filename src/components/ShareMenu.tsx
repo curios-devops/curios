@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Share2, Link2, Check } from 'lucide-react';
 import Notification from './Notification';
-import { updateMetaTags } from '../utils/metaTags';
 
 interface ShareMenuProps {
   url: string;
@@ -22,56 +21,38 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
     try {
       switch (platform) {
         case 'linkedin':
-          // LinkedIn Preview Elements Order:
-          // 1. Post Title → User's search query 
-          // 2. Link Box Image → First search result image with proper dimensions
-          // 3. Link Box Subtitle → User's search query (repeated)
-          // 4. Link Box Description → Dynamic AI response snippet with "..." for intrigue
-          // 5. Link Box Domain → curiosai.com (automatic from URL)
+          // Use new share.js function for LinkedIn sharing
+          const shareQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
           
-          // Get first search result image directly (Element 2)
-          const firstSearchImage = images && images.length > 0 ? images[0].url : '';
-          
-          // Clean query for both Post Title (Element 1) and Link Box Subtitle (Element 3)
-          const linkedInTitle = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
-          
-          // Create dynamic snippet from actual response (Element 4 - not generic text)
-          let dynamicSnippet = '';
+          // Create dynamic snippet from actual response
+          let shareSnippet = '';
           if (text && text.length > 50) {
-            // Extract first compelling sentence to create intrigue
             const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
             if (sentences.length >= 1) {
-              dynamicSnippet = sentences[0].trim();
-              // Add intrigue dots if under optimal length
-              if (dynamicSnippet.length < 120 && !dynamicSnippet.endsWith('.')) {
-                dynamicSnippet += '...';
+              shareSnippet = sentences[0].trim();
+              if (shareSnippet.length < 120 && !shareSnippet.endsWith('.')) {
+                shareSnippet += '...';
               }
             }
           }
           
-          // Fallback to descriptive snippet if no good content
-          if (!dynamicSnippet) {
-            dynamicSnippet = `Explore comprehensive search results for "${linkedInTitle}"`;
+          // Fallback snippet
+          if (!shareSnippet) {
+            shareSnippet = `Explore comprehensive search results for "${shareQuery}"`;
           }
           
-          // Clean the URL - remove any fragments (Element 5 domain automatic)
-          const cleanUrl = url.split('#')[0];
+          // Get first search result image
+          const shareImage = images && images.length > 0 ? images[0].url : '';
           
-          // Update meta tags for LinkedIn crawler - 5 element structure
-          updateMetaTags({
-            title: linkedInTitle,                    // Elements 1 & 3: User query (post title + link subtitle)
-            description: dynamicSnippet,             // Element 4: Dynamic snippet from AI response
-            image: firstSearchImage,                 // Element 2: First search result image
-            url: cleanUrl                            // Element 5: curiosai.com domain (automatic)
-          });
+          // Create share function URL with dynamic parameters
+          const baseUrl = window.location.origin;
+          const shareUrl = `${baseUrl}/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
           
-          // Simple LinkedIn URL with explicit parameters
-          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(cleanUrl)}&title=${encodeURIComponent(linkedInTitle)}&summary=${encodeURIComponent(dynamicSnippet)}`;
+          // LinkedIn sharing URL
+          const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
           
-          // Small delay to ensure meta tags are updated
-          setTimeout(() => {
-            window.open(linkedInUrl, '_blank', 'width=600,height=600');
-          }, 100);
+          // Open LinkedIn sharing dialog
+          window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
           setIsOpen(false);
           break;
         case 'email':
