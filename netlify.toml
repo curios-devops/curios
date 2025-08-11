@@ -22,7 +22,22 @@
 [build.processing.images]
   compress = true
 
-# Handle client-side routing
+# Handle client-side routing - exclude functions and edge function paths
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/search"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/search/*"
+  to = "/index.html"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -1,13 +1,20 @@
 // Netlify Function for LinkedIn Sharing with Dynamic OG Meta Tags
-exports.handler = async (event) => {
-  // Get query parameters from the URL - these will come from real-time app data
-  const query = event.queryStringParameters?.query || "CuriosAI - AI-Powered Search";
-  const snippet = event.queryStringParameters?.snippet || "Discover insights with AI-powered search and analysis";
-  const image = event.queryStringParameters?.image || "";
+exports.handler = async (event, context) => {
+  try {
+    // Get query parameters from the URL - these will come from real-time app data
+    const query = event.queryStringParameters?.query || "CuriosAI - AI-Powered Search";
+    const snippet = event.queryStringParameters?.snippet || "Discover insights with AI-powered search and analysis";
+    const image = event.queryStringParameters?.image || "";
 
-  // Detect if request is from a social media crawler
-  const userAgent = event.headers['user-agent'] || '';
-  const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|slackbot/i.test(userAgent);
+    // Detect if request is from a social media crawler
+    const userAgent = event.headers['user-agent'] || '';
+    const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|slackbot/i.test(userAgent);
+
+    console.log('Share function called', { 
+      query: query.slice(0, 50), 
+      isBot, 
+      userAgent: userAgent.slice(0, 100) 
+    });
 
   // Sanitize HTML to prevent XSS and broken meta tags
   const escapeHtml = (text) => 
@@ -97,4 +104,14 @@ exports.handler = async (event) => {
     },
     body: html
   };
+  } catch (error) {
+    console.error('Share function error:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+      },
+      body: `<!DOCTYPE html><html><head><title>Error</title></head><body><h1>Error</h1><p>Function temporarily unavailable</p></body></html>`
+    };
+  }
 };
