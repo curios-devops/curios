@@ -16,10 +16,22 @@ exports.handler = async (event) => {
     }[c] || c));
 
   const safeQuery = escapeHtml(query.slice(0, 100)); // LinkedIn title limit
-  const safeSnippet = escapeHtml(snippet.slice(0, 155)); // LinkedIn description limit
+  
+  // Use just the AI response snippet as description
+  let enhancedDescription;
+  if (snippet && snippet.trim() && query !== "CuriosAI - AI-Powered Search") {
+    // Include just the snippet of the response
+    const shortSnippet = snippet.slice(0, 120).trim();
+    const needsEllipsis = snippet.length > 120 || !shortSnippet.endsWith('.') && !shortSnippet.endsWith('!') && !shortSnippet.endsWith('?');
+    enhancedDescription = `${shortSnippet}${needsEllipsis ? '...' : ''}`;
+  } else {
+    enhancedDescription = "Discover insights with AI-powered search and analysis";
+  }
+  
+  const safeSnippet = escapeHtml(enhancedDescription.slice(0, 155)); // LinkedIn description limit
   
   // Use dynamic OG image if not provided, fallback to static
-  const baseUrl = "https://curios.netlify.app";
+  const baseUrl = "https://curiosai.com";
   const ogImage = image || 
     (query !== "CuriosAI - AI-Powered Search" 
       ? `${baseUrl}/.netlify/functions/og-image?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet.slice(0, 200))}`
