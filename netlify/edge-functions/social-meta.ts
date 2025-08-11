@@ -5,9 +5,32 @@ export default async function handler(request: Request, context: any) {
     const query = url.searchParams.get('q') || url.searchParams.get('query') || '';
     const snippet = url.searchParams.get('snippet') || '';
 
-    // Detect if this is a social media crawler
+    // Detect if this is a social media crawler - enhanced LinkedIn detection
     const userAgent = request.headers.get('user-agent') || '';
-    const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|slackbot/i.test(userAgent);
+    const referer = request.headers.get('referer') || '';
+    const secFetchSite = request.headers.get('sec-fetch-site') || '';
+    const secFetchMode = request.headers.get('sec-fetch-mode') || '';
+    
+    const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|slackbot|linkedin/i.test(userAgent) ||
+                  /linkedin\.com/i.test(referer) ||
+                  !userAgent.includes('Mozilla') || // Many bots don't include Mozilla
+                  userAgent === '' || // Empty user agent is likely a bot
+                  // Enhanced LinkedIn detection
+                  /LinkedInBot|LinkedInShareTool|LinkedInApp|LinkedInShare/i.test(userAgent) ||
+                  // Sometimes LinkedIn uses generic browser-like agents, detect by other headers
+                  (secFetchSite === 'cross-site' && secFetchMode === 'navigate');
+
+    // Log for debugging
+    console.log('Edge function - social-meta triggered', {
+      path: url.pathname,
+      query: query.slice(0, 50),
+      isBot,
+      userAgent: userAgent.slice(0, 100),
+      referer: referer.slice(0, 100),
+      secFetchSite,
+      secFetchMode,
+      accept: request.headers.get('accept')?.slice(0, 100)
+    });
 
     // Get original HTML response
     const response = await context.next();
@@ -20,10 +43,46 @@ export default async function handler(request: Request, context: any) {
 
     let html = await response.text();
 
-    // Only inject meta tags if we have query parameters AND it's a bot
-    if (!query || !isBot) {
+    // Only inject meta tags if it's a bot - be more aggressive for LinkedIn
+    if (!isBot) {
       return new Response(html, {
         headers: response.headers,
+      });
+    }
+
+    // If no query but it's a bot on search page, provide generic fallback
+    if (!query) {
+      const searchFallbackTitle = "CuriosAI - AI-Powered Search";
+      const searchFallbackDescription = "Discover insights with AI-powered search and comprehensive analysis";
+      
+      const metaTags = `
+      <!-- Fallback Social Media Meta Tags -->
+      <meta property="og:title" content="${searchFallbackTitle}">
+      <meta property="og:description" content="${searchFallbackDescription}">
+      <meta property="og:image" content="${url.origin}/og-image.png">
+      <meta property="og:type" content="website">
+      <meta property="og:site_name" content="CuriosAI">
+      <meta property="og:url" content="${url.href}">
+      
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="${searchFallbackTitle}">
+      <meta name="twitter:description" content="${searchFallbackDescription}">
+      <meta name="twitter:image" content="${url.origin}/og-image.png">
+      
+      <meta name="description" content="${searchFallbackDescription}">
+      <title>${searchFallbackTitle}</title>`;
+
+      if (html.includes('</head>')) {
+        html = html.replace('</head>', `${metaTags}\n</head>`);
+      } else {
+        html = html.replace('<head>', `<head>${metaTags}`);
+      }
+
+      return new Response(html, {
+        headers: {
+          ...response.headers,
+          "content-type": "text/html; charset=utf-8",
+        },
       });
     }
 

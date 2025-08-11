@@ -8,12 +8,33 @@ exports.handler = async (event, context) => {
 
     // Detect if request is from a social media crawler
     const userAgent = event.headers['user-agent'] || '';
-    const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|slackbot/i.test(userAgent);
+    const referer = event.headers['referer'] || event.headers['referrer'] || '';
+    
+    // Enhanced bot detection - LinkedIn often doesn't send typical bot user agents
+    const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|slackbot|linkedin/i.test(userAgent) ||
+                  /linkedin\.com/i.test(referer) ||
+                  !userAgent.includes('Mozilla') || // Many bots don't include Mozilla
+                  userAgent === '' || // Empty user agent is likely a bot
+                  userAgent.includes('LinkedInBot') ||
+                  userAgent.includes('LinkedInShareTool') ||
+                  // LinkedIn crawler user-agents seen in the wild
+                  userAgent.includes('LinkedInApp') ||
+                  userAgent.includes('LinkedInShare') ||
+                  // Check for common LinkedIn crawler patterns
+                  /LinkedInBot|LinkedInShareTool|LinkedInApp|LinkedInShare/i.test(userAgent) ||
+                  // Sometimes LinkedIn uses generic browser-like agents, detect by other headers
+                  (event.headers['sec-fetch-site'] === 'cross-site' && event.headers['sec-fetch-mode'] === 'navigate');
 
     console.log('Share function called', { 
       query: query.slice(0, 50), 
       isBot, 
-      userAgent: userAgent.slice(0, 100) 
+      userAgent: userAgent.slice(0, 100),
+      referer: referer.slice(0, 100),
+      fullHeaders: Object.keys(event.headers),
+      secFetchSite: event.headers['sec-fetch-site'],
+      secFetchMode: event.headers['sec-fetch-mode'],
+      contentType: event.headers['content-type'],
+      accept: event.headers['accept']
     });
 
   // Sanitize HTML to prevent XSS and broken meta tags
@@ -61,6 +82,7 @@ exports.handler = async (event, context) => {
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>${safeQuery}</title>
+      <meta name="description" content="${safeSnippet}" />
 
       <!-- LinkedIn-Optimized Open Graph Meta Tags -->
       <meta property="og:title" content="${safeQuery}" />
@@ -68,15 +90,22 @@ exports.handler = async (event, context) => {
       <meta property="og:image" content="${ogImage}" />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="627" />
-      <meta property="og:url" content="${shareUrl}" />
+      <meta property="og:url" content="${searchResultsUrl}" />
       <meta property="og:type" content="article" />
       <meta property="og:site_name" content="CuriosAI" />
 
+      <!-- LinkedIn specific meta tags -->
+      <meta name="linkedin:owner" content="CuriosAI" />
+      
       <!-- Twitter Card Support -->
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="${safeQuery}" />
       <meta name="twitter:description" content="${safeSnippet}" />
       <meta name="twitter:image" content="${ogImage}" />
+
+      <!-- Additional meta tags for better social sharing -->
+      <meta name="author" content="CuriosAI" />
+      <meta name="robots" content="index,follow" />
 
       ${!isBot ? `<!-- Immediate redirect to search results for real users -->
       <meta http-equiv="refresh" content="0; url=${searchResultsUrl}" />` : ''}
