@@ -36,8 +36,8 @@ export const handler: Handler = async (event) => {
   const safeQuery = escapeHtml(query.slice(0, 60));
   const safeSnippet = escapeHtml(displaySnippet);
   
-  // Generate clean SVG (LinkedIn optimized: 1200x627)
-  const svg = `<svg width="1200" height="627" viewBox="0 0 1200 627" xmlns="http://www.w3.org/2000/svg">
+  // Generate clean SVG (LinkedIn optimized: 1200x630 - corrected dimensions)
+  const svg = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" style="stop-color:#0095FF;stop-opacity:0.1" />
@@ -50,8 +50,8 @@ export const handler: Handler = async (event) => {
     </defs>
     
     <!-- Background -->
-    <rect width="1200" height="627" fill="#ffffff"/>
-    <rect width="1200" height="627" fill="url(#bg)"/>
+    <rect width="1200" height="630" fill="#ffffff"/>
+    <rect width="1200" height="630" fill="url(#bg)"/>
     
     <!-- CuriosAI Branding -->
     <text x="80" y="120" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#0095FF">CuriosAI</text>
@@ -64,7 +64,7 @@ export const handler: Handler = async (event) => {
     <text x="80" y="280" font-family="Arial, sans-serif" font-size="20" fill="#666">AI-powered search results with comprehensive insights</text>`}
     
     <!-- Bottom accent -->
-    <rect x="80" y="577" width="200" height="4" fill="url(#accent)"/>
+    <rect x="80" y="580" width="200" height="4" fill="url(#accent)"/>
     
     <!-- Decorative dots -->
     <circle cx="1000" cy="150" r="8" fill="#0095FF" opacity="0.3"/>

@@ -57,7 +57,7 @@ exports.handler = async (event, context) => {
   const ogImage = image || 
     (query !== "CuriosAI - AI-Powered Search" 
       ? `${baseUrl}/.netlify/functions/og-image?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet.slice(0, 200))}`
-      : `${baseUrl}/og-image.png`);
+      : `${baseUrl}/og-image.svg`);
 
   // Generate direct search results URL - where users should actually go
   const searchResultsUrl = `${baseUrl}/search?q=${encodeURIComponent(query)}`;
@@ -79,7 +79,8 @@ exports.handler = async (event, context) => {
       <meta property="og:description" content="${safeSnippet}" />
       <meta property="og:image" content="${ogImage}" />
       <meta property="og:image:width" content="1200" />
-      <meta property="og:image:height" content="627" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:image:type" content="image/svg+xml" />
       <meta property="og:url" content="${searchResultsUrl}" />
       <meta property="og:type" content="article" />
       <meta property="og:site_name" content="CuriosAI" />

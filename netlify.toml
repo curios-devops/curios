@@ -44,6 +44,15 @@
   function = "social-meta"
   path = "/search/*"
 
+# Edge Functions for social media crawlers on search pages
+[[edge_functions]]
+  function = "social-meta"
+  path = "/search"
+
+[[edge_functions]]
+  function = "social-meta"
+  path = "/search/*"
+
 # Add security headers
 [[headers]]
   for = "/*"
