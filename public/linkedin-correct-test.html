@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Test - Exact URLs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .url-box {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-family: monospace;
+        }
+        .test-button {
+            background: #0077B5;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 LinkedIn Test - The Right URLs</h1>
+    
+    <div class="warning">
+        <h3>⚠️ Important: Test the SHARE FUNCTION URL, not the search URL!</h3>
+        <p>LinkedIn should crawl the share function, which has proper meta tags. The search URL won't work because it's a React SPA.</p>
+    </div>
+
+    <h2>✅ Test This URL in LinkedIn Post Inspector:</h2>
+    <div class="url-box">
+        https://curiosai.com/.netlify/functions/share?query=How%20does%20machine%20learning%20work&snippet=Machine%20learning%20is%20a%20subset%20of%20artificial%20intelligence%20that%20enables%20computers%20to%20learn%20and%20make%20decisions%20from%20data%20without%20being%20explicitly%20programmed
+    </div>
+    
+    <a href="https://curiosai.com/.netlify/functions/share?query=How%20does%20machine%20learning%20work&snippet=Machine%20learning%20is%20a%20subset%20of%20artificial%20intelligence%20that%20enables%20computers%20to%20learn%20and%20make%20decisions%20from%20data%20without%20being%20explicitly%20programmed" class="test-button" target="_blank">Test Share Function</a>
+    
+    <a href="https://www.linkedin.com/post-inspector/" class="test-button" target="_blank">LinkedIn Post Inspector</a>
+
+    <h2>📋 What Should Happen:</h2>
+    <ol>
+        <li><strong>Copy the share function URL above</strong></li>
+        <li><strong>Paste it into LinkedIn Post Inspector</strong></li>
+        <li><strong>LinkedIn should see:</strong>
+            <ul>
+                <li>Title: "How does machine learning work"</li>
+                <li>Description: "Machine learning is a subset of artificial intelligence..."</li>
+                <li>Image: Dynamic OG image</li>
+            </ul>
+        </li>
+    </ol>
+
+    <h2>❌ Don't Test This (This Won't Work):</h2>
+    <div class="url-box" style="background: #f8d7da;">
+        https://curiosai.com/search?q=How%20does%20machine%20learning%20work&snippet=...
+    </div>
+    <p><em>Search URLs return React app HTML, not meta tags</em></p>
+
+    <h2>🔧 How LinkedIn Sharing Actually Works:</h2>
+    <ol>
+        <li>User clicks "Share" button in search results</li>
+        <li>ShareMenu generates a <strong>share function URL</strong></li>
+        <li>LinkedIn opens with that share function URL</li>
+        <li>When LinkedIn crawls it, it gets proper meta tags</li>
+        <li>Users who click the link get redirected to search results</li>
+    </ol>
+
+    <div class="warning">
+        <h3>💡 The Key Insight:</h3>
+        <p>The share function URL is what LinkedIn crawls. The search URL is what users see after clicking. They're different URLs serving different purposes!</p>
+    </div>
+</body>
+</html>
