@@ -5,6 +5,10 @@ exports.handler = async (event) => {
   const snippet = event.queryStringParameters?.snippet || "Discover insights with AI-powered search and analysis";
   const image = event.queryStringParameters?.image || "";
 
+  // Detect if request is from a social media crawler
+  const userAgent = event.headers['user-agent'] || '';
+  const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|slackbot/i.test(userAgent);
+
   // Sanitize HTML to prevent XSS and broken meta tags
   const escapeHtml = (text) => 
     text.replace(/[<>&"']/g, (c) => ({
@@ -67,15 +71,20 @@ exports.handler = async (event) => {
       <meta name="twitter:description" content="${safeSnippet}" />
       <meta name="twitter:image" content="${ogImage}" />
 
-      <!-- Immediate redirect to search results -->
-      <meta http-equiv="refresh" content="0; url=${searchResultsUrl}" />
+      ${!isBot ? `<!-- Immediate redirect to search results for real users -->
+      <meta http-equiv="refresh" content="0; url=${searchResultsUrl}" />` : ''}
     </head>
     <body>
-      <script>
-        // Immediate redirect to search results page
+      ${!isBot ? `<script>
+        // Immediate redirect to search results page for real users
         window.location.replace('${searchResultsUrl}');
       </script>
-      <p>Redirecting to <a href="${searchResultsUrl}">CuriosAI search results</a>...</p>
+      <p>Redirecting to <a href="${searchResultsUrl}">CuriosAI search results</a>...</p>` : `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; text-align: center;">
+        <h1>${safeQuery}</h1>
+        <p>${safeSnippet}</p>
+        <a href="${searchResultsUrl}" style="background: #0095FF; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">View Full Results</a>
+      </div>`}
     </body>
     </html>
   `;
