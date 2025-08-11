@@ -22,20 +22,13 @@
 [build.processing.images]
   compress = true
 
-# Handle Netlify Functions first (highest priority)
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-  force = true
-
-# SPA routing - ALL other routes go to index.html for client-side routing
+# Handle client-side routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Edge Functions for social media crawlers on search pages
+# Simplified Edge Functions configuration - only for main search pages
 [[edge_functions]]
   function = "social-meta"
   path = "/search"
