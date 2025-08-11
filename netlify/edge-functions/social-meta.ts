@@ -5,6 +5,10 @@ export default async function handler(request: Request, context: any) {
     const query = url.searchParams.get('q') || url.searchParams.get('query') || '';
     const snippet = url.searchParams.get('snippet') || '';
 
+    // Detect if this is a social media crawler
+    const userAgent = request.headers.get('user-agent') || '';
+    const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|slackbot/i.test(userAgent);
+
     // Get original HTML response
     const response = await context.next();
     
@@ -16,23 +20,19 @@ export default async function handler(request: Request, context: any) {
 
     let html = await response.text();
 
-    // Only inject meta tags if we have query parameters
-    if (!query && !snippet) {
+    // Only inject meta tags if we have query parameters AND it's a bot
+    if (!query || !isBot) {
       return new Response(html, {
         headers: response.headers,
       });
     }
 
     // Create social sharing content
-    const title = query 
-      ? `${query} - CuriosAI Search Results` 
-      : 'CuriosAI - AI-Powered Web Search';
+    const title = `${query} - CuriosAI Search Results`;
       
-    const description = snippet 
+    const description = snippet && snippet.trim() 
       ? `${snippet.slice(0, 155)}${snippet.length > 155 ? '...' : ''}`
-      : query 
-        ? `Search results for "${query}" - AI-powered insights and comprehensive analysis`
-        : 'Discover insights with AI-powered search and analysis';
+      : `Search results for "${query}" - AI-powered insights and comprehensive analysis`;
 
     // Generate dynamic OG image URL
     const baseUrl = url.origin;
