@@ -37,7 +37,10 @@ exports.handler = async (event) => {
       ? `${baseUrl}/.netlify/functions/og-image?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet.slice(0, 200))}`
       : `${baseUrl}/og-image.png`);
 
-  // Generate shareable URL for this specific content
+  // Generate direct search results URL - where users should actually go
+  const searchResultsUrl = `${baseUrl}/search?q=${encodeURIComponent(query)}`;
+  
+  // Generate shareable URL for this specific content (for LinkedIn crawling)
   const shareUrl = `${baseUrl}/.netlify/functions/share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
 
   const html = `
@@ -64,81 +67,15 @@ exports.handler = async (event) => {
       <meta name="twitter:description" content="${safeSnippet}" />
       <meta name="twitter:image" content="${ogImage}" />
 
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 40px 20px;
-          background: #f8f9fa;
-          color: #333;
-        }
-        .container {
-          background: white;
-          border-radius: 12px;
-          padding: 40px;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-          text-align: center;
-        }
-        .logo {
-          color: #0095FF;
-          font-size: 28px;
-          font-weight: bold;
-          margin-bottom: 20px;
-        }
-        .title {
-          font-size: 24px;
-          font-weight: 600;
-          margin-bottom: 16px;
-          color: #1a1a1a;
-        }
-        .snippet {
-          font-size: 16px;
-          color: #666;
-          line-height: 1.5;
-          margin-bottom: 30px;
-        }
-        .cta {
-          background: #0095FF;
-          color: white;
-          padding: 12px 24px;
-          border: none;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 500;
-          text-decoration: none;
-          display: inline-block;
-          transition: background 0.2s;
-        }
-        .cta:hover {
-          background: #0080FF;
-        }
-        .footer {
-          margin-top: 30px;
-          font-size: 14px;
-          color: #999;
-        }
-      </style>
+      <!-- Immediate redirect to search results -->
+      <meta http-equiv="refresh" content="0; url=${searchResultsUrl}" />
     </head>
     <body>
-      <div class="container">
-        <div class="logo">CuriosAI</div>
-        <h1 class="title">${safeQuery}</h1>
-        <p class="snippet">${safeSnippet}</p>
-        <a href="${baseUrl}" class="cta">Explore More with CuriosAI</a>
-        <div class="footer">
-          AI-powered search and insights
-        </div>
-      </div>
-
       <script>
-        // Auto-redirect to main app after 3 seconds if accessed directly
-        setTimeout(() => {
-          if (window.location === window.parent.location) {
-            window.location.href = '${baseUrl}';
-          }
-        }, 3000);
+        // Immediate redirect to search results page
+        window.location.replace('${searchResultsUrl}');
       </script>
+      <p>Redirecting to <a href="${searchResultsUrl}">CuriosAI search results</a>...</p>
     </body>
     </html>
   `;
