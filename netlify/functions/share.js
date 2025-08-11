@@ -10,20 +10,10 @@ exports.handler = async (event, context) => {
     const userAgent = event.headers['user-agent'] || '';
     const referer = event.headers['referer'] || event.headers['referrer'] || '';
     
-    // Enhanced bot detection - LinkedIn often doesn't send typical bot user agents
+    // Basic bot detection - include LinkedIn patterns but don't be too strict
     const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|slackbot|linkedin/i.test(userAgent) ||
                   /linkedin\.com/i.test(referer) ||
-                  !userAgent.includes('Mozilla') || // Many bots don't include Mozilla
-                  userAgent === '' || // Empty user agent is likely a bot
-                  userAgent.includes('LinkedInBot') ||
-                  userAgent.includes('LinkedInShareTool') ||
-                  // LinkedIn crawler user-agents seen in the wild
-                  userAgent.includes('LinkedInApp') ||
-                  userAgent.includes('LinkedInShare') ||
-                  // Check for common LinkedIn crawler patterns
-                  /LinkedInBot|LinkedInShareTool|LinkedInApp|LinkedInShare/i.test(userAgent) ||
-                  // Sometimes LinkedIn uses generic browser-like agents, detect by other headers
-                  (event.headers['sec-fetch-site'] === 'cross-site' && event.headers['sec-fetch-mode'] === 'navigate');
+                  userAgent === ''; // Empty user agent is likely a bot
 
     console.log('Share function called', { 
       query: query.slice(0, 50), 
