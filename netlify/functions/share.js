@@ -113,17 +113,17 @@ exports.handler = async (event) => {
         <div class="logo">CuriosAI</div>
         <h1 class="title">${safeQuery}</h1>
         <p class="snippet">${safeSnippet}</p>
-        <a href="${baseUrl}" class="cta">Explore More with CuriosAI</a>
+        <a href="https://curiosai.com/search?q=${encodeURIComponent(query)}" class="cta">Explore More with CuriosAI</a>
         <div class="footer">
           AI-powered search and insights
         </div>
       </div>
 
       <script>
-        // Auto-redirect to main app after 3 seconds if accessed directly
+        // Auto-redirect to search results page after 3 seconds if accessed directly
         setTimeout(() => {
           if (window.location === window.parent.location) {
-            window.location.href = '${baseUrl}';
+            window.location.href = 'https://curiosai.com/search?q=${encodeURIComponent(query)}';
           }
         }, 3000);
       </script>
