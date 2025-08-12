@@ -5,6 +5,22 @@ exports.handler = async (event) => {
   const snippet = event.queryStringParameters?.snippet || "Discover insights with AI-powered search and analysis";
   const image = event.queryStringParameters?.image || "";
 
+  // Check if this is a social media crawler or a human user
+  const userAgent = event.headers['user-agent'] || '';
+  const isBot = /linkedinbot|facebookexternalhit|twitterbot|whatsapp/i.test(userAgent);
+
+  // If it's a human user, redirect immediately to the search page
+  if (!isBot) {
+    return {
+      statusCode: 302,
+      headers: {
+        'Location': `https://curiosai.com/search?q=${encodeURIComponent(query)}`,
+        'Cache-Control': 'no-cache'
+      }
+    };
+  }
+
+  // For bots/crawlers, serve the full HTML with meta tags
   // Sanitize HTML to prevent XSS and broken meta tags
   const escapeHtml = (text) => 
     text.replace(/[<>&"']/g, (c) => ({
@@ -118,15 +134,6 @@ exports.handler = async (event) => {
           AI-powered search and insights
         </div>
       </div>
-
-      <script>
-        // Auto-redirect to search results page after 3 seconds if accessed directly
-        setTimeout(() => {
-          if (window.location === window.parent.location) {
-            window.location.href = 'https://curiosai.com/search?q=${encodeURIComponent(query)}';
-          }
-        }, 3000);
-      </script>
     </body>
     </html>
   `;
