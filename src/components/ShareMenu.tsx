@@ -44,9 +44,11 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           // Get first search result image
           const shareImage = images && images.length > 0 ? images[0].url : '';
           
-          // Create share function URL with dynamic parameters
-          const baseUrl = window.location.origin;
-          const shareUrl = `${baseUrl}/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
+          // Keep variables available for potential future use
+          console.debug('LinkedIn share data:', { shareQuery, shareSnippet, shareImage });
+          
+          // Create direct link to curiosai.com search page
+          const shareUrl = `https://curiosai.com/search?q=${encodeURIComponent(shareQuery)}`;
           
           // LinkedIn sharing URL
           const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
