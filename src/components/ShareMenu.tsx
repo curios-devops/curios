@@ -17,21 +17,39 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
 
-  // Suppress unused variable warning - images still used in interface for other platforms
-  console.debug('ShareMenu loaded with images:', images?.length || 0);
-
   const handleShare = async (platform: SharePlatform) => {
     try {
       switch (platform) {
         case 'linkedin':
-          // Extract query from current search
+          // Use new share.js function for LinkedIn sharing
           const shareQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
           
-          // Create direct link to search results page on curiosai.com
-          const searchUrl = `https://curiosai.com/search?q=${encodeURIComponent(shareQuery)}`;
+          // Create dynamic snippet from actual response
+          let shareSnippet = '';
+          if (text && text.length > 50) {
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+            if (sentences.length >= 1) {
+              shareSnippet = sentences[0].trim();
+              if (shareSnippet.length < 120 && !shareSnippet.endsWith('.')) {
+                shareSnippet += '...';
+              }
+            }
+          }
           
-          // LinkedIn sharing URL - points directly to the search results page
-          const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(searchUrl)}`;
+          // Fallback snippet
+          if (!shareSnippet) {
+            shareSnippet = `Explore comprehensive search results for "${shareQuery}"`;
+          }
+          
+          // Get first search result image
+          const shareImage = images && images.length > 0 ? images[0].url : '';
+          
+          // Create share function URL with dynamic parameters
+          const baseUrl = window.location.origin;
+          const shareUrl = `${baseUrl}/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
+          
+          // LinkedIn sharing URL
+          const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
           
           // Open LinkedIn sharing dialog
           window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
