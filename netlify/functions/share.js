@@ -61,6 +61,9 @@ exports.handler = async (event) => {
       <meta property="og:url" content="${shareUrl}" />
       <meta property="og:type" content="article" />
       <meta property="og:site_name" content="CuriosAI" />
+      
+      <!-- Enhanced meta description for LinkedIn -->
+      <meta name="description" content="${safeSnippet}" />
 
       <!-- Twitter Card Support -->
       <meta name="twitter:card" content="summary_large_image" />
