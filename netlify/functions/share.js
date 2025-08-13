@@ -5,18 +5,9 @@ exports.handler = async (event) => {
   const snippet = event.queryStringParameters?.snippet || "Get comprehensive AI-powered search results with insights, analysis, and curated information from multiple sources.";
   const image = event.queryStringParameters?.image || "";
 
-  // Enhanced bot detection for debugging
+  // Enhanced bot detection
   const userAgent = event.headers['user-agent'] || '';
   const isBot = /linkedinbot|facebookexternalhit|twitterbot|whatsapp|bot|crawler|spider/i.test(userAgent);
-  
-  // Debug logging for LinkedIn issues
-  console.log('=== SHARE FUNCTION DEBUG ===');
-  console.log('User-Agent:', userAgent);
-  console.log('Is Bot:', isBot);
-  console.log('Query:', query);
-  console.log('Snippet length:', snippet.length);
-  console.log('Snippet preview:', snippet.substring(0, 100) + '...');
-  console.log('Image:', image);
 
   // If it's a human user, redirect immediately to the search page
   if (!isBot) {
@@ -41,14 +32,10 @@ exports.handler = async (event) => {
     }[c] || c));
 
   const safeQuery = escapeHtml(query.slice(0, 100)); // LinkedIn title limit
-  const safeSnippet = escapeHtml(snippet.slice(0, 200)); // Increased for better description
-  
-  // Debug the safe values
-  console.log('Safe Query:', safeQuery);
-  console.log('Safe Snippet:', safeSnippet);
+  const safeSnippet = escapeHtml(snippet.slice(0, 150)); // Keep snippet concise
   
   // Use dynamic OG image if not provided, fallback to static
-  const baseUrl = "https://curios.netlify.app";
+  const baseUrl = "https://curiosai.com";
   const ogImage = image || 
     (query !== "CuriosAI - AI-Powered Search" 
       ? `${baseUrl}/.netlify/functions/og-image?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet.slice(0, 200))}`

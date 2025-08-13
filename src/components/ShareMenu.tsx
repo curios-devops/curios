@@ -21,63 +21,42 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
     try {
       switch (platform) {
         case 'linkedin':
-          // Use new share.js function for LinkedIn sharing
+          // Clean query extraction
           const shareQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
           
-          // Create dynamic snippet from actual response with better extraction
+          // Simple first sentence extraction (much shorter and safer)
           let shareSnippet = '';
-          if (text && text.length > 50) {
-            // Clean up the text and extract meaningful content
+          if (text && text.length > 20) {
+            // Clean text and get first sentence only
             const cleanText = text.replace(/\*\*/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
-            const sentences = cleanText.split(/[.!?]+/).filter(s => s.trim().length > 20);
+            const firstSentence = cleanText.split(/[.!?]/)[0].trim();
             
-            if (sentences.length >= 1) {
-              // Take first sentence and ensure it's substantial
-              shareSnippet = sentences[0].trim();
-              
-              // If first sentence is too short, add second one
-              if (shareSnippet.length < 100 && sentences.length > 1) {
-                shareSnippet = `${shareSnippet}. ${sentences[1].trim()}`;
-              }
-              
-              // Ensure proper ending
-              if (!shareSnippet.match(/[.!?]$/)) {
-                shareSnippet += '.';
-              }
-              
-              // Limit length but keep it substantial
-              if (shareSnippet.length > 180) {
-                shareSnippet = shareSnippet.substring(0, 180).trim() + '...';
-              }
+            // Use first sentence if it's substantial and not too long
+            if (firstSentence.length > 15 && firstSentence.length < 120) {
+              shareSnippet = firstSentence + '.';
             }
           }
           
-          // Better fallback snippet with more context
-          if (!shareSnippet || shareSnippet.length < 30) {
-            shareSnippet = `Discover comprehensive AI-powered insights and analysis for "${shareQuery}". Get curated information, expert perspectives, and detailed answers from multiple sources.`;
+          // Fallback to simple description
+          if (!shareSnippet) {
+            shareSnippet = `Discover AI-powered insights for "${shareQuery}"`;
           }
           
           // Debug logging
-          console.log('🔥 LinkedIn Share Debug:');
+          console.log('🔥 LinkedIn Share:');
           console.log('- Query:', shareQuery);
-          console.log('- Snippet length:', shareSnippet.length);
           console.log('- Snippet:', shareSnippet);
-          console.log('- Original text length:', text?.length || 0);
           
           // Get first search result image
           const shareImage = images && images.length > 0 ? images[0].url : '';
           
-          // Create share function URL with dynamic parameters
-          const baseUrl = window.location.origin;
-          const shareUrl = `${baseUrl}/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
+          // Always use production domain for sharing
+          const shareUrl = `https://curiosai.com/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
           
-          // Debug: Test the URL
-          console.log('🔗 Share URL:', shareUrl);
-          
-          // LinkedIn sharing URL using shareArticle method for better content pre-filling
+          // LinkedIn sharing URL
           const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareQuery)}&summary=${encodeURIComponent(shareSnippet)}`;
           
-          console.log('🔗 LinkedIn URL:', linkedInUrl);
+          console.log('🔗 Share URL:', shareUrl);
           
           // Open LinkedIn sharing dialog
           window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');

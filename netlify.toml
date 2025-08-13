@@ -28,15 +28,6 @@
   to = "/index.html"
   status = 200
 
-# Simplified Edge Functions configuration - only for main search pages
-[[edge_functions]]
-  function = "social-meta"
-  path = "/search"
-
-[[edge_functions]]
-  function = "social-meta"
-  path = "/search/*"
-
 # Add security headers
 [[headers]]
   for = "/*"
