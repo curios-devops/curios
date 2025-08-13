@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
-import { createHtmlPlugin } from "vite-plugin-html";
 import path from "path";
 import process from "node:process";
 
@@ -23,19 +22,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      react(),
-      createHtmlPlugin({
-        inject: {
-          data: {
-            ogTitle: env.VITE_OG_TITLE || 'CuriosAI Web Search - Advanced AI-powered search',
-            ogDescription: env.VITE_OG_DESCRIPTION || 'Get comprehensive search results with AI-powered insights, images, and analysis from multiple sources.',
-            ogImage: env.VITE_OG_IMAGE || 'https://curiosai.com/og-image.png',
-            ogUrl: env.VITE_OG_URL || 'https://curiosai.com',
-            ogSiteName: env.VITE_OG_SITE_NAME || 'CuriosAI',
-            twitterSite: env.VITE_TWITTER_SITE || '@CuriosAI'
-          }
-        }
-      })
+      react()
     ],
     resolve: {
       alias: {
