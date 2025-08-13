@@ -2,7 +2,7 @@
 exports.handler = async (event) => {
   // Get query parameters from the URL - these will come from real-time app data
   const query = event.queryStringParameters?.query || "CuriosAI - AI-Powered Search";
-  const snippet = event.queryStringParameters?.snippet || "Discover insights with AI-powered search and analysis";
+  const snippet = event.queryStringParameters?.snippet || "Get comprehensive AI-powered search results with insights, analysis, and curated information from multiple sources.";
   const image = event.queryStringParameters?.image || "";
 
   // Check if this is a social media crawler or a human user
@@ -61,6 +61,9 @@ exports.handler = async (event) => {
       <meta property="og:url" content="${shareUrl}" />
       <meta property="og:type" content="article" />
       <meta property="og:site_name" content="CuriosAI" />
+      
+      <!-- Enhanced meta description for LinkedIn -->
+      <meta name="description" content="${safeSnippet}" />
 
       <!-- Twitter Card Support -->
       <meta name="twitter:card" content="summary_large_image" />
