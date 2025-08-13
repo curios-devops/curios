@@ -24,22 +24,45 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           // Use new share.js function for LinkedIn sharing
           const shareQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
           
-          // Create dynamic snippet from actual response
+          // Create dynamic snippet from actual response with better extraction
           let shareSnippet = '';
           if (text && text.length > 50) {
-            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+            // Clean up the text and extract meaningful content
+            const cleanText = text.replace(/\*\*/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+            const sentences = cleanText.split(/[.!?]+/).filter(s => s.trim().length > 20);
+            
             if (sentences.length >= 1) {
+              // Take first sentence and ensure it's substantial
               shareSnippet = sentences[0].trim();
-              if (shareSnippet.length < 120 && !shareSnippet.endsWith('.')) {
-                shareSnippet += '...';
+              
+              // If first sentence is too short, add second one
+              if (shareSnippet.length < 100 && sentences.length > 1) {
+                shareSnippet = `${shareSnippet}. ${sentences[1].trim()}`;
+              }
+              
+              // Ensure proper ending
+              if (!shareSnippet.match(/[.!?]$/)) {
+                shareSnippet += '.';
+              }
+              
+              // Limit length but keep it substantial
+              if (shareSnippet.length > 180) {
+                shareSnippet = shareSnippet.substring(0, 180).trim() + '...';
               }
             }
           }
           
-          // Fallback snippet
-          if (!shareSnippet) {
-            shareSnippet = `Explore comprehensive search results for "${shareQuery}"`;
+          // Better fallback snippet with more context
+          if (!shareSnippet || shareSnippet.length < 30) {
+            shareSnippet = `Discover comprehensive AI-powered insights and analysis for "${shareQuery}". Get curated information, expert perspectives, and detailed answers from multiple sources.`;
           }
+          
+          // Debug logging
+          console.log('🔥 LinkedIn Share Debug:');
+          console.log('- Query:', shareQuery);
+          console.log('- Snippet length:', shareSnippet.length);
+          console.log('- Snippet:', shareSnippet);
+          console.log('- Original text length:', text?.length || 0);
           
           // Get first search result image
           const shareImage = images && images.length > 0 ? images[0].url : '';
@@ -48,8 +71,13 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           const baseUrl = window.location.origin;
           const shareUrl = `${baseUrl}/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
           
+          // Debug: Test the URL
+          console.log('🔗 Share URL:', shareUrl);
+          
           // LinkedIn sharing URL using shareArticle method for better content pre-filling
           const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareQuery)}&summary=${encodeURIComponent(shareSnippet)}`;
+          
+          console.log('🔗 LinkedIn URL:', linkedInUrl);
           
           // Open LinkedIn sharing dialog
           window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
@@ -110,6 +138,20 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
                 <strong>Development Mode:</strong> Link previews won't show on social media from localhost URLs. 
                 The link and content will still share correctly.
               </p>
+            </div>
+          )}
+          
+          {/* Debug section - remove in production */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <details className="text-xs">
+                <summary className="text-blue-700 dark:text-blue-300 cursor-pointer">Debug Info</summary>
+                <div className="mt-2 text-blue-600 dark:text-blue-400 space-y-1">
+                  <div><strong>Query:</strong> {query || 'N/A'}</div>
+                  <div><strong>Text length:</strong> {text?.length || 0}</div>
+                  <div><strong>Images:</strong> {images?.length || 0}</div>
+                </div>
+              </details>
             </div>
           )}
           

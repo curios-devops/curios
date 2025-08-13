@@ -5,9 +5,18 @@ exports.handler = async (event) => {
   const snippet = event.queryStringParameters?.snippet || "Get comprehensive AI-powered search results with insights, analysis, and curated information from multiple sources.";
   const image = event.queryStringParameters?.image || "";
 
-  // Check if this is a social media crawler or a human user
+  // Enhanced bot detection for debugging
   const userAgent = event.headers['user-agent'] || '';
-  const isBot = /linkedinbot|facebookexternalhit|twitterbot|whatsapp/i.test(userAgent);
+  const isBot = /linkedinbot|facebookexternalhit|twitterbot|whatsapp|bot|crawler|spider/i.test(userAgent);
+  
+  // Debug logging for LinkedIn issues
+  console.log('=== SHARE FUNCTION DEBUG ===');
+  console.log('User-Agent:', userAgent);
+  console.log('Is Bot:', isBot);
+  console.log('Query:', query);
+  console.log('Snippet length:', snippet.length);
+  console.log('Snippet preview:', snippet.substring(0, 100) + '...');
+  console.log('Image:', image);
 
   // If it's a human user, redirect immediately to the search page
   if (!isBot) {
@@ -32,7 +41,11 @@ exports.handler = async (event) => {
     }[c] || c));
 
   const safeQuery = escapeHtml(query.slice(0, 100)); // LinkedIn title limit
-  const safeSnippet = escapeHtml(snippet.slice(0, 155)); // LinkedIn description limit
+  const safeSnippet = escapeHtml(snippet.slice(0, 200)); // Increased for better description
+  
+  // Debug the safe values
+  console.log('Safe Query:', safeQuery);
+  console.log('Safe Snippet:', safeSnippet);
   
   // Use dynamic OG image if not provided, fallback to static
   const baseUrl = "https://curios.netlify.app";
@@ -62,8 +75,14 @@ exports.handler = async (event) => {
       <meta property="og:type" content="article" />
       <meta property="og:site_name" content="CuriosAI" />
       
-      <!-- Enhanced meta description for LinkedIn -->
+      <!-- Multiple description tags for better compatibility -->
       <meta name="description" content="${safeSnippet}" />
+      <meta property="description" content="${safeSnippet}" />
+      <meta name="twitter:description" content="${safeSnippet}" />
+      
+      <!-- Additional LinkedIn-specific tags -->
+      <meta property="article:author" content="CuriosAI" />
+      <meta property="article:published_time" content="${new Date().toISOString()}" />
 
       <!-- Twitter Card Support -->
       <meta name="twitter:card" content="summary_large_image" />
