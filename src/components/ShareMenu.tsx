@@ -32,26 +32,32 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
             const firstSentence = cleanText.split(/[.!?]/)[0].trim();
             
             // Use first sentence if it's substantial and not too long
-            if (firstSentence.length > 15 && firstSentence.length < 120) {
+            if (firstSentence.length > 15 && firstSentence.length < 150) {
               shareSnippet = firstSentence + '.';
             }
           }
           
-          // Fallback to simple description
+          // Enhanced fallback to simple description
           if (!shareSnippet) {
-            shareSnippet = `Discover AI-powered insights for "${shareQuery}"`;
+            shareSnippet = `Get AI-powered insights and comprehensive analysis for "${shareQuery}" with CuriosAI.`;
+          }
+          
+          // Ensure snippet is within LinkedIn's optimal length (50-160 chars)
+          if (shareSnippet.length > 160) {
+            shareSnippet = shareSnippet.substring(0, 157) + '...';
           }
           
           // Debug logging
           console.log('🔥 LinkedIn Share:');
           console.log('- Query:', shareQuery);
+          console.log('- Snippet length:', shareSnippet.length);
           console.log('- Snippet:', shareSnippet);
           
           // Get first search result image
           const shareImage = images && images.length > 0 ? images[0].url : '';
           
           // Always use production domain for sharing
-          const shareUrl = `https://curiosai.com/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
+          const shareUrl = `https://curiosai.com/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}&t=${Date.now()}`;
           
           // LinkedIn sharing URL
           const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareQuery)}&summary=${encodeURIComponent(shareSnippet)}`;

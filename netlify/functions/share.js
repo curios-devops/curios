@@ -5,9 +5,17 @@ exports.handler = async (event) => {
   const snippet = event.queryStringParameters?.snippet || "Get comprehensive AI-powered search results with insights, analysis, and curated information from multiple sources.";
   const image = event.queryStringParameters?.image || "";
 
-  // Enhanced bot detection
+  // Enhanced bot detection with LinkedIn-specific patterns
   const userAgent = event.headers['user-agent'] || '';
-  const isBot = /linkedinbot|facebookexternalhit|twitterbot|whatsapp|bot|crawler|spider/i.test(userAgent);
+  const isBot = /linkedinbot|facebookexternalhit|twitterbot|whatsapp|bot|crawler|spider|LinkedInBot/i.test(userAgent);
+  
+  // Debug logging for LinkedIn issues (safe - only shows in Netlify logs)
+  console.log('🔍 Share Function Debug:');
+  console.log('User-Agent:', userAgent);
+  console.log('Is Bot:', isBot);
+  console.log('Query length:', query.length);
+  console.log('Snippet length:', snippet.length);
+  console.log('Has image:', !!image);
 
   // If it's a human user, redirect immediately to the search page
   if (!isBot) {
@@ -62,14 +70,16 @@ exports.handler = async (event) => {
       <meta property="og:type" content="article" />
       <meta property="og:site_name" content="CuriosAI" />
       
-      <!-- Multiple description tags for better compatibility -->
+      <!-- LinkedIn-specific meta tags (multiple formats for better compatibility) -->
       <meta name="description" content="${safeSnippet}" />
       <meta property="description" content="${safeSnippet}" />
       <meta name="twitter:description" content="${safeSnippet}" />
+      <meta itemprop="description" content="${safeSnippet}" />
       
-      <!-- Additional LinkedIn-specific tags -->
+      <!-- Additional LinkedIn-friendly tags -->
       <meta property="article:author" content="CuriosAI" />
       <meta property="article:published_time" content="${new Date().toISOString()}" />
+      <meta name="robots" content="index, follow" />
 
       <!-- Twitter Card Support -->
       <meta name="twitter:card" content="summary_large_image" />
