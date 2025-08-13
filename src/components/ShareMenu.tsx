@@ -48,8 +48,8 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           const baseUrl = window.location.origin;
           const shareUrl = `${baseUrl}/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
           
-          // LinkedIn sharing URL
-          const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+          // LinkedIn sharing URL using shareArticle method for better content pre-filling
+          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareQuery)}&summary=${encodeURIComponent(shareSnippet)}`;
           
           // Open LinkedIn sharing dialog
           window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
