@@ -53,48 +53,39 @@ exports.handler = async (event) => {
   let safeTitle = escapeHtml(rawTitle.slice(0, 100));
   if (rawTitle.length > 100) safeTitle += '…';
 
-  // Build a LinkedIn-friendly description by merging query + snippet
-  // Target ~200 chars (LinkedIn truncates around this length)
-  const targetMax = 200;
-  const minQueryReserve = 60; // keep at most 60-80 chars of query for balance
-  const maxQueryReserve = 80;
+  // Build a LinkedIn-friendly description prioritizing the snippet (distinct from title)
+  const targetMax = 200; // LinkedIn truncates around this length
+  const minIdeal = 70;
   const q = (query || '').trim();
   const s = (snippet || '').trim();
 
-  // Trim query to a balanced size first
-  let qTrim = q.slice(0, Math.min(Math.max(minQueryReserve, Math.ceil(targetMax * 0.35)), maxQueryReserve));
-  if (q.length > qTrim.length) qTrim += '…';
-
-  // Now allocate remaining for snippet
-  const separator = ' — ';
-  let remaining = targetMax - (qTrim.length + separator.length);
-  if (remaining < 0) remaining = 0;
-  let sTrim = s.slice(0, remaining);
-  if (s.length > sTrim.length && remaining > 3) sTrim = sTrim.slice(0, Math.max(0, remaining - 1)) + '…';
-
-  // If no snippet provided, just use query or add a short tagline
-  let mergedDescription = sTrim ? `${qTrim}${separator}${sTrim}` : qTrim;
-  if (!sTrim && mergedDescription.length < 70) {
+  // Prefer the first sentence of the snippet if available
+  const firstSentence = s.split(/[.!?]+/).map(t => t.trim()).filter(Boolean)[0] || '';
+  let desc = firstSentence || s;
+  if (desc.length > targetMax) desc = desc.slice(0, 197) + '…';
+  if (!desc) {
+    // Fallback: use query and a short tagline when no snippet
+    desc = q.slice(0, Math.min(120, q.length));
+    if (q.length > desc.length) desc += '…';
     const tagline = ' — Discover insights with CuriosAI';
-    const room = targetMax - mergedDescription.length;
-    mergedDescription += room > tagline.length ? tagline : '';
+    if (desc.length < minIdeal && desc.length + tagline.length <= targetMax) {
+      desc += tagline;
+    }
+  } else if (desc.length < minIdeal) {
+    // Lightly enhance too-short snippets
+    const add = ' Discover insights with CuriosAI';
+    if (desc.length + add.length <= targetMax) desc += add;
   }
 
-  const safeDescription = escapeHtml(mergedDescription);
+  const safeDescription = escapeHtml(desc);
 
   // Build absolute base URL from the incoming request
   const proto = event.headers['x-forwarded-proto'] || 'https';
   const host = event.headers['x-forwarded-host'] || event.headers['host'] || 'curiosai.com';
   const base = `${proto}://${host}`;
 
-  // Use provided image or generate dynamic one
-  const hasCustomImage = !!image;
-  const ogImageSvg = hasCustomImage
-    ? image
-    : `${base}/.netlify/functions/og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
-  const ogImagePng = hasCustomImage
-    ? null
-    : `${base}/.netlify/functions/og-image-png?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
+  // Use provided image or generate dynamic SVG image
+  const ogImage = image || `${base}/.netlify/functions/og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
 
   // Generate share URL (canonical for crawlers)
   const shareUrl = `${base}/.netlify/functions/share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
@@ -108,16 +99,14 @@ exports.handler = async (event) => {
 
   <!-- Primary Meta -->
   <meta name="description" content="${safeDescription}" />
+  <!-- Combined name+property tags as per LinkedIn Inspector guidance -->
+  <meta name="title" property="og:title" content="${safeTitle}" />
+  <meta name="description" property="og:description" content="${safeDescription}" />
 
   <!-- Open Graph Meta Tags -->
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDescription}" />
-  ${ogImagePng ? `<!-- Prefer PNG for broad compatibility (LinkedIn) -->
-  <meta property=\"og:image\" content=\"${ogImagePng}\" />
-  <meta property=\"og:image:type\" content=\"image/png\" />
-  <meta property=\"og:image:secure_url\" content=\"${ogImagePng}\" />` : ''}
-  <!-- Also provide primary image (SVG or custom) -->
-  <meta property="og:image" content="${ogImageSvg}" />
+  <meta property="og:image" content="${ogImage}" />
   <meta property="og:image:alt" content="CuriosAI preview image for: ${safeTitle}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="627" />
@@ -129,7 +118,7 @@ exports.handler = async (event) => {
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${safeTitle}" />
   <meta name="twitter:description" content="${safeDescription}" />
-  <meta name="twitter:image" content="${ogImagePng || ogImageSvg}" />
+  <meta name="twitter:image" content="${ogImage}" />
 
   <link rel="canonical" href="${shareUrl}" />
 </head>

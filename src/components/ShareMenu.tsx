@@ -67,7 +67,7 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           
           // LinkedIn sharing URL - use the actual query as title for post text area
           const postTitle = shareQuery; // This will appear in the post composition box
-          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(postTitle)}`;
+          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(postTitle)}&text=${encodeURIComponent(postTitle)}&summary=${encodeURIComponent(shareSnippet)}&source=${encodeURIComponent('CuriosAI')}`;
           
           console.log('🔗 Share URL:', shareUrl);
           console.log('🔗 LinkedIn URL:', linkedInUrl);
