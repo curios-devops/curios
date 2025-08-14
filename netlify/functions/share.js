@@ -84,18 +84,62 @@ exports.handler = async (event) => {
   const host = event.headers['x-forwarded-host'] || event.headers['host'] || 'curiosai.com';
   const base = `${proto}://${host}`;
 
-  // Use provided image by embedding it into our dynamic SVG, else use default SVG
-  const ogImage = `${base}/.netlify/functions/og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
+  // Helper to ensure absolute HTTPS URLs
+  const absoluteHttps = (u) => {
+    if (!u) return '';
+    if (u.startsWith('http://')) return u.replace('http://', 'https://');
+    if (u.startsWith('https://')) return u;
+    if (u.startsWith('//')) return `https:${u}`;
+    return `${base}${u.startsWith('/') ? '' : '/'}${u}`;
+  };
 
-  // If a direct image was provided, add it as a secondary image to preserve existing behavior when some crawlers reject SVG
-  const extraOgImageTags = image ? `
-    <meta property="og:image" content="${image}" />
-    <meta property="og:image:secure_url" content="${image.replace(/^http:\/\//i, 'https://')}" />
-    <meta name="image" property="og:image" content="${image}" />
-  ` : '';
+  // Guard against SVG inputs for og:image (treat as no raster)
+  const isLikelySvg = (u) => {
+    if (!u || typeof u !== 'string') return false;
+    const lower = u.toLowerCase();
+    if (lower.startsWith('data:image/svg+xml')) return true;
+    if (/\.svg($|\?)/i.test(u)) return true;
+    if (/[?&](format|ext)=svg(&|$)/i.test(u)) return true;
+    if (lower.includes('image/svg+xml')) return true;
+    return false;
+  };
+
+  // Raster image only: if none available, omit image tags entirely (no static PNG, no SVG fallback)
+  const rasterOgImage = image && !isLikelySvg(image) ? absoluteHttps(image) : '';
 
   // Generate share URL (canonical for crawlers)
   const shareUrl = `${base}/.netlify/functions/share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
+
+  // Detect locale from Accept-Language header for og:locale
+  const getOgLocale = () => {
+    const al = event.headers['accept-language'] || '';
+    if (!al) return 'en_US';
+    const primary = al.split(',')[0]?.trim() || '';
+    if (!primary) return 'en_US';
+    const [langRaw, regionRaw] = primary.split('-');
+    const lang = (langRaw || '').toLowerCase();
+    const region = regionRaw ? regionRaw.toUpperCase() : '';
+    if (lang && region) return `${lang}_${region}`;
+    const map = {
+      en: 'en_US', es: 'es_ES', de: 'de_DE', fr: 'fr_FR', it: 'it_IT', pt: 'pt_BR', ja: 'ja_JP', ca: 'ca_ES'
+    };
+    return map[lang] || 'en_US';
+  };
+  const ogLocale = getOgLocale();
+
+  // Conditionally include image meta tags only when we have a raster image
+  const combinedImageMeta = rasterOgImage
+    ? `<meta name="image" property="og:image" content="${rasterOgImage}" />`
+    : '';
+  const ogImageMeta = rasterOgImage
+    ? [`<meta property="og:image" content="${rasterOgImage}" />`,
+       `<meta property="og:image:secure_url" content="${rasterOgImage}" />`,
+       `<meta property="og:image:alt" content="CuriosAI preview image for: ${safeTitle}" />`].join('\n  ')
+    : '';
+  const twitterCardType = rasterOgImage ? 'summary_large_image' : 'summary';
+  const twitterImageMeta = rasterOgImage
+    ? `<meta name="twitter:image" content="${rasterOgImage}" />`
+    : '';
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -109,29 +153,25 @@ exports.handler = async (event) => {
   <!-- Combined name+property tags as per LinkedIn Inspector guidance -->
   <meta name="title" property="og:title" content="${safeTitle}" />
   <meta name="description" property="og:description" content="${safeDescription}" />
-  <meta name="image" property="og:image" content="${ogImage}" />
+  ${combinedImageMeta}
   <meta name="url" property="og:url" content="${shareUrl}" />
   <meta name="site_name" property="og:site_name" content="CuriosAI" />
+  <meta name="locale" property="og:locale" content="${ogLocale}" />
 
   <!-- Open Graph Meta Tags -->
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDescription}" />
-  <meta property="og:image" content="${ogImage}" />
-  <meta property="og:image:secure_url" content="${ogImage.replace(/^http:\/\//i, 'https://')}" />
-  <meta property="og:image:type" content="image/svg+xml" />
-  <meta property="og:image:alt" content="CuriosAI preview image for: ${safeTitle}" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="627" />
-  ${extraOgImageTags}
+  ${ogImageMeta}
   <meta property="og:url" content="${shareUrl}" />
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="CuriosAI" />
+  <meta property="og:locale" content="${ogLocale}" />
 
   <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:card" content="${twitterCardType}" />
   <meta name="twitter:title" content="${safeTitle}" />
   <meta name="twitter:description" content="${safeDescription}" />
-  <meta name="twitter:image" content="${ogImage}" />
+  ${twitterImageMeta}
 
   <link rel="canonical" href="${shareUrl}" />
 </head>

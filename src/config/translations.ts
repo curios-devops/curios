@@ -60,7 +60,7 @@ export const translations: Translations = {
     logIn: 'Log In',
     expand: 'Expand',
     collapse: 'Collapse',
-    getStarted: 'Get started',
+    getStarted: 'Get Started',
     cookiePolicy: 'Cookie Policy',
     cookieConsentText: 'We use cookies to enhance your experience. By clicking "Accept All" or "Necessary Only", you agree to our',
     privacyPolicy: 'privacy policy',
