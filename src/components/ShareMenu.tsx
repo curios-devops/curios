@@ -42,9 +42,15 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
             shareSnippet = `Get AI-powered insights and comprehensive analysis for "${shareQuery}" with CuriosAI.`;
           }
           
-          // Ensure snippet is within LinkedIn's optimal length (50-160 chars)
+          // Ensure snippet is within LinkedIn's optimal length (70-160 chars for best display)
           if (shareSnippet.length > 160) {
             shareSnippet = shareSnippet.substring(0, 157) + '...';
+          } else if (shareSnippet.length < 70 && shareSnippet.length > 0) {
+            // If snippet is too short, enhance it slightly
+            shareSnippet = `${shareSnippet} Discover comprehensive AI insights with CuriosAI.`;
+            if (shareSnippet.length > 160) {
+              shareSnippet = shareSnippet.substring(0, 157) + '...';
+            }
           }
           
           // Debug logging
@@ -57,12 +63,15 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           const shareImage = images && images.length > 0 ? images[0].url : '';
           
           // Always use production domain for sharing
-          const shareUrl = `https://curiosai.com/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}&t=${Date.now()}`;
+          const shareUrl = `https://curiosai.com/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
           
-          // LinkedIn sharing URL
-          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareQuery)}&summary=${encodeURIComponent(shareSnippet)}`;
+          // LinkedIn sharing URL - use the actual query as title for post text area
+          const postTitle = shareQuery; // This will appear in the post composition box
+          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(postTitle)}`;
           
           console.log('🔗 Share URL:', shareUrl);
+          console.log('🔗 LinkedIn URL:', linkedInUrl);
+          console.log('🔗 Post title:', postTitle);
           
           // Open LinkedIn sharing dialog
           window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');

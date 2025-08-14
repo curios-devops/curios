@@ -1,23 +1,22 @@
-// Netlify Function for LinkedIn Sharing with Dynamic OG Meta Tags
+// Simple Netlify Function for LinkedIn Sharing
 exports.handler = async (event) => {
-  // Get query parameters from the URL - these will come from real-time app data
+  // Get query parameters
   const query = event.queryStringParameters?.query || "CuriosAI - AI-Powered Search";
   const snippet = event.queryStringParameters?.snippet || "Get comprehensive AI-powered search results with insights, analysis, and curated information from multiple sources.";
   const image = event.queryStringParameters?.image || "";
 
-  // Enhanced bot detection with LinkedIn-specific patterns
+  // Simple bot detection
   const userAgent = event.headers['user-agent'] || '';
   const isBot = /linkedinbot|facebookexternalhit|twitterbot|whatsapp|bot|crawler|spider|LinkedInBot/i.test(userAgent);
   
-  // Debug logging for LinkedIn issues (safe - only shows in Netlify logs)
   console.log('🔍 Share Function Debug:');
-  console.log('User-Agent:', userAgent);
-  console.log('Is Bot:', isBot);
-  console.log('Query length:', query.length);
-  console.log('Snippet length:', snippet.length);
-  console.log('Has image:', !!image);
+  console.log('- Bot detected:', isBot);
+  console.log('- User Agent:', userAgent);
+  console.log('- Query:', query);
+  console.log('- Snippet length:', snippet.length);
+  console.log('- Snippet:', snippet.substring(0, 100) + (snippet.length > 100 ? '...' : ''));
 
-  // If it's a human user, redirect immediately to the search page
+  // Redirect humans to search page
   if (!isBot) {
     return {
       statusCode: 302,
@@ -28,140 +27,64 @@ exports.handler = async (event) => {
     };
   }
 
-  // For bots/crawlers, serve the full HTML with meta tags
-  // Sanitize HTML to prevent XSS and broken meta tags
-  const escapeHtml = (text) => 
-    text.replace(/[<>&"']/g, (c) => ({
-      '<': '&lt;',
-      '>': '&gt;',
-      '&': '&amp;',
-      '"': '&quot;',
-      "'": '&#39;'
-    }[c] || c));
-
-  const safeQuery = escapeHtml(query.slice(0, 100)); // LinkedIn title limit
-  const safeSnippet = escapeHtml(snippet.slice(0, 150)); // Keep snippet concise
+  // Simple HTML sanitization and length optimization
+  const clean = (text) => text.replace(/[<>&"']/g, (c) => ({'<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;'}[c] || c));
   
-  // Use dynamic OG image if not provided, fallback to static
-  const baseUrl = "https://curiosai.com";
-  const ogImage = image || 
-    (query !== "CuriosAI - AI-Powered Search" 
-      ? `${baseUrl}/.netlify/functions/og-image?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet.slice(0, 200))}`
-      : `${baseUrl}/og-image.png`);
+  const safeQuery = clean(query.slice(0, 100));
+  let safeSnippet = clean(snippet.slice(0, 160));
+  
+  // Ensure snippet is in optimal range for LinkedIn (70-160 chars)
+  if (safeSnippet.length < 70 && safeSnippet.length > 0) {
+    safeSnippet = safeSnippet + ' - Explore comprehensive AI insights with CuriosAI.';
+    if (safeSnippet.length > 160) {
+      safeSnippet = safeSnippet.substring(0, 157) + '...';
+    }
+  }
+  
+  // Use provided image or generate dynamic one
+  const ogImage = image || `https://curiosai.com/.netlify/functions/og-image?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet.slice(0, 100))}`;
+  
+  // Generate share URL
+  const shareUrl = `https://curiosai.com/.netlify/functions/share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
 
-  // Generate shareable URL for this specific content
-  const shareUrl = `${baseUrl}/.netlify/functions/share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${safeQuery}</title>
 
-  const html = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>${safeQuery}</title>
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="${safeQuery}" />
+  <meta name="description" property="og:description" content="${safeSnippet}" />
+  <meta property="og:image" content="${ogImage}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="627" />
+  <meta property="og:url" content="${shareUrl}" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="CuriosAI" />
 
-      <!-- LinkedIn-Optimized Open Graph Meta Tags -->
-      <meta property="og:title" content="${safeQuery}" />
-      <meta property="og:description" content="${safeSnippet}" />
-      <meta property="og:image" content="${ogImage}" />
-      <meta property="og:image:width" content="1200" />
-      <meta property="og:image:height" content="627" />
-      <meta property="og:url" content="${shareUrl}" />
-      <meta property="og:type" content="article" />
-      <meta property="og:site_name" content="CuriosAI" />
-      
-      <!-- LinkedIn-specific meta tags (multiple formats for better compatibility) -->
-      <meta name="description" content="${safeSnippet}" />
-      <meta property="description" content="${safeSnippet}" />
-      <meta name="twitter:description" content="${safeSnippet}" />
-      <meta itemprop="description" content="${safeSnippet}" />
-      
-      <!-- Additional LinkedIn-friendly tags -->
-      <meta property="article:author" content="CuriosAI" />
-      <meta property="article:published_time" content="${new Date().toISOString()}" />
-      <meta name="robots" content="index, follow" />
-
-      <!-- Twitter Card Support -->
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="${safeQuery}" />
-      <meta name="twitter:description" content="${safeSnippet}" />
-      <meta name="twitter:image" content="${ogImage}" />
-
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 40px 20px;
-          background: #f8f9fa;
-          color: #333;
-        }
-        .container {
-          background: white;
-          border-radius: 12px;
-          padding: 40px;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-          text-align: center;
-        }
-        .logo {
-          color: #0095FF;
-          font-size: 28px;
-          font-weight: bold;
-          margin-bottom: 20px;
-        }
-        .title {
-          font-size: 24px;
-          font-weight: 600;
-          margin-bottom: 16px;
-          color: #1a1a1a;
-        }
-        .snippet {
-          font-size: 16px;
-          color: #666;
-          line-height: 1.5;
-          margin-bottom: 30px;
-        }
-        .cta {
-          background: #0095FF;
-          color: white;
-          padding: 12px 24px;
-          border: none;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 500;
-          text-decoration: none;
-          display: inline-block;
-          transition: background 0.2s;
-        }
-        .cta:hover {
-          background: #0080FF;
-        }
-        .footer {
-          margin-top: 30px;
-          font-size: 14px;
-          color: #999;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="logo">CuriosAI</div>
-        <h1 class="title">${safeQuery}</h1>
-        <p class="snippet">${safeSnippet}</p>
-        <a href="https://curiosai.com/search?q=${encodeURIComponent(query)}" class="cta">Explore More with CuriosAI</a>
-        <div class="footer">
-          AI-powered search and insights
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  <!-- Twitter Card Support -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${safeQuery}" />
+  <meta name="twitter:description" content="${safeSnippet}" />
+  <meta name="twitter:image" content="${ogImage}" />
+</head>
+<body>
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center;">
+    <h1 style="color: #0095FF; margin-bottom: 20px;">CuriosAI</h1>
+    <h2 style="color: #333; margin-bottom: 16px;">${safeQuery}</h2>
+    <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">${safeSnippet}</p>
+    <a href="https://curiosai.com/search?q=${encodeURIComponent(query)}" style="background: #0095FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 500;">Explore More with CuriosAI</a>
+  </div>
+</body>
+</html>`;
 
   return {
     statusCode: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=300', // 5 minutes cache for social crawlers
+      'Cache-Control': 'public, max-age=300'
     },
     body: html
   };
