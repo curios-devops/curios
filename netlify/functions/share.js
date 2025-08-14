@@ -54,7 +54,7 @@ exports.handler = async (event) => {
   if (rawTitle.length > 100) safeTitle += '…';
 
   // Build a LinkedIn-friendly description prioritizing the snippet (distinct from title)
-  const targetMax = 200; // LinkedIn truncates around this length
+  const targetMax = 160; // LinkedIn often truncates around 140-160 chars
   const minIdeal = 70;
   const q = (query || '').trim();
   const s = (snippet || '').trim();
@@ -62,7 +62,7 @@ exports.handler = async (event) => {
   // Prefer the first sentence of the snippet if available
   const firstSentence = s.split(/[.!?]+/).map(t => t.trim()).filter(Boolean)[0] || '';
   let desc = firstSentence || s;
-  if (desc.length > targetMax) desc = desc.slice(0, 197) + '…';
+  if (desc.length > targetMax) desc = desc.slice(0, 157) + '…';
   if (!desc) {
     // Fallback: use query and a short tagline when no snippet
     desc = q.slice(0, Math.min(120, q.length));
@@ -84,8 +84,15 @@ exports.handler = async (event) => {
   const host = event.headers['x-forwarded-host'] || event.headers['host'] || 'curiosai.com';
   const base = `${proto}://${host}`;
 
-  // Use provided image or generate dynamic SVG image
-  const ogImage = image || `${base}/.netlify/functions/og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
+  // Use provided image by embedding it into our dynamic SVG, else use default SVG
+  const ogImage = `${base}/.netlify/functions/og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
+
+  // If a direct image was provided, add it as a secondary image to preserve existing behavior when some crawlers reject SVG
+  const extraOgImageTags = image ? `
+    <meta property="og:image" content="${image}" />
+    <meta property="og:image:secure_url" content="${image.replace(/^http:\/\//i, 'https://')}" />
+    <meta name="image" property="og:image" content="${image}" />
+  ` : '';
 
   // Generate share URL (canonical for crawlers)
   const shareUrl = `${base}/.netlify/functions/share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
@@ -102,14 +109,20 @@ exports.handler = async (event) => {
   <!-- Combined name+property tags as per LinkedIn Inspector guidance -->
   <meta name="title" property="og:title" content="${safeTitle}" />
   <meta name="description" property="og:description" content="${safeDescription}" />
+  <meta name="image" property="og:image" content="${ogImage}" />
+  <meta name="url" property="og:url" content="${shareUrl}" />
+  <meta name="site_name" property="og:site_name" content="CuriosAI" />
 
   <!-- Open Graph Meta Tags -->
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDescription}" />
   <meta property="og:image" content="${ogImage}" />
+  <meta property="og:image:secure_url" content="${ogImage.replace(/^http:\/\//i, 'https://')}" />
+  <meta property="og:image:type" content="image/svg+xml" />
   <meta property="og:image:alt" content="CuriosAI preview image for: ${safeTitle}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="627" />
+  ${extraOgImageTags}
   <meta property="og:url" content="${shareUrl}" />
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="CuriosAI" />
