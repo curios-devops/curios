@@ -59,9 +59,44 @@ exports.handler = async (event) => {
   const q = (query || '').trim();
   const s = (snippet || '').trim();
 
-  // Prefer the first sentence of the snippet if available
-  const firstSentence = s.split(/[.!?]+/).map(t => t.trim()).filter(Boolean)[0] || '';
-  let desc = firstSentence || s;
+  // Helpers to avoid title/description duplication
+  const normalize = (str) => (str || '')
+    .toLowerCase()
+    .replace(/[‘’‚‛“”„‟"'`]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  const isTooSimilar = (a, b) => {
+    const na = normalize(a);
+    const nb = normalize(b);
+    if (!na || !nb) return false;
+    if (na === nb) return true;
+    if (na.length > 12 && (nb.includes(na) || na.includes(nb))) return true;
+    const aSet = new Set(na.split(' ').filter(Boolean));
+    const bSet = new Set(nb.split(' ').filter(Boolean));
+    const inter = [...aSet].filter(w => bSet.has(w)).length;
+    const ratio = inter / Math.max(aSet.size, 1);
+    return ratio >= 0.7;
+  };
+  const sentences = s
+    ? s.split(/[.!?]+/).map(t => t.trim()).filter(Boolean)
+    : [];
+
+  // Prefer the first sentence, but ensure it differs from the title
+  let primary = sentences[0] || s;
+  if (isTooSimilar(primary, q)) {
+    // Try the next sentence if available
+    const alt = sentences.find((sent, idx) => idx > 0 && !isTooSimilar(sent, q));
+    if (alt) primary = alt;
+    else {
+      // Derive an alternate by removing the title words from the snippet
+      const titleWords = new Set(normalize(q).split(' ').filter(Boolean));
+      const filtered = (normalize(s).split(' ').filter(Boolean)
+        .filter(w => !titleWords.has(w))).join(' ');
+      if (filtered.length > 20) primary = filtered;
+    }
+  }
+
+  let desc = primary || s || '';
   if (desc.length > targetMax) desc = desc.slice(0, 157) + '…';
   if (!desc) {
     // Fallback: use query and a short tagline when no snippet
@@ -72,9 +107,9 @@ exports.handler = async (event) => {
       desc += tagline;
     }
   } else if (desc.length < minIdeal) {
-    // Lightly enhance too-short snippets
+    // Lightly enhance too-short snippets (keep distinct from title)
     const add = ' Discover insights with CuriosAI';
-    if (desc.length + add.length <= targetMax) desc += add;
+    if (desc.length + add.length <= targetMax && !isTooSimilar(desc + add, q)) desc += add;
   }
 
   const safeDescription = escapeHtml(desc);
@@ -104,8 +139,108 @@ exports.handler = async (event) => {
     return false;
   };
 
-  // Raster image only: if none available, omit image tags entirely (no static PNG, no SVG fallback)
-  const rasterOgImage = image && !isLikelySvg(image) ? absoluteHttps(image) : '';
+  // Light fetch with timeout helper
+  const fetchWithTimeout = async (url, opts = {}, ms = 2500) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), ms);
+    try {
+      const res = await fetch(url, { ...opts, signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(id);
+    }
+  };
+
+  // Parse minimal dimensions from PNG/JPEG/GIF buffers
+  const parseImageDimensions = (buf) => {
+    if (!buf || buf.length < 10) return null;
+    // PNG
+    if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) {
+      const w = buf.readUInt32BE(16);
+      const h = buf.readUInt32BE(20);
+      return { w, h, type: 'png' };
+    }
+    // GIF
+    if (buf.length > 10 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) {
+      const w = buf.readUInt16LE(6);
+      const h = buf.readUInt16LE(8);
+      return { w, h, type: 'gif' };
+    }
+    // JPEG (scan for SOF0/1/2)
+    if (buf.length > 4 && buf[0] === 0xFF && buf[1] === 0xD8) {
+      let i = 2;
+      while (i + 9 < buf.length) {
+        if (buf[i] !== 0xFF) { i++; continue; }
+        const marker = buf[i + 1];
+        const hasSize = marker !== 0xD8 && marker !== 0xD9 && marker !== 0xDA;
+        if (!hasSize) { i += 2; continue; }
+        const len = buf.readUInt16BE(i + 2);
+        if ((marker >= 0xC0 && marker <= 0xC3) || (marker >= 0xC5 && marker <= 0xC7) || (marker >= 0xC9 && marker <= 0xCB) || (marker >= 0xCD && marker <= 0xCF)) {
+          const h = buf.readUInt16BE(i + 5);
+          const w = buf.readUInt16BE(i + 7);
+          return { w, h, type: 'jpg' };
+        }
+        i += 2 + len;
+      }
+    }
+    return null;
+  };
+
+  // Validate raster: correct content-type, reasonable size, and minimum dimensions for good LinkedIn layout.
+  const validateRasterOgImage = async (url) => {
+    try {
+      const head = await fetchWithTimeout(url, { method: 'HEAD' }, 2000);
+      const contentType = head.headers.get('content-type') || '';
+      const isRaster = /image\/(jpeg|jpg|png|gif)/i.test(contentType);
+      if (!isRaster) {
+        console.log('🖼️ Skipping image - unsupported content-type:', contentType);
+        return '';
+      }
+      const contentLength = head.headers.get('content-length');
+      if (contentLength && Number(contentLength) > 5 * 1024 * 1024) {
+        console.log('🖼️ Skipping image - too large:', contentLength);
+        return '';
+      }
+    } catch (e) {
+      // Some servers disallow HEAD; continue with ranged GET
+    }
+
+    try {
+      const res = await fetchWithTimeout(url, { headers: { Range: 'bytes=0-65535' } }, 3500);
+      if (!res.ok) {
+        console.log('🖼️ Skipping image - fetch not OK:', res.status);
+        return '';
+      }
+      const type = res.headers.get('content-type') || '';
+      if (!/image\/(jpeg|jpg|png|gif)/i.test(type)) {
+        console.log('🖼️ Skipping image - fetched non-raster type:', type);
+        return '';
+      }
+      const ab = await res.arrayBuffer();
+      const buf = Buffer.from(ab);
+      const dims = parseImageDimensions(buf);
+      if (!dims) {
+        console.log('🖼️ Skipping image - could not parse dimensions');
+        return '';
+      }
+      // Thresholds tuned for large preview; fall back to text-only if too small
+      const minW = 800; // aim for big card
+      const minH = 400;
+      if (dims.w < minW || dims.h < minH) {
+        console.log(`🖼️ Skipping image - too small ${dims.w}x${dims.h} (< ${minW}x${minH})`);
+        return '';
+      }
+      return url;
+    } catch (err) {
+      console.log('🖼️ Skipping image - error fetching/parsing:', err?.message || err);
+      return '';
+    }
+  };
+
+  // Raster image only: if none available or invalid, omit image tags entirely (no static PNG, no SVG fallback)
+  const rasterOgImage = image && !isLikelySvg(image)
+    ? await validateRasterOgImage(absoluteHttps(image))
+    : '';
 
   // Generate share URL (canonical for crawlers)
   const shareUrl = `${base}/.netlify/functions/share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
