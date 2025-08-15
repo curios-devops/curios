@@ -188,17 +188,19 @@ exports.handler = async (event) => {
 
   // Validate raster: correct content-type, reasonable size, and minimum dimensions for good LinkedIn layout.
   const validateRasterOgImage = async (url) => {
+    let headContentType = '';
+    let headContentLength = '';
     try {
-      const head = await fetchWithTimeout(url, { method: 'HEAD' }, 2000);
-      const contentType = head.headers.get('content-type') || '';
-      const isRaster = /image\/(jpeg|jpg|png|gif)/i.test(contentType);
+      const head = await fetchWithTimeout(url, { method: 'HEAD' }, 2500);
+      headContentType = head.headers.get('content-type') || '';
+      const isRaster = /image\/(jpeg|jpg|png|gif)/i.test(headContentType);
       if (!isRaster) {
-        console.log('🖼️ Skipping image - unsupported content-type:', contentType);
+        console.log('🖼️ Skipping image - unsupported content-type:', headContentType);
         return '';
       }
-      const contentLength = head.headers.get('content-length');
-      if (contentLength && Number(contentLength) > 5 * 1024 * 1024) {
-        console.log('🖼️ Skipping image - too large:', contentLength);
+      headContentLength = head.headers.get('content-length') || '';
+      if (headContentLength && Number(headContentLength) > 5 * 1024 * 1024) {
+        console.log('🖼️ Skipping image - too large:', headContentLength);
         return '';
       }
     } catch (e) {
@@ -206,30 +208,47 @@ exports.handler = async (event) => {
     }
 
     try {
-      const res = await fetchWithTimeout(url, { headers: { Range: 'bytes=0-65535' } }, 3500);
+      const res = await fetchWithTimeout(url, { headers: { Range: 'bytes=0-65535' } }, 3000);
       if (!res.ok) {
         console.log('🖼️ Skipping image - fetch not OK:', res.status);
         return '';
       }
-      const type = res.headers.get('content-type') || '';
+      const type = res.headers.get('content-type') || headContentType || '';
       if (!/image\/(jpeg|jpg|png|gif)/i.test(type)) {
         console.log('🖼️ Skipping image - fetched non-raster type:', type);
         return '';
       }
+
+      // If we have a definitive large size from HEAD, enforce 5MB cap
+      if (headContentLength && Number(headContentLength) > 5 * 1024 * 1024) {
+        console.log('🖼️ Skipping image - too large by HEAD after GET:', headContentLength);
+        return '';
+      }
+
       const ab = await res.arrayBuffer();
       const buf = Buffer.from(ab);
       const dims = parseImageDimensions(buf);
-      if (!dims) {
-        console.log('🖼️ Skipping image - could not parse dimensions');
+
+      // Prefer large-card thresholds, but be permissive to avoid skipping valid images
+      const minLargeW = 600; // LinkedIn large image minimum guidance
+      const minLargeH = 315;
+      const minAcceptW = 400; // accept smaller, may render as smaller card/thumbnail
+      const minAcceptH = 209;
+
+      if (dims) {
+        if (dims.w >= minLargeW && dims.h >= minLargeH) {
+          return url;
+        }
+        if (dims.w >= minAcceptW && dims.h >= minAcceptH) {
+          console.log(`🖼️ Using image - small but acceptable ${dims.w}x${dims.h}`);
+          return url;
+        }
+        console.log(`🖼️ Skipping image - too small ${dims.w}x${dims.h} (< ${minAcceptW}x${minAcceptH})`);
         return '';
       }
-      // Thresholds tuned for large preview; fall back to text-only if too small
-      const minW = 800; // aim for big card
-      const minH = 400;
-      if (dims.w < minW || dims.h < minH) {
-        console.log(`🖼️ Skipping image - too small ${dims.w}x${dims.h} (< ${minW}x${minH})`);
-        return '';
-      }
+
+      // Could not parse dimensions. If type looks right and HEAD didn't flag size issues, accept.
+      console.log('🖼️ Using image - dimensions unknown but type/size look OK');
       return url;
     } catch (err) {
       console.log('🖼️ Skipping image - error fetching/parsing:', err?.message || err);

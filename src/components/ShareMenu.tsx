@@ -65,10 +65,9 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           // Always use production domain for sharing
           const shareUrl = `https://curiosai.com/.netlify/functions/share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
           
-          // LinkedIn sharing URL - prefill post text with query + snippet (query first)
-          const postTitle = shareQuery;
-          const postText = shareSnippet ? `${postTitle}\n\n${shareSnippet}` : postTitle;
-          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(postText)}&text=${encodeURIComponent(postText)}&summary=${encodeURIComponent(shareSnippet)}&source=${encodeURIComponent('CuriosAI')}`;
+          // LinkedIn sharing URL - use the actual query as the post text only
+          const postTitle = shareQuery; // Composer text area
+          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(postTitle)}&text=${encodeURIComponent(postTitle)}&summary=${encodeURIComponent(shareSnippet)}&source=${encodeURIComponent('CuriosAI')}`;
           
           console.log('🔗 Share URL:', shareUrl);
           console.log('🔗 LinkedIn URL:', linkedInUrl);
