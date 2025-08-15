@@ -193,7 +193,7 @@ exports.handler = async (event) => {
     try {
       const head = await fetchWithTimeout(url, { method: 'HEAD' }, 2500);
       headContentType = head.headers.get('content-type') || '';
-      const isRaster = /image\/(jpeg|jpg|png|gif)/i.test(headContentType);
+      const isRaster = /image\/(jpeg|jpg|png|gif|webp)/i.test(headContentType);
       if (!isRaster) {
         console.log('🖼️ Skipping image - unsupported content-type:', headContentType);
         return '';
@@ -214,7 +214,7 @@ exports.handler = async (event) => {
         return '';
       }
       const type = res.headers.get('content-type') || headContentType || '';
-      if (!/image\/(jpeg|jpg|png|gif)/i.test(type)) {
+      if (!/image\/(jpeg|jpg|png|gif|webp)/i.test(type)) {
         console.log('🖼️ Skipping image - fetched non-raster type:', type);
         return '';
       }
@@ -256,10 +256,27 @@ exports.handler = async (event) => {
     }
   };
 
-  // Raster image only: if none available or invalid, omit image tags entirely (no static PNG, no SVG fallback)
-  const rasterOgImage = image && !isLikelySvg(image)
-    ? await validateRasterOgImage(absoluteHttps(image))
-    : '';
+  // Raster image: prefer provided raster; else fall back to a PNG-converted dynamic OG image.
+  // Build a PNG transformer (uses wsrv.nl so we don't ship heavy raster libs)
+  const toPng1200x627 = (srcUrl) => `https://wsrv.nl/?url=${encodeURIComponent(srcUrl)}&w=1200&h=627&fit=cover&output=png`;
+
+  let rasterOgImage = '';
+  const hasCandidateRaster = image && !isLikelySvg(image);
+  const absCandidate = hasCandidateRaster ? absoluteHttps(image) : '';
+
+  // Fallback dynamic SVG (text-only) -> convert to PNG for LinkedIn
+  const dynSvg = `${base}/.netlify/functions/og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 120))}`;
+  const preferredSrc = hasCandidateRaster ? absCandidate : dynSvg;
+
+  // If we have a candidate raster, keep it; otherwise, use PNG version of the dynamic SVG
+  const pngified = toPng1200x627(preferredSrc);
+  rasterOgImage = `${base}/.netlify/functions/image-proxy?src=${encodeURIComponent(pngified)}`;
+
+  console.log('🧩 Image selection:');
+  console.log('- hasCandidateRaster:', !!hasCandidateRaster);
+  console.log('- preferredSrc:', preferredSrc);
+  console.log('- pngified:', pngified);
+  console.log('- rasterOgImage (proxied):', rasterOgImage);
 
   // Generate share URL (canonical for crawlers)
   const shareUrl = `${base}/.netlify/functions/share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
@@ -282,12 +299,16 @@ exports.handler = async (event) => {
   const ogLocale = getOgLocale();
 
   // Conditionally include image meta tags only when we have a raster image
+  const imageWidth = 1200;
+  const imageHeight = 627;
   const combinedImageMeta = rasterOgImage
-    ? `<meta name="image" property="og:image" content="${rasterOgImage}" />`
+    ? `<meta name="image" property="og:image" content="${rasterOgImage}" />\n  <meta property="og:image:secure_url" content="${rasterOgImage}" />\n  <meta property="og:image:width" content="${imageWidth}" />\n  <meta property="og:image:height" content="${imageHeight}" />`
     : '';
   const ogImageMeta = rasterOgImage
     ? [`<meta property="og:image" content="${rasterOgImage}" />`,
        `<meta property="og:image:secure_url" content="${rasterOgImage}" />`,
+       `<meta property="og:image:width" content="${imageWidth}" />`,
+       `<meta property="og:image:height" content="${imageHeight}" />`,
        `<meta property="og:image:alt" content="CuriosAI preview image for: ${safeTitle}" />`].join('\n  ')
     : '';
   const twitterCardType = rasterOgImage ? 'summary_large_image' : 'summary';
@@ -302,12 +323,16 @@ exports.handler = async (event) => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${safeTitle}</title>
 
+  <!-- Image first to help crawlers prioritize it -->
+  ${combinedImageMeta}
+  ${ogImageMeta}
+  ${rasterOgImage ? `<link rel="image_src" href="${rasterOgImage}" />` : ''}
+
   <!-- Primary Meta -->
   <meta name="description" content="${safeDescription}" />
   <!-- Combined name+property tags as per LinkedIn Inspector guidance -->
   <meta name="title" property="og:title" content="${safeTitle}" />
   <meta name="description" property="og:description" content="${safeDescription}" />
-  ${combinedImageMeta}
   <meta name="url" property="og:url" content="${shareUrl}" />
   <meta name="site_name" property="og:site_name" content="CuriosAI" />
   <meta name="locale" property="og:locale" content="${ogLocale}" />
@@ -315,7 +340,6 @@ exports.handler = async (event) => {
   <!-- Open Graph Meta Tags -->
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDescription}" />
-  ${ogImageMeta}
   <meta property="og:url" content="${shareUrl}" />
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="CuriosAI" />
