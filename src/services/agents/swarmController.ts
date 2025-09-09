@@ -1,9 +1,10 @@
 import { PerspectiveAgent } from './perspectiveAgent';
 import { RetrieverAgent } from './retrieverAgent';
 import { WriterAgent } from './writerAgent';
-import { ResearchResult, ArticleResult } from './types';
+import { ResearchResult, ArticleResult, AgentResponse, SearchResult, Perspective } from './types';
 import { logger } from '../../utils/logger';
 import { ServiceHealthMonitor } from '../serviceHealth';
+import type { ImageResult, VideoResult } from '../../types';
 
 export class SwarmController {
   private writerAgent: WriterAgent;
@@ -25,8 +26,8 @@ export class SwarmController {
   ): Promise<{
     research: ResearchResult;
     article: ArticleResult;
-    images: any[];
-    videos: any[];
+    images: ImageResult[];
+    videos: VideoResult[];
   }> {
     try {
       // Validate the query
@@ -40,17 +41,21 @@ export class SwarmController {
       const searchResponse = await this.executeWithHealthCheck(
         () => this.retrieverAgent.execute(query, [], isPro, onStatusUpdate),
         'RetrieverAgent'
-      );
+      ) as AgentResponse<{
+        results: SearchResult[];
+        images: ImageResult[];
+        videos: VideoResult[];
+      }>;
 
       // For Pro searches, generate perspectives
-      let perspectives = [];
+      let perspectives: Perspective[] = [];
       if (isPro) {
         onStatusUpdate?.('Analyzing different perspectives...');
         try {
           const perspectiveResponse = await this.executeWithHealthCheck(
             () => this.perspectiveAgent.execute(query),
             'PerspectiveAgent'
-          );
+          ) as AgentResponse<{ perspectives: Perspective[] }>;
           perspectives = perspectiveResponse.data?.perspectives || [];
         } catch (error) {
           logger.warn('Perspective generation failed:', error);
@@ -67,7 +72,7 @@ export class SwarmController {
       });
 
       // Add explicit timeout for WriterAgent execution
-      let writerResponse;
+      let writerResponse: AgentResponse<ArticleResult>;
       try {
         writerResponse = await Promise.race([
           this.executeWithHealthCheck(
@@ -78,9 +83,9 @@ export class SwarmController {
                 results: searchResponse.data?.results || []
               }),
             'WriterAgent'
-          ),
+          ) as Promise<AgentResponse<ArticleResult>>,
           new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('WriterAgent timeout after 30 seconds')), 30000)
+            setTimeout(() => reject(new Error('WriterAgent timeout after 45 seconds')), 45000) // Increased from 30 to 45 seconds
           )
         ]);
 
@@ -96,7 +101,7 @@ export class SwarmController {
           data: {
             content: `Based on the search results for "${query}", here are the key findings:\n\n${
               searchResponse.data?.results?.slice(0, 3)
-                .map((result: any, index: number) => `${index + 1}. **${result.title}** - ${result.content.slice(0, 200)}...`)
+                .map((result: SearchResult, index: number) => `${index + 1}. **${result.title}** - ${result.content.slice(0, 200)}...`)
                 .join('\n\n') || 'No detailed results available.'
             }`,
             followUpQuestions: [
@@ -104,7 +109,7 @@ export class SwarmController {
               `How does ${query} impact different industries?`,
               `What are the main challenges with ${query}?`
             ],
-            citations: searchResponse.data?.results?.map((r: any) => r.url) || []
+            citations: searchResponse.data?.results?.map((r: SearchResult) => r.url) || []
           }
         };
       }

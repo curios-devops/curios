@@ -49,12 +49,12 @@ export default function Results() {
 
       try {
         logger.info('Starting search', { query, mode });
-        setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
+        setSearchState((prev: SearchState) => ({ ...prev, isLoading: true, error: null }));
         
         const response = await performSearch(query, {
           mode,
           isPro: false,
-          onStatusUpdate: (status) => {
+          onStatusUpdate: (status: string) => {
             logger.debug('Search status update', { status });
             setStatusMessage(status);
           }

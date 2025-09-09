@@ -2,7 +2,7 @@ import { Video } from 'lucide-react';
 import AIOverview from '../AIOverview';
 import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';
-import type { SearchState } from '../../types';
+import type { SearchState, Source, ImageResult, VideoResult } from '../../types';
 
 interface TabbedContentProps {
   searchState: SearchState;
@@ -35,7 +35,7 @@ export default function TabbedContent({
     return (
       <ErrorState 
         message={searchState.error} 
-        onRetry={() => window.location.reload()} 
+        onRetry={() => globalThis.location.reload()} 
       />
     );
   }
@@ -65,7 +65,7 @@ export default function TabbedContent({
             {/* Perplexity-style Sources Grid at Top */}
             <div className="space-y-4">
               <div className="grid grid-cols-4 gap-2 mb-6">
-                {data.sources.slice(0, 4).map((source, index) => {
+                {data.sources.slice(0, 4).map((source: Source, index: number) => {
                   console.log('TabbedContent: Processing source', index, {
                     title: source.title,
                     url: source.url,
@@ -136,13 +136,13 @@ export default function TabbedContent({
               {/* Images Grid - Show first 4 images */}
               {data.images && data.images.length > 0 && (
                 <div className="grid grid-cols-4 gap-3 mb-6">
-                  {data.images.slice(0, 4).map((image, index) => (
+                  {data.images.slice(0, 4).map((image: ImageResult, index: number) => (
                     <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group">
                       <img
                         src={image.url}
                         alt={image.alt || ''}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
-                        onClick={() => window.open(image.url, '_blank')}
+                        onClick={() => globalThis.open(image.url, '_blank')}
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M0M2MS44OTU0IDc0IDYxIDc0Ljg5NTQgNjEgNzZWMTI0QzYxIDEyNS4xMDUgNjEuODk1NCAxMjYgNjMgMTI2SDEzN0MxMzguMTA1IDEyNiAxMzkgMTI1LjEwNSAxMzkgMTI0Vjc2QzEzOSA3NC44OTU0IDEzOC4xMDUgNzQgMTM3IDc0SDExM00xMTMgNzRWNzBDMTEzIDY4Ljg5NTQgMTEyLjEwNSA2OCAxMTEgNjhIODlDODcuODk1NCA2OCA4NyA2OC44OTU0IDg3IDcwVjc0TTExMyA3NEg4N00xMDAgOTBWMTA2TTkzIDk4TDEwNyA5OCIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K';
@@ -162,7 +162,7 @@ export default function TabbedContent({
                     hasAnswer: !!data.answer,
                     answerLength: data.answer?.length,
                     sourcesCount: data.sources?.length,
-                    query: new URLSearchParams(window.location.search).get('q') || ''
+                    query: new URLSearchParams(globalThis.location.search).get('q') || ''
                   });
                   
                   // Test with minimal version first
@@ -175,7 +175,7 @@ export default function TabbedContent({
                         <h2 className="text-xl font-medium mb-4">AI Overview (Minimal Test)</h2>
                         <p className="text-gray-700 dark:text-gray-300 mb-4">{data.answer}</p>
                         <div className="text-sm text-gray-500">
-                          Sources: {data.sources.length} | Query: {new URLSearchParams(window.location.search).get('q') || ''}
+                          Sources: {data.sources.length} | Query: {new URLSearchParams(globalThis.location.search).get('q') || ''}
                         </div>
                       </div>
                     );
@@ -186,7 +186,8 @@ export default function TabbedContent({
                     <AIOverview 
                       answer={data.answer} 
                       sources={data.sources} 
-                      query={new URLSearchParams(window.location.search).get('q') || ''} 
+                      query={new URLSearchParams(globalThis.location.search).get('q') || ''} 
+                      followUpQuestions={data.followUpQuestions}
                     />
                   );
                 } catch (error) {
@@ -208,13 +209,13 @@ export default function TabbedContent({
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Images</h3>
             {data.images && data.images.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {data.images.map((image, index) => (
+                {data.images.map((image: ImageResult, index: number) => (
                   <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group">
                     <img
                       src={image.url}
                       alt={image.alt || ''}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
-                      onClick={() => window.open(image.url, '_blank')}
+                      onClick={() => globalThis.open(image.url, '_blank')}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M0M2MS44OTU0IDc0IDYxIDc0Ljg5NTQgNjEgNzZWMTI0QzYxIDEyNS4xMDUgNjEuODk1NCAxMjYgNjMgMTI2SDEzN0MxMzguMTA1IDEyNiAxMzkgMTI1LjEwNSAxMzkgMTI0Vjc2QzEzOSA3NC44OTU0IDEzOC4xMDUgNzQgMTM3IDc0SDExM00xMTMgNzRWNzBDMTEzIDY4Ljg5NTQgMTEyLjEwNSA2OCAxMTEgNjhIODlDODcuODk1NCA2OCA4NyA2OC44OTU0IDg3IDcwVjc0TTExMyA3NEg4N00xMDAgOTBWMTA2TTkzIDk4TDEwNyA5OCIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K';
@@ -236,7 +237,7 @@ export default function TabbedContent({
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Videos</h3>
             {data.videos && data.videos.length > 0 ? (
               <div className="grid gap-4">
-                {data.videos.map((video, index) => (
+                {data.videos.map((video: VideoResult, index: number) => (
                   <div key={index} className="flex gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
                     <div className="flex-shrink-0 w-32 h-20 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
                       {video.thumbnail ? (
@@ -280,7 +281,7 @@ export default function TabbedContent({
         {activeTab === 'news' && (
           <div className="space-y-4">
             <div className="grid gap-4">
-              {data.sources.slice(0, 9).map((source, index) => {
+              {data.sources.slice(0, 9).map((source: Source, index: number) => {
                 const domain = new URL(source.url).hostname.replace('www.', '');
                 return (
                   <div

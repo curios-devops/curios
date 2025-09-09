@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import OpenAI from 'openai';
-import { env } from '../config/env';
 import { logger } from '../utils/logger';
+import { secureOpenAI } from '../services/secureOpenAI';
 
 interface SearchOptions {
   mode?: string;
@@ -11,12 +10,6 @@ interface SearchOptions {
 
 export function useSearchAgent() {
   const [loading, setLoading] = useState(false);
-
-  const openai = new OpenAI({
-    apiKey: env.openai.apiKey,
-    organization: env.openai.orgId,
-    dangerouslyAllowBrowser: true
-  });
 
   const search = async (query: string, options: SearchOptions = {}) => {
     try {
@@ -31,9 +24,9 @@ export function useSearchAgent() {
            Provide clear, concise answers based on reliable sources.`;
 
       // Use the appropriate model based on pro status
-      const model = options.pro ? 'gpt-4-turbo-preview' : 'gpt-3.5-turbo';
+      const model = 'gpt-4o-mini';
 
-      const completion = await openai.chat.completions.create({
+      const completion = await secureOpenAI.chat.completions.create({
         model,
         messages: [
           { role: 'system', content: systemMessage },

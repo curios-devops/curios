@@ -50,8 +50,8 @@ export async function performSearch(
         // Ensure images array is always defined and valid.
         const validatedImages = images?.filter((img) => {
           try {
-            new URL(img.url);
-            return true;
+            const u = new URL(img.url);
+            return u.protocol === 'https:';
           } catch {
             return false;
           }
@@ -88,8 +88,11 @@ export async function performSearch(
         };
         
         logger.debug('Search service response', {
+          imageCount: response.images.length,
           videoCount: response.videos.length,
-          provider: response.provider
+          provider: response.provider,
+          rawImagesFromSwarm: images?.length || 0,
+          validatedImagesCount: validatedImages.length
         });
 
         return response;

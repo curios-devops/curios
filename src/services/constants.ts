@@ -3,6 +3,7 @@
 export const API_TIMEOUTS = {
   TAVILY: 10000,  // 10 seconds for Tavily fallback timeout
   SEARXNG: 15000, // 15 seconds for SearxNG timeout
+  BRAVE: 20000,   // 20 seconds for Brave search timeout
   GENERAL: 15000  // 15 seconds general timeout
 } as const;
 

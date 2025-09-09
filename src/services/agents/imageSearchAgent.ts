@@ -2,7 +2,6 @@ import { BaseAgent } from './baseAgent';
 import { AgentResponse } from './types';
 import { performRapidAPISearch } from '../searxService';
 import { searchWithTavily } from '../tavilyService';
-import { getFallbackResults } from '../fallbackService';
 import { ImageResult } from '../types';
 
 export class ImageSearchAgent extends BaseAgent {
@@ -52,22 +51,11 @@ export class ImageSearchAgent extends BaseAgent {
       errors.push(error as Error);
     }
 
-    // Try Wikipedia as final fallback
-    try {
-      const result = await getFallbackResults(query);
-      if (Array.isArray(result.images) && result.images.length > 0) {
-        images = this.validateAndProcessImages(result.images);
-        if (images.length > 0) return images;
-      }
-    } catch (error) {
-      errors.push(error as Error);
-    }
-
     // If no images found, try with a more general query
     if (images.length === 0) {
       const generalQuery = this.generateGeneralQuery(query);
       try {
-        const result = await getFallbackResults(generalQuery);
+        const result = await performRapidAPISearch(generalQuery);
         if (Array.isArray(result.images) && result.images.length > 0) {
           images = this.validateAndProcessImages(result.images);
         }

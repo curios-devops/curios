@@ -1,6 +1,4 @@
-import React from 'react';
 import { Sparkles } from 'lucide-react';
-import SettingItem from './SettingItem';
 
 interface AIModelProps {
   currentModel: string;
@@ -17,7 +15,7 @@ export default function AIModelSection({ currentModel, onModelChange }: AIModelP
             <h3 className="text-white text-lg">Default Model</h3>
             <span className="bg-[#00B4D8] text-xs text-white px-2 py-0.5 rounded">NEW</span>
           </div>
-          <p className="text-gray-400 text-sm">Now includes Claude 3.5, GPT-4o, and Sonar</p>
+          <p className="text-gray-400 text-sm">Now includes gpt-4o-mini</p>
           
           <div className="space-y-3">
             <ModelOption
@@ -51,6 +49,7 @@ interface ModelOptionProps {
 function ModelOption({ label, isSelected, onClick }: ModelOptionProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`
         w-full px-4 py-2.5 rounded-lg flex items-center justify-between

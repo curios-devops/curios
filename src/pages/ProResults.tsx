@@ -48,11 +48,11 @@ export default function ProResults() {
 
       try {
         logger.info('Starting Pro search', { query });
-        setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
+        setSearchState((prev: SearchState) => ({ ...prev, isLoading: true, error: null }));
         
         const response = await performSearch(query, {
           isPro: true,
-          onStatusUpdate: (status) => {
+          onStatusUpdate: (status: string) => {
             logger.debug('Pro search status update', { status });
             setStatusMessage(status);
           }

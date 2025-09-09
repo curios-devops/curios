@@ -1,5 +1,6 @@
 import { BaseAgent } from '../agents/baseAgent';
-import { AgentResponse, WebSearchPlan } from '../agents/types';
+import { AgentResponse } from '../agents/types';
+import { WebSearchPlan } from './types';
 import { logger } from '../../utils/logger';
 
 export class PlannerAgent extends BaseAgent {

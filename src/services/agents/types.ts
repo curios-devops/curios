@@ -1,7 +1,7 @@
 // types.ts
 
-// Optionally refine the function type for agents
-export type AgentFunction = (...args: any[]) => Promise<any>;
+// Improved function type for agents with proper typing
+export type AgentFunction = (...args: unknown[]) => Promise<unknown>;
 
 export interface Agent {
   name: string;
@@ -13,6 +13,7 @@ export interface SearchResult {
   title: string;
   url: string;
   content: string;
+  image?: string;
 }
 
 export interface Perspective {
@@ -26,7 +27,7 @@ export interface ResearchResult {
   query: string;
   perspectives: Perspective[];
   results: SearchResult[];
-  images?: any[]; // If you know the structure, replace `any` with a specific type
+  images?: import('../../types').ImageResult[]; // Use proper type from main types
 }
 
 export interface ArticleResult {
@@ -35,8 +36,8 @@ export interface ArticleResult {
   citations: string[];
 }
 
-// Generic AgentResponse to allow stricter typing if needed
-export interface AgentResponse<T = any> {
+// Generic AgentResponse with proper typing
+export interface AgentResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -46,6 +47,6 @@ export interface AgentResponse<T = any> {
       finalType: string;
       wasTransformed: boolean;
     };
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }

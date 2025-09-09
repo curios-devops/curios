@@ -33,6 +33,7 @@ export interface SearchResponse {
   videos: VideoResult[];
   provider?: string;
   perspectives?: Perspective[];
+  followUpQuestions?: string[];
 }
 
 export interface SearchState {

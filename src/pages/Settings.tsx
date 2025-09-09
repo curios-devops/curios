@@ -1,7 +1,5 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '../hooks/useSession';
-import { useSubscription } from '../hooks/useSubscription';
 import { signOut } from '../lib/auth';
 import GeneralSection from '../components/settings/GeneralSection';
 import AccountSection from '../components/settings/AccountSection';
@@ -10,7 +8,6 @@ import { X } from 'lucide-react';
 export default function Settings() {
   const navigate = useNavigate();
   const { session } = useSession();
-  const { subscription } = useSubscription();
   const email = session?.user?.email || '';
   const username = email.split('@')[0];
 
@@ -25,6 +22,7 @@ export default function Settings() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <h1 className="text-2xl font-medium text-white">Settings</h1>
           <button
+            type="button"
             onClick={() => navigate('/')}
             className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-[#222222]"
             aria-label="Close settings"
@@ -53,7 +51,7 @@ export default function Settings() {
                       <h3 className="text-white font-medium">Subscription</h3>
                       <p className="text-green-500 text-sm mt-1">Active</p>
                     </div>
-                    <button className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
+                    <button type="button" className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
                       Manage
                     </button>
                   </div>
@@ -62,9 +60,9 @@ export default function Settings() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-white font-medium">AI Model</h3>
-                      <p className="text-gray-400 text-sm mt-1">GPT-4o</p>
+                      <p className="text-gray-400 text-sm mt-1">gpt-4o-mini</p>
                     </div>
-                    <button className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
+                    <button type="button" className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
                       Change
                     </button>
                   </div>
@@ -75,7 +73,7 @@ export default function Settings() {
                       <h3 className="text-white font-medium">Image Generation Model</h3>
                       <p className="text-gray-400 text-sm mt-1">Dall-e</p>
                     </div>
-                    <button className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
+                    <button type="button" className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
                       Change
                     </button>
                   </div>

@@ -1,8 +1,9 @@
 // baseAgent.ts
-import OpenAI from 'openai';
 import { Agent, AgentResponse } from './types';
 import { env } from '../../config/env';
 import { rateLimitQueue } from '../rateLimit';
+import { secureOpenAI } from '../secureOpenAI';
+import { logger } from '../../utils/logger';
 
 /**
  * BaseAgent provides the foundational logic for all agents.
@@ -12,29 +13,22 @@ import { rateLimitQueue } from '../rateLimit';
 export abstract class BaseAgent implements Agent {
   name: string;
   instructions: string;
-  functions?: Array<(...args: any[]) => Promise<any>>;
-  protected openai: OpenAI | null = null;
+  functions?: Array<(...args: unknown[]) => Promise<unknown>>;
+  protected openai: typeof secureOpenAI | null = null;
   protected timeout: number = 30000;
 
-  constructor(name: string, instructions: string, functions?: Array<(...args: any[]) => Promise<any>>) {
+  constructor(name: string, instructions: string, functions?: Array<(...args: unknown[]) => Promise<unknown>>) {
     this.name = name;
     this.instructions = instructions;
     this.functions = functions;
     
-    // Initialize OpenAI client if API key is provided
-    const { apiKey, orgId, projectId } = env.openai;
+    // Initialize secure OpenAI client if API key is configured
+    const { apiKey } = env.openai;
     if (apiKey?.trim()) {
-      this.openai = new OpenAI({
-        apiKey,
-        organization: orgId,
-        dangerouslyAllowBrowser: true,
-        defaultHeaders: {
-          'OpenAI-Organization': orgId,
-          'X-Project-ID': projectId,
-        }
-      });
+      this.openai = secureOpenAI;
+      logger.info(`${name}: Using secure OpenAI service`);
     } else {
-      console.warn(`${name}: OpenAI API key not configured, using fallback responses`);
+      logger.warn(`${name}: OpenAI API key not configured, using fallback responses`);
     }
   }
 
@@ -43,7 +37,7 @@ export abstract class BaseAgent implements Agent {
    * @param error The caught error.
    * @returns An AgentResponse with fallback data.
    */
-  protected async handleError(error: unknown): Promise<AgentResponse> {
+  protected handleError(error: unknown): AgentResponse {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     console.warn(`${this.name} error:`, errorMessage);
     
@@ -98,7 +92,7 @@ export abstract class BaseAgent implements Agent {
    * This data structure includes a placeholder for video results.
    * @returns An object with default fallback values.
    */
-  protected getFallbackData(): any {
+  protected getFallbackData(): Record<string, unknown> {
     return {
       perspectives: [],
       content: '',
@@ -112,11 +106,11 @@ export abstract class BaseAgent implements Agent {
    * @param content A JSON string or null.
    * @returns The parsed object or null if parsing fails.
    */
-  protected async safeJsonParse(content: string | null): Promise<any> {
+  protected safeJsonParse(content: string | null): Record<string, unknown> | null {
     if (!content) return null;
     
     try {
-      return JSON.parse(content);
+      return JSON.parse(content) as Record<string, unknown>;
     } catch (error) {
       console.warn(`${this.name}: JSON parse error:`, error);
       return null;
@@ -129,5 +123,5 @@ export abstract class BaseAgent implements Agent {
    * @param args Parameters for execution.
    * @returns A Promise resolving to an AgentResponse.
    */
-  abstract execute(...args: any[]): Promise<AgentResponse>;
+  abstract execute(...args: unknown[]): Promise<AgentResponse>;
 }

@@ -1,10 +1,10 @@
 // SEARCH-R1 Multi-Agent Research Workflow
 // Implements the Reason, Search, Respond framework with specialized agents
 
-import OpenAI from 'openai';
 import { env } from '../../config/env';
 import { logger } from '../../utils/logger';
 import { webCrawler } from './webCrawler';
+import { secureOpenAI } from '../secureOpenAI';
 
 interface SearchR1Segment {
   type: 'think' | 'search' | 'information' | 'answer';
@@ -18,7 +18,7 @@ interface AgentTask {
   agent: string;
   objective: string;
   status: 'pending' | 'active' | 'completed' | 'failed';
-  result?: any;
+  result?: unknown;
   searchQueries?: string[];
   sources?: SourceInfo[];
 }
@@ -44,7 +44,58 @@ interface SourceInfo {
   image?: string;
   relevance_score?: number;
   agent_source?: string;
+  domain?: string;
 }
+
+interface SearchResult {
+  query: string;
+  sources: SourceInfo[];
+}
+
+interface AgentResult {
+  task_id: string;
+  agent: string;
+  objective: string;
+  sources?: SourceInfo[];
+  search_queries?: string[];
+  summary?: string;
+  crawled_urls?: string[];
+  extracted_content?: CrawlResult[];
+  synthesis?: {
+    markdown_report: string;
+    short_summary: string;
+    sources: SourceInfo[];
+    key_insights: string[];
+  };
+  agent_contributions?: unknown;
+}
+
+interface CrawlResult {
+  url: string;
+  content: string;
+  full_content: string;
+  key_points: string[];
+  success: boolean;
+  title: string;
+}
+
+interface CitationResult {
+  cited_report: string;
+  bibliography?: string[];
+  citation_count: number;
+}
+
+type ProgressCallback = (
+  stage: string,
+  timeRemaining: string,
+  progress: number,
+  thinkingStep: string,
+  searchTerms?: string[],
+  sources?: SourceInfo[],
+  currentAgent?: string,
+  agentAction?: string,
+  researchPhase?: 'planning' | 'searching' | 'analyzing' | 'synthesizing' | 'citing'
+) => void;
 
 interface ResearcherResult {
   focus_category?: string;
@@ -57,17 +108,13 @@ interface ResearcherResult {
   progress_updates?: string[];
   search_queries?: string[];
   sources?: SourceInfo[];
-  agent_contributions?: Record<string, any>;
+  agent_contributions?: Record<string, AgentResult>;
   search_r1_segments?: SearchR1Segment[];
   citations?: Array<{ text: string; source: SourceInfo }>;
 }
 
-// Initialize OpenAI client
-const openai = env.openai.apiKey ? new OpenAI({
-  apiKey: env.openai.apiKey,
-  organization: env.openai.orgId,
-  dangerouslyAllowBrowser: true,
-}) : null;
+// Initialize OpenAI client - using modern Responses API
+const openai = env.openai.apiKey ? secureOpenAI : null;
 
 // SEARCH-R1 Framework Implementation
 class SearchR1Framework {
@@ -104,9 +151,9 @@ class SearchR1Framework {
 // Lead Researcher Agent - Coordinates the multi-agent system
 class LeadResearcher {
   private framework: SearchR1Framework;
-  private onProgress: Function;
+  private onProgress: ProgressCallback;
 
-  constructor(framework: SearchR1Framework, onProgress: Function) {
+  constructor(framework: SearchR1Framework, onProgress: ProgressCallback) {
     this.framework = framework;
     this.onProgress = onProgress;
   }
@@ -160,17 +207,18 @@ Return a JSON plan with:
 - estimated_duration: Time estimate`;
 
     try {
-      const response = await openai?.chat.completions.create({
-        model: 'gpt-4o',
+      const response = await openai?.responses.create({
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: 'You are an expert research coordinator. Respond only with valid JSON.' },
           { role: 'user', content: planPrompt }
         ],
         temperature: 0.3,
-        max_tokens: 1500
+        max_output_tokens: 1500,
+        response_format: { type: 'json_object' }
       });
 
-      const planText = response?.choices[0]?.message?.content || '{}';
+      const planText = response?.output_text || response?.content?.[0]?.text || '{}';
       const plan = JSON.parse(planText) as ResearchPlan;
       
       this.framework.addSegment('think', `Research plan created: ${plan.complexity_level} complexity, deploying ${plan.agent_count} agents`, 'LeadResearcher');
@@ -222,14 +270,14 @@ Return a JSON plan with:
 // Internet Searcher Agent
 class InternetSearcher {
   private framework: SearchR1Framework;
-  private onProgress: Function;
+  private onProgress: ProgressCallback;
 
-  constructor(framework: SearchR1Framework, onProgress: Function) {
+  constructor(framework: SearchR1Framework, onProgress: ProgressCallback) {
     this.framework = framework;
     this.onProgress = onProgress;
   }
 
-  async search(task: AgentTask, focusMode: string = 'web'): Promise<any> {
+  async search(task: AgentTask, focusMode: string = 'web'): Promise<AgentResult> {
     this.onProgress(
       'Searching Internet Sources', 
       'About 2-3 minutes remaining', 
@@ -262,7 +310,7 @@ class InternetSearcher {
     };
   }
 
-  private async performSearches(objective: string, focusMode: string): Promise<any[]> {
+  private async performSearches(objective: string, focusMode: string): Promise<SearchResult[]> {
     // Use OpenAI-powered search instead of external APIs
     try {
       const searchResults = await this.performOpenAISearch(objective, focusMode);
@@ -287,7 +335,7 @@ class InternetSearcher {
     }
   }
 
-  private async performOpenAISearch(objective: string, focusMode: string): Promise<any[]> {
+  private async performOpenAISearch(objective: string, focusMode: string): Promise<SearchResult[]> {
     if (!openai) {
       throw new Error('OpenAI client not available');
     }
@@ -305,8 +353,8 @@ class InternetSearcher {
 
     for (const query of searchQueries) {
       try {
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o',
+        const completion = await openai.responses.create({
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -343,18 +391,18 @@ class InternetSearcher {
           ],
           response_format: { type: "json_object" },
           temperature: 0.3,
-          max_tokens: 1000
+          max_output_tokens: 1000
         });
 
-        const content = completion.choices[0]?.message?.content;
+        const content = completion.output_text || completion.content?.[0]?.text;
         if (content) {
           const parsed = JSON.parse(content);
           
           if (parsed.sources && Array.isArray(parsed.sources) && parsed.sources.length > 0) {
             // Transform and validate sources
             const validSources = parsed.sources
-              .filter((source: any) => source.title && source.url && source.snippet)
-              .map((source: any) => ({
+              .filter((source: { title?: string; url?: string; snippet?: string }) => source.title && source.url && source.snippet)
+              .map((source: { title: string; url: string; snippet: string; domain?: string; relevance_score?: number }) => ({
                 title: source.title,
                 url: source.url,
                 snippet: source.snippet,
@@ -442,7 +490,7 @@ class InternetSearcher {
     }));
   }
 
-  private async synthesizeSearchResults(searches: any[], objective: string): Promise<string> {
+  private async synthesizeSearchResults(searches: SearchResult[], objective: string): Promise<string> {
     const allSources = searches.flatMap(s => s.sources);
     const allQueries = searches.map(s => s.query);
 
@@ -460,17 +508,17 @@ Create a comprehensive summary that:
 Sources: ${JSON.stringify(allSources, null, 2)}`;
 
     try {
-      const response = await openai?.chat.completions.create({
-        model: 'gpt-4o',
+      const response = await openai?.responses.create({
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: 'You are an expert information synthesizer. Provide clear, accurate summaries.' },
           { role: 'user', content: synthesisPrompt }
         ],
         temperature: 0.2,
-        max_tokens: 800
+        max_output_tokens: 800
       });
 
-      return response?.choices[0]?.message?.content || 'Summary generation failed';
+      return response?.output_text || response?.content?.[0]?.text || 'Summary generation failed';
     } catch (error) {
       logger.error('Search synthesis failed:', error);
       return `Found ${allSources.length} sources related to ${objective}. Manual synthesis required.`;
@@ -481,14 +529,14 @@ Sources: ${JSON.stringify(allSources, null, 2)}`;
 // Web Crawler Agent
 class WebCrawler {
   private framework: SearchR1Framework;
-  private onProgress: Function;
+  private onProgress: ProgressCallback;
 
-  constructor(framework: SearchR1Framework, onProgress: Function) {
+  constructor(framework: SearchR1Framework, onProgress: ProgressCallback) {
     this.framework = framework;
     this.onProgress = onProgress;
   }
 
-  async crawl(task: AgentTask, urls: string[]): Promise<any> {
+  async crawl(task: AgentTask, urls: string[]): Promise<AgentResult> {
     this.onProgress(
       'Extracting Deep Content', 
       'About 1-2 minutes remaining', 
@@ -507,7 +555,7 @@ class WebCrawler {
       // Use real web crawler
       const crawlResults = await webCrawler.crawlMultipleUrls(urls.slice(0, 3)); // Limit to 3 URLs
       
-      const processedResults = crawlResults.map(result => ({
+      const processedResults = crawlResults.map((result: { url: string; summary: string; content: string; keyPoints: string[]; metadata: { success: boolean }; title: string }) => ({
         url: result.url,
         content: result.summary,
         full_content: result.content,
@@ -562,14 +610,14 @@ class WebCrawler {
 // General Assistant Agent
 class GeneralAssistant {
   private framework: SearchR1Framework;
-  private onProgress: Function;
+  private onProgress: ProgressCallback;
 
-  constructor(framework: SearchR1Framework, onProgress: Function) {
+  constructor(framework: SearchR1Framework, onProgress: ProgressCallback) {
     this.framework = framework;
     this.onProgress = onProgress;
   }
 
-  async synthesize(task: AgentTask, agentResults: any[], query: string, focusMode: string): Promise<any> {
+  async synthesize(task: AgentTask, agentResults: AgentResult[], query: string, focusMode: string): Promise<AgentResult> {
     this.onProgress(
       'Synthesizing Research', 
       'About 1 minute remaining', 
@@ -597,7 +645,12 @@ class GeneralAssistant {
     };
   }
 
-  private async createSynthesis(agentResults: any[], query: string, focusMode: string): Promise<any> {
+  private async createSynthesis(agentResults: AgentResult[], query: string, focusMode: string): Promise<{
+    markdown_report: string;
+    short_summary: string;
+    sources: SourceInfo[];
+    key_insights: string[];
+  }> {
     const synthesisPrompt = `Create a comprehensive research synthesis for the query: "${query}"
 
 Focus Mode: ${focusMode}
@@ -616,17 +669,17 @@ Create a detailed research report with:
 Format as a well-structured markdown report. Include proper citations where appropriate.`;
 
     try {
-      const response = await openai?.chat.completions.create({
-        model: 'gpt-4o',
+      const response = await openai?.responses.create({
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: 'You are an expert research synthesizer. Create comprehensive, well-structured research reports with proper analysis and citations.' },
           { role: 'user', content: synthesisPrompt }
         ],
         temperature: 0.2,
-        max_tokens: 2000
+        max_output_tokens: 2000
       });
 
-      const reportContent = response?.choices[0]?.message?.content || 'Synthesis generation failed';
+      const reportContent = response?.output_text || response?.content?.[0]?.text || 'Synthesis generation failed';
 
       return {
         markdown_report: reportContent,
@@ -684,14 +737,14 @@ Format as a well-structured markdown report. Include proper citations where appr
 // Citation Agent
 class CitationAgent {
   private framework: SearchR1Framework;
-  private onProgress: Function;
+  private onProgress: ProgressCallback;
 
-  constructor(framework: SearchR1Framework, onProgress: Function) {
+  constructor(framework: SearchR1Framework, onProgress: ProgressCallback) {
     this.framework = framework;
     this.onProgress = onProgress;
   }
 
-  async addCitations(report: string, sources: SourceInfo[]): Promise<any> {
+  addCitations(report: string, sources: SourceInfo[]): CitationResult {
     this.onProgress(
       'Adding Citations', 
       'Almost complete', 
@@ -706,7 +759,7 @@ class CitationAgent {
 
     this.framework.addSegment('think', 'Adding proper citations to ensure all claims are attributed to sources', 'CitationAgent');
 
-    const citedReport = await this.processCitations(report, sources);
+    const citedReport = this.processCitations(report, sources);
     
     return {
       cited_report: citedReport,
@@ -715,7 +768,7 @@ class CitationAgent {
     };
   }
 
-  private async processCitations(report: string, sources: SourceInfo[]): Promise<string> {
+  private processCitations(report: string, sources: SourceInfo[]): string {
     // Add citations to the report
     // This is a simplified version - a full implementation would use NLP to match claims to sources
     
@@ -739,17 +792,7 @@ class CitationAgent {
 // Main Researcher Workflow
 export async function runResearcherWorkflow(
   query: string, 
-  onProgress: (
-    stage: string, 
-    timeRemaining: string, 
-    progress: number, 
-    thinkingStep: string,
-    searchTerms?: string[],
-    sources?: any[],
-    currentAgent?: string,
-    agentAction?: string,
-    researchPhase?: 'planning' | 'searching' | 'analyzing' | 'synthesizing' | 'citing'
-  ) => void,
+  onProgress: ProgressCallback,
   focusMode: string = 'web'
 ): Promise<ResearcherResult> {
   
@@ -786,29 +829,35 @@ export async function runResearcherWorkflow(
     for (const task of activeTasks) {
       task.status = 'active';
       
-      let result;
+      let result: AgentResult | undefined;
       switch (task.agent) {
-        case 'InternetSearcher':
+        case 'InternetSearcher': {
           result = await internetSearcher.search(task, focusMode);
           break;
-        case 'WebCrawler':
+        }
+        case 'WebCrawler': {
           // Get URLs from previous search results
-          const searchResult = agentResults.find(r => r.agent === 'InternetSearcher');
+          const searchResult = agentResults.find(r => r?.agent === 'InternetSearcher');
           const urls = searchResult?.sources?.slice(0, 3).map((s: SourceInfo) => s.url) || [];
           result = await webCrawler.crawl(task, urls);
           break;
-        case 'GeneralAssistant':
-          result = await generalAssistant.synthesize(task, agentResults, query, focusMode);
+        }
+        case 'GeneralAssistant': {
+          result = await generalAssistant.synthesize(task, agentResults.filter((r): r is AgentResult => r !== undefined), query, focusMode);
           break;
+        }
       }
       
-      task.status = 'completed';
-      task.result = result;
-      agentResults.push(result);
+      if (result) {
+        task.status = 'completed';
+        task.result = result;
+        agentResults.push(result);
+      }
     }
 
     // Phase 3: Final Synthesis
-    const finalSynthesis = agentResults.find(r => r.agent === 'GeneralAssistant')?.synthesis || {
+    const validAgentResults = agentResults.filter((r): r is AgentResult => r !== undefined);
+    const finalSynthesis = validAgentResults.find(r => r.agent === 'GeneralAssistant')?.synthesis || {
       markdown_report: 'No synthesis available',
       short_summary: 'Research completed but synthesis failed',
       sources: [],
@@ -816,8 +865,8 @@ export async function runResearcherWorkflow(
     };
 
     // Phase 4: Add Citations
-    const allSources = agentResults.flatMap(r => r.sources || []);
-    const citationResult = await citationAgent.addCitations(finalSynthesis.markdown_report, allSources);
+    const allSources = validAgentResults.flatMap(r => r.sources || []);
+    const citationResult = citationAgent.addCitations(finalSynthesis.markdown_report, allSources);
 
     // Phase 5: Final Progress Update
     onProgress(
@@ -825,7 +874,7 @@ export async function runResearcherWorkflow(
       'Completed', 
       100, 
       'Multi-agent research completed successfully',
-      agentResults.flatMap(r => r.search_queries || []),
+      validAgentResults.flatMap(r => r.search_queries || []),
       allSources,
       'System',
       'Research workflow completed',
@@ -845,12 +894,12 @@ export async function runResearcherWorkflow(
         `What are the future implications of ${query}?`
       ],
       thinking_process: researchPlan.thinking_process,
-      search_queries: agentResults.flatMap(r => r.search_queries || []),
+      search_queries: validAgentResults.flatMap(r => r.search_queries || []),
       sources: allSources,
-      agent_contributions: agentResults.reduce((acc, r) => {
+      agent_contributions: validAgentResults.reduce((acc, r) => {
         acc[r.agent] = r;
         return acc;
-      }, {} as Record<string, any>),
+      }, {} as Record<string, AgentResult>),
       search_r1_segments: framework.getSegments(),
       citations: citationResult.bibliography?.map((bib: string, index: number) => ({
         text: bib,

@@ -1,18 +1,18 @@
 import { PlannerAgent } from './plannerAgent';
 import { SearchAgent } from './searchAgent';
-import { WriterAgent } from './writerAgent';
+import { ResearchWriterAgent } from './writerAgent';
 import type { ResearchData } from './types';
 import { logger } from '../../utils/logger';
 
 export class ResearchManager {
   private plannerAgent: PlannerAgent;
   private searchAgent: SearchAgent;
-  private writerAgent: WriterAgent;
+  private writerAgent: ResearchWriterAgent;
 
   constructor() {
     this.plannerAgent = new PlannerAgent();
     this.searchAgent = new SearchAgent();
-    this.writerAgent = new WriterAgent();
+    this.writerAgent = new ResearchWriterAgent();
   }
 
   async conductResearch(

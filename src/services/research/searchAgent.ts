@@ -1,18 +1,14 @@
-import { AgentResponse, SearchResult, WebSearchItem, SearchOptions } from './types';
+// Secure OpenAI service that uses Netlify functions instead of direct API calls
+import { AgentResponse, SearchResult, WebSearchItem } from './types';
 import { performSearch } from '../searchService';
 import { logger } from '../../utils/logger';
-import { env } from '../../config/env';
-import OpenAI from 'openai';
+import { secureOpenAI } from '../secureOpenAI';
 
 export class SearchAgent {
-  private openai: OpenAI;
+  private openai: typeof secureOpenAI;
 
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: env.openai.apiKey,
-      organization: env.openai.orgId,
-      dangerouslyAllowBrowser: true
-    });
+    this.openai = secureOpenAI;
   }
 
   async search(searches: WebSearchItem[], useWebSearchTool = false): Promise<AgentResponse<SearchResult[]>> {
@@ -24,29 +20,29 @@ export class SearchAgent {
         for (const search of searches) {
           try {
             const completion = await this.openai.chat.completions.create({
-              model: "gpt-4-turbo-preview",
+              model: 'gpt-4o-mini',
               messages: [
                 {
-                  role: "system",
-                  content: "You are a research assistant. Search the web and provide detailed, accurate information."
+                  role: 'system',
+                  content: 'You are a research assistant. Search the web and provide detailed, accurate information.'
                 },
                 {
-                  role: "user",
+                  role: 'user',
                   content: search.query
                 }
               ],
               tools: [{
-                type: "retrieval",
-                id: "search"
+                type: 'retrieval',
+                id: 'search'
               }],
-              tool_choice: "auto"
+              tool_choice: 'auto'
             });
 
             const searchResult = completion.choices[0]?.message?.content;
             if (searchResult) {
               results.push({
                 title: search.query,
-                url: "OpenAI Web Search",
+                url: 'OpenAI Web Search',
                 content: searchResult
               });
             }
@@ -59,7 +55,7 @@ export class SearchAgent {
         const searchPromises = searches.map(async (search) => {
           try {
             const response = await performSearch(search.query);
-            return response.sources.map(source => ({
+            return response.sources.map((source: { title: string; url: string; snippet: string }) => ({
               title: source.title,
               url: source.url,
               content: source.snippet

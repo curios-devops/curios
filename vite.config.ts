@@ -1,135 +1,74 @@
-import { defineConfig, loadEnv } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
-import process from "node:process";
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
+import process from 'node:process';
+import type { ConfigEnv, UserConfig } from 'vite';
 
-// Security headers configuration
-const securityHeaders = {
-  "Cross-Origin-Opener-Policy": "same-origin",
-  "Cross-Origin-Resource-Policy": "cross-origin",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-RapidAPI-Key, X-RapidAPI-Host",
-  "Content-Security-Policy":
-    "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:;",
-};
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
+  // Load environment variables
+  const env = loadEnv(mode, process.cwd(), '');
 
-export default defineConfig(({ mode }) => {
-  // Load env file based on mode
-  const env = loadEnv(mode, process.cwd(), "");
-  
+  // Environment variables loaded (debug output removed for cleaner development experience)
+
+  const proxyConfig = {
+    // Direct proxy to Netlify functions - simplified approach from forum solutions
+    '/api/fetch-openai': {
+      target: 'http://localhost:8888',
+      changeOrigin: true,
+      secure: false,
+      rewrite: (_path: string) => '/.netlify/functions/fetch-openai'
+    },
+    // Proxy API requests to Brave Search API
+    '^/api/brave/web/search': {
+      target: 'https://api.search.brave.com/res/v1/web/search',
+      changeOrigin: true,
+      secure: true,
+      rewrite: (path: string) => path.replace(/^\/api\/brave\/web\/search/, ''),
+      headers: {
+        'X-Subscription-Token': env.VITE_BRAVE_API_KEY || ''
+      }
+    },
+    '^/api/brave/images/search': {
+      target: 'https://api.search.brave.com/res/v1/images/search',
+      changeOrigin: true,
+      secure: true,
+      rewrite: (path: string) => path.replace(/^\/api\/brave\/images\/search/, ''),
+      headers: {
+        'X-Subscription-Token': env.VITE_BRAVE_API_KEY || ''
+      }
+    }
+  };
 
   return {
-    plugins: [
-      react()
-    ],
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-        "react": path.resolve(__dirname, "./node_modules/react"),
-        "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
-        "react/jsx-runtime": path.resolve(__dirname, "./node_modules/react/jsx-runtime"),
-        "react/jsx-dev-runtime": path.resolve(__dirname, "./node_modules/react/jsx-dev-runtime"),
-      },
-      extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
-      dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
-    },
+    plugins: [react()],
     server: {
-      headers: {
-        ...securityHeaders,
+      host: '0.0.0.0',
+      port: 5173, // Fixed: Use port 5173 as per project memory
+      strictPort: true, // Don't try to find another port if 5173 is in use
+      open: true, // Only Vite will open browser, Netlify dev won't
+      proxy: proxyConfig,
+      fs: {
+        allow: ['..']
       },
-      hmr: {
-        overlay: false,
-        timeout: 5000,
-      },
-      proxy: {
-        "/api/stripe": {
-          target: "https://api.stripe.com",
-          changeOrigin: true,
-          secure: true,
-          rewrite: (path) => path.replace(/^\/api\/stripe/, ""),
-        },
-      },
-      open: true,
       watch: {
-        usePolling: true,
-        interval: 1000,
-      },
-      port: parseInt(env.PORT || "5173", 10),
+        usePolling: true
+      }
     },
-    preview: {
-      headers: securityHeaders,
-      host: true,
-      strictPort: true,
-      port: parseInt(env.PORT || "5173", 10),
-      open: false,
+    define: {
+      'process.env': {}
     },
     optimizeDeps: {
-      include: [
-        "react",
-        "react-dom",
-        "react-router-dom",
-        "@stripe/stripe-js",
-        "@supabase/supabase-js",
-        "@supabase/ssr",
-        "lucide-react",
-        "axios",
-        "zod",
-        "react-markdown"
-      ],
-      exclude: [
-        // Exclude large dependencies that should be lazy loaded
-        "pdf-lib",
-        "@openai/agents"
-      ],
       esbuildOptions: {
-        target: "esnext",
-        supported: {
-          "top-level-await": true,
-        },
-      },
+        define: {
+          global: 'globalThis'
+        }
+      }
     },
     build: {
-      sourcemap: true,
-      outDir: "dist",
-      assetsDir: "assets",
-      minify: "esbuild",
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            // Core React libraries
-            "react-vendor": ["react", "react-dom", "react-router-dom"],
-            
-            // UI and styling libraries
-            "ui-vendor": ["lucide-react"],
-            
-            // Large utility libraries
-            "utility-vendor": ["axios", "zod"],
-            
-            // AI and search related
-            "ai-vendor": ["openai", "@openai/agents"],
-            
-            // Authentication and backend
-            "auth-vendor": ["@supabase/supabase-js", "@supabase/ssr"],
-            
-            // Payment processing
-            "payment-vendor": ["@stripe/stripe-js"],
-            
-            // Document processing (if used)
-            "document-vendor": ["pdf-lib", "react-markdown"],
-            
-            // Split page components into separate chunks
-            "page-search": ["./src/pages/SearchResults.tsx", "./src/pages/ProSearchResults.tsx"],
-            "page-research": ["./src/pages/DeepResearchResults.tsx", "./src/pages/ResearcherResults.tsx", "./src/pages/InsightsResults.tsx"],
-            "page-labs": ["./src/pages/LabsResults.tsx"],
-            "page-settings": ["./src/pages/Settings.tsx", "./src/pages/Policies.tsx"],
-            "page-auth": ["./src/pages/SubscriptionSuccess.tsx", "./src/components/auth/AuthCallback.tsx"]
-          },
-        },
-        maxParallelFileOps: 4,
-      },
-      chunkSizeWarningLimit: 1000, // Increase warning limit to 1MB
-    },
+      target: 'es2020',
+      commonjsOptions: {
+        transformMixedEsModules: true
+      }
+    }
   };
 });

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Share, Download, RotateCcw, Globe, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import CustomMarkdown from './CustomMarkdown';
 import Notification from './Notification';
 import type { Source } from '../types';
 
@@ -8,6 +9,7 @@ interface AIOverviewProps {
   answer: string;
   sources: Source[];
   query: string;
+  followUpQuestions?: string[];
 }
 
 interface SourceTooltipProps {
@@ -15,7 +17,7 @@ interface SourceTooltipProps {
   children: React.ReactNode;
 }
 
-function SourceTooltip({ source, children }: SourceTooltipProps) {
+function _SourceTooltip({ source, children }: SourceTooltipProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const domain = new URL(source.url).hostname.replace('www.', '');
 
@@ -50,13 +52,13 @@ function SourceTooltip({ source, children }: SourceTooltipProps) {
   );
 }
 
-export default function AIOverview({ answer, sources, query }: AIOverviewProps) {
+export default function AIOverview({ answer, sources, query, followUpQuestions }: AIOverviewProps) {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const navigate = useNavigate();
 
-  // Generate more contextual related questions based on the query
-  const generateRelatedQuestions = (originalQuery: string) => {
+  // Generate fallback related questions based on the query (used as fallback)
+  const generateFallbackQuestions = (originalQuery: string) => {
     const baseQuestions = [
       `Latest developments in ${originalQuery}`,
       `How ${originalQuery} impacts current trends`,
@@ -67,16 +69,19 @@ export default function AIOverview({ answer, sources, query }: AIOverviewProps) 
     return baseQuestions;
   };
 
-  const relatedQuestions = generateRelatedQuestions(query);
+  // Use WriterAgent-generated follow-up questions if available, otherwise use fallback
+  const relatedQuestions = followUpQuestions && followUpQuestions.length > 0 
+    ? followUpQuestions 
+    : generateFallbackQuestions(query);
 
   const handleShare = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(globalThis.location.href);
       showNotificationMessage('Link copied to clipboard');
     } catch (error) {
       console.error('Share failed:', error);
       // Fallback: show the URL in an alert if clipboard fails
-      alert(`Copy this link: ${window.location.href}`);
+      alert(`Copy this link: ${globalThis.location.href}`);
     }
   };
 
@@ -123,6 +128,7 @@ export default function AIOverview({ answer, sources, query }: AIOverviewProps) 
             
             <div className="flex items-center gap-2">
               <button 
+                type="button"
                 onClick={handleShare}
                 title="Copy link to clipboard"
                 className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -131,6 +137,7 @@ export default function AIOverview({ answer, sources, query }: AIOverviewProps) 
                 Share
               </button>
               <button 
+                type="button"
                 onClick={handleExport}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
               >
@@ -138,6 +145,7 @@ export default function AIOverview({ answer, sources, query }: AIOverviewProps) 
                 Export
               </button>
               <button 
+                type="button"
                 onClick={handleRewrite}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
               >
@@ -150,31 +158,9 @@ export default function AIOverview({ answer, sources, query }: AIOverviewProps) 
           {/* Overview Content */}
           <div className="p-6">
             <div className="prose dark:prose-invert max-w-none">
-              <div className="text-gray-700 dark:text-gray-300 leading-relaxed text-base mb-6">
-                {(() => {
-                  // SUPER SIMPLE: Just display the answer with source numbers at the end
-                  const sentences = answer.split(/(?<=[.!?])\s+/);
-                  
-                  return sentences.map((sentence, index) => {
-                    const sourceIndex = index % sources.length;
-                    const showSourceRef = index < sources.length && sources[sourceIndex];
-                    
-                    return (
-                      <span key={index}>
-                        {sentence}
-                        {showSourceRef && (
-                          <SourceTooltip source={sources[sourceIndex]}>
-                            <sup className="text-[#0095FF] hover:underline cursor-pointer font-medium ml-1 text-xs">
-                              {sourceIndex + 1}
-                            </sup>
-                          </SourceTooltip>
-                        )}
-                        {index < sentences.length - 1 ? ' ' : ''}
-                      </span>
-                    );
-                  });
-                })()}
-              </div>
+              <CustomMarkdown className="text-gray-700 dark:text-gray-300 leading-relaxed text-base mb-6">
+                {answer}
+              </CustomMarkdown>
             </div>
           </div>
 
@@ -196,6 +182,7 @@ export default function AIOverview({ answer, sources, query }: AIOverviewProps) 
               {relatedQuestions.map((question, index) => (
                 <div key={index}>
                   <button
+                    type="button"
                     className="w-full flex items-center justify-between py-2.5 px-0 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
                     onClick={() => handleRelatedQuestionClick(question)}
                   >

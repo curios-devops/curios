@@ -2,11 +2,6 @@
 exports.handler = async (event) => {
   const { query, snippet } = event.queryStringParameters || {};
   
-  // New: optional external image to embed inside SVG
-  const rawImage = (event.queryStringParameters && event.queryStringParameters.image) || '';
-  const isValidImageUrl = typeof rawImage === 'string' && /^https?:\/\//i.test(rawImage) && rawImage.length < 2000;
-  const imageUrl = isValidImageUrl ? rawImage : '';
-  
   if (!query) {
     return {
       statusCode: 400,
@@ -38,7 +33,6 @@ exports.handler = async (event) => {
   
   const safeQuery = escapeHtml(query.slice(0, 60));
   const safeSnippet = escapeHtml(displaySnippet);
-  const safeImage = imageUrl.replace(/"/g, '%22');
   
   // Generate clean SVG (LinkedIn optimized: 1200x627)
   const svg = `<svg width="1200" height="627" viewBox="0 0 1200 627" xmlns="http://www.w3.org/2000/svg">
@@ -51,10 +45,6 @@ exports.handler = async (event) => {
         <stop offset="0%" style="stop-color:#0095FF" />
         <stop offset="100%" style="stop-color:#0080FF" />
       </linearGradient>
-      <!-- Clip for embedded thumbnail -->
-      <clipPath id="thumbClip">
-        <rect x="820" y="160" width="320" height="220" rx="16" ry="16" />
-      </clipPath>
     </defs>
     
     <!-- Background -->
@@ -77,10 +67,6 @@ exports.handler = async (event) => {
     
     <!-- Snippet text (if available) -->
     ${safeSnippet ? `<text x="100" y="300" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="24" fill="#666" opacity="0.8">${safeSnippet}</text>` : ''}
-
-    <!-- Embedded external image (optional) -->
-    ${safeImage ? `<rect x="820" y="160" width="320" height="220" fill="#eee" opacity="0.6"/>
-    <image href="${safeImage}" x="820" y="160" width="320" height="220" preserveAspectRatio="xMidYMid slice" clip-path="url(#thumbClip)" />` : ''}
     
     <!-- Bottom accent -->
     <rect x="100" y="450" width="80" height="4" fill="url(#accent)" rx="2"/>

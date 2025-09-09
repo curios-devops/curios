@@ -6,9 +6,13 @@ import { API_TIMEOUTS, MAX_RESULTS } from '../constants';
 import { logger } from '../../utils/logger';
 
 //
-// Constants for result counts
+// Constants for result counts - Map to existing MAX_RESULTS structure
 //
 const DEFAULT_MAX_RESULTS = 20;
+const MAX_RESULTS_WEB = MAX_RESULTS.WEB;
+const MAX_RESULTS_NEWS = 3; // News results limit
+const MAX_RESULTS_VIDEO = MAX_RESULTS.VIDEO;
+const MAX_RESULTS_IMAGES = MAX_RESULTS.IMAGES;
 
 //
 // --- Interface Definitions ---
@@ -94,6 +98,17 @@ interface ImageSearchResult {
   description?: string;
   image?: string;
   favicon?: string;
+  thumbnail?: {
+    src: string;
+    width: number;
+    height: number;
+  };
+  properties?: {
+    url: string;
+    placeholder: string;
+    width: number;
+    height: number;
+  };
 }
 
 interface BraveImageApiResponse {
@@ -115,8 +130,8 @@ const createBraveWebConfig = (query: string) => ({
     text_decorations: false // replicate PHP sample
   },
   headers: {
-    'Accept': 'application/json',
-    'Accept-Encoding': 'gzip'
+    'Accept': 'application/json'
+    // Note: Accept-Encoding is managed automatically by the browser
   },
   timeout: API_TIMEOUTS.GENERAL,
 });
@@ -134,8 +149,8 @@ const createBraveImageConfig = (query: string) => ({
     spellcheck: 1
   },
   headers: {
-    'Accept': 'application/json',
-    'Accept-Encoding': 'gzip'
+    'Accept': 'application/json'
+    // Note: Accept-Encoding is managed automatically by the browser
   },
   timeout: API_TIMEOUTS.GENERAL,
 });
@@ -217,7 +232,7 @@ const processImageSearchResults = (results: ImageSearchResult[], cap: number): S
       title: result.title.trim() || '',
       url: result.url.trim(),
       content: sanitizeContent(result.description || ''),
-      image: result.thumbnail?.src || result.properties?.url || result.image || result.url
+      image: result.properties?.url || result.thumbnail?.src || result.url
     }));
 };
 
@@ -235,11 +250,24 @@ async function braveSearch(query: string): Promise<{
   const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUTS.BRAVE);
 
   try {
+    logger.info('Starting Brave Search', { query });
+    
     // --- Text Search Call ---
     const textResponse = await axios.request<WebSearchApiResponse>({
       ...createBraveWebConfig(query),
-      signal: controller.signal
+      signal: controller.signal,
+      validateStatus: (status) => {
+        // Only accept 200-299 status codes, throw error for others
+        if (status >= 200 && status < 300) {
+          return true;
+        }
+        logger.error('Brave API HTTP error', { status, query });
+        return false; // This will cause axios to throw an error
+      }
     });
+    
+    logger.info('Brave web search completed', { status: textResponse.status });
+    
     let textData: any = textResponse.data;
     // Remove HTML tags if the response is a string (as in the PHP sample)
     if (typeof textData === 'string') {
@@ -265,7 +293,7 @@ async function braveSearch(query: string): Promise<{
       signal: controller.signal
     });
     const imageData = imageResponse.data;
-    if (typeof imageData === 'string' && imageData.trim().startsWith('<!DOCTYPE html>')) {
+    if (typeof imageData === 'string' && (imageData as string).trim().startsWith('<!DOCTYPE html>')) {
       logger.error('Brave Image API returned HTML instead of JSON');
       clearTimeout(timeoutId);
       return {
@@ -278,6 +306,13 @@ async function braveSearch(query: string): Promise<{
     const imageResults = imageData.results
       ? processImageSearchResults(imageData.results, MAX_RESULTS_IMAGES)
       : [];
+      
+    logger.info('Brave image search results', {
+      imageDataResultsCount: imageData.results?.length || 0,
+      processedImageResultsCount: imageResults.length,
+      sampleImageResult: imageResults[0] || 'none',
+      sampleRawResult: imageData.results?.[0] || 'none'
+    });
 
     clearTimeout(timeoutId);
 
@@ -296,12 +331,9 @@ async function braveSearch(query: string): Promise<{
       params: error.config?.params
     };
     logger.error('Brave Search Failed', errorDetails);
-    return {
-      web: [],
-      news: [],
-      images: [],
-      video: []
-    };
+    
+    // Throw the error instead of returning empty arrays to trigger fallback
+    throw new Error(`Brave Search failed: ${error.response?.status || error.message}`);
   }
 }
 

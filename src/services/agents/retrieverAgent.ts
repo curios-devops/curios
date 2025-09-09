@@ -6,6 +6,7 @@ import { AgentResponse, SearchResult } from './types';
 import { ImageResult, VideoResult } from '../types';
 import { searxngSearch } from '../searchTools/searxng';
 import { tavilySearch } from '../searchTools/tavily';
+import { braveSearch } from '../searchTools/brave';
 import { rateLimitQueue } from '../rateLimit';
 import { logger } from '../../utils/logger';
 
@@ -48,7 +49,7 @@ export class RetrieverAgent extends BaseAgent {
 
       const trimmedQuery = query.trim();
       logger.info('Starting retrieval', { query: trimmedQuery });
-      onStatusUpdate?.(isPro ? 'Searching with Tavily...' : 'Searching with SearxNG...');
+      onStatusUpdate?.(isPro ? 'Searching with Tavily...' : 'Searching with Brave Search...');
 
       // Choose search provider based on isPro flag
       let searchResults: { web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] };
@@ -69,9 +70,104 @@ export class RetrieverAgent extends BaseAgent {
             videos: [] // Tavily doesn't provide videos
           };
         } else {
-          // Normal users: Use SearxNG
-          onStatusUpdate?.('Searching with SearxNG...');
-          searchResults = await searxngSearch(trimmedQuery);
+          // Regular users: Try Brave first, fallback to SearXNG
+          try {
+            onStatusUpdate?.('Searching with Brave Search...');
+            logger.info('Attempting Brave Search', { query: trimmedQuery });
+            
+            // Create a more aggressive timeout for Brave search
+            const braveSearchPromise = braveSearch(trimmedQuery);
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => {
+                logger.warn('Brave search timeout triggered', { timeout: API_TIMEOUTS.BRAVE });
+                reject(new Error('Brave search timeout'));
+              }, API_TIMEOUTS.BRAVE);
+            });
+            
+            const braveResults = await Promise.race([
+              braveSearchPromise,
+              timeoutPromise
+            ]) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
+            
+            logger.info('Brave Search completed', { 
+              webCount: braveResults.web?.length || 0,
+              newsCount: braveResults.news?.length || 0,
+              imagesCount: braveResults.images?.length || 0,
+              videoCount: braveResults.video?.length || 0
+            });
+            
+            // Convert Brave results to match expected format
+            const mappedImages = braveResults.images.map(img => ({
+              url: (img.image || img.url || '').startsWith('https://') ? (img.image || img.url) : '',
+              alt: img.title || img.content || 'Search result image',
+              source_url: img.url // The page URL where the image was found
+            })).filter(img => img.url !== ''); // Filter out empty URLs
+            
+            logger.info('Brave image mapping', {
+              originalImagesCount: braveResults.images.length,
+              mappedImagesCount: mappedImages.length,
+              sampleImage: mappedImages[0] || 'none'
+            });
+            
+            searchResults = {
+              web: [...braveResults.web, ...braveResults.news], // Combine web and news
+              images: mappedImages,
+              videos: braveResults.video.map(vid => ({
+                title: vid.title,
+                url: vid.url,
+                thumbnail: vid.image,
+                duration: ''
+              }))
+            };
+            
+            // Check if we got meaningful results
+            if (searchResults.web.length === 0 && searchResults.images.length === 0) {
+              logger.warn('Brave search returned no results, triggering fallback');
+              throw new Error('No results from Brave Search');
+            }
+            
+            logger.info('Brave Search successful', { 
+              finalWebCount: searchResults.web.length,
+              finalImagesCount: searchResults.images.length 
+            });
+          } catch (braveError) {
+            logger.warn('Brave Search failed, falling back to SearXNG', {
+              error: braveError instanceof Error ? braveError.message : braveError,
+              query: trimmedQuery
+            });
+            
+            onStatusUpdate?.('Brave Search failed, trying SearXNG...');
+            
+            try {
+              logger.info('Starting SearXNG fallback', { query: trimmedQuery });
+              
+              const searxngSearchPromise = searxngSearch(trimmedQuery);
+              const searxngTimeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => {
+                  logger.warn('SearXNG search timeout triggered', { timeout: API_TIMEOUTS.SEARXNG });
+                  reject(new Error('SearXNG search timeout'));
+                }, API_TIMEOUTS.SEARXNG);
+              });
+              
+              searchResults = await Promise.race([
+                searxngSearchPromise,
+                searxngTimeoutPromise
+              ]) as { web: SearchResult[]; images: ImageResult[]; videos: VideoResult[] };
+              
+              logger.info('SearXNG fallback successful', {
+                webCount: searchResults.web?.length || 0,
+                imagesCount: searchResults.images?.length || 0
+              });
+              
+              onStatusUpdate?.('Search completed with SearXNG!');
+            } catch (searxngError) {
+              logger.error('Both Brave and SearXNG failed', {
+                braveError: braveError instanceof Error ? braveError.message : braveError,
+                searxngError: searxngError instanceof Error ? searxngError.message : searxngError
+              });
+              throw new Error('All search providers failed');
+            }
+          }
         }
       } catch (error) {
         logger.error('Search failed', {
@@ -90,9 +186,42 @@ export class RetrieverAgent extends BaseAgent {
       if (!searchResults.web || searchResults.web.length === 0) {
         const generalQuery = this.generateGeneralQuery(trimmedQuery);
         onStatusUpdate?.('No results found; trying broader search terms...');
-        const generalResults = await safeCall<{ web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] }>(() =>
-          isPro ? tavilySearch(generalQuery) : searxngSearch(generalQuery)
-        );
+        
+        let generalResults: { web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] };
+        if (isPro) {
+          // Pro users: Use Tavily for general query
+          const tavilyResults = await safeCall(() => tavilySearch(generalQuery)) as { web: SearchResult[]; images: ImageResult[] };
+          generalResults = {
+            web: tavilyResults.web,
+            images: tavilyResults.images,
+            videos: []
+          };
+        } else {
+          // Regular users: Try Brave first, then SearXNG for general query
+          try {
+            const braveResults = await safeCall(() => braveSearch(generalQuery)) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
+            generalResults = {
+              web: [...braveResults.web, ...braveResults.news],
+              images: braveResults.images.map(img => ({
+                url: (img.image || img.url || '').startsWith('https://') ? (img.image || img.url) : '',
+                alt: img.title || img.content || 'Search result image',
+                source_url: img.url
+              })),
+              videos: braveResults.video.map(vid => ({
+                title: vid.title,
+                url: vid.url,
+                thumbnail: vid.image,
+                duration: ''
+              }))
+            };
+          } catch (braveError) {
+            logger.warn('Brave Search failed for general query, using SearXNG', {
+              error: braveError instanceof Error ? braveError.message : braveError
+            });
+            generalResults = await safeCall(() => searxngSearch(generalQuery));
+          }
+        }
+        
         await delay(1000);
         
         if (generalResults.web) searchResults.web = [...(searchResults.web || []), ...generalResults.web];
@@ -110,6 +239,12 @@ export class RetrieverAgent extends BaseAgent {
       // Deduplicate and limit image search results.
       const validImages = this.deduplicateImages(searchResults.images)
         .slice(0, MAX_RESULTS.IMAGES);
+        
+      logger.info('Image processing results', {
+        originalImagesCount: searchResults.images.length,
+        deduplicatedImagesCount: validImages.length,
+        sampleImage: validImages[0] || 'none'
+      });
 
       // Process videos
       const validVideos = (searchResults.videos || [])
@@ -126,9 +261,42 @@ export class RetrieverAgent extends BaseAgent {
       const perspectiveResults = [];
       for (const perspective of perspectives) {
         onStatusUpdate?.(`Exploring perspective: ${perspective.title}...`);
-        const perspectiveSearchResults = await safeCall<{ web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] }>(() => 
-          isPro ? tavilySearch(perspective.title) : searxngSearch(perspective.title)
-        );
+        
+        let perspectiveSearchResults: { web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] };
+        if (isPro) {
+          // Pro users: Use Tavily for perspective search
+          const tavilyResults = await safeCall(() => tavilySearch(perspective.title)) as { web: SearchResult[]; images: ImageResult[] };
+          perspectiveSearchResults = {
+            web: tavilyResults.web,
+            images: tavilyResults.images,
+            videos: []
+          };
+        } else {
+          // Regular users: Try Brave first, then SearXNG for perspective search
+          try {
+            const braveResults = await safeCall(() => braveSearch(perspective.title)) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
+            perspectiveSearchResults = {
+              web: [...braveResults.web, ...braveResults.news],
+              images: braveResults.images.map(img => ({
+                url: img.image || img.url,
+                alt: img.title || img.content || 'Search result image',
+                source_url: img.url
+              })),
+              videos: braveResults.video.map(vid => ({
+                title: vid.title,
+                url: vid.url,
+                thumbnail: vid.image,
+                duration: ''
+              }))
+            };
+          } catch (braveError) {
+            logger.warn(`Brave Search failed for perspective "${perspective.title}", using SearXNG`, {
+              error: braveError instanceof Error ? braveError.message : braveError
+            });
+            perspectiveSearchResults = await safeCall(() => searxngSearch(perspective.title));
+          }
+        }
+        
         await delay(1000);
         
         // Process and validate sources for this perspective

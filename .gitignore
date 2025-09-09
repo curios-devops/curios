@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 .env
+.env.local
+
+# MD files
+AGENTS.md
 
 # Editor directories and files
 .vscode/*
@@ -23,3 +27,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local Netlify folder
+.netlify

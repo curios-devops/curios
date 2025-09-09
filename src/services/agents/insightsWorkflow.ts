@@ -5,9 +5,9 @@
 // Multi-Agent Insights Workflow using Direct OpenAI API
 // Replaces the OpenAI Agents SDK to avoid React version conflicts
 
-import OpenAI from 'openai';
 import { env } from '../../config/env';
 import { logger } from '../../utils/logger';
+import { secureOpenAI } from '../secureOpenAI';
 
 interface SearchPlan {
   thinking_process: string;
@@ -46,11 +46,7 @@ interface InsightsResult {
 }
 
 // Initialize OpenAI client
-const openai = env.openai.apiKey ? new OpenAI({
-  apiKey: env.openai.apiKey,
-  organization: env.openai.orgId,
-  dangerouslyAllowBrowser: true
-}) : null;
+const openai = env.openai.apiKey ? secureOpenAI : null;
 
 // Helper function to get current year for dynamic date injection
 function getCurrentYear(): string {
@@ -120,7 +116,8 @@ async function plannerAgent(query: string, focusMode?: string): Promise<SearchPl
   }
 
   try {
-    const completion = await openai.chat.completions.create({
+    // Use modern OpenAI Responses API
+    const response = await openai.responses.create({
       model: 'gpt-4o-mini',
       messages: [
         {
@@ -155,10 +152,12 @@ async function plannerAgent(query: string, focusMode?: string): Promise<SearchPl
         }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.7
+      temperature: 0.7,
+      max_output_tokens: 1000
     });
 
-    const content = completion.choices[0]?.message?.content;
+    // Handle modern API response format
+    const content = response?.output_text || response?.content?.[0]?.text;
     if (content) {
       const parsed = JSON.parse(content);
       return parsed as SearchPlan;
@@ -194,7 +193,7 @@ async function searchAgent(searchQuery: string): Promise<{ summary: string; sour
     const sources = await performOpenAIWebSearch(searchQuery);
     
     // Generate summary based on the actual sources found
-    const completion = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: 'gpt-4o-mini',
       messages: [
         {
@@ -214,11 +213,14 @@ Create a comprehensive summary of the key findings and insights.`
         }
       ],
       temperature: 0.5,
-      max_tokens: 400
+      max_output_tokens: 400
     });
 
+    // Handle modern API response format
+    const summaryContent = response?.output_text || response?.content?.[0]?.text;
+
     return {
-      summary: completion.choices[0]?.message?.content || `Summary for "${searchQuery}": Analysis of current sources reveals key developments and trends in this area.`,
+      summary: summaryContent || `Summary for "${searchQuery}": Analysis of current sources reveals key developments and trends in this area.`,
       sources: sources
     };
   } catch (error) {
@@ -243,8 +245,8 @@ async function performOpenAIWebSearch(query: string, focusMode?: string): Promis
   try {
     const focusContext = getFocusSearchContext(focusMode);
     
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const response = await openai.responses.create({
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -280,10 +282,11 @@ async function performOpenAIWebSearch(query: string, focusMode?: string): Promis
       ],
       response_format: { type: "json_object" },
       temperature: 0.3,
-      max_tokens: 1000
+      max_output_tokens: 1000
     });
 
-    const content = completion.choices[0]?.message?.content;
+    // Handle modern API response format
+    const content = response?.output_text || response?.content?.[0]?.text;
     if (!content) {
       throw new Error('No response from OpenAI');
     }
@@ -294,8 +297,8 @@ async function performOpenAIWebSearch(query: string, focusMode?: string): Promis
       if (parsed.sources && Array.isArray(parsed.sources) && parsed.sources.length > 0) {
         // Transform and validate sources
         const validSources: SourceInfo[] = parsed.sources
-          .filter((source: any) => source.title && source.url && source.snippet)
-          .map((source: any) => ({
+          .filter((source: { title?: string; url?: string; snippet?: string }) => source.title && source.url && source.snippet)
+          .map((source: { title: string; url: string; snippet: string; domain?: string }) => ({
             title: source.title,
             url: source.url,
             snippet: source.snippet,
@@ -533,7 +536,7 @@ The implications extend beyond immediate applications, potentially influencing r
       .map(s => `**${s.reason}** (Query: "${s.query}"):\n${s.summary}`)
       .join('\n\n');
 
-    const completion = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: 'gpt-4o-mini',
       messages: [
         {
@@ -580,10 +583,11 @@ Write an engaging, well-balanced journalistic piece that informs readers about t
       ],
       response_format: { type: "json_object" },
       temperature: 0.7,
-      max_tokens: 1200
+      max_output_tokens: 1200
     });
 
-    const content = completion.choices[0]?.message?.content;
+    // Handle modern API response format
+    const content = response?.output_text || response?.content?.[0]?.text;
     if (content) {
       const parsed = JSON.parse(content);
       return parsed as InsightsResult;
@@ -617,10 +621,16 @@ The developments surrounding ${query} are creating ripple effects across multipl
   };
 }
 
+interface DisplaySource {
+  title: string;
+  domain: string;
+  icon: string;
+}
+
 // Main Orchestrator - Coordinates all agents
 export async function runInsightsWorkflow(
   query: string, 
-  onProgress?: (stage: string, timeRemaining: string, progress: number, thinkingStep: string, searchTerms?: string[], sources?: any[]) => void,
+  onProgress?: (stage: string, timeRemaining: string, progress: number, thinkingStep: string, searchTerms?: string[], sources?: DisplaySource[]) => void,
   focusMode?: string
 ): Promise<InsightsResult> {
   try {
@@ -645,7 +655,7 @@ export async function runInsightsWorkflow(
     const searchQueries: string[] = [];
     
     // Create formatted source list for display
-    const displaySources: any[] = [];
+    const displaySources: DisplaySource[] = [];
     
     for (let i = 0; i < searches.length; i++) {
       const search = searches[i];
@@ -733,4 +743,4 @@ function getSourceIcon(domain: string): string {
   return '🌐';
 }
 
-export {}; 
+export {};
