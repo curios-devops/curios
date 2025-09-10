@@ -38,6 +38,8 @@ export class SwarmController {
 
       // Use RetrieverAgent to get research results
       onStatusUpdate?.('Searching through reliable sources...');
+      logger.info('SwarmController: Starting RetrieverAgent execution');
+      
       const searchResponse = await this.executeWithHealthCheck(
         () => this.retrieverAgent.execute(query, [], isPro, onStatusUpdate),
         'RetrieverAgent'
@@ -47,16 +49,27 @@ export class SwarmController {
         videos: VideoResult[];
       }>;
 
+      logger.info('SwarmController: RetrieverAgent completed', {
+        hasResults: !!searchResponse.data,
+        resultsCount: searchResponse.data?.results?.length || 0
+      });
+
       // For Pro searches, generate perspectives
       let perspectives: Perspective[] = [];
       if (isPro) {
         onStatusUpdate?.('Analyzing different perspectives...');
+        logger.info('SwarmController: Starting PerspectiveAgent execution');
+        
         try {
           const perspectiveResponse = await this.executeWithHealthCheck(
             () => this.perspectiveAgent.execute(query),
             'PerspectiveAgent'
           ) as AgentResponse<{ perspectives: Perspective[] }>;
           perspectives = perspectiveResponse.data?.perspectives || [];
+          
+          logger.info('SwarmController: PerspectiveAgent completed', {
+            perspectivesCount: perspectives.length
+          });
         } catch (error) {
           logger.warn('Perspective generation failed:', error);
           // Continue without perspectives
@@ -65,7 +78,7 @@ export class SwarmController {
 
       // Generate article using WriterAgent based on the main query and retrieved perspectives.
       onStatusUpdate?.('Crafting a comprehensive answer...');
-      logger.info('SwarmController calling WriterAgent', {
+      logger.info('SwarmController: Starting WriterAgent execution', {
         query,
         perspectivesCount: perspectives.length,
         resultsCount: searchResponse.data?.results?.length || 0
@@ -74,27 +87,35 @@ export class SwarmController {
       // Add explicit timeout for WriterAgent execution
       let writerResponse: AgentResponse<ArticleResult>;
       try {
-        writerResponse = await Promise.race([
-          this.executeWithHealthCheck(
-            () =>
-              this.writerAgent.execute({
-                query,
-                perspectives,
-                results: searchResponse.data?.results || []
-              }),
-            'WriterAgent'
-          ) as Promise<AgentResponse<ArticleResult>>,
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('WriterAgent timeout after 45 seconds')), 45000) // Increased from 30 to 45 seconds
-          )
-        ]);
+        const writerPromise = this.executeWithHealthCheck(
+          () =>
+            this.writerAgent.execute({
+              query,
+              perspectives,
+              results: searchResponse.data?.results || []
+            }),
+          'WriterAgent'
+        ) as Promise<AgentResponse<ArticleResult>>;
 
-        logger.info('SwarmController received WriterAgent response', {
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => {
+            logger.error('WriterAgent timeout after 45 seconds');
+            reject(new Error('WriterAgent timeout after 45 seconds'));
+          }, 45000) // 45 seconds
+        );
+
+        writerResponse = await Promise.race([writerPromise, timeoutPromise]);
+
+        logger.info('SwarmController: WriterAgent completed successfully', {
           success: writerResponse.success,
-          hasData: !!writerResponse.data
+          hasData: !!writerResponse.data,
+          contentLength: writerResponse.data?.content?.length || 0
         });
       } catch (error) {
-        logger.warn('WriterAgent failed, using fallback response', { error });
+        logger.error('WriterAgent failed, using fallback response', { 
+          error: error instanceof Error ? error.message : error,
+          query
+        });
         // Provide fallback response when WriterAgent fails
         writerResponse = {
           success: true,

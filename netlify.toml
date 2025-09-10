@@ -30,28 +30,10 @@
 
 # API redirects must come FIRST before the SPA catchall redirect
 
-# Simple OpenAI hello test (minimal example)
-[[redirects]]
-  from = "/api/openai-hello"
-  to = "/.netlify/functions/openai-hello"
-  status = 200
-
 # Simple OpenAI API redirect (tutorial pattern) - MUST be before generic API redirect
 [[redirects]]
   from = "/api/fetch-openai"
   to = "/.netlify/functions/fetch-openai"
-  status = 200
-
-# API redirect for our hello-ts function
-[[redirects]]
-  from = "/api/hello-ts"
-  to = "/.netlify/functions/hello-ts"
-  status = 200
-
-# API redirect for test-basic function
-[[redirects]]
-  from = "/api/test-basic"
-  to = "/.netlify/functions/test-basic"
   status = 200
 
 # API redirects for Brave Search

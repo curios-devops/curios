@@ -173,26 +173,62 @@ exports.handler = async (event, context) => {
     if (orgId) headers['OpenAI-Organization'] = orgId;
     if (projectId) headers['OpenAI-Project'] = projectId;
 
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(openAIRequestBody)
-    });
+    console.log('Making OpenAI API call with timeout...');
+    
+    // Add timeout to OpenAI API call
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.log('OpenAI API call timeout triggered');
+      controller.abort();
+    }, 25000); // 25 second timeout
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI Responses API error:', response.status, errorText);
-      return {
-        statusCode: response.status,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          error: `OpenAI API error: ${response.status}`,
-          details: errorText
-        })
-      };
+    try {
+      const response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(openAIRequestBody),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('OpenAI Responses API error:', response.status, errorText);
+        return {
+          statusCode: response.status,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            error: `OpenAI API error: ${response.status}`,
+            details: errorText
+          })
+        };
+      }
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError.name === 'AbortError') {
+        console.error('OpenAI API call timed out after 25 seconds');
+        return {
+          statusCode: 408,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            error: 'OpenAI API call timeout',
+            details: 'Request timed out after 25 seconds'
+          })
+        };
+      }
+      
+      console.error('OpenAI API call failed:', fetchError);
+      throw fetchError;
     }
 
     const data = await response.json();

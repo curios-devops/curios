@@ -25,14 +25,21 @@ export class WriterAgent {
    */
   async execute(research: ResearchResult): Promise<AgentResponse<ArticleResult>> {
     try {
+      logger.info('WriterAgent: Starting execution', { 
+        query: research.query, 
+        resultsCount: research.results.length 
+      });
+
       // Check if OpenAI is available
       if (!this.openai) {
+        logger.warn('WriterAgent: OpenAI not available, using fallback');
         return {
           success: true,
           data: this.getFallbackData(research.query)
         };
       }
 
+      logger.info('WriterAgent: Preparing source context');
       // Prepare detailed context with full source information for better grounding
       const maxResults = 8; // Increase to 8 most relevant results for better coverage
       const maxContentPerResult = 600; // Increase content length for more comprehensive analysis
@@ -51,7 +58,14 @@ Content: ${truncatedContent}
         })
         .join('\n\n');
 
-      const completion = await this.openai.chat.completions.create({
+      logger.info('WriterAgent: Making OpenAI API call', { 
+        sourceContextLength: sourceContext.length,
+        maxResults,
+        model: 'gpt-4o-mini'
+      });
+
+      // Add explicit timeout for WriterAgent OpenAI call
+      const completionPromise = this.openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
               {
@@ -132,6 +146,17 @@ Remember: Base your response entirely on the source material provided. Do not ad
             temperature: 0.3,
             max_tokens: 2000 // Increased for more comprehensive responses
           });
+
+      // Add explicit timeout handling for WriterAgent
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('WriterAgent OpenAI call timeout after 30 seconds')), 30000)
+      );
+
+      const completion = await Promise.race([completionPromise, timeoutPromise]);
+
+      logger.info('WriterAgent: OpenAI call completed', { 
+        hasContent: !!completion.choices[0]?.message?.content 
+      });
 
       const content = completion.choices[0]?.message?.content;
       if (!content) {
