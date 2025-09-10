@@ -1,9 +1,9 @@
 import { Artifact } from '../types/artifact';
-import { researchWorker } from './workers/researchWorker';
-import { writerWorker } from './workers/writerWorker';
-import { formatterWorker } from './workers/formatterWorker';
-import { dalleWorker } from './workers/dalleWorker';
-import { gameWorker } from './workers/gameWorker';
+import { researchWorker } from './labworkers/labresearchWorker';
+import { writerWorker } from './labworkers/labwriterWorker';
+import { formatterWorker } from './labworkers/formatterWorker';
+import { dalleWorker } from './labworkers/dalleWorker';
+import { gameWorker } from './labworkers/gameWorker';
 import { secureOpenAI } from '../services/secureOpenAI';
 
 const IMAGE_TYPES = ['diagram', 'sketch', 'photo'];

@@ -33,17 +33,21 @@ export class WriterAgent {
         };
       }
 
-      // Prepare context by limiting and truncating research results for optimal performance
-      const maxResults = 5; // Limit to 5 most relevant results
-      const maxContentPerResult = 300; // Limit content length to reduce token usage
+      // Prepare detailed context with full source information for better grounding
+      const maxResults = 8; // Increase to 8 most relevant results for better coverage
+      const maxContentPerResult = 600; // Increase content length for more comprehensive analysis
       
-      const context = research.results
-        .slice(0, maxResults) // Take only first 5 results
+      const sourceContext = research.results
+        .slice(0, maxResults)
         .map((result: SearchResult, index: number) => {
           const truncatedContent = result.content.length > maxContentPerResult 
             ? result.content.slice(0, maxContentPerResult) + '...'
             : result.content;
-          return `Source ${index + 1}: ${result.url}\nTitle: ${result.title}\nContent: ${truncatedContent}`;
+          return `Source ${index + 1}:
+URL: ${result.url}
+Title: ${result.title}
+Content: ${truncatedContent}
+---`;
         })
         .join('\n\n');
 
@@ -52,87 +56,81 @@ export class WriterAgent {
             messages: [
               {
                 role: 'system',
-                content: `You are an expert research assistant creating comprehensive, Perplexity-style answers with intelligent follow-up questions.
+                content: `You are an expert research analyst creating comprehensive, well-sourced articles with intelligent follow-up questions.
+
+CRITICAL: You must base your content ONLY on the provided sources. Do not add information not found in the sources.
 
 RESPONSE FORMAT - Return a JSON object with this exact structure:
 {
   "content": "Your comprehensive answer here...",
   "followUpQuestions": [
-    "Related question 1?",
-    "Related question 2?",
-    "Related question 3?",
-    "Related question 4?",
-    "Related question 5?"
-  ]
+    "Follow-up question 1",
+    "Follow-up question 2", 
+    "Follow-up question 3",
+    "Follow-up question 4",
+    "Follow-up question 5"
+  ],
+  "citations": ["url1", "url2", "url3", "url4", "url5"]
 }
 
 CONTENT GUIDELINES:
-- Write comprehensive, well-researched articles based on the provided sources
-- Use inline citations with [Source X] format throughout the text
-- Structure content with clear headers using markdown (### Header)
-- Use **bold** and *italic* formatting for emphasis
-- Include relevant details, statistics, and expert insights
+- Base ALL information directly on the provided sources
+- Use [Source X] citations throughout to reference specific sources
+- Include specific facts, dates, numbers, and quotes from the sources
+- Structure with clear sections using ### headers
+- Use **bold** for key terms and *italic* for emphasis
+- Synthesize information from multiple sources when they discuss the same topic
+- Present different viewpoints when sources conflict
 - Maintain professional, informative tone
-- Do NOT include a 'Citations' section at the end
-- Do NOT include a 'Sources' section at the end
-- Keep citations inline only using [Source X] format
-- End the content with the main content, NOT with citations
+- Focus on the most current and relevant information from sources
+- Do NOT add external knowledge not found in the provided sources
 
 FOLLOW-UP QUESTIONS GUIDELINES:
-- Generate 5 intelligent, contextual follow-up questions based on the content and research topic
-- Questions should explore different angles, deeper insights, or related aspects
-- Make questions specific and actionable
-- Focus on what users would naturally want to know next
-- Ensure questions are relevant to the original topic but expand the conversation
+- Generate 5 intelligent follow-up questions that naturally extend the topic
+- Questions should explore deeper aspects, related implications, or practical applications
+- Make questions specific and actionable based on the content discussed
+- Focus on what readers would logically want to explore next
+- Ensure questions build upon the information presented in the article
 
-Example follow-up questions format:
-- "What are the latest developments in [specific aspect]?"
-- "How does [topic] compare to [related topic]?"
-- "What are the potential risks/benefits of [specific element]?"
-- "How might [topic] evolve in the next 5 years?"
-- "What do experts predict about [related trend]?"
-1. Create a comprehensive overview synthesizing information from multiple sources
-2. Structure with clear sections and headings 
-3. Include specific details, numbers, and statistics
-4. Always cite sources using [Source X] format throughout the content
-5. Provide context and background information
-6. Use professional, engaging writing style
-7. Include relevant follow-up questions
-8. Focus on unique insights beyond basic search results
+Example follow-up question styles:
+- "What specific steps are being taken to address [challenge mentioned]?"
+- "How are different industries adapting to [trend discussed]?"
+- "What are the long-term implications of [development covered]?"
+- "How can individuals/organizations benefit from [opportunity identified]?"
+- "What challenges remain to be solved regarding [topic area]?"
 
-IMPORTANT: 
-- Do NOT include a "Citations" section at the end
-- Do NOT include a "Sources" section at the end  
-- Do NOT list the source URLs at the end
-- Keep citations inline only using [Source X] format
-- End the content with the main content, NOT with citations
-
-Response format (valid JSON):
-{
-  "content": "Comprehensive article with [Source X] citations and clear sections - NO citations section at end",
-  "followUpQuestions": ["Question 1", "Question 2", "Question 3"],
-  "citations": ["URL1", "URL2", "URL3"]
-}`
+CITATION REQUIREMENTS:
+- Use [Source X] format consistently throughout
+- Cite specific claims, statistics, quotes, and facts
+- Include multiple citations when information comes from different sources
+- Ensure every major point is properly attributed
+- List the URLs of cited sources in the citations array`
               },
               {
                 role: 'user',
                 content: `Query: "${research.query}"
 
-Search Results:
-${context}
+Source Material:
+${sourceContext}
 
-Create a comprehensive answer that:
-- Provides thorough overview with clear sections  
-- Incorporates information with proper [Source X] citations
-- Includes specific details and statistics
-- Offers valuable insights beyond basic facts
-- Addresses different perspectives and implications
-- Generates 5 intelligent follow-up questions based on the topic`
+TASK: Create a comprehensive, well-sourced article that directly addresses the query using ONLY the information provided in the sources above.
+
+Requirements:
+- Ground ALL information in the provided sources
+- Use [Source X] citations for every major claim or fact
+- Include specific details, statistics, dates, and quotes from sources
+- Structure with clear sections that organize the information logically
+- Generate 5 thoughtful follow-up questions that extend the topic naturally
+- Focus on the most current and relevant information available in the sources
+- When sources conflict, present different perspectives clearly
+- Synthesize related information from multiple sources when appropriate
+
+Remember: Base your response entirely on the source material provided. Do not add external information.`
               }
             ],
             response_format: { type: "json_object" },
             temperature: 0.3,
-            max_tokens: 1500
+            max_tokens: 2000 // Increased for more comprehensive responses
           });
 
       const content = completion.choices[0]?.message?.content;
@@ -149,15 +147,15 @@ Create a comprehensive answer that:
       }
 
       if (!parsed) {
-        // If JSON parsing fails, create a fallback response
+        // If JSON parsing fails, create a fallback response with follow-up questions
         const fallbackResult: ArticleResult = {
           content: content.trim(),
           followUpQuestions: [
-            `What are the latest developments in ${research.query}?`,
-            `How does ${research.query} impact current trends?`,
-            `What are the key challenges regarding ${research.query}?`,
-            `What do experts predict about ${research.query}?`,
-            `How might ${research.query} evolve in the future?`
+            `What specific developments are shaping ${research.query} today?`,
+            `How are experts addressing challenges in ${research.query}?`,
+            `What practical applications exist for ${research.query}?`,
+            `What future trends are emerging in ${research.query}?`,
+            `How can organizations leverage ${research.query} effectively?`
           ],
           citations: research.results.slice(0, 5).map((r: SearchResult) => r.url)
         };
@@ -167,17 +165,17 @@ Create a comprehensive answer that:
         };
       }
 
-      // Ensure the parsed object has the expected structure
+      // Ensure the parsed object has the expected structure with follow-up questions
       const result: ArticleResult = {
         content: typeof parsed.content === 'string' ? parsed.content : content.trim(),
         followUpQuestions: Array.isArray(parsed.followUpQuestions) && parsed.followUpQuestions.length > 0 
           ? parsed.followUpQuestions 
           : [
-              `What are the latest developments in ${research.query}?`,
-              `How does ${research.query} impact current trends?`,
-              `What are the key challenges regarding ${research.query}?`,
-              `What do experts predict about ${research.query}?`,
-              `How might ${research.query} evolve in the future?`
+              `What specific developments are shaping ${research.query} today?`,
+              `How are experts addressing challenges in ${research.query}?`,
+              `What practical applications exist for ${research.query}?`,
+              `What future trends are emerging in ${research.query}?`,
+              `How can organizations leverage ${research.query} effectively?`
             ],
         citations: Array.isArray(parsed.citations) 
           ? parsed.citations 
@@ -204,11 +202,11 @@ Create a comprehensive answer that:
     return {
       content: 'We apologize, but we are experiencing high traffic at the moment. Please try your search again in a few minutes.',
       followUpQuestions: [
-        `How can I get more detailed information about ${query}?`,
-        `What are the latest trends in ${query}?`,
-        `Where can I find expert analysis on ${query}?`,
-        `What related topics should I explore regarding ${query}?`,
-        `How does ${query} impact current events?`
+        `What specific information would be most valuable about ${query}?`,
+        `How can I explore different aspects of ${query}?`,
+        `What current developments should I know about ${query}?`,
+        `Where can I find expert insights on ${query}?`,
+        `What practical applications relate to ${query}?`
       ],
       citations: []
     };

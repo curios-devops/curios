@@ -139,10 +139,14 @@ export class ContextualAgent extends BaseAgent {
   }
 }
 ```
-
+ARCHITECTURE STATUS:
 ## Current Working Agents Analysis
 
 ### ✅ Working Agents (Follow Swarm Principles)
+
+Search Flow 
+Regular Serach -> SwarmController → RetrieverAgent → WriterAgent
+Pro Search -> SwarmController → RetrieverAgent → PerspectiveAgent → WriterAgent ✅
 
 #### 1. Research WriterAgent (`/src/services/research/writerAgent.ts`)
 - **Role**: Synthesizes research data into comprehensive reports
@@ -163,6 +167,9 @@ export class ContextualAgent extends BaseAgent {
 - **Role**: Advanced SEARCH-R1 framework
 - **Handoff**: Complex multi-agent coordination
 - **Context**: Research phases and agent results
+
+Lab Flow 
+Results → orchestrateArtifact → laborchestrator → workers 
 
 ## Swarm Implementation Patterns
 

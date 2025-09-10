@@ -12,9 +12,19 @@ export default function CustomMarkdown({ children, className = "" }: CustomMarkd
     const elements: JSX.Element[] = [];
     let key = 0;
 
-    lines.forEach((line, _lineIndex) => {
+    lines.forEach((line, lineIndex) => {
       if (line.trim() === '') {
-        elements.push(<br key={`br-${key++}`} />);
+        // Only add <br> if the previous element was a paragraph, not a header
+        const prevLine = lineIndex > 0 ? lines[lineIndex - 1] : '';
+        const nextLine = lineIndex < lines.length - 1 ? lines[lineIndex + 1] : '';
+        
+        // Don't add <br> if previous line was a header or next line is a header
+        const prevIsHeader = prevLine.match(/^#{1,6}\s/);
+        const nextIsHeader = nextLine.match(/^#{1,6}\s/);
+        
+        if (!prevIsHeader && !nextIsHeader && prevLine.trim() !== '' && nextLine.trim() !== '') {
+          elements.push(<br key={`br-${key++}`} />);
+        }
         return;
       }
 
@@ -71,39 +81,56 @@ export default function CustomMarkdown({ children, className = "" }: CustomMarkd
     // Handle **bold** text
     let result: React.ReactNode = text;
     
-    // Bold text **text**
-    result = text.split(/(\*\*[^*]+\*\*)/).map((part, index) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        const boldText = part.slice(2, -2);
+    // Citations [Source X] - Convert to numbered blue citations
+    result = text.split(/(\[Source \d+\])/).map((part, index) => {
+      const sourceMatch = part.match(/\[Source (\d+)\]/);
+      if (sourceMatch) {
+        const sourceNumber = sourceMatch[1];
         return (
-          <strong key={`bold-${index}`} className="font-bold text-gray-900 dark:text-white">
-            {boldText}
-          </strong>
+          <span 
+            key={`citation-${index}`} 
+            className="inline-flex items-center justify-center w-5 h-5 bg-[#0095FF] text-white text-xs font-medium rounded-full mx-0.5 cursor-pointer hover:bg-[#0080FF] transition-colors"
+            title={`Source ${sourceNumber}`}
+          >
+            {sourceNumber}
+          </span>
         );
       }
       
-      // Italic text *text*
-      return part.split(/(\*[^*]+\*)/).map((subPart, subIndex) => {
-        if (subPart.startsWith('*') && subPart.endsWith('*') && !subPart.startsWith('**')) {
-          const italicText = subPart.slice(1, -1);
+      // Bold text **text**
+      return part.split(/(\*\*[^*]+\*\*)/).map((subPart, subIndex) => {
+        if (subPart.startsWith('**') && subPart.endsWith('**')) {
+          const boldText = subPart.slice(2, -2);
           return (
-            <em key={`italic-${index}-${subIndex}`} className="italic text-gray-700 dark:text-gray-300">
-              {italicText}
-            </em>
+            <strong key={`bold-${index}-${subIndex}`} className="font-bold text-gray-900 dark:text-white">
+              {boldText}
+            </strong>
           );
         }
         
-        // Inline code `code`
-        return subPart.split(/(`[^`]+`)/).map((codePart, codeIndex) => {
-          if (codePart.startsWith('`') && codePart.endsWith('`')) {
-            const codeText = codePart.slice(1, -1);
+        // Italic text *text*
+        return subPart.split(/(\*[^*]+\*)/).map((italicPart, italicIndex) => {
+          if (italicPart.startsWith('*') && italicPart.endsWith('*') && !italicPart.startsWith('**')) {
+            const italicText = italicPart.slice(1, -1);
             return (
-              <code key={`code-${index}-${subIndex}-${codeIndex}`} className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">
-                {codeText}
-              </code>
+              <em key={`italic-${index}-${subIndex}-${italicIndex}`} className="italic text-gray-700 dark:text-gray-300">
+                {italicText}
+              </em>
             );
           }
-          return codePart;
+          
+          // Inline code `code`
+          return italicPart.split(/(`[^`]+`)/).map((codePart, codeIndex) => {
+            if (codePart.startsWith('`') && codePart.endsWith('`')) {
+              const codeText = codePart.slice(1, -1);
+              return (
+                <code key={`code-${index}-${subIndex}-${italicIndex}-${codeIndex}`} className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">
+                  {codeText}
+                </code>
+              );
+            }
+            return codePart;
+          });
         });
       });
     });

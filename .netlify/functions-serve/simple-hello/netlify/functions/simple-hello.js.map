@@ -1,7 +1,7 @@
 {
   "version": 3,
   "sources": ["../../../../../../Users/marcelo/Documents/Curios/netlify/functions/simple-hello.js"],
-  "sourceRoot": "/var/folders/1_/6jc4gz515870kdyjnnv4r9qc0000gn/T/tmp-28513-K6pxJhlSjL93",
+  "sourceRoot": "/var/folders/1_/6jc4gz515870kdyjnnv4r9qc0000gn/T/tmp-59772-JjePs6poRCCV",
   "sourcesContent": ["// Super simple CommonJS Netlify function for basic testing\nexports.handler = async (event, context) => {\n  console.log('\uD83C\uDFAF Simple hello function called!');\n  console.log('Method:', event.httpMethod);\n  console.log('Path:', event.path);\n  \n  return {\n    statusCode: 200,\n    headers: {\n      'Content-Type': 'text/plain',\n      'Access-Control-Allow-Origin': '*'\n    },\n    body: 'Hello from simple function!'\n  };\n};"],
   "mappings": ";;;AACA,QAAQ,UAAU,OAAO,OAAO,YAAY;AAC1C,UAAQ,IAAI,yCAAkC;AAC9C,UAAQ,IAAI,WAAW,MAAM,UAAU;AACvC,UAAQ,IAAI,SAAS,MAAM,IAAI;AAE/B,SAAO;AAAA,IACL,YAAY;AAAA,IACZ,SAAS;AAAA,MACP,gBAAgB;AAAA,MAChB,+BAA+B;AAAA,IACjC;AAAA,IACA,MAAM;AAAA,EACR;AACF;",
   "names": []
