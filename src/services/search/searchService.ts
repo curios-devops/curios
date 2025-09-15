@@ -184,7 +184,7 @@ export async function performSearch(
       sources: [],
       images: [],
       videos: [],
-      provider: isPro ? 'Pro Search' : 'Standard Search',
+      provider: options.isPro ? 'Pro Search' : 'Standard Search',
       perspectives: undefined,
     };
   }

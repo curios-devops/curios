@@ -25,6 +25,8 @@
     - Fixed inconsistent import paths in labresearchWorker.ts
     - Split common-service chunk to prevent module initialization conflicts
     - Removed invalid env.openai.apiKey reference (OpenAI handled server-side)
+    - **CRITICAL:** Removed handleSupabaseOperation wrapper from search service
+    - Fixed search hanging after "Brave web search completed"
     - All previous search architecture fixes maintained
     - Build process now stable for Netlify deployment
 
