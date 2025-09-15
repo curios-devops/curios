@@ -55,8 +55,21 @@ export class SearchWriterAgent {
 
       logger.debug('Sending request to fetch-openai', { 
         url: this.netlifyFunctionUrl,
-        inputLength: input.length 
+        inputLength: input.length,
+        requestBody: {
+          query: input.substring(0, 100) + '...',
+          model: 'gpt-4.1',
+          temperature: 0.3,
+          max_output_tokens: 2000
+        }
       });
+
+      // Create AbortController for proper timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        logger.warn('Fetch request timeout - aborting');
+        controller.abort();
+      }, 25000); // 25 second timeout for fetch
 
       const response = await fetch(this.netlifyFunctionUrl, {
         method: 'POST',
@@ -65,21 +78,27 @@ export class SearchWriterAgent {
           'Accept': 'application/json'
         },
         body: JSON.stringify({ 
-          input,
+          query: input, // Fixed: Netlify function expects 'query' not 'input'
           model: 'gpt-4.1', // Use gpt-4.1 as per official example
           temperature: 0.3,
           max_output_tokens: 2000, // Changed from max_completion_tokens
           response_format: { type: 'json_object' } // This will be converted to text.format
           // Note: reasoning_effort removed as it's not supported with gpt-4.1
-        })
+        }),
+        signal: controller.signal
       });
+
+      // Clear the timeout since the request completed
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
         logger.error('Error from fetch-openai function', {
           status: response.status,
           statusText: response.statusText,
-          errorText
+          errorText,
+          url: this.netlifyFunctionUrl,
+          requestBodySample: input.substring(0, 200) + '...'
         });
         throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
@@ -106,6 +125,14 @@ export class SearchWriterAgent {
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Handle AbortError specifically
+      if (error instanceof Error && error.name === 'AbortError') {
+        logger.error('Fetch request was aborted due to timeout', {
+          error: errorMessage,
+          query: messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No query'
+        });
+      }
       
       if (currentRetry < MAX_RETRIES) {
         const delay = INITIAL_RETRY_DELAY * Math.pow(2, currentRetry);
@@ -147,6 +174,9 @@ export class SearchWriterAgent {
     onStatusUpdate?: (status: string) => void
   ): Promise<AgentResponse<ArticleResult>> {
     try {
+      // CRITICAL: Signal that writer agent has started
+      onStatusUpdate?.('Writer agent starting...');
+      
       if (!research || !research.query) {
         throw new Error('Invalid research data: missing query');
       }

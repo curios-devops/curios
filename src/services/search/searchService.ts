@@ -125,15 +125,28 @@ export async function performSearch(
           // DIAGNOSTIC: Signal before writer agent execution
           onStatusUpdate?.('Starting article generation...');
           logger.info('About to execute SearchWriterAgent', {
-            resultsCount: searchResponse.data.results?.length || 0
+            resultsCount: searchResponse.data.results?.length || 0,
+            hasSearchData: !!searchResponse.data,
+            searchSuccess: searchResponse.success
           });
           
           // Step 2: SearchWriterAgent (no perspectives)
+          logger.info('Calling SearchWriterAgent.execute', {
+            query,
+            resultsCount: searchResponse.data.results?.length || 0
+          });
+          
           const writerResponse = await writerAgent.execute({
             query,
             perspectives: [], // regular search has no perspectives
             results: searchResponse.data.results || []
           }, onStatusUpdate);
+          
+          logger.info('SearchWriterAgent execution completed', {
+            writerSuccess: writerResponse.success,
+            hasWriterData: !!writerResponse.data,
+            contentLength: writerResponse.data?.content?.length || 0
+          });
           
           if (!writerResponse.success || !writerResponse.data) {
             throw new Error('Article generation failed');

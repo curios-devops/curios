@@ -352,6 +352,15 @@ export class SearchRetrieverAgent extends BaseAgent {
       onStatusUpdate?.('Search completed successfully!');
       await new Promise(resolve => setTimeout(resolve, 150));
 
+      logger.info('SearchRetrieverAgent returning data', {
+        query: trimmedQuery,
+        perspectivesCount: perspectiveResults.length,
+        resultsCount: validResults.length,
+        imagesCount: validImages.length,
+        videosCount: validVideos.length,
+        success: true
+      });
+
       return {
         success: true,
         data: {
