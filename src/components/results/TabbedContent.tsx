@@ -1,8 +1,8 @@
 import { Video } from 'lucide-react';
-import AIOverview from '../AIOverview';
-import LoadingState from './LoadingState';
-import ErrorState from './ErrorState';
-import type { SearchState, Source, ImageResult, VideoResult } from '../../types';
+import AIOverview from '../AIOverview.tsx';
+import LoadingState from './LoadingState.tsx';
+import ErrorState from './ErrorState.tsx';
+import type { SearchState, Source, ImageResult, VideoResult } from '../../types/index.ts';
 
 interface TabbedContentProps {
   searchState: SearchState;
@@ -98,6 +98,7 @@ export default function TabbedContent({
                                   src="https://www.google.com/s2/favicons?domain=${domain}&sz=16"
                                   alt=""
                                   class="w-4 h-4"
+                                  loading="lazy"
                                   onerror="this.style.display='none'"
                                 />
                               `;
@@ -112,9 +113,12 @@ export default function TabbedContent({
                               src={`https://www.google.com/s2/favicons?domain=${domain}&sz=16`}
                               alt=""
                               className="w-3 h-3"
+                              loading="lazy"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
+                                // Hide the image element on error to prevent console errors
                                 target.style.display = 'none';
+                                // Don't try fallback, just hide the favicon
                               }}
                             />
                           </div>
@@ -313,8 +317,10 @@ export default function TabbedContent({
                             src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
                             alt=""
                             className="w-5 h-5 rounded"
+                            loading="lazy"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
+                              // Silently hide favicon on error to prevent console noise
                               target.style.display = 'none';
                             }}
                           />

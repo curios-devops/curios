@@ -3,21 +3,21 @@ import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './components/auth/AuthContext.tsx';
 import App from './App.tsx';
-import Home from './pages/Home.tsx'; // Keep Home page eager loaded as it's the landing page
+import Home from './mainPages/Home.tsx'; // Keep Home page eager loaded as it's the landing page
 import { logger } from './utils/logger.ts';
 import './index.css';
 
-// Lazy load page components for better code splitting
-const SearchResults = lazy(() => import('./pages/SearchResults.tsx'));
-const DeepResearchResults = lazy(() => import('./pages/DeepResearchResults.tsx'));
-const ProSearchResults = lazy(() => import('./pages/ProSearchResults.tsx'));
-const InsightsResults = lazy(() => import('./pages/InsightsResults.tsx'));
-const ResearcherResults = lazy(() => import('./pages/ResearcherResults.tsx'));
-const LabsResults = lazy(() => import('./pages/LabsResults.tsx'));
-const Settings = lazy(() => import('./pages/Settings.tsx'));
-const Policies = lazy(() => import('./pages/Policies.tsx'));
+// Lazy load page components from their respective service directories
+const SearchResults = lazy(() => import('./services/search/regular/pages/SearchResults.tsx'));
+const DeepResearchResults = lazy(() => import('./services/research/pro/pages/ResearchResults.tsx'));
+const ProSearchResults = lazy(() => import('./services/search/pro/pages/ProSearchResults.tsx'));
+const InsightsResults = lazy(() => import('./services/research/regular/pages/InsightsResults.tsx'));
+const ResearcherResults = lazy(() => import('./services/research/regular/pages/ResearcherResults.tsx'));
+const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx'));
+const Settings = lazy(() => import('./mainPages/Settings.tsx'));
+const Policies = lazy(() => import('./mainPages/Policies.tsx'));
 const AuthCallback = lazy(() => import('./components/auth/AuthCallback.tsx'));
-const SubscriptionSuccess = lazy(() => import('./pages/SubscriptionSuccess.tsx'));
+const SubscriptionSuccess = lazy(() => import('./mainPages/SubscriptionSuccess.tsx'));
 
 // Loading component for lazy loaded routes
 const PageLoader = () => (

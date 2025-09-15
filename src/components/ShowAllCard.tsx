@@ -37,14 +37,8 @@ export default function ShowAllCard({ totalSources, sources, onClick }: ShowAllC
                 className="w-5 h-5 opacity-75 group-hover:opacity-100"
                 loading="lazy"
                 onError={(e) => {
-                  // Fallback to Globe icon if favicon fails to load
+                  // Silently hide favicon on error to prevent console noise
                   e.currentTarget.style.display = 'none';
-                  e.currentTarget.parentElement?.appendChild(
-                    Object.assign(document.createElement('div'), {
-                      className: 'w-5 h-5 text-gray-400',
-                      innerHTML: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>'
-                    })
-                  );
                 }}
               />
             </div>

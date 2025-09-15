@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { Artifact } from '../types/artifacts';
+import { UIArtifact } from '../commonApp/types/index';
 import { Code, Eye, Download, Copy, Play } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { FC, ReactElement } from 'react';
+
+const MarkdownRenderer: FC<{ children: string }> = ({ children }) => {
+  return ReactMarkdown({ children }) as ReactElement;
+};
 
 interface ArtifactViewerProps {
-  artifact: Artifact;
+  artifact: UIArtifact;
 }
 
 export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact }) => {
@@ -60,9 +65,9 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact }) => {
         return (
           <div className="w-full h-full bg-white p-6 overflow-auto">
             <div className="prose prose-sm max-w-none">
-              <ReactMarkdown>
+              <MarkdownRenderer>
                 {artifact.content}
-              </ReactMarkdown>
+              </MarkdownRenderer>
             </div>
           </div>
         );

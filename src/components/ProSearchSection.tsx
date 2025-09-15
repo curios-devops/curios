@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 import { Sparkles, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Perspective } from '../types';
@@ -103,6 +103,11 @@ export default function ProSearchSection({
                                   alt=""
                                   className="w-4 h-4 opacity-75 group-hover:opacity-100 transition-opacity"
                                   loading="lazy"
+                                  onError={(e) => {
+                                    // Silently hide favicon on error to prevent console noise
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
                                 />
                                 <span className="truncate max-w-[200px]">{domain}</span>
                               </a>

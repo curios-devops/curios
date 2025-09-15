@@ -15,7 +15,8 @@
 			"longitude": 2.1701,
 			"postalCode": "08003"
 		},
-		"timestamp": 1757448261835
+		"timestamp": 1757873694014
 	},
-	"liveTunnelSlug": "51d0a220"
+	"liveTunnelSlug": "51d0a220",
+	"promptVSCodeSettings": true
 }

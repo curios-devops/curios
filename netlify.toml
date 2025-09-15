@@ -7,30 +7,93 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_FLAGS = "--legacy-peer-deps"
+  NODE_OPTIONS = "--max-old-space-size=4096"
 
+# Development settings
 [dev]
   command = "npm run dev:vite"
-  targetPort = 5173  # This tells Netlify which port Vite is running on
-  port = 8888        # This is the port Netlify will use
+  targetPort = 5173  # Vite dev server port
+  port = 8888        # Netlify dev server port
   framework = "vite"
   publish = "dist"
-  autoLaunch = false # Disable auto browser opening for Netlify dev
+  autoLaunch = false
   functions = "netlify/functions"
   
+  # Proxy configuration for local development
   [dev.proxy]
-    "/api/fetch-openai" = "http://localhost:8888/.netlify/functions/fetch-openai"
+    "/api/fetch-openai" = "/.netlify/functions/fetch-openai"
 
+# Edge Functions configuration
+[[edge_functions]]
+  function = "social-meta"
+  path = "/search"
+
+[[edge_functions]]
+  function = "social-meta"
+  path = "/search/*"
+
+# Functions configuration
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["@supabase/supabase-js"]
-  # Remove "openai" from external modules since we're using direct fetch instead
+  external_node_modules = ["@supabase/supabase-js", "openai"]
+  
+  # Function-specific settings
+  [functions.fetch-openai]
+    # Timeout in seconds (max 10s for free tier, 30s for Pro)
+    timeout = 10
+    
+    # Memory allocation in MB (128-3008 MB, in 64MB increments)
+    memory = 1024
 
+# Redirects for production
+[[redirects]]
+  from = "/api/fetch-openai"
+  to = "/.netlify/functions/fetch-openai"
+  status = 200
+  force = true
+
+# Security headers for all routes
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Security headers
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    
+    # CORS headers for API endpoints
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With"
+    Access-Control-Allow-Credentials = "true"
+    Access-Control-Max-Age = "86400"
+    
+    # Security headers for modern browsers
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    
+    # Content Security Policy
+    Content-Security-Policy = """
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src 'self' data: https:;
+      font-src 'self' https://fonts.gstatic.com data:;
+      connect-src 'self' https://api.openai.com https://*.openai.com https://*.brave.com https://*.tavily.com;
+      frame-ancestors 'none';
+      form-action 'self';
+      base-uri 'self';
+    """
+
+# Image optimization
 [build.processing.images]
   compress = true
+  quality = 80
 
 # API redirects must come FIRST before the SPA catchall redirect
 
-# Simple OpenAI API redirect (tutorial pattern) - MUST be before generic API redirect
+# OpenAI API redirects
 [[redirects]]
   from = "/api/fetch-openai"
   to = "/.netlify/functions/fetch-openai"

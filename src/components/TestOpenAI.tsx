@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createResponse } from '../services/openai/directApi';
+import { createResponse } from '../commonService/openai/directApi';
 
 export function TestOpenAI() {
   const [input, setInput] = useState('Write a haiku about code');

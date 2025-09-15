@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { signInWithEmail, signUpWithEmail } from '../services/auth/authService';
-import type { AuthMode } from '../services/auth/types';
+import { signInWithEmail, signUpWithEmail } from '../commonApp/auth/authService';
+import type { AuthMode } from '../commonApp/auth/types';
 
 export function useAuthFlow() {
   const [loading, setLoading] = useState(false);

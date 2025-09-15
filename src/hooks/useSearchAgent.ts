@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { logger } from '../utils/logger';
-import { secureOpenAI } from '../services/secureOpenAI';
+import { secureOpenAI } from '../commonService/openai/secureOpenAI';
 
 interface SearchOptions {
   mode?: string;

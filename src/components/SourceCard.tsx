@@ -55,17 +55,9 @@ export default function SourceCard({ source }: SourceCardProps) {
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
                 onError={(e) => {
-                  // Fallback to a placeholder if image fails to load
+                  // Silently hide favicon on error to prevent console noise
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
-                  target.parentElement!.innerHTML = `
-                    <div class="w-full h-full bg-gradient-to-br from-[#0095FF]/20 to-[#0095FF]/5 flex items-center justify-center">
-                      <svg class="w-12 h-12 text-[#0095FF]/40" viewBox="0 0 24 24" fill="currentColor">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 6v6l4 2"/>
-                      </svg>
-                    </div>
-                  `;
                 }}
               />
             ) : (
@@ -90,6 +82,11 @@ export default function SourceCard({ source }: SourceCardProps) {
                   alt=""
                   className="w-4 h-4 opacity-75"
                   loading="lazy"
+                  onError={(e) => {
+                    // Silently hide favicon on error to prevent console noise
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
                 />
               )}
               <span className="font-medium">{domain}</span>

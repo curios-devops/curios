@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { logger } from './utils/logger.ts';
 import { ThemeProvider } from './components/theme/ThemeContext.tsx';
 import { LanguageProvider } from './contexts/LanguageContext.tsx';
 import Sidebar from './components/Sidebar.tsx';
-import { useEffect } from 'react';
 import Logo from './components/sidebar/Logo.tsx';
 import { Menu } from 'lucide-react';
 import ThemeToggle from './components/theme/ThemeToggle.tsx';
@@ -20,17 +19,17 @@ function AppContent() {
 
   useEffect(() => {
     function checkMobilePortrait() {
-      const isMobile = window.innerWidth <= 768;
-      const isPortrait = window.matchMedia('(orientation: portrait)').matches;
+      const isMobile = globalThis.innerWidth <= 768;
+      const isPortrait = globalThis.matchMedia('(orientation: portrait)').matches;
       setIsMobilePortrait(isMobile && isPortrait);
       if (!(isMobile && isPortrait)) setMobileSidebarOpen(false);
     }
     checkMobilePortrait();
-    window.addEventListener('resize', checkMobilePortrait);
-    window.addEventListener('orientationchange', checkMobilePortrait);
+    globalThis.addEventListener('resize', checkMobilePortrait);
+    globalThis.addEventListener('orientationchange', checkMobilePortrait);
     return () => {
-      window.removeEventListener('resize', checkMobilePortrait);
-      window.removeEventListener('orientationchange', checkMobilePortrait);
+      globalThis.removeEventListener('resize', checkMobilePortrait);
+      globalThis.removeEventListener('orientationchange', checkMobilePortrait);
     };
   }, []);
 
@@ -51,7 +50,8 @@ function AppContent() {
     setIsCollapsed(!isCollapsed);
   };
 
-  return <LanguageProvider>
+  return (
+    <LanguageProvider>
     <ThemeProvider>
       <div className="flex min-h-screen bg-white dark:bg-[#111111] text-gray-900 dark:text-white transition-colors duration-200">
         {!isMobilePortrait && (
@@ -61,7 +61,7 @@ function AppContent() {
           <>
             <header className="fixed top-0 left-0 w-full z-50 bg-white/90 dark:bg-[#111111]/90 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-2 gap-3 shadow-sm">
               <div className="flex items-center gap-3">
-                <button className="p-2" aria-label="Open menu" onClick={() => setMobileSidebarOpen(true)}>
+                <button type="button" className="p-2" aria-label="Open menu" onClick={() => setMobileSidebarOpen(true)}>
                   <Menu size={28} className="text-gray-900 dark:text-white" />
                 </button>
                 <div className="flex items-center gap-2">
@@ -95,6 +95,7 @@ function AppContent() {
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">Sign up to CuriosAI</h2>
                     <button 
+                      type="button"
                       onClick={() => setShowSignUpModal(false)}
                       className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     >
@@ -103,10 +104,10 @@ function AppContent() {
                   </div>
                   <p className="text-gray-600 dark:text-gray-300 mb-6">Create an account to save your searches and access premium features.</p>
                   <div className="flex flex-col gap-3">
-                    <button className="w-full py-2 px-4 bg-[#007BFF] hover:bg-[#0056b3] text-white rounded-md transition-colors">
+                    <button type="button" className="w-full py-2 px-4 bg-[#007BFF] hover:bg-[#0056b3] text-white rounded-md transition-colors">
                       Continue with email
                     </button>
-                    <button className="w-full py-2 px-4 bg-white dark:bg-[#222222] border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white rounded-md flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-[#333333] transition-colors">
+                    <button type="button" className="w-full py-2 px-4 bg-white dark:bg-[#222222] border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white rounded-md flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-[#333333] transition-colors">
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -125,11 +126,13 @@ function AppContent() {
           </>
         )}
         <main className={`flex-1 transition-all duration-300 ${!isMobilePortrait && (isCollapsed ? 'ml-20' : 'ml-48')}`} style={isMobilePortrait ? { marginTop: 56 } : {}}>
+          {/* @ts-ignore: React Router Outlet type issue in strict TypeScript */}
           <Outlet />
         </main>
       </div>
     </ThemeProvider>
-  </LanguageProvider>;
+  </LanguageProvider>
+  );
 }
 
 export default function App() {

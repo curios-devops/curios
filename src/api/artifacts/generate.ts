@@ -18,18 +18,18 @@ export interface GenerateArtifactResponse {
   createdAt: Date;
 }
 
-export async function generateArtifactFromPrompt(
+export function generateArtifactFromPrompt(
   prompt: string,
   category?: 'docs' | 'images' | 'games' | 'data' | 'webs',
   type?: string
-): Promise<GenerateArtifactResponse> {
+): GenerateArtifactResponse {
   try {
     // Detect category and type if not provided
     const finalCategory = category || detectCategory(prompt);
     const finalType = type || detectType(prompt, finalCategory);
 
     // Mock OpenAI call - replace with actual OpenAI integration
-    const artifact = await generateArtifact(prompt, finalCategory, finalType);
+    const artifact = generateArtifact(prompt, finalCategory, finalType);
 
     return artifact;
   } catch (error) {
@@ -105,7 +105,7 @@ function detectType(prompt: string, category: string): string {
   }
 }
 
-async function generateArtifact(prompt: string, category: 'docs' | 'images' | 'games' | 'data' | 'webs', type: string): Promise<GenerateArtifactResponse> {
+function generateArtifact(prompt: string, category: 'docs' | 'images' | 'games' | 'data' | 'webs', type: string): GenerateArtifactResponse {
   // This would integrate with your existing OpenAI setup
   // For now, we'll create mock content
   
@@ -142,7 +142,7 @@ async function generateArtifact(prompt: string, category: 'docs' | 'images' | 'g
   */
 
   // Mock content generation - replace with actual OpenAI API call
-  const content = await generateMockContent(prompt, category, type);
+  const content = generateMockContent(prompt, category, type);
   
   return {
     id: generateId(),
@@ -155,7 +155,7 @@ async function generateArtifact(prompt: string, category: 'docs' | 'images' | 'g
   };
 }
 
-async function generateMockContent(prompt: string, category: string, type: string): Promise<string> {
+function generateMockContent(prompt: string, category: string, type: string): string {
   // Mock content based on type - replace with actual OpenAI integration
   
   if (type === 'game' || type === 'arcade') {

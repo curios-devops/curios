@@ -1,8 +1,8 @@
 import { supabase } from './supabase.ts';
 import { AuthError } from '@supabase/supabase-js';
-import { AUTH_CONFIG } from '../services/auth/config.ts';
-import { COOKIE_OPTIONS } from '../services/auth/config.ts';
-import type { AuthResponse, CookieOptions } from '../services/auth/types.ts';
+import { AUTH_CONFIG } from '../commonApp/auth/config';
+import { COOKIE_OPTIONS } from '../commonApp/auth/config';
+import type { AuthResponse, CookieOptions } from '../commonApp/auth/types';
 
 export async function signInWithEmail(email: string): Promise<Partial<AuthResponse>> {
   try {

@@ -1,4 +1,16 @@
-// Netlify function to proxy OpenAI Responses API with swarm architecture support
+const { OpenAI } = require('openai');
+
+// Ensure API key is available
+if (!process.env.OPENAI_API_KEY) {
+  console.error('OPENAI_API_KEY environment variable is not set');
+}
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  // Organization and project headers are automatically handled by the SDK
+  // when using environment variables OPENAI_ORG_ID and OPENAI_PROJECT_ID
+});
+
 exports.handler = async (event, context) => {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -6,277 +18,127 @@ exports.handler = async (event, context) => {
       statusCode: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      }
+      },
+      body: '',
     };
   }
 
-  // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ error: 'Method not allowed' })
+      body: JSON.stringify({ error: 'Method not allowed' }),
     };
   }
 
   try {
-    // Use OPENAI_API_KEY (server-side environment variable)
-    const apiKey = process.env.OPENAI_API_KEY;
-    console.log('🔑 Debug: API key check - Length:', apiKey?.length, 'Starts with sk-:', apiKey?.startsWith('sk-'));
-    if (!apiKey) {
-      console.error('Missing OpenAI API key. Available env vars:', Object.keys(process.env).filter(k => k.includes('OPENAI')));
-      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY in Netlify environment variables.');
-    }
+    const { 
+      input, 
+      model = 'gpt-4.1', // Updated to use gpt-4.1 as per official example
+      temperature = 0.3,
+      max_output_tokens = 2000, // Changed from max_completion_tokens
+      response_format, // Will be converted to text.format
+      reasoning_effort = 'medium'
+    } = JSON.parse(event.body);
 
-    let requestBody;
-    try {
-      requestBody = JSON.parse(event.body || '{}');
-    } catch (parseError) {
+    if (!input) {
       return {
         statusCode: 400,
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+        body: JSON.stringify({ error: 'Input is required' }),
       };
     }
 
-    const { input, query, searchResults, model = 'gpt-4o-mini', ...rest } = requestBody;
+    console.log('OpenAI Responses API call:', {
+      model, 
+      inputLength: typeof input === 'string' ? input.length : JSON.stringify(input).length 
+    });
+
+    // Use the official OpenAI Responses API format
+    const requestParams = {
+      model,
+      input
+    };
+
+    // Add optional parameters only if provided
+    if (temperature !== undefined) requestParams.temperature = temperature;
+    if (max_output_tokens !== undefined) requestParams.max_output_tokens = max_output_tokens;
     
-    console.log('Received request for model:', model);
-    console.log('Has input:', !!input);
-    console.log('Has query:', !!query);
-    console.log('Has searchResults:', !!searchResults);
+    // Note: reasoning_effort is not supported with gpt-4.1, so we don't include it
+    // if (reasoning_effort) {
+    //   requestParams.reasoning = { effort: reasoning_effort };
+    // }
     
-    // Handle different input formats for swarm architecture integration
-    let finalInput;
-    
-    if (query && searchResults) {
-      // Swarm architecture: combine query with search results
-      const searchContext = Array.isArray(searchResults) ? searchResults
-        .slice(0, 5) // Limit to 5 results to control token usage
-        .map((result, index) => `[${index + 1}] ${result.title}: ${result.content?.slice(0, 200)}...`)
-        .join('\n\n') : '';
-      
-      finalInput = `Query: ${query}\n\nRelevant Search Results:\n${searchContext}\n\nPlease provide a comprehensive answer based on the search results above.`;
-      
-      // For Responses API, convert to message format for better compatibility
-      if (model === 'gpt-5-mini' || model === 'gpt-4o-mini') {
-        finalInput = [
-          {"role": "system", "content": "You are a helpful AI assistant that provides comprehensive answers based on search results."},
-          {"role": "user", "content": finalInput}
-        ];
-      }
-      
-      // Basic token estimation (4 chars ≈ 1 token) - Optimized for performance
-      const contentToEstimate = Array.isArray(finalInput) 
-        ? finalInput.map(msg => msg.content).join(' ')
-        : finalInput;
-      const estimatedTokens = contentToEstimate.length / 4;
-      console.log('Estimated tokens:', estimatedTokens);
-      
-      // More aggressive truncation for better performance
-      if (estimatedTokens > 2500) { // Reduced from 3000 to 2500
-        // Truncate content if too long
-        if (Array.isArray(finalInput)) {
-          // For message arrays, truncate the user message content
-          const userMsgIndex = finalInput.findIndex(msg => msg.role === 'user');
-          if (userMsgIndex !== -1) {
-            const maxChars = 2500 * 4; // ~2500 tokens
-            finalInput[userMsgIndex].content = finalInput[userMsgIndex].content.slice(0, maxChars) + '...[truncated for performance]';
-          }
-        } else {
-          // For string input
-          const maxChars = 2500 * 4; // ~2500 tokens
-          finalInput = finalInput.slice(0, maxChars) + '...[truncated for performance]';
-        }
-        console.log('Content truncated to improve processing speed');
-      }
-    } else if (input) {
-      // Direct input format 
-      if (model === 'gpt-5-mini' || model === 'gpt-4o-mini') {
-        // Modern models expect array of messages
-        if (typeof input === 'string') {
-          finalInput = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": input}
-          ];
-        } else if (Array.isArray(input)) {
-          finalInput = input;
-        } else {
-          finalInput = [
-            {"role": "user", "content": input.content || input.toString()}
-          ];
-        }
+    // Handle response_format according to new API format
+    if (response_format) {
+      if (response_format.type === 'json_object') {
+        requestParams.text = { format: { type: 'json_object' } };
+      } else if (response_format.type === 'text') {
+        requestParams.text = { format: { type: 'text' } };
       } else {
-        // Other models expect string input
-        finalInput = typeof input === 'string' ? input : (input.content || input.toString());
-      }
-    } else {
-      throw new Error('Either input or (query + searchResults) must be provided');
-    }
-
-    // Prepare OpenAI API request - simplified for compatibility
-    const openAIRequestBody = {
-      model: model,
-      input: finalInput
-    };
-
-    // For gpt-5-mini, we need specific parameters to get output_text
-    if (model === 'gpt-5-mini') {
-      // Add text format specification (required for gpt-5-mini)
-      openAIRequestBody.text = {
-        format: { type: 'text' }
-      };
-      
-      // Use optimized token limit for faster processing
-      openAIRequestBody.max_output_tokens = Math.min(rest.max_completion_tokens || 500, 800);
-    } else {
-      // For other models, use standard parameters with optimization
-      if (rest.max_completion_tokens) {
-        // Use max_output_tokens for Responses API (same as gpt-5-mini)
-        openAIRequestBody.max_output_tokens = Math.min(rest.max_completion_tokens || 1200, 1500); // Cap at 1500 for performance
+        // Default to text format
+        requestParams.text = { format: { type: 'text' } };
       }
     }
 
-    // Add reasoning configuration only for models that support it
-    // Currently, reasoning is only supported by models like gpt-o1, not gpt-4o-mini
-    if (rest.reasoning_effort && (model.includes('o1') || model.includes('gpt-5'))) {
-      openAIRequestBody.reasoning = {
-        effort: rest.reasoning_effort || 'medium'
-      };
-    }
+    const response = await client.responses.create(requestParams);
 
-    // Add temperature and top_p only for models that support them
-    if (model !== 'gpt-5-mini') {
-      if (rest.temperature !== undefined) {
-        openAIRequestBody.temperature = rest.temperature;
-      }
-      if (rest.top_p !== undefined) {
-        openAIRequestBody.top_p = rest.top_p;
-      }
-    }
-
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    };
-
-    const orgId = process.env.OPENAI_ORG_ID;
-    const projectId = process.env.OPENAI_PROJECT_ID;
-    if (orgId) headers['OpenAI-Organization'] = orgId;
-    if (projectId) headers['OpenAI-Project'] = projectId;
-
-    console.log('Making OpenAI API call with timeout...');
-    
-    // Add timeout to OpenAI API call
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log('OpenAI API call timeout triggered');
-      controller.abort();
-    }, 25000); // 25 second timeout
-
-    try {
-      const response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(openAIRequestBody),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('OpenAI Responses API error:', response.status, errorText);
-        return {
-          statusCode: response.status,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            error: `OpenAI API error: ${response.status}`,
-            details: errorText
-          })
-        };
-      }
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      
-      if (fetchError.name === 'AbortError') {
-        console.error('OpenAI API call timed out after 25 seconds');
-        return {
-          statusCode: 408,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            error: 'OpenAI API call timeout',
-            details: 'Request timed out after 25 seconds'
-          })
-        };
-      }
-      
-      console.error('OpenAI API call failed:', fetchError);
-      throw fetchError;
-    }
-
-    const data = await response.json();
-    console.log('Successfully received response from OpenAI');
-    
-    // Extract output_text from the response structure
+    // Extract the output text according to the official API response format
     let output_text = '';
-    if (data.output && Array.isArray(data.output)) {
-      // Find the first message with content
-      const messageOutput = data.output.find(item => item.type === 'message' && item.content);
+    
+    // Handle the official response format from the example
+    if (response.output && Array.isArray(response.output)) {
+      const messageOutput = response.output.find(item => item.type === 'message');
       if (messageOutput && messageOutput.content && Array.isArray(messageOutput.content)) {
-        // Find the text content
-        const textContent = messageOutput.content.find(content => content.type === 'output_text' && content.text);
-        if (textContent) {
+        const textContent = messageOutput.content.find(content => content.type === 'output_text');
+        if (textContent && textContent.text) {
           output_text = textContent.text;
         }
       }
     }
-    
-    // Add the extracted output_text to the response for compatibility
-    const enhancedData = {
-      ...data,
-      output_text: output_text
-    };
-    
-    console.log('Extracted output_text length:', output_text.length);
-    
+
+    // Log successful response
+    console.log('OpenAI Responses API success:', {
+      model: response.model,
+      status: response.status,
+      outputLength: output_text.length,
+      usage: response.usage
+    });
+
     return {
       statusCode: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate'
       },
-      body: JSON.stringify(enhancedData)
+      body: JSON.stringify({
+        success: true,
+        content: output_text,
+        output_text: output_text, // for backward compatibility
+        model: response.model,
+        usage: response.usage,
+        response_id: response.id
+      }),
     };
+
   } catch (error) {
-    console.error('OpenAI Responses proxy error:', error);
+    console.error('OpenAI API Error:', error);
+    
     return {
       statusCode: 500,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ 
-        error: error.message || 'OpenAI Responses proxy failed',
-        timestamp: new Date().toISOString()
-      })
+      body: JSON.stringify({
+        error: 'Failed to process request',
+        details: error.message,
+      }),
     };
   }
 };

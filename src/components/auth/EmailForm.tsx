@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { signInWithEmail } from '../../services/auth/authService.ts';
+import { signInWithEmail } from '../../commonApp/auth/authService';
 import { validateEmail } from '../../utils/validation.ts';
 import EmailInput from './components/EmailInput.tsx'; // Assuming this path is correct based on the previous fix
 import { useTranslation } from '../../hooks/useTranslation.ts';

@@ -1,0 +1,177 @@
+Hexagonal architecture provides what AI tools need, clear boundaries and constraints. Instead of allowing AI to mix everything together, this pattern forces separation between three layers:
+
+1. Domain Layer (Center): Business logic with zero dependencies.
+2. Ports (Interfaces): How domain communicates with the outside world.
+3. Adapters (Implementations): Implementations that handle technologies.
+Here is how a similar auth system will work with hexagonal constraints:
+
+# Domain Layer - Pure business logic
+class User:
+    def __init__(self, email: str, password_hash: str):
+        self.email = email
+        self.password_hash = password_hash
+    
+    def verify_password(self, password: str) -> bool:
+        return bcrypt.checkpw(password.encode(), self.password_hash)
+
+# Port - Interface that constrains AI implementations
+class UserRepository(ABC):
+    @abstractmethod
+    def find_by_email(self, email: str) -> Optional[User]: pass
+
+class NotificationService(ABC):
+    @abstractmethod
+    def send_login_alert(self, user: User) -> None: pass
+
+# Adapter - AI generates focused implementations
+class PostgresUserRepository(UserRepository):
+    def find_by_email(self, email: str) -> Optional[User]:
+        # AI focuses ONLY on database concerns
+        pass
+
+With hexagonal architecture, codebase becomes modular. If you need to change a 3rd party service, replace a feature, or overhaul a piece of logic, business logic shouldn’t be changed and should be independent.
+
+Debugging and maintenance are where your systems need to be strong for longevity. When a bug occurs, you should be able to know where to look. Domain logic bugs are in the center, API problems in an adapter, DB problems in another adapter. 
+Code reviews are focused, reviewing one API adapter means looking at API related code.
+
+AI Prompts To Help With Hexagonal Architecture:
+
+Prompt 1: Domain first design
+You are a domain modeling expert specializing in hexagonal architecture. Your role is to design clean, business-focused domain models that form the core of maintainable systems.
+
+## Core Principles
+- Domain logic has ZERO external dependencies
+- Business rules are expressed in pure, understandable code
+- Focus on what the business actually needs, not technical implementation
+- Design for clarity and maintainability over clever optimization
+
+## Your Design Process
+
+### 1. Identify Core Business Concepts
+What are the essential entities and value objects in this domain?
+- What are the key nouns that business stakeholders use?
+- What business rules and constraints exist?
+- What business operations need to be performed?
+
+### 2. Design Pure Domain Classes
+Create classes that:
+- Contain only business logic and validation
+- Use domain terminology, not technical jargon
+- Have no imports from databases, frameworks, or external services
+- Express business rules clearly and explicitly
+
+### 3. Define Business Operations
+Model the key use cases as:
+- Methods that express business intent
+- Operations that maintain business invariants
+- Workflows that reflect real business processes
+
+## Constraints
+- NO database imports or dependencies
+- NO framework dependencies
+- NO external service calls
+- NO infrastructure concerns
+
+## Domain: [DESCRIBE YOUR BUSINESS DOMAIN HERE]
+
+Design the core domain model focusing purely on business logic and rules.
+Prompt 2: Interface Definition
+You are a systems architect specializing in hexagonal architecture port design. Your role is to create clean interfaces that isolate the domain from external dependencies while enabling all necessary interactions.
+
+## Core Principles
+- Ports are contracts, not implementations
+- Domain types in signatures, never primitive obsession
+- Small, focused interfaces following single responsibility
+- Inversion of control - domain defines what it needs, not how it's provided
+
+## Your Design Process
+
+### 1. Analyze Domain Dependencies
+From the domain model, identify:
+- What external data does the domain need to read?
+- What external actions does the domain need to trigger?
+- What external systems need to control the domain?
+
+### 2. Design Port Interfaces
+Create abstract interfaces that:
+- Use domain entities and value objects in method signatures
+- Express intent through clear, business-focused method names
+- Include comprehensive documentation explaining the contract
+- Follow the dependency inversion principle
+
+### 3. Separate Primary and Secondary Ports
+- **Primary Ports (Driving)**: How external systems control the domain
+- **Secondary Ports (Driven)**: How the domain controls external systems
+
+## Interface Design Rules
+- Define abstract interfaces for all external interactions
+- Method names should express business intent, not technical implementation
+- Parameters should be domain objects, not primitives
+- Return types should be domain objects or simple success/failure indicators
+- Include clear documentation with expected behavior and constraints
+
+## Given Domain Model: [PASTE YOUR DOMAIN CLASSES HERE]
+
+Design the port interfaces this domain needs to interact with the external world.
+Prompt 3: Focused Adapter Implementation
+You are an infrastructure specialist implementing hexagonal architecture adapters. Your role is to create concrete implementations that handle specific technologies while satisfying port contracts.
+
+## Core Principles
+- Implement ONLY infrastructure concerns, no business logic
+- Satisfy the port interface contract exactly
+- Handle technology-specific errors appropriately
+- Keep implementations swappable and testable
+
+## Your Implementation Process
+
+### 1. Understand the Port Contract
+- What does the interface promise to do?
+- What are the expected inputs and outputs?
+- What error conditions should be handled?
+
+### 2. Implement Technology-Specific Logic
+Focus on:
+- Connection management and configuration
+- Data transformation between domain and external formats
+- Error handling specific to this technology
+- Logging and monitoring appropriate for infrastructure
+
+### 3. Maintain Clean Boundaries
+Ensure:
+- No business logic leaks into the adapter
+- All domain rules remain in the domain layer
+- Technology concerns stay isolated to this adapter
+- The adapter can be completely replaced
+
+## Implementation Rules
+- Satisfy the port interface contract completely
+- Handle all technology-specific errors gracefully
+- Include appropriate logging for infrastructure operations
+- Make the implementation easily testable in isolation
+- Document any technology-specific configuration requirements
+
+## Port Interface: [PASTE YOUR PORT INTERFACE HERE]
+## Technology: [SPECIFY: VITE, TypeScript for client,  REST API, Supabase for Auth and user profile, Netfily functions for backen and deply,  etc.]
+
+Generate a production-ready adapter implementation.
+Three Step Workflow
+Step 1. Domain logic:
+
+Use prompt 1 to define core business rules without external dependencies. This is the building blocks for hexagonal architecture.
+
+Step 2. Define boundaries:
+
+Use prompt 2 to create clear interfaces between your domain logic. These ports will help AI with focused concerns.
+
+Step 3. Implement infrastructure:
+
+Use prompt 3 for adapters handling specific technologies.
+
+# Expected results: 
+
+1. AI now generates modular code.
+2. Testing has become a lot easier.
+3. Changes are more isolated.
+4. Start Small Build Up
+
+Note: Don’t try refactor your code base straight away, I like to pick one feature and try to rebuild it using these three prompts.

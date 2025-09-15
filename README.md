@@ -1,7 +1,37 @@
 ## CuriosAI
-An AI-powered search engine building using Bolt tech stack, designed to provide comprehensive answers by utilizing advanced machine learning algorithms. It’s been mainly writing itself, with with a light touch of human guidance.
+An AI-powered search engine, designed to provide comprehensive answers by utilizing advanced machine learning algorithms. It’s been mainly writing itself, with with a light touch of human guidance.
 
-## APP DESCRIPTION
+## Documentation
+
+Project documentation is organized in the following structure:
+
+- **/docs**
+  - **/architecture** - System architecture and design decisions
+    - `SERVICE_FIRST_ARCHITECTURE.md` - Service-first architecture overview
+    - `SWARM_ARCHITECTURE_GUIDE.md` - Swarm architecture implementation guide
+    - **/decisions** - Key architectural decisions
+      - `project-structure.md` - Project structure and organization
+  
+  - **/features** - Feature documentation
+    - `researcher-feature.md` - Documentation for the researcher feature
+  
+  - **/implementation-notes** - Technical implementation details
+    - `simple-openai-integration.md` - Simple OpenAI API integration guide
+    - `OPENAI_RESPONSES_API_IMPLEMENTATION.md` - OpenAI API integration details
+    - `RESEARCHER_IMPLEMENTATION_SUMMARY.md` - Implementation notes for the researcher feature
+    - `WRITER_AGENT_*` - Various writer agent implementation notes
+  
+  - **/guides** - How-to guides and references
+    - `DEPLOYMENT.md` - General deployment instructions and version history
+    - `NETLIFY_FUNCTIONS_GUIDE.md` - Guide to Netlify functions
+    - `AGENTS.md` - Documentation about agent architecture
+  
+  - **/changelog** - Project changes and updates
+    - `DIRECTORY_REORGANIZATION_COMPLETE.md`
+    - `PATH_UPDATE_COMPLETION.md`
+    - `TAVILY_FIXES_COMPLETE.md`
+
+## App Description
 CuriosAI is an AI-powered searching tool or an multiagent AI-powered search engine that goes deep into the internet to find answers. Inspired by Perplexity AI, it's an option that not just searches the web but understands your questions. It uses advanced machine learning algorithms to refine results and provides clear answers with sources cited.
 
 Using Brave/Tavily/SearxNG to stay current and fully open source, CuriosAI ensures you always get the most up-to-date information without compromising your privacy. Also backed by SearXNG, to ensure user always get answered.
@@ -145,3 +175,34 @@ Insights	/insights-results	InsightsResults	No
 Research	/research-results	ResearcherResults	?pro=true
 Labs	/labs-results	LabsResults	No
 Pro Labs	/pro-labs-results	LabsResults	?pro=true
+
+Our app is Service structure organized with folders by service family first, then split inside into tiers and their subcomponents (pages, agents, tools). This keeps everything for a single service cohesive in one place, instead of scattering search-related logic across multiple top-level folders.
+Follow this eschema: 
+/services
+   /search
+      /regular
+         /pages
+         /agents
+         /tools
+      /pro
+         /pages
+         /agents
+         /tools
+   /research
+      /regular
+         /pages
+         /agents
+         /tools
+      /pro
+         /pages
+         /agents
+         /tools
+   /lab
+      /regular
+         /pages
+         /agents
+         /tools
+      /pro
+         /pages
+         /agents
+         /tools

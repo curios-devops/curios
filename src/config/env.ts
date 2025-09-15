@@ -1,3 +1,4 @@
+import process from "node:process";
 import { logger } from '../utils/logger';
 
 // Environment variable validation and configuration
@@ -8,9 +9,6 @@ const requiredEnvVars = {
 
 // Optional environment variables with fallbacks
 const optionalEnvVars = {
-  VITE_OPENAI_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_OPENAI_API_KEY : process.env.VITE_OPENAI_API_KEY) || '',
-  VITE_OPENAI_ORG_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_OPENAI_ORG_ID : process.env.VITE_OPENAI_ORG_ID) || '',
-  VITE_OPENAI_PROJECT_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_OPENAI_PROJECT_ID : process.env.VITE_OPENAI_PROJECT_ID) || '',
   VITE_ADSENSE_PUB_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ADSENSE_PUB_ID : process.env.VITE_ADSENSE_PUB_ID) || '',
   VITE_ADSENSE_SIDEBAR_SLOT: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ADSENSE_SIDEBAR_SLOT : process.env.VITE_ADSENSE_SIDEBAR_SLOT) || '',
   VITE_RAPIDAPI_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_RAPIDAPI_KEY : process.env.VITE_RAPIDAPI_KEY) || '',
@@ -35,11 +33,8 @@ export const env = {
     url: requiredEnvVars.VITE_SUPABASE_URL || '',
     anonKey: requiredEnvVars.VITE_SUPABASE_ANON_KEY || '',
   },
-  openai: {
-    apiKey: optionalEnvVars.VITE_OPENAI_API_KEY,
-    orgId: optionalEnvVars.VITE_OPENAI_ORG_ID,
-    projectId: optionalEnvVars.VITE_OPENAI_PROJECT_ID,
-  },
+  // NOTE: OpenAI API keys are handled server-side only via Netlify functions
+  // Never expose OpenAI API keys to the client
   adsense: {
     pubId: optionalEnvVars.VITE_ADSENSE_PUB_ID,
     sidebarSlot: optionalEnvVars.VITE_ADSENSE_SIDEBAR_SLOT,

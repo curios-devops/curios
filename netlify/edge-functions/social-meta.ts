@@ -1,5 +1,17 @@
 // Edge Function for Dynamic Social Media Meta Tags
-export default async function handler(request: Request, context: any) {
+interface EdgeContext {
+  next: () => Promise<Response>;
+  geo?: {
+    city?: string;
+    country?: string;
+    region?: string;
+  };
+  ip?: string;
+  cookies?: Map<string, string>;
+  params?: Record<string, string>;
+}
+
+export default async function handler(request: Request, context: EdgeContext) {
   try {
     const url = new URL(request.url);
     const query = url.searchParams.get('q') || url.searchParams.get('query') || '';

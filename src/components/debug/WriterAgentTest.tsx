@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { WriterAgent } from '../../services/agents/writerAgent';
-import { ResearchResult } from '../../services/agents/types';
+import { LabWriterAgent as WriterAgent } from '../../services/lab/regular/agents/writerAgent';
+import type { ResearchResult } from '../../services/research/types';
 import { logger } from '../../utils/logger';
 
 export const WriterAgentTest: React.FC = () => {
   const [testing, setTesting] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<ResearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const runTest = async () => {
@@ -65,9 +65,10 @@ export const WriterAgentTest: React.FC = () => {
       <h3 className="font-bold mb-2">WriterAgent Test</h3>
       
       <button
+        type="button"
         onClick={runTest}
         disabled={testing}
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
       >
         {testing ? 'Testing...' : 'Test WriterAgent'}
       </button>

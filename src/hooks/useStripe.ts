@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useSession } from './useSession';
-import { createCheckoutSession, checkSubscription } from '../services/stripe/api';
-import { STRIPE_CONFIG } from '../services/stripe/config';
+import { createCheckoutSession, checkSubscription } from '../commonApp/stripe/api';
+import { STRIPE_CONFIG } from '../commonApp/stripe/config';
 
 // Initialize Stripe once
 const stripePromise = STRIPE_CONFIG.publishableKey

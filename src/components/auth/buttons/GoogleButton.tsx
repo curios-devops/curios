@@ -1,4 +1,4 @@
-import { signInWithGoogle } from '../../../services/auth/google.ts';
+import { signInWithGoogle } from '../../../commonApp/auth/google';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useTheme } from '../../theme/ThemeContext.tsx';
 

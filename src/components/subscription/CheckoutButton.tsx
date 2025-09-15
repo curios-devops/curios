@@ -1,7 +1,7 @@
 import React from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useStripe } from '../../hooks/useStripe';
-import { STRIPE_CONFIG } from '../../services/stripe/config';
+import { STRIPE_CONFIG } from '../../commonApp/stripe/config';
 
 interface CheckoutButtonProps {
   interval: 'month' | 'year';

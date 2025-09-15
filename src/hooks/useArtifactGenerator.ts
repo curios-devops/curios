@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Artifact, ArtifactGenerationRequest } from '../types/artifacts';
+import { UIArtifact, ArtifactGenerationRequest } from '../commonApp/types/index';
 
 export const useArtifactGenerator = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -9,7 +9,7 @@ export const useArtifactGenerator = () => {
   const generateArtifact = async (
     request: ArtifactGenerationRequest,
     onStep?: (step: string, subtaskList?: string[], currentSubtask?: string) => void
-  ): Promise<Artifact | null> => {
+  ): Promise<UIArtifact | null> => {
     setIsGenerating(true);
     setError(null);
 
