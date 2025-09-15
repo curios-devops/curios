@@ -114,9 +114,15 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
               './src/services/lab/regular/agents/orchestrator.ts'
             ],
             
-            // Common service chunks
+            // Common service chunks - reduced to avoid circular dependencies
             'common-service': [
               './src/commonService/openai/secureOpenAI.ts',
+              './src/commonService/utils/constants.ts',
+              './src/commonService/utils/types.ts'
+            ],
+            
+            // Search tools in separate chunk to prevent initialization issues
+            'search-tools': [
               './src/commonService/searchTools/tavily.ts',
               './src/commonService/searchTools/brave.ts',
               './src/commonService/searchTools/searxng.ts'

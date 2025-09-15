@@ -121,12 +121,28 @@ export class RateLimitQueue {
   }
 }
 
-// Create singleton instance
-export const rateLimitQueue = new RateLimitQueue();
+// Create singleton instance with lazy initialization
+let rateLimitQueueInstance: RateLimitQueue | null = null;
 
-// Clean up on page unload
-if (typeof globalThis !== 'undefined') {
-  globalThis.addEventListener('beforeunload', () => {
-    rateLimitQueue.cleanup();
-  });
-}
+export const rateLimitQueue = {
+  add<T>(operation: () => Promise<T>): Promise<T> {
+    if (!rateLimitQueueInstance) {
+      rateLimitQueueInstance = new RateLimitQueue();
+      
+      // Clean up on page unload
+      if (typeof globalThis !== 'undefined') {
+        globalThis.addEventListener('beforeunload', () => {
+          rateLimitQueueInstance?.cleanup();
+        });
+      }
+    }
+    return rateLimitQueueInstance.add(operation);
+  },
+  
+  cleanup() {
+    if (rateLimitQueueInstance) {
+      rateLimitQueueInstance.cleanup();
+      rateLimitQueueInstance = null;
+    }
+  }
+};

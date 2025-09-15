@@ -1,13 +1,12 @@
 import { Artifact, ArtifactStep, Citation } from '../../../../../commonApp/types/index';
 import { searxngSearch } from '../../../../../commonService/searchTools/searxng';
-import { secureOpenAI } from '../../../../secureOpenAI.ts';
-import { env } from '../../../../../config/env.ts';
+import { secureOpenAI } from '../../../../../commonService/openai/secureOpenAI.ts';
 
 // --- OpenAI websearch tool integration ---
 // Uses secureOpenAI with the Responses API (web_search_preview)
-// Fallback to DuckDuckGo/SearxNG if OpenAI API key is not configured or fails
+// Fallback to DuckDuckGo/SearxNG if OpenAI service is not available
 
-const hasOpenAI = !!env.openai.apiKey;
+const hasOpenAI = true; // secureOpenAI always available via Netlify functions
 
 function parseCitationsFromOpenAI(response: any): Citation[] {
   // Find annotations in the response
