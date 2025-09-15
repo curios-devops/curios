@@ -2,7 +2,6 @@ import { SearchResponse } from '../../commonApp/types/index';
 import { SwarmController } from './pro/agents/swarmController.ts';
 import { SearchRetrieverAgent } from './regular/agents/searchRetrieverAgent.ts';
 import { SearchWriterAgent } from './regular/agents/searchWriterAgent.ts';
-import { handleSupabaseOperation } from '../../lib/supabase.ts';
 import { logger } from '../../utils/logger.ts';
 
 export class SearchError extends Error {
@@ -35,18 +34,16 @@ export async function performSearch(
 
     const { isPro = false, onStatusUpdate } = options;
 
-    // Wrap the search operation with Supabase error handling.
-    return await handleSupabaseOperation(
-      async () => {
-        if (isPro) {
-          // PRO SEARCH: Use SwarmController (includes PerspectiveAgent)
-          logger.info('Using Pro Search flow with SwarmController', { query, isPro });
-          
-          const { research, article, images, videos } = await swarmController.processQuery(
-            query,
-            onStatusUpdate,
-            true // isPro = true
-          );
+    // Execute search operation directly (no Supabase wrapper needed)
+    if (isPro) {
+      // PRO SEARCH: Use SwarmController (includes PerspectiveAgent)
+      logger.info('Using Pro Search flow with SwarmController', { query, isPro });
+      
+      const { research, article, images, videos } = await swarmController.processQuery(
+        query,
+        onStatusUpdate,
+        true // isPro = true
+      );
           
           logger.debug('Pro search service received data from swarm controller', {
             hasResearch: !!research,
@@ -173,17 +170,6 @@ export async function performSearch(
 
           return response;
         }
-      },
-      // Fallback response if the operation fails.
-      {
-        answer:
-          'We apologize, but we could not process your search at this time. Please try again in a moment.',
-        sources: [],
-        images: [],
-        videos: [],
-        provider: isPro ? 'Pro Search' : 'Standard Search',
-      }
-    );
   } catch (error) {
     logger.error('Search error:', {
       error: error instanceof Error ? error.message : error,
@@ -192,9 +178,14 @@ export async function performSearch(
       timestamp: new Date().toISOString(),
     });
 
-    throw new SearchError(
-      "We're experiencing technical difficulties. Please try again in a moment.",
-      error
-    );
+    // Return fallback response for any errors
+    return {
+      answer: 'We apologize, but we could not process your search at this time. Please try again in a moment.',
+      sources: [],
+      images: [],
+      videos: [],
+      provider: isPro ? 'Pro Search' : 'Standard Search',
+      perspectives: undefined,
+    };
   }
 }
