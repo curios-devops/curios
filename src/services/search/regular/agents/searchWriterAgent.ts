@@ -68,8 +68,14 @@ export class SearchWriterAgent {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         logger.warn('Fetch request timeout - aborting');
+        console.log('✍️ [WRITER] Fetch timeout - aborting request');
         controller.abort();
       }, 25000); // 25 second timeout for fetch
+
+      console.log('✍️ [WRITER] About to make fetch request', {
+        url: this.netlifyFunctionUrl,
+        timestamp: new Date().toISOString()
+      });
 
       const response = await fetch(this.netlifyFunctionUrl, {
         method: 'POST',
@@ -86,6 +92,12 @@ export class SearchWriterAgent {
           // Note: reasoning_effort removed as it's not supported with gpt-4.1
         }),
         signal: controller.signal
+      });
+
+      console.log('✍️ [WRITER] Fetch response received', {
+        status: response.status,
+        ok: response.ok,
+        timestamp: new Date().toISOString()
       });
 
       // Clear the timeout since the request completed
@@ -174,14 +186,29 @@ export class SearchWriterAgent {
     onStatusUpdate?: (status: string) => void
   ): Promise<AgentResponse<ArticleResult>> {
     try {
+      console.log('✍️ [WRITER] Starting SearchWriterAgent execution', {
+        hasResearch: !!research,
+        query: research?.query,
+        resultsCount: research?.results?.length || 0,
+        perspectivesCount: research?.perspectives?.length || 0,
+        timestamp: new Date().toISOString()
+      });
+      
       // CRITICAL: Signal that writer agent has started
       onStatusUpdate?.('Writer agent starting...');
       
       if (!research || !research.query) {
+        console.error('✍️ [WRITER] Invalid research data: missing query');
         throw new Error('Invalid research data: missing query');
       }
       
       const { query, results = [] } = research;
+      
+      console.log('✍️ [WRITER] Processing research data', {
+        query,
+        resultsCount: results.length,
+        timestamp: new Date().toISOString()
+      });
       
       onStatusUpdate?.('Analyzing search results...');
       
@@ -234,6 +261,14 @@ Content: ${truncatedContent}
       });
 
       onStatusUpdate?.('Generating comprehensive answer...');
+
+      console.log('✍️ [WRITER] Making OpenAI API call', {
+        sourceContextLength: sourceContext.length,
+        maxResults,
+        model: this.defaultModel,
+        url: this.netlifyFunctionUrl,
+        timestamp: new Date().toISOString()
+      });
 
       const systemPrompt = `You are an expert research analyst creating comprehensive, well-sourced articles with intelligent follow-up questions.
 

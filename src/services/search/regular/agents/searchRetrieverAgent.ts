@@ -51,6 +51,13 @@ export class SearchRetrieverAgent extends BaseAgent {
     try {
       const trimmedQuery = query.trim();
       
+      console.log('🔍 [RETRIEVER] SearchRetrieverAgent starting', {
+        query: trimmedQuery,
+        perspectivesCount: perspectives.length,
+        isPro,
+        timestamp: new Date().toISOString()
+      });
+      
       if (!trimmedQuery) {
         return {
           success: false,
@@ -351,6 +358,15 @@ export class SearchRetrieverAgent extends BaseAgent {
       // CRITICAL: Send completion signal for successful retrieval
       onStatusUpdate?.('Search completed successfully!');
       await new Promise(resolve => setTimeout(resolve, 150));
+
+      console.log('🔍 [RETRIEVER] SearchRetrieverAgent completing successfully', {
+        query: trimmedQuery,
+        perspectivesCount: perspectiveResults.length,
+        resultsCount: validResults.length,
+        imagesCount: validImages.length,
+        videosCount: validVideos.length,
+        timestamp: new Date().toISOString()
+      });
 
       logger.info('SearchRetrieverAgent returning data', {
         query: trimmedQuery,
