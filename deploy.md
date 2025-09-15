@@ -19,8 +19,7 @@
   07.06 - Ad Artifacts
   07.25 - Ad Three selector, and Homepage UI updates
   09.15 - New structure by service not artifact
-  09.15 - Fix search flow blocking issues: SearchWriterAgent parameter fixes
-
+  09.15 - Refactor search flow: Simplify and add comprehensive console logging
 # CURIOSAI  Runing Dev
 1. npm run dev
 

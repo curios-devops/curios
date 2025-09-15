@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Flow Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .search-box {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .search-btn {
+            background: #007bff;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .search-btn:hover {
+            background: #0056b3;
+        }
+        .search-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .console-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .console-info h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Search Flow Testing</h1>
+        
+        <div class="console-info">
+            <h3>📊 Console Logging Instructions</h3>
+            <p><strong>Open Developer Tools (F12) → Console Tab</strong></p>
+            <p>Look for these log sequences:</p>
+            <ul>
+                <li>🔍 <strong>[SEARCH]</strong> - Main search service operations</li>
+                <li>🔍 <strong>[RETRIEVER]</strong> - SearchRetrieverAgent operations</li>
+                <li>✍️ <strong>[WRITER]</strong> - SearchWriterAgent operations</li>
+            </ul>
+        </div>
+
+        <div class="search-form">
+            <input 
+                type="text" 
+                id="searchQuery" 
+                class="search-box" 
+                placeholder="Enter your search query (e.g., 'artificial intelligence trends 2024')"
+                value="artificial intelligence trends 2024"
+            >
+            <button id="searchBtn" class="search-btn">🔍 Test Search Flow</button>
+        </div>
+
+        <div id="status" class="status" style="display: none;"></div>
+        <div id="results" class="results" style="display: none;"></div>
+    </div>
+
+    <script type="module">
+        console.log('🧪 Search Flow Test Page Loaded');
+        console.log('🧪 Open Console (F12) to see detailed search flow logs');
+        
+        const searchBtn = document.getElementById('searchBtn');
+        const searchQuery = document.getElementById('searchQuery');
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+
+        function updateStatus(message) {
+            statusDiv.style.display = 'block';
+            statusDiv.textContent = message;
+            console.log('📊 Status Update:', message);
+        }
+
+        function showResults(response) {
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = `
+                <h3>✅ Search Completed</h3>
+                <p><strong>Provider:</strong> ${response.provider}</p>
+                <p><strong>Sources:</strong> ${response.sources?.length || 0}</p>
+                <p><strong>Images:</strong> ${response.images?.length || 0}</p>
+                <p><strong>Videos:</strong> ${response.videos?.length || 0}</p>
+                <p><strong>Answer Length:</strong> ${response.answer?.length || 0} characters</p>
+                <details>
+                    <summary>View Full Response</summary>
+                    <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">
+${JSON.stringify(response, null, 2)}
+                    </pre>
+                </details>
+            `;
+        }
+
+        function showError(error) {
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = `
+                <h3>❌ Search Failed</h3>
+                <p style="color: red;">${error}</p>
+            `;
+        }
+
+        searchBtn.addEventListener('click', async () => {
+            const query = searchQuery.value.trim();
+            if (!query) {
+                alert('Please enter a search query');
+                return;
+            }
+
+            console.log('🧪 ===== STARTING SEARCH FLOW TEST =====');
+            console.log('🧪 Query:', query);
+            console.log('🧪 Timestamp:', new Date().toISOString());
+
+            searchBtn.disabled = true;
+            searchBtn.textContent = '🔄 Searching...';
+            resultsDiv.style.display = 'none';
+
+            try {
+                updateStatus('Initializing search...');
+
+                // Import and call the search service directly
+                const { performSearch } = await import('/src/services/search/searchService.ts');
+                
+                console.log('🧪 performSearch imported successfully');
+                
+                const response = await performSearch(query, {
+                    isPro: false,
+                    onStatusUpdate: (status) => {
+                        console.log('🧪 Search Status:', status);
+                        updateStatus(status);
+                    }
+                });
+
+                console.log('🧪 ===== SEARCH FLOW TEST COMPLETED =====');
+                console.log('🧪 Result:', response);
+                
+                updateStatus('Search completed successfully!');
+                showResults(response);
+
+            } catch (error) {
+                console.error('🧪 ===== SEARCH FLOW TEST FAILED =====');
+                console.error('🧪 Error:', error);
+                
+                updateStatus('Search failed - check console for details');
+                showError(error.message);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = '🔍 Test Search Flow';
+            }
+        });
+
+        // Auto-focus the search input
+        searchQuery.focus();
+        
+        // Allow Enter key to trigger search
+        searchQuery.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
