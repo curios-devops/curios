@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { performSearch } from '../services/searchService';
+import { useLocation, useNavigate } from 'react-router';
+import { performSearch } from '../services/search/searchService';
 import { formatTimeAgo } from '../utils/time';
 import ShareMenu from '../components/ShareMenu';
 import TopBar from '../components/results/TopBar';
@@ -117,13 +117,12 @@ export default function Results() {
             showAllSources={showAllSources}
             setShowAllSources={setShowAllSources}
             statusMessage={statusMessage}
-            isPro={false}
           />
 
           {!searchState.error && (
             <Sidebar 
-              images={searchState.data?.images} 
-              videos={searchState.data?.videos}
+              isCollapsed={false}
+              toggleSidebar={() => {}}
             />
           )}
         </div>

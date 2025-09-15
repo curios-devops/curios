@@ -40,6 +40,7 @@ export interface SearchResponse {
   provider?: string;
   perspectives?: Perspective[];
   followUpQuestions?: string[];
+  citations?: CitationInfo[];
 }
 
 export interface SearchState {
@@ -82,7 +83,13 @@ export interface ResearchResult {
 export interface ArticleResult {
   content: string;
   followUpQuestions: string[];
-  citations: string[];
+  citations: CitationInfo[];
+}
+
+export interface CitationInfo {
+  url: string;
+  title: string;
+  siteName: string;
 }
 
 // Generic AgentResponse with proper typing

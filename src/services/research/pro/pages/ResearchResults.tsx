@@ -3,9 +3,9 @@ import { Loader2 } from 'lucide-react';
 import { logger } from '../../../../utils/logger.ts';
 import { formatTimeAgo } from '../../../../utils/time.ts';
 import { updateMetaTags, generateShareableMetaTags } from '../../../../utils/metaTags.ts';
-import type { ResearchData } from '../../../../commonApp/types/researchTypes';
+import type { ResearchData } from '../../types';
 import TopBar from '../../../../components/results/TopBar.tsx';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 import { ResearchManager } from '../agents/researchManager.ts';
 
 const ShareMenu = lazy(() => import('../../../../components/ShareMenu.tsx'));
@@ -77,7 +77,7 @@ export default function DeepResearchResults() {
     if (data && !isLoading) {
       const metaTags = generateShareableMetaTags(
         `Deep Research: ${query}`,
-        data.content,
+        data.markdown_report,
         data.images?.[0]?.url
       );
       updateMetaTags(metaTags);
@@ -184,15 +184,20 @@ export default function DeepResearchResults() {
                         sources: data.sources?.map((source: { title: string; url: string; content?: string }) => ({
                           title: source.title || '',
                           url: source.url || '',
-                          content: source.content || ''
+                          snippet: source.content || ''
                         })) || [],
-                        images: data.images || []
+                        images: data.images?.map((image) => ({
+                          url: image.url,
+                          alt: image.alt || 'Image',
+                          source_url: image.source
+                        })) || [],
+                        videos: [],
+                        followUpQuestions: data.followUpQuestions || []
                       }
                     }}
                     showAllSources={false}
                     setShowAllSources={() => {}}
                     statusMessage=""
-                    isPro
                   />
                 </Suspense>
 

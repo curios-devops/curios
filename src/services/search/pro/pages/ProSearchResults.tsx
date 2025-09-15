@@ -8,15 +8,6 @@ import MainContent from '../../../../components/results/MainContent.tsx';
 import { Loader2 } from 'lucide-react';
 import type { SearchState, SearchResponse, Perspective } from '../../../../types/index.ts';
 
-// Define the SearchResult type that includes all necessary properties
-interface SearchResult {
-  title?: string;
-  url?: string;
-  content?: string;
-  snippet?: string;
-  source?: string;
-  [key: string]: string | undefined;
-}
 import ProSearchSection from '../../../../components/ProSearchSection.tsx';
 import { logger } from '../../../../utils/logger.ts';
 
@@ -197,7 +188,6 @@ export default function ProSearchResults() {
                 showAllSources={showAllSources}
                 setShowAllSources={setShowAllSources}
                 statusMessage={statusMessage}
-                isPro
               />
             </div>
           </>

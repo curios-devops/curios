@@ -34,6 +34,11 @@ export interface SearchResponse {
   provider?: string;
   perspectives?: Perspective[];
   followUpQuestions?: string[];
+  citations?: Array<{
+    url: string;
+    title: string;
+    siteName: string;
+  }>;
 }
 
 export interface SearchState {

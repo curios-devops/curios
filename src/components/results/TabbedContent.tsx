@@ -192,6 +192,7 @@ export default function TabbedContent({
                       sources={data.sources} 
                       query={new URLSearchParams(globalThis.location.search).get('q') || ''} 
                       followUpQuestions={data.followUpQuestions}
+                      citations={data.citations}
                     />
                   );
                 } catch (error) {

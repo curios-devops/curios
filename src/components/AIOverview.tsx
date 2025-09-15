@@ -1,58 +1,20 @@
-import React, { useState } from 'react';
-import { FileText, Share, Download, RotateCcw, Globe, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { FileText, Share, Download, RotateCcw, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import CustomMarkdown from './CustomMarkdown';
 import Notification from './Notification';
 import type { Source } from '../types';
+import type { CitationInfo } from '../commonApp/types';
 
 interface AIOverviewProps {
   answer: string;
   sources: Source[];
   query: string;
   followUpQuestions?: string[];
+  citations?: CitationInfo[];
 }
 
-interface SourceTooltipProps {
-  source: Source;
-  children: React.ReactNode;
-}
-
-function _SourceTooltip({ source, children }: SourceTooltipProps) {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const domain = new URL(source.url).hostname.replace('www.', '');
-
-  return (
-    <div 
-      className="relative inline"
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-    >
-      {children}
-      {showTooltip && (
-        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3 w-80 max-w-sm">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-sm flex items-center justify-center">
-                <Globe size={14} className="text-gray-600 dark:text-gray-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{domain}</div>
-                <div className="text-sm font-medium text-gray-900 dark:text-white mb-2 line-clamp-2">
-                  {source.title}
-                </div>
-                <div className="text-xs text-gray-600 dark:text-gray-300 line-clamp-3">
-                  {source.snippet?.slice(0, 120)}...
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function AIOverview({ answer, sources, query, followUpQuestions }: AIOverviewProps) {
+export default function AIOverview({ answer, sources, query, followUpQuestions, citations = [] }: AIOverviewProps) {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const navigate = useNavigate();
@@ -158,7 +120,10 @@ export default function AIOverview({ answer, sources, query, followUpQuestions }
           {/* Overview Content */}
           <div className="p-6">
             <div className="prose dark:prose-invert max-w-none">
-              <CustomMarkdown className="text-gray-700 dark:text-gray-300 leading-relaxed text-base mb-6">
+              <CustomMarkdown 
+                className="text-gray-700 dark:text-gray-300 leading-relaxed text-base mb-6"
+                citations={citations}
+              >
                 {answer}
               </CustomMarkdown>
             </div>

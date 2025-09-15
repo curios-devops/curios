@@ -88,6 +88,7 @@ export async function performSearch(
                 snippet: result.content,
               })) || [],
             })).filter((p: { id: string; title: string }) => p.id && p.title) || [],
+            citations: article.citations || [],
           };
           
           logger.debug('Pro search service response', {
@@ -119,6 +120,12 @@ export async function performSearch(
             resultsCount: searchResponse.data.results?.length || 0,
             imagesCount: searchResponse.data.images?.length || 0,
             videosCount: searchResponse.data.videos?.length || 0
+          });
+          
+          // DIAGNOSTIC: Signal before writer agent execution
+          onStatusUpdate?.('Starting article generation...');
+          logger.info('About to execute SearchWriterAgent', {
+            resultsCount: searchResponse.data.results?.length || 0
           });
           
           // Step 2: SearchWriterAgent (no perspectives)
@@ -159,6 +166,7 @@ export async function performSearch(
             videos: searchResponse.data.videos || [],
             provider: 'Standard Search',
             perspectives: undefined, // regular search has no perspectives
+            citations: writerResponse.data.citations || [],
           };
           
           logger.debug('Regular search service response', {

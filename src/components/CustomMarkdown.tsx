@@ -1,15 +1,20 @@
 import React from 'react';
+import { CitationInfo } from '../commonApp/types';
+import { parseCitation } from './citations/citationParser';
+import CitationTooltip from './citations/CitationTooltip';
+import MultipleCitations from './citations/MultipleCitations';
 
 interface CustomMarkdownProps {
   children: string;
   className?: string;
+  citations?: CitationInfo[];
 }
 
-export default function CustomMarkdown({ children, className = "" }: CustomMarkdownProps) {
+export default function CustomMarkdown({ children, className = "", citations = [] }: CustomMarkdownProps) {
   // Simple markdown parser for basic formatting
-  const parseMarkdown = (text: string): JSX.Element[] => {
+  const parseMarkdown = (text: string): React.ReactElement[] => {
     const lines = text.split('\n');
-    const elements: JSX.Element[] = [];
+    const elements: React.ReactElement[] = [];
     let key = 0;
 
     lines.forEach((line, lineIndex) => {
@@ -78,64 +83,108 @@ export default function CustomMarkdown({ children, className = "" }: CustomMarkd
 
   // Parse inline formatting like **bold** and *italic*
   const parseInlineFormatting = (text: string): React.ReactNode => {
-    // Handle **bold** text
-    let result: React.ReactNode = text;
+    // Citations [Website Name] or [Website Name +X] - Convert to new citation components
+    const citationRegex = /(\[[^\]]+\])/g;
+    const parts = text.split(citationRegex);
     
-    // Citations [Source X] - Convert to numbered blue citations
-    result = text.split(/(\[Source \d+\])/).map((part, index) => {
-      const sourceMatch = part.match(/\[Source (\d+)\]/);
-      if (sourceMatch) {
-        const sourceNumber = sourceMatch[1];
+    const result = parts.map((part, index) => {
+      // Check if this part is a citation
+      if (part.match(/^\[[^\]]+\]$/)) {
+        const citationText = part.slice(1, -1); // Remove brackets
+        const parsedCitation = parseCitation(citationText, citations);
+        
+        if (parsedCitation) {
+          if (parsedCitation.type === 'single') {
+            return (
+              <CitationTooltip
+                key={`citation-${index}`}
+                citation={parsedCitation.citations[0]}
+              >
+                <span className="text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
+                  [{citationText}]
+                </span>
+              </CitationTooltip>
+            );
+          } else if (parsedCitation.type === 'multiple') {
+            return (
+              <MultipleCitations
+                key={`citation-${index}`}
+                citations={parsedCitation.citations}
+                primarySiteName={parsedCitation.siteName}
+              />
+            );
+          }
+        }
+        
+        // Fallback: display as plain text if no citation match found
         return (
-          <span 
-            key={`citation-${index}`} 
-            className="inline-flex items-center justify-center w-5 h-5 bg-[#0095FF] text-white text-xs font-medium rounded-full mx-0.5 cursor-pointer hover:bg-[#0080FF] transition-colors"
-            title={`Source ${sourceNumber}`}
-          >
-            {sourceNumber}
+          <span key={`citation-fallback-${index}`} className="text-gray-500 text-sm">
+            [{citationText}]
           </span>
         );
       }
       
-      // Bold text **text**
-      return part.split(/(\*\*[^*]+\*\*)/).map((subPart, subIndex) => {
-        if (subPart.startsWith('**') && subPart.endsWith('**')) {
-          const boldText = subPart.slice(2, -2);
-          return (
-            <strong key={`bold-${index}-${subIndex}`} className="font-bold text-gray-900 dark:text-white">
-              {boldText}
-            </strong>
-          );
-        }
-        
-        // Italic text *text*
-        return subPart.split(/(\*[^*]+\*)/).map((italicPart, italicIndex) => {
-          if (italicPart.startsWith('*') && italicPart.endsWith('*') && !italicPart.startsWith('**')) {
-            const italicText = italicPart.slice(1, -1);
-            return (
-              <em key={`italic-${index}-${subIndex}-${italicIndex}`} className="italic text-gray-700 dark:text-gray-300">
-                {italicText}
-              </em>
-            );
-          }
-          
-          // Inline code `code`
-          return italicPart.split(/(`[^`]+`)/).map((codePart, codeIndex) => {
-            if (codePart.startsWith('`') && codePart.endsWith('`')) {
-              const codeText = codePart.slice(1, -1);
-              return (
-                <code key={`code-${index}-${subIndex}-${italicIndex}-${codeIndex}`} className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">
-                  {codeText}
-                </code>
-              );
-            }
-            return codePart;
-          });
-        });
-      });
+      // Handle other inline formatting for non-citation parts
+      return parseOtherFormatting(part, index);
     });
 
     return result;
+  };
+
+  // Helper function to parse bold, italic, and code formatting
+  const parseOtherFormatting = (text: string, baseIndex: number): React.ReactNode => {
+    // Bold text **text**
+    const parts = text.split(/(\*\*[^*]+\*\*)/);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const boldText = part.slice(2, -2);
+        return (
+          <strong key={`bold-${baseIndex}-${index}`} className="font-bold text-gray-900 dark:text-white">
+            {parseItalicAndCode(boldText, `${baseIndex}-${index}`)}
+          </strong>
+        );
+      }
+      
+      return parseItalicAndCode(part, `${baseIndex}-${index}`);
+    });
+  };
+
+  // Helper function to parse italic and code formatting
+  const parseItalicAndCode = (text: string, baseKey: string): React.ReactNode => {
+    // Italic text *text*
+    const parts = text.split(/(\*[^*]+\*)/);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+        const italicText = part.slice(1, -1);
+        return (
+          <em key={`italic-${baseKey}-${index}`} className="italic text-gray-700 dark:text-gray-300">
+            {parseCode(italicText, `${baseKey}-${index}`)}
+          </em>
+        );
+      }
+      
+      return parseCode(part, `${baseKey}-${index}`);
+    });
+  };
+
+  // Helper function to parse code formatting
+  const parseCode = (text: string, baseKey: string): React.ReactNode => {
+    // Inline code `code`
+    const parts = text.split(/(`[^`]+`)/);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('`') && part.endsWith('`')) {
+        const codeText = part.slice(1, -1);
+        return (
+          <code key={`code-${baseKey}-${index}`} className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">
+            {codeText}
+          </code>
+        );
+      }
+      return part;
+    });
   };
 
   return (

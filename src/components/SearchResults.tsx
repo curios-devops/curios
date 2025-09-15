@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router';
 import { Clock, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
-import { performSearch } from '../services/searchService';
+import { performSearch } from '../services/search/searchService';
 import type { SearchState } from '../types';
 import AdBanner from './AdBanner';
 import SourcesSection from './SourcesSection';
@@ -46,7 +46,9 @@ export default function SearchResults() {
 
       try {
         setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
-        const response = await performSearch(query, setStatusMessage);
+        const response = await performSearch(query, {
+          onStatusUpdate: setStatusMessage
+        });
         setSearchState({
           isLoading: false,
           error: null,
@@ -125,7 +127,10 @@ export default function SearchResults() {
                   showAllSources={showAllSources}
                   setShowAllSources={setShowAllSources}
                 />
-                <AnswerSection answer={searchState.data.answer} />
+                <AnswerSection 
+                  answer={searchState.data.answer}
+                  citations={searchState.data.citations}
+                />
               </>
             )}
           </div>

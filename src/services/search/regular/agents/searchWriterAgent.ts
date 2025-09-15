@@ -165,6 +165,16 @@ export class SearchWriterAgent {
       const maxResults = 8; // Increase to 8 most relevant results for better coverage
       const maxContentPerResult = 600; // Increase content length for more comprehensive analysis
       
+      // Helper function to extract website name from URL
+      const extractSiteName = (url: string): string => {
+        try {
+          const domain = new URL(url).hostname;
+          return domain.replace('www.', '').split('.')[0];
+        } catch {
+          return 'Unknown Site';
+        }
+      };
+      
       const sourceContext = results
         .slice(0, maxResults)
         .map((result: SearchResult, index: number) => {
@@ -176,8 +186,11 @@ export class SearchWriterAgent {
           const truncatedContent = content.length > maxContentPerResult 
             ? content.slice(0, maxContentPerResult) + '...'
             : content;
-          return `Source ${index + 1}:
+          const siteName = extractSiteName(result.url);
+          
+          return `Source ${index + 1} - ${siteName}:
 URL: ${result.url}
+Website: ${siteName}
 Title: ${result.title}
 Content: ${truncatedContent}
 ---`;
@@ -206,12 +219,19 @@ RESPONSE FORMAT - Return a JSON object with this exact structure:
     "Follow-up question 4",
     "Follow-up question 5"
   ],
-  "citations": ["url1", "url2", "url3", "url4", "url5"]
+  "citations": [
+    {
+      "url": "url1",
+      "title": "Article Title",
+      "siteName": "Website Name"
+    }
+  ]
 }
 
 CONTENT GUIDELINES:
 - Base ALL information directly on the provided sources
-- Use [Source X] citations throughout to reference specific sources
+- Use website names for citations: [Website Name] instead of [Source X]
+- When multiple sources from same site, use: [Website Name +2] format
 - Include specific facts, dates, numbers, and quotes from the sources
 - Structure with clear sections using ### headers
 - Use **bold** for key terms and *italic* for emphasis
@@ -221,6 +241,12 @@ CONTENT GUIDELINES:
 - Focus on the most current and relevant information from sources
 - Do NOT add external knowledge not found in the provided sources
 
+CONCLUSION GUIDELINES:
+- Avoid temptation to create summary that references all sources
+- End naturally with concluding thoughts or key takeaways
+- Keep conclusions focused and concise
+- Don't force citations into the conclusion unless naturally relevant
+
 FOLLOW-UP QUESTIONS GUIDELINES:
 - Generate 5 intelligent follow-up questions that naturally extend the topic
 - Questions should explore deeper aspects, related implications, or practical applications
@@ -229,11 +255,12 @@ FOLLOW-UP QUESTIONS GUIDELINES:
 - Ensure questions build upon the information presented in the article
 
 CITATION REQUIREMENTS:
-- Use [Source X] format consistently throughout
+- Use [Website Name] format for single sources
+- Use [Website Name +2] format when 3+ sources from same site
 - Cite specific claims, statistics, quotes, and facts
 - Include multiple citations when information comes from different sources
 - Ensure every major point is properly attributed
-- List the URLs of cited sources in the citations array`;
+- Provide full citation details in the citations array with url, title, and siteName`;
 
       const userPrompt = `Query: "${query}"
 
@@ -244,13 +271,20 @@ TASK: Create a comprehensive, well-sourced article that directly addresses the q
 
 Requirements:
 - Ground ALL information in the provided sources
-- Use [Source X] citations for every major claim or fact
+- Use [Website Name] citations (not [Source X]) for every major claim or fact
+- For multiple sources from same site, use [Website Name +X] format
 - Include specific details, statistics, dates, and quotes from sources
 - Structure with clear sections that organize the information logically
 - Generate 5 thoughtful follow-up questions that extend the topic naturally
 - Focus on the most current and relevant information available in the sources
 - When sources conflict, present different perspectives clearly
 - Synthesize related information from multiple sources when appropriate
+- End with natural concluding thoughts, avoid forced summary citing all sources
+
+CITATION EXAMPLES:
+- Single source: [Wikipedia]
+- Multiple from same site: [Wikipedia +2] (for 3 total sources)
+- Different sites: [Wikipedia] [Reuters] [TechCrunch]
 
 Remember: Base your response entirely on the source material provided. Do not add external information.`;
 
@@ -309,7 +343,11 @@ Remember: Base your response entirely on the source material provided. Do not ad
             `What future trends are emerging in ${query}?`,
             `How can organizations leverage ${query} effectively?`
           ],
-          citations: results.slice(0, 5).map((r: SearchResult) => r.url)
+          citations: results.slice(0, 5).map((r: SearchResult) => ({
+            url: r.url,
+            title: r.title,
+            siteName: new URL(r.url).hostname.replace('www.', '')
+          }))
         };
         return {
           success: true,
@@ -329,9 +367,24 @@ Remember: Base your response entirely on the source material provided. Do not ad
               `What future trends are emerging in ${query}?`,
               `How can organizations leverage ${query} effectively?`
             ],
-        citations: Array.isArray(parsed.citations) 
-          ? parsed.citations 
-          : results.slice(0, 5).map((r: SearchResult) => r.url)
+        citations: Array.isArray(parsed.citations) && parsed.citations.length > 0
+          ? parsed.citations.map((citation: any) => {
+              if (typeof citation === 'string') {
+                // If citation is just a URL string, convert to CitationInfo
+                const matchingResult = results.find(r => r.url === citation);
+                return {
+                  url: citation,
+                  title: matchingResult?.title || 'Source',
+                  siteName: new URL(citation).hostname.replace('www.', '')
+                };
+              }
+              return citation; // Already a CitationInfo object
+            })
+          : results.slice(0, 5).map((r: SearchResult) => ({
+              url: r.url,
+              title: r.title,
+              siteName: new URL(r.url).hostname.replace('www.', '')
+            }))
       };
 
       // CRITICAL: Send completion signal for successful article generation

@@ -1,4 +1,3 @@
-import React from 'react';
 import SourcesSection from '../SourcesSection';
 import AnswerSection from '../AnswerSection';
 import LoadingState from './LoadingState';
@@ -10,15 +9,13 @@ interface MainContentProps {
   showAllSources: boolean;
   setShowAllSources: (show: boolean) => void;
   statusMessage: string;
-  isPro?: boolean;
 }
 
 export default function MainContent({ 
   searchState, 
   showAllSources, 
   setShowAllSources,
-  statusMessage,
-  isPro = false
+  statusMessage
 }: MainContentProps) {
   return (
     <div className="flex-1">
@@ -40,7 +37,10 @@ export default function MainContent({
             showAllSources={showAllSources}
             setShowAllSources={setShowAllSources}
           />
-          <AnswerSection answer={searchState.data.answer} />
+          <AnswerSection 
+            answer={searchState.data.answer} 
+            citations={searchState.data.citations}
+          />
         </>
       )}
     </div>

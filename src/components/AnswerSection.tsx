@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { BookOpen, ThumbsUp, ThumbsDown, Copy } from 'lucide-react';
 import CustomMarkdown from './CustomMarkdown';
 import Notification from './Notification';
+import type { CitationInfo } from '../commonApp/types';
 
 interface AnswerSectionProps {
   answer: string;
+  citations?: CitationInfo[];
 }
 
-export default function AnswerSection({ answer }: AnswerSectionProps) {
+export default function AnswerSection({ answer, citations = [] }: AnswerSectionProps) {
   const [showNotification, setShowNotification] = useState(false);
   
   const handleCopyClick = async () => {
@@ -42,7 +44,10 @@ export default function AnswerSection({ answer }: AnswerSectionProps) {
           <h2 className="text-xl font-medium text-gray-900 dark:text-white transition-colors duration-200">Answer</h2>
         </div>
         <div className="prose dark:prose-invert max-w-none">
-          <CustomMarkdown className="text-gray-600 dark:text-gray-300 leading-relaxed text-base transition-colors duration-200">
+          <CustomMarkdown 
+            className="text-gray-600 dark:text-gray-300 leading-relaxed text-base transition-colors duration-200"
+            citations={citations}
+          >
             {answer}
           </CustomMarkdown>
         </div>
