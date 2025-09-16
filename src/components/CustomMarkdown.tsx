@@ -118,7 +118,7 @@ export default function CustomMarkdown({ children, className = "", citations = [
         return (
           <span
             key={`citation-fallback-${index}`} 
-            className="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 text-white text-sm font-medium rounded-full"
+            className="inline-flex items-center px-2 py-0.5 mx-0.5 bg-blue-600 text-white text-xs font-medium rounded-md"
           >
             {citationText}
           </span>

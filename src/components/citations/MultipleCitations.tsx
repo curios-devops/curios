@@ -27,7 +27,7 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
     >
       <button
         onClick={() => handleSourceClick(citations[0].url)}
-        className="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors duration-200 cursor-pointer"
+        className="inline-flex items-center px-2 py-0.5 mx-0.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors duration-200 cursor-pointer"
         title={`${citations.length} sources from ${primarySiteName}`}
       >
         {primarySiteName} +{additionalCount}
