@@ -84,7 +84,7 @@ export class SearchWriterAgent {
           'Accept': 'application/json'
         },
         body: JSON.stringify({ 
-          query: input, // Fixed: Netlify function expects 'query' not 'input'
+          input, // Fixed: Netlify function expects 'input' not 'query'
           model: 'gpt-4.1', // Use gpt-4.1 as per official example
           temperature: 0.3,
           max_output_tokens: 2000, // Changed from max_completion_tokens
