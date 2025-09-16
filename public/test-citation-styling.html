@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Citation Styling Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">Citation Button Styling Test</h1>
+        
+        <!-- Citation Button Styles Preview -->
+        <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-xl font-semibold mb-4">Blue Rounded Citation Buttons</h2>
+            
+            <div class="space-y-4">
+                <p class="text-gray-600">
+                    Here's an example paragraph with single citations: 
+                    <button class="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors duration-200 cursor-pointer">
+                        venturebeat
+                    </button>
+                    and 
+                    <button class="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors duration-200 cursor-pointer">
+                        techcrunch
+                    </button>
+                    that are clickable and styled properly.
+                </p>
+                
+                <p class="text-gray-600">
+                    Multiple source citations look like this: 
+                    <button class="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors duration-200 cursor-pointer">
+                        wikipedia +3
+                    </button>
+                    and 
+                    <button class="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors duration-200 cursor-pointer">
+                        github +5
+                    </button>
+                    showing additional sources.
+                </p>
+                
+                <p class="text-gray-600">
+                    Citations integrate seamlessly in longer text: 
+                    "According to recent studies 
+                    <button class="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors duration-200 cursor-pointer">
+                        nature
+                    </button>
+                    and market analysis 
+                    <button class="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors duration-200 cursor-pointer">
+                        bloomberg +2
+                    </button>
+                    the technology sector continues to grow at an unprecedented rate."
+                </p>
+            </div>
+        </div>
+        
+        <!-- Interactive Hover Test -->
+        <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-xl font-semibold mb-4">Interactive Hover Modals</h2>
+            
+            <div class="space-y-4">
+                <div class="relative">
+                    <p class="text-gray-600 mb-4">
+                        Hover over these buttons to see the modal tooltips:
+                    </p>
+                    
+                    <!-- Single Citation with Hover -->
+                    <div class="relative inline-block mb-8">
+                        <button 
+                            class="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors duration-200 cursor-pointer"
+                            onmouseenter="showTooltip('single')"
+                            onmouseleave="hideTooltip('single')"
+                            onclick="window.open('https://venturebeat.com', '_blank')"
+                        >
+                            venturebeat
+                        </button>
+                        
+                        <div id="single-tooltip" class="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg p-4 hidden">
+                            <div class="flex items-start space-x-3">
+                                <img src="https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://venturebeat.com&size=16" alt="" class="w-4 h-4 mt-1 flex-shrink-0">
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-semibold text-gray-900 text-sm truncate">VentureBeat</h4>
+                                    <p class="text-gray-700 text-sm mt-1 line-clamp-2">OpenAI's new agentic coding model advances AI development capabilities</p>
+                                    <p class="text-gray-500 text-xs mt-2 line-clamp-3">Latest developments in AI coding assistance show significant improvements in code generation and debugging capabilities...</p>
+                                    <button class="text-blue-600 text-xs mt-2 hover:underline flex items-center gap-1">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="m7 17 10-10"></path>
+                                            <path d="M7 7h10v10"></path>
+                                        </svg>
+                                        Visit website →
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Multiple Citations with Hover -->
+                    <div class="relative inline-block">
+                        <button 
+                            class="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors duration-200 cursor-pointer"
+                            onmouseenter="showTooltip('multiple')"
+                            onmouseleave="hideTooltip('multiple')"
+                            onclick="window.open('https://techcrunch.com', '_blank')"
+                        >
+                            techcrunch +3
+                        </button>
+                        
+                        <div id="multiple-tooltip" class="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg p-4 hidden">
+                            <div class="mb-3">
+                                <h4 class="font-semibold text-gray-900 text-sm">Sources • 4</h4>
+                            </div>
+                            
+                            <div class="space-y-3 max-h-64 overflow-y-auto">
+                                <div class="flex items-start space-x-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200" onclick="window.open('https://techcrunch.com', '_blank')">
+                                    <img src="https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://techcrunch.com&size=16" alt="" class="w-4 h-4 mt-1 flex-shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <h5 class="font-medium text-gray-900 text-sm truncate">TechCrunch</h5>
+                                        <p class="text-gray-700 text-sm mt-1 line-clamp-2">OpenAI upgrades Codex with new features</p>
+                                        <p class="text-gray-500 text-xs mt-1 line-clamp-2">Enhanced coding capabilities and improved accuracy...</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start space-x-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200" onclick="window.open('https://techcrunch.com/ai', '_blank')">
+                                    <img src="https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://techcrunch.com&size=16" alt="" class="w-4 h-4 mt-1 flex-shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <h5 class="font-medium text-gray-900 text-sm truncate">TechCrunch</h5>
+                                        <p class="text-gray-700 text-sm mt-1 line-clamp-2">AI development tools see major improvements</p>
+                                        <p class="text-gray-500 text-xs mt-1 line-clamp-2">Industry analysis shows significant progress...</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start space-x-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200" onclick="window.open('https://techcrunch.com/startups', '_blank')">
+                                    <img src="https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://techcrunch.com&size=16" alt="" class="w-4 h-4 mt-1 flex-shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <h5 class="font-medium text-gray-900 text-sm truncate">TechCrunch</h5>
+                                        <p class="text-gray-700 text-sm mt-1 line-clamp-2">Startup funding in AI coding tools increases</p>
+                                        <p class="text-gray-500 text-xs mt-1 line-clamp-2">Investment trends show growing interest...</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start space-x-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200" onclick="window.open('https://techcrunch.com/reviews', '_blank')">
+                                    <img src="https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://techcrunch.com&size=16" alt="" class="w-4 h-4 mt-1 flex-shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <h5 class="font-medium text-gray-900 text-sm truncate">TechCrunch</h5>
+                                        <p class="text-gray-700 text-sm mt-1 line-clamp-2">Review: Latest AI coding assistants compared</p>
+                                        <p class="text-gray-500 text-xs mt-1 line-clamp-2">Comprehensive evaluation of features...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Design Specifications -->
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-semibold mb-4">Design Specifications</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Button Styling</h3>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li>• Background: <code class="bg-gray-100 px-1 rounded">bg-blue-600</code></li>
+                        <li>• Hover: <code class="bg-gray-100 px-1 rounded">hover:bg-blue-700</code></li>
+                        <li>• Text: <code class="bg-gray-100 px-1 rounded">text-white text-sm font-medium</code></li>
+                        <li>• Shape: <code class="bg-gray-100 px-1 rounded">rounded-full</code></li>
+                        <li>• Padding: <code class="bg-gray-100 px-1 rounded">px-3 py-1 mx-1</code></li>
+                        <li>• Transition: <code class="bg-gray-100 px-1 rounded">transition-colors duration-200</code></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Modal Features</h3>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li>• ✅ Favicon loading with fallback</li>
+                        <li>• ✅ Site name and article title</li>
+                        <li>• ✅ Article snippet preview</li>
+                        <li>• ✅ Click to visit website</li>
+                        <li>• ✅ Multiple sources in scrollable list</li>
+                        <li>• ✅ Hover activation with smooth transitions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showTooltip(type) {
+            document.getElementById(type + '-tooltip').classList.remove('hidden');
+        }
+        
+        function hideTooltip(type) {
+            document.getElementById(type + '-tooltip').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

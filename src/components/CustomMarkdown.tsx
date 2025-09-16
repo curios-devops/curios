@@ -100,9 +100,7 @@ export default function CustomMarkdown({ children, className = "", citations = [
                 key={`citation-${index}`}
                 citation={parsedCitation.citations[0]}
               >
-                <span className="text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
-                  [{citationText}]
-                </span>
+                {parsedCitation.siteName}
               </CitationTooltip>
             );
           } else if (parsedCitation.type === 'multiple') {
@@ -116,10 +114,13 @@ export default function CustomMarkdown({ children, className = "", citations = [
           }
         }
         
-        // Fallback: display as plain text if no citation match found
+        // Fallback: display as blue button even if no citation match found
         return (
-          <span key={`citation-fallback-${index}`} className="text-gray-500 text-sm">
-            [{citationText}]
+          <span
+            key={`citation-fallback-${index}`} 
+            className="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 text-white text-sm font-medium rounded-full"
+          >
+            {citationText}
           </span>
         );
       }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, Globe } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 
 interface CitationTooltipProps {
   citation: {
@@ -35,48 +35,43 @@ export default function CitationTooltip({ citation, children }: CitationTooltipP
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
-      <span
+      <button
         onClick={handleClick}
-        className="cursor-pointer"
+        className="inline-flex items-center px-3 py-1 mx-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors duration-200 cursor-pointer"
         title={`Source: ${displaySiteName}`}
       >
         {children}
-      </span>
+      </button>
       
       {showTooltip && (
-        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3 w-80 max-w-sm">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-sm flex items-center justify-center">
-                <img
-                  src={`https://www.google.com/s2/favicons?domain=${new URL(citation.url).hostname}&sz=16`}
-                  alt=""
-                  className="w-4 h-4"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    target.nextElementSibling?.classList.remove('hidden');
-                  }}
-                />
-                <Globe size={14} className="text-gray-600 dark:text-gray-400 hidden" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  {new URL(citation.url).hostname.replace('www.', '')}
-                </div>
-                <div className="text-sm font-medium text-gray-900 dark:text-white mb-2 line-clamp-2">
-                  {citation.title}
-                </div>
-                {citation.snippet && (
-                  <div className="text-xs text-gray-600 dark:text-gray-300 line-clamp-3">
-                    {citation.snippet.slice(0, 120)}...
-                  </div>
-                )}
-                <div className="flex items-center gap-1 mt-2 text-xs text-[#007BFF] hover:text-[#0056b3] cursor-pointer">
-                  <ExternalLink size={10} />
-                  <span>Visit source</span>
-                </div>
-              </div>
+        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4">
+          <div className="flex items-start space-x-3">
+            <img
+              src={`https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(citation.url)}&size=16`}
+              alt=""
+              className="w-4 h-4 mt-1 flex-shrink-0"
+              loading="lazy"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                {displaySiteName}
+              </h4>
+              <p className="text-gray-700 dark:text-gray-300 text-sm mt-1 line-clamp-2">
+                {citation.title}
+              </p>
+              {citation.snippet && (
+                <p className="text-gray-500 dark:text-gray-400 text-xs mt-2 line-clamp-3">
+                  {citation.snippet}
+                </p>
+              )}
+              <button
+                onClick={handleClick}
+                className="text-blue-600 dark:text-blue-400 text-xs mt-2 hover:underline flex items-center gap-1"
+              >
+                <ExternalLink size={10} />
+                Visit website →
+              </button>
             </div>
           </div>
         </div>
