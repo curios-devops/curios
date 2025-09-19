@@ -20,11 +20,13 @@
   07.25 - Ad Three selector, and Homepage UI updates
   09.15 - New structure by service not artifact
   09.15 - Refactor search flow: Simplify and add comprehensive console logging
+  09.16 - Refactor citations: Small compact blue buttons with white text, clickable links
+  09.19 - Refactor chat completions. and delete keys
 # CURIOSAI  Runing Dev
 1. npm run dev
 
 2. if you have a problem with the port 8888
-  > lsof -ti:8888 | xargs kill -9
+  > sof -ti:8888 | xargs kill -9
   verify the port is free and start the development server:
    > lsof -i :8888
 3. IS front end port 5173 is in use then use 
