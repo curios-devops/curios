@@ -5,12 +5,10 @@ const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000; // 1 second
 
 export class SearchWriterAgent {
-  private readonly netlifyFunctionUrl: string;
-  private readonly defaultModel: string = 'gpt-4.1'; // Updated to use gpt-4.1
+  private readonly defaultModel: string = 'gpt-4o'; // Use gpt-4o model
 
   constructor() {
-    this.netlifyFunctionUrl = '/.netlify/functions/fetch-openai';
-    logger.info('SearchWriterAgent: Initialized with OpenAI Responses API integration');
+    logger.info('SearchWriterAgent: Initialized with direct OpenAI API integration');
   }
 
   /**
@@ -31,109 +29,90 @@ export class SearchWriterAgent {
   }
 
   /**
-   * Calls the OpenAI Responses API via Netlify function with retry logic
+   * Calls the OpenAI API directly with retry logic
    */
-  private async callOpenAIViaNetlify(
+  private async callOpenAI(
     messages: Array<{ role: string; content: string }>,
     model: string = this.defaultModel,
     retryCount: number = 0
   ): Promise<string> {
     const currentRetry = typeof retryCount === 'number' ? retryCount : 0;
     try {
-      logger.debug('Calling OpenAI Responses API via Netlify function', { 
+      logger.debug('Calling OpenAI API directly', { 
         model, 
         messageCount: messages.length,
         retryCount 
       });
 
-      // Format the messages into a single input string for the Responses API
-      const systemMessage = messages.find(m => m.role === 'system')?.content || '';
-      const userMessage = messages.find(m => m.role === 'user')?.content || '';
+      // Get API credentials from environment
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      const orgId = import.meta.env.VITE_OPENAI_ORGANIZATION;
+      const projectId = import.meta.env.VITE_OPENAI_PROJECT_ID;
+
+      if (!apiKey) {
+        throw new Error('OpenAI API key not found in environment variables');
+      }
+
+      // Prepare headers with proper authentication
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      };
       
-      // Create input for the Responses API
-      const input = `${systemMessage}\n\n${userMessage}`;
+      if (orgId) headers['OpenAI-Organization'] = orgId;
+      if (projectId) headers['OpenAI-Project'] = projectId;
 
-      logger.debug('Sending request to fetch-openai', { 
-        url: this.netlifyFunctionUrl,
-        inputLength: input.length,
-        requestBody: {
-          query: input.substring(0, 100) + '...',
-          model: 'gpt-4.1',
-          temperature: 0.3,
-          max_output_tokens: 2000
-        }
+      // Prepare the payload for OpenAI Chat Completions API
+      const payload = {
+        model,
+        messages,
+        temperature: 0.3,
+        max_tokens: 2000
+      };
+
+      logger.debug('Sending request to OpenAI', { 
+        url: 'https://api.openai.com/v1/chat/completions',
+        model,
+        messageCount: messages.length
       });
 
-      // Create AbortController for proper timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        logger.warn('Fetch request timeout - aborting');
-        console.log('✍️ [WRITER] Fetch timeout - aborting request');
-        controller.abort();
-      }, 25000); // 25 second timeout for fetch
-
-      console.log('✍️ [WRITER] About to make fetch request', {
-        url: this.netlifyFunctionUrl,
-        timestamp: new Date().toISOString()
-      });
-
-      const response = await fetch(this.netlifyFunctionUrl, {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ 
-          input, // Fixed: Netlify function expects 'input' not 'query'
-          model: 'gpt-4.1', // Use gpt-4.1 as per official example
-          temperature: 0.3,
-          max_output_tokens: 2000, // Changed from max_completion_tokens
-          response_format: { type: 'json_object' } // This will be converted to text.format
-          // Note: reasoning_effort removed as it's not supported with gpt-4.1
-        }),
-        signal: controller.signal
+        headers,
+        body: JSON.stringify(payload)
       });
 
-      console.log('✍️ [WRITER] Fetch response received', {
+      logger.debug('OpenAI API response received', {
         status: response.status,
-        ok: response.ok,
-        timestamp: new Date().toISOString()
+        ok: response.ok
       });
-
-      // Clear the timeout since the request completed
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error('Error from fetch-openai function', {
+        logger.error('Error from OpenAI API', {
           status: response.status,
           statusText: response.statusText,
-          errorText,
-          url: this.netlifyFunctionUrl,
-          requestBodySample: input.substring(0, 200) + '...'
+          errorText
         });
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+        throw new Error(`OpenAI API error! status: ${response.status}, body: ${errorText}`);
       }
 
       const data = await response.json();
-      logger.debug('Received response from fetch-openai', { 
-        success: data.success,
-        hasContent: !!data.content,
-        hasError: !!data.error
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid response structure from OpenAI API');
+      }
+
+      const content = data.choices[0].message.content;
+      if (!content) {
+        throw new Error('No content in OpenAI API response');
+      }
+
+      logger.debug('Successfully received content from OpenAI API', { 
+        contentLength: content.length 
       });
 
-      // Handle error response
-      if (data.error) {
-        logger.error('API error in response', { error: data.error });
-        throw new Error(`API Error: ${data.error}`);
-      }
-
-      if (!data.success || !data.content) {
-        throw new Error('No content in response');
-      }
-
-      // Return the content from the Responses API
-      return data.content;
+      return content;
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -152,7 +131,7 @@ export class SearchWriterAgent {
           error: errorMessage
         });
         await new Promise(resolve => setTimeout(resolve, delay));
-        return this.callOpenAIViaNetlify(messages, model, currentRetry + 1);
+        return this.callOpenAI(messages, model, currentRetry + 1);
       }
       
       logger.error('Max retries reached, returning fallback response', {
@@ -266,7 +245,7 @@ Content: ${truncatedContent}
         sourceContextLength: sourceContext.length,
         maxResults,
         model: this.defaultModel,
-        url: this.netlifyFunctionUrl,
+        url: 'https://api.openai.com/v1/chat/completions',
         timestamp: new Date().toISOString()
       });
 
@@ -359,7 +338,7 @@ Remember: Base your response entirely on the source material provided. Do not ad
       ];
 
       // Add explicit timeout handling for WriterAgent with proper cleanup
-      const completionPromise = this.callOpenAIViaNetlify(messages, this.defaultModel);
+      const completionPromise = this.callOpenAI(messages, this.defaultModel);
       
       let timeoutId: NodeJS.Timeout | undefined;
       const timeoutPromise = new Promise<never>((_, reject) => {
