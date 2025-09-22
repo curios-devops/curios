@@ -7,7 +7,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
-Deno.serve(async (req) => {
+ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     // Handle CORS preflight
     return new Response("ok", { headers: corsHeaders });

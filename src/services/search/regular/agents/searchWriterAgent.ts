@@ -100,7 +100,7 @@ export class SearchWriterAgent {
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
+
       // Handle AbortError specifically
       if (error instanceof Error && error.name === 'AbortError') {
         logger.error('Fetch request was aborted due to timeout', {
@@ -108,8 +108,7 @@ export class SearchWriterAgent {
           query: messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No query'
         });
       }
-    }
-      
+
       if (currentRetry < MAX_RETRIES) {
         const delay = INITIAL_RETRY_DELAY * Math.pow(2, currentRetry);
         logger.warn(`Retry ${currentRetry + 1}/${MAX_RETRIES} after error:`, {
@@ -118,12 +117,12 @@ export class SearchWriterAgent {
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.callOpenAI(messages, model, currentRetry + 1);
       }
-      
+
       logger.error('Max retries reached, returning fallback response', {
         error: errorMessage,
         query: messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No query'
       });
-      
+
       // Return a fallback response that matches the expected format
       return JSON.stringify({
         content: 'Sorry, I encountered an error while generating the response. Please try again later.',
@@ -333,80 +332,34 @@ Remember: Base your response entirely on the source material provided. Do not ad
         }, 30000);
       });
 
-      let content: string;
       try {
-        content = await Promise.race([completionPromise, timeoutPromise]);
-        
+        await Promise.race([completionPromise, timeoutPromise]);
         // CRITICAL: Clear timeout on successful completion to prevent memory leak
         if (timeoutId) clearTimeout(timeoutId);
-          // Verbose logging before fetch
-          console.log('[WriterAgent] Sending request to Supabase Edge Function:', {
-            url: supabaseEdgeUrl,
-            model,
-            messageCount: messages.length,
-            prompt: messages[messages.length - 1]?.content
-          });
-
-          let response;
-          try {
-            response = await fetch(supabaseEdgeUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseAnonKey}`
-              },
-              body: JSON.stringify({ prompt: messages[messages.length - 1]?.content })
-            });
-          } catch (fetchErr) {
-            console.error('[WriterAgent] Fetch to Supabase Edge Function failed:', fetchErr);
-            throw fetchErr;
-          }
-
-          console.log('[WriterAgent] Response received from Supabase Edge Function:', {
-            status: response.status,
-            ok: response.ok
-          });
-
-          let data;
-          try {
-            data = await response.json();
-            console.log('[WriterAgent] Parsed JSON from Supabase Edge Function:', data);
-          } catch (jsonErr) {
-            console.error('[WriterAgent] Failed to parse JSON from Supabase Edge Function:', jsonErr);
-            throw jsonErr;
-          }
-
-          if (!response.ok) {
-            console.error('[WriterAgent] Error from Supabase Edge Function:', {
-              status: response.status,
-              statusText: response.statusText,
-              error: data
-            });
-            throw new Error(`Supabase Edge Function error! status: ${response.status}, body: ${JSON.stringify(data)}`);
-          }
-
-          if (!data.text) {
-            console.error('[WriterAgent] No content in Supabase Edge Function response:', data);
-            throw new Error('No content in Supabase Edge Function response');
-          }
-
-          console.log('[WriterAgent] Successfully received content from Supabase Edge Function', {
-            contentLength: data.text.length
-          });
-
-          return data.text;
+      } catch (error) {
+        logger.error('WriterAgent execution failed:', error);
+        // CRITICAL: Send completion signal even on error
+        onStatusUpdate?.('Article generation completed with fallback content');
+        await new Promise(resolve => setTimeout(resolve, 150));
+        return {
+          success: true,
+          data: this.getFallbackData(research.query)
+        };
       }
     } catch (error) {
       logger.error('WriterAgent execution failed:', error);
-      
       // CRITICAL: Send completion signal even on error
       onStatusUpdate?.('Article generation completed with fallback content');
       await new Promise(resolve => setTimeout(resolve, 150));
-      
       return {
         success: true,
         data: this.getFallbackData(research.query)
       };
     }
+    // If for some reason the try block completes without returning, return fallback
+    return {
+      success: true,
+      data: this.getFallbackData(research?.query || '')
+    };
   }
 }
