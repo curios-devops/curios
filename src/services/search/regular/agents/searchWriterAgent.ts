@@ -394,7 +394,6 @@ Remember: Base your response entirely on the source material provided. Do not ad
           });
 
           return data.text;
-        };
       }
 
       // Ensure the parsed object has the expected structure with follow-up questions
