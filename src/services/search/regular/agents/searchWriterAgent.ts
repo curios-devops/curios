@@ -108,6 +108,7 @@ export class SearchWriterAgent {
           query: messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No query'
         });
       }
+    }
       
       if (currentRetry < MAX_RETRIES) {
         const delay = INITIAL_RETRY_DELAY * Math.pow(2, currentRetry);
@@ -395,47 +396,6 @@ Remember: Base your response entirely on the source material provided. Do not ad
 
           return data.text;
       }
-
-      // Ensure the parsed object has the expected structure with follow-up questions
-      const result: ArticleResult = {
-        content: typeof parsed.content === 'string' ? parsed.content : content.trim(),
-        followUpQuestions: Array.isArray(parsed.followUpQuestions) && parsed.followUpQuestions.length > 0 
-          ? parsed.followUpQuestions 
-          : [
-              `What specific developments are shaping ${query} today?`,
-              `How are experts addressing challenges in ${query}?`,
-              `What practical applications exist for ${query}?`,
-              `What future trends are emerging in ${query}?`,
-              `How can organizations leverage ${query} effectively?`
-            ],
-        citations: Array.isArray(parsed.citations) && parsed.citations.length > 0
-          ? parsed.citations.map((citation: any) => {
-              if (typeof citation === 'string') {
-                // If citation is just a URL string, convert to CitationInfo
-                const matchingResult = results.find(r => r.url === citation);
-                return {
-                  url: citation,
-                  title: matchingResult?.title || 'Source',
-                  siteName: new URL(citation).hostname.replace('www.', '')
-                };
-              }
-              return citation; // Already a CitationInfo object
-            })
-          : results.slice(0, 5).map((r: SearchResult) => ({
-              url: r.url,
-              title: r.title,
-              siteName: new URL(r.url).hostname.replace('www.', '')
-            }))
-      };
-
-      // CRITICAL: Send completion signal for successful article generation
-      onStatusUpdate?.('Article generation completed successfully!');
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      return {
-        success: true,
-        data: result
-      };
     } catch (error) {
       logger.error('WriterAgent execution failed:', error);
       
