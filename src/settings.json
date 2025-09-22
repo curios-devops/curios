@@ -1,0 +1,17 @@
+"mcp": {
+  "inputs": [],
+  "servers": {
+    // ...existing servers...
+    "mcp-server-supabase": {
+      "command": "node",
+      "args": [
+        "/path/to/mcp-server-supabase/src/index.js"
+      ],
+      "env": {
+        "SUPABASE_URL": "https://your-project-ref.supabase.co",
+        "SUPABASE_SERVICE_KEY": "your-service-key",
+        "ALLOWED_QUERY_TYPES": "SELECT"
+      }
+    }
+  }
+}

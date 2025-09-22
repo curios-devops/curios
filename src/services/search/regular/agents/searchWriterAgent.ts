@@ -44,42 +44,29 @@ export class SearchWriterAgent {
         retryCount 
       });
 
-      // Get API credentials from environment
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      const orgId = import.meta.env.VITE_OPENAI_ORGANIZATION;
-      const projectId = import.meta.env.VITE_OPENAI_PROJECT_ID;
 
-      if (!apiKey) {
-        throw new Error('OpenAI API key not found in environment variables');
+      // Use the deployed Supabase Edge Function endpoint
+      const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/test-openai';
+
+      // Get Supabase anon key from environment
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseAnonKey) {
+        throw new Error('Supabase anon key not found in environment variables');
       }
 
-      // Prepare headers with proper authentication
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      };
-      
-      if (orgId) headers['OpenAI-Organization'] = orgId;
-      if (projectId) headers['OpenAI-Project'] = projectId;
-
-      // Prepare the payload for OpenAI Chat Completions API
-      const payload = {
-        model,
-        messages,
-        temperature: 0.3,
-        max_tokens: 2000
-      };
-
-      logger.debug('Sending request to OpenAI', { 
-        url: 'https://api.openai.com/v1/chat/completions',
+      logger.debug('Sending request to Supabase Edge Function', { 
+        url: supabaseEdgeUrl,
         model,
         messageCount: messages.length
       });
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
-        headers,
-        body: JSON.stringify(payload)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify({ prompt: messages[messages.length - 1]?.content })
       });
 
       logger.debug('OpenAI API response received', {
@@ -99,20 +86,17 @@ export class SearchWriterAgent {
 
       const data = await response.json();
       
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error('Invalid response structure from OpenAI API');
+
+      // The Supabase Edge Function returns { text, openai }
+      if (!data.text) {
+        throw new Error('No content in Supabase Edge Function response');
       }
 
-      const content = data.choices[0].message.content;
-      if (!content) {
-        throw new Error('No content in OpenAI API response');
-      }
-
-      logger.debug('Successfully received content from OpenAI API', { 
-        contentLength: content.length 
+      logger.debug('Successfully received content from Supabase Edge Function', { 
+        contentLength: data.text.length 
       });
 
-      return content;
+      return data.text;
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
