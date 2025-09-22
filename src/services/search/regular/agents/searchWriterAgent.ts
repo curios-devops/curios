@@ -338,48 +338,62 @@ Remember: Base your response entirely on the source material provided. Do not ad
         
         // CRITICAL: Clear timeout on successful completion to prevent memory leak
         if (timeoutId) clearTimeout(timeoutId);
-      } catch (error) {
-        // CRITICAL: Clear timeout on error to prevent memory leak
-        if (timeoutId) clearTimeout(timeoutId);
-        throw error;
-      }
+          // Verbose logging before fetch
+          console.log('[WriterAgent] Sending request to Supabase Edge Function:', {
+            url: supabaseEdgeUrl,
+            model,
+            messageCount: messages.length,
+            prompt: messages[messages.length - 1]?.content
+          });
 
-      logger.info('WriterAgent: OpenAI call completed', { 
-        hasContent: !!content 
-      });
+          let response;
+          try {
+            response = await fetch(supabaseEdgeUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseAnonKey}`
+              },
+              body: JSON.stringify({ prompt: messages[messages.length - 1]?.content })
+            });
+          } catch (fetchErr) {
+            console.error('[WriterAgent] Fetch to Supabase Edge Function failed:', fetchErr);
+            throw fetchErr;
+          }
 
-      if (!content) {
-        throw new Error('No content generated');
-      }
+          console.log('[WriterAgent] Response received from Supabase Edge Function:', {
+            status: response.status,
+            ok: response.ok
+          });
 
-      // Parse the JSON response
-      let parsed: { content?: string; followUpQuestions?: string[]; citations?: string[] } | null = null;
-      try {
-        parsed = JSON.parse(content);
-      } catch (parseError) {
-        logger.warn('JSON parse error:', parseError);
-      }
+          let data;
+          try {
+            data = await response.json();
+            console.log('[WriterAgent] Parsed JSON from Supabase Edge Function:', data);
+          } catch (jsonErr) {
+            console.error('[WriterAgent] Failed to parse JSON from Supabase Edge Function:', jsonErr);
+            throw jsonErr;
+          }
 
-      if (!parsed) {
-        // If JSON parsing fails, create a fallback response with follow-up questions
-        const fallbackResult: ArticleResult = {
-          content: content.trim(),
-          followUpQuestions: [
-            `What specific developments are shaping ${query} today?`,
-            `How are experts addressing challenges in ${query}?`,
-            `What practical applications exist for ${query}?`,
-            `What future trends are emerging in ${query}?`,
-            `How can organizations leverage ${query} effectively?`
-          ],
-          citations: results.slice(0, 5).map((r: SearchResult) => ({
-            url: r.url,
-            title: r.title,
-            siteName: new URL(r.url).hostname.replace('www.', '')
-          }))
-        };
-        return {
-          success: true,
-          data: fallbackResult
+          if (!response.ok) {
+            console.error('[WriterAgent] Error from Supabase Edge Function:', {
+              status: response.status,
+              statusText: response.statusText,
+              error: data
+            });
+            throw new Error(`Supabase Edge Function error! status: ${response.status}, body: ${JSON.stringify(data)}`);
+          }
+
+          if (!data.text) {
+            console.error('[WriterAgent] No content in Supabase Edge Function response:', data);
+            throw new Error('No content in Supabase Edge Function response');
+          }
+
+          console.log('[WriterAgent] Successfully received content from Supabase Edge Function', {
+            contentLength: data.text.length
+          });
+
+          return data.text;
         };
       }
 
