@@ -1,5 +1,5 @@
 import { Artifact } from '../../commonApp/types/index.ts';
-import { LabController } from './regular/agents/labController.ts';
+import { LabController } from './regular/agents/controller.ts';
 import { handleSupabaseOperation } from '../../lib/supabase.ts';
 import { logger } from '../../utils/logger.ts';
 

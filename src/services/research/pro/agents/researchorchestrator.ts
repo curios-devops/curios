@@ -1,2 +1,2 @@
 // Re-export from lab orchestrator for compatibility
-export { orchestrateArtifact } from '../../../lab/regular/agents/labOrchestrator';
+export { orchestrateArtifact } from '../../../lab/regular/agents/orchestrator';

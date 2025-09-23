@@ -26,7 +26,7 @@ export {
   
   // Legacy
   orchestrateArtifact
-} from './regular/labRegularIndex.ts';
+} from './regular/regularIndex.ts';
 
 // Pro tier exports (when implemented)
 // export * from './pro/labProIndex.ts';

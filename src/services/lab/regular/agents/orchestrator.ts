@@ -1,5 +1,5 @@
 // Updated orchestrator using the new LabController
-import { generateArtifact } from '../../labService.ts';
+import { generateArtifact } from '../../service.ts';
 import { Artifact } from '../../../../commonApp/types/index.ts';
 
 // Compatibility wrapper that adapts the new service to the old interface

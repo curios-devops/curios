@@ -7,7 +7,7 @@ export { WriterAgent as SearchWriterAgent, RetrieverAgent } from './search/regul
 export { ProSearchResultsPage, SwarmController, PerspectiveAgent } from './search/pro/searchProIndex';
 export { default as SearchResultsPage } from './search/regular/pages/SearchResults.tsx';
 
-export { generateArtifact, PlannerAgent, ResearcherAgent, WriterAgent as LabWriterAgent, FormatterAgent, LabController, orchestrateArtifact } from './lab/regular/labRegularIndex';
+export { generateArtifact, PlannerAgent, ResearcherAgent, WriterAgent as LabWriterAgent, FormatterAgent, LabController, orchestrateArtifact } from './lab/regular/regularIndex.ts';
 export { default as LabsResultsPage } from './lab/regular/pages/LabsResults.tsx';
 
 export type {
