@@ -99,3 +99,9 @@ In VS Code:
 Open the Command Palette (Cmd+Shift+P on Mac).
 Type and select: “TypeScript: Restart TS Server”.
 Or simply reload the window (Cmd+Shift+P → “Developer: Reload Window”).
+
+
+
+  found value at line 88 in dist/assets/services-search-DQEKmhOb.js
+11:59:35 PM: Secret env var "VITE_SUPABASE_PUBLISHABLE_KEY"'s value detected:
+  found value at line 88 in dist/assets/services-search-DQEKmhOb.js
