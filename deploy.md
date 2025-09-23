@@ -105,3 +105,13 @@ Or simply reload the window (Cmd+Shift+P → “Developer: Reload Window”).
   found value at line 88 in dist/assets/services-search-DQEKmhOb.js
 11:59:35 PM: Secret env var "VITE_SUPABASE_PUBLISHABLE_KEY"'s value detected:
   found value at line 88 in dist/assets/services-search-DQEKmhOb.js
+
+
+
+VITE_OPENAI_API_KEY
+VITE_SUPABASE_API_KEY
+VITE_CLIENT_ID
+VITE_CLIENT_SECRET
+VITE_OPENAI_ORG_ID
+VITE_PROJECT_ID
+VITE_SUPABASE_PUBLISHABLE_KEY
