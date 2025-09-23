@@ -14,7 +14,7 @@ export class LabFormatterAgent {
         type: artifact.type,
         contentLength: artifact.content?.length || 0 
       });
-      
+
       if (!artifact.content) {
         return {
           success: true,
@@ -22,36 +22,52 @@ export class LabFormatterAgent {
         };
       }
 
-      // Use Netlify function for OpenAI API call for advanced formatting
-      const response = await fetch('/api/fetch-openai', {
+      // Use Supabase Edge Function for OpenAI API call
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseAnonKey) {
+        throw new Error('Supabase anon key not found in environment variables');
+      }
+
+      const systemPrompt = 'You are a professional content formatter. Your task is to improve the formatting, structure, and presentation of content while maintaining its meaning and accuracy. Focus on proper Markdown formatting, clear headings, logical flow, and professional presentation. Do not change the core content, only improve its formatting and structure.';
+      const userPrompt = `Please format and improve the structure of this ${artifact.type}:\n\n${artifact.content}\n\nEnsure proper Markdown formatting, clear headings, and professional presentation while preserving all the original content.`;
+
+      const response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          input: [
-            {
-              role: 'system',
-              content: 'You are a professional content formatter. Your task is to improve the formatting, structure, and presentation of content while maintaining its meaning and accuracy. Focus on proper Markdown formatting, clear headings, logical flow, and professional presentation. Do not change the core content, only improve its formatting and structure.'
-            },
-            {
-              role: 'user',
-              content: `Please format and improve the structure of this ${artifact.type}:\n\n${artifact.content}\n\nEnsure proper Markdown formatting, clear headings, and professional presentation while preserving all the original content.`
-            }
-          ],
-          temperature: 0.2,
-          max_completion_tokens: 1000
-        }),
+          prompt: JSON.stringify({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          })
+        })
       });
 
       if (response.ok) {
         const data = await response.json();
-        const formattedContent = data.output_text || data.content;
-        
+        let formattedContent: string | null = null;
+        try {
+          // Try to parse as JSON if the model returns a JSON string
+          if (typeof data.text === 'string') {
+            const parsed = JSON.parse(data.text);
+            if (parsed && typeof parsed.formatted === 'string') {
+              formattedContent = parsed.formatted;
+            } else if (parsed && typeof parsed.content === 'string') {
+              formattedContent = parsed.content;
+            }
+          }
+        } catch (e) {
+          // If not JSON, fallback to using the text directly
+          formattedContent = typeof data.text === 'string' ? data.text : null;
+          logger.warn('FormatterAgent: Failed to parse format response as JSON', { error: e, textPreview: String(data.text).slice(0, 100) });
+        }
         if (formattedContent && formattedContent.trim()) {
           logger.info('FormatterAgent: Formatting completed successfully');
-          
           return {
             success: true,
             data: { content: formattedContent.trim() }
@@ -62,16 +78,12 @@ export class LabFormatterAgent {
       // Fallback: basic formatting cleanup
       const formattedContent = this.basicFormatting(artifact.content);
       logger.info('FormatterAgent: Using basic formatting fallback');
-      
       return {
         success: true,
         data: { content: formattedContent }
       };
     } catch (error) {
-      logger.error('FormatterAgent: Formatting failed', { 
-        error: error instanceof Error ? error.message : error 
-      });
-      
+      logger.error('FormatterAgent: Formatting failed', { error: error instanceof Error ? error.message : error });
       // Return original content if formatting fails
       return {
         success: true,

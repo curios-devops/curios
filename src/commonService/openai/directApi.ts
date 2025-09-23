@@ -1,4 +1,3 @@
-import { getOpenAIClient } from './client';
 
 interface ResponseUsage {
   input_tokens?: number;
@@ -21,33 +20,45 @@ export async function createResponse(
     verbosity?: 'low' | 'medium' | 'high';
   } = {}
 ): Promise<OpenAIResponse> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-  const apiUrl = `${baseUrl}/api/fetch-openai`;
-  
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseAnonKey) {
+    throw new Error('Supabase anon key not found in environment variables');
+  }
   try {
-    const response = await fetch(apiUrl, {
+    // Convert input to chat messages
+    let messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
+    if (Array.isArray(input)) {
+      messages = input.map((msg) => {
+        let role: 'system' | 'user' | 'assistant' = 'user';
+        if (msg.role === 'system' || msg.role === 'user' || msg.role === 'assistant') {
+          role = msg.role;
+        }
+        return { role, content: String(msg.content) };
+      });
+    } else {
+      messages = [
+        { role: 'user', content: input }
+      ];
+    }
+    const response = await fetch(supabaseEdgeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
       },
       body: JSON.stringify({
-        input,
-        model: options.model || 'gpt-4o-mini',
-        reasoning_effort: options.effort || 'medium',
-        verbosity: options.verbosity || 'medium',
-      }),
+        prompt: JSON.stringify({ messages })
+      })
     });
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
-
     const result = await response.json();
-    
     return {
-      output_text: result.output_text || '',
-      model: result.model,
+      output_text: result.output_text || result.text || '',
+      model: result.model || options.model || 'gpt-4o-mini',
       usage: result.usage,
     };
   } catch (error) {

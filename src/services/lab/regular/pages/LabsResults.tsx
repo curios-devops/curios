@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { orchestrateArtifact } from '../agents/orchestrator.ts';
+import { orchestrateArtifact } from '../agents/labOrchestrator.ts';
 import { ArrowLeft, FileText, Image, Gamepad2, ArrowRight, Layers, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import ShareMenu from '../../../../components/ShareMenu.tsx';
 import { ARTIFACT_CATEGORIES, Artifact } from '../../../../commonApp/types/index.ts';

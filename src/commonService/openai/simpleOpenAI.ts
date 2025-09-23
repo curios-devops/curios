@@ -19,23 +19,33 @@ export interface SimpleOpenAIResponse {
  */
 export const fetchAIResponse = async (input: string): Promise<SimpleOpenAIResponse> => {
   try {
-    const response = await fetch('/api/fetch-openai', {
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseAnonKey) {
+      throw new Error('Supabase anon key not found in environment variables');
+    }
+    // Use a simple chat completion format
+    const messages = [
+      { role: 'user', content: input }
+    ];
+    const response = await fetch(supabaseEdgeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
       },
-      body: JSON.stringify({ input })
+      body: JSON.stringify({
+        prompt: JSON.stringify({ messages })
+      })
     });
-
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
-
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error fetching data from OpenAI:', error);
+    console.error('[OpenAI] Error fetching data from Supabase Edge Function:', error);
     throw error;
   }
 };
@@ -64,11 +74,48 @@ export const getResponseText = (response: SimpleOpenAIResponse): string => {
  * Simple chat completion function
  */
 export const createChatCompletion = async (messages: Array<{ role: string; content: string }>): Promise<string> => {
-  // Convert messages to a single input string
-  const input = messages.map(msg => `${msg.role}: ${msg.content}`).join('\n\n');
-  
-  const response = await fetchAIResponse(input);
-  return getResponseText(response);
+  // Use Supabase Edge Function for chat completions
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseAnonKey) {
+    throw new Error('Supabase anon key not found in environment variables');
+  }
+  const response = await fetch(supabaseEdgeUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${supabaseAnonKey}`
+    },
+    body: JSON.stringify({
+      prompt: JSON.stringify({ messages })
+    })
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+  }
+  const data = await response.json();
+  // Try to parse as JSON if possible
+  let text = '';
+  try {
+    if (typeof data.text === 'string') {
+      const parsed = JSON.parse(data.text);
+      if (parsed && typeof parsed.content === 'string') {
+        text = parsed.content;
+      } else if (typeof parsed === 'string') {
+        text = parsed;
+      }
+    }
+  } catch (e) {
+    text = typeof data.text === 'string' ? data.text : '';
+  }
+  if (!text && data.content) {
+    text = data.content;
+  }
+  if (!text) {
+    text = data.output_text || '';
+  }
+  return text;
 };
 
 /**
@@ -80,23 +127,30 @@ export const fetchAIResponseWithSearch = async (
   searchResults: Array<{ title: string; content: string; url?: string }>
 ): Promise<SimpleOpenAIResponse> => {
   try {
-    const response = await fetch('/api/fetch-openai', {
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseAnonKey) {
+      throw new Error('Supabase anon key not found in environment variables');
+    }
+    // Compose messages for chat.completions API
+    const messages = [
+      { role: 'system', content: 'You are a helpful assistant that uses web search results to answer user questions. Use the provided search results to answer as accurately as possible.' },
+      { role: 'user', content: `${query}\n\nSearch Results:\n${searchResults.map(r => `- ${r.title}: ${r.content}${r.url ? ` (${r.url})` : ''}`).join('\n')}` }
+    ];
+    const response = await fetch(supabaseEdgeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
       },
-      body: JSON.stringify({ 
-        query, 
-        searchResults,
-        model: 'gpt-4o-mini' // Use reliable model that supports temperature
+      body: JSON.stringify({
+        prompt: JSON.stringify({ messages })
       })
     });
-
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
-
     const data = await response.json();
     return data;
   } catch (error) {

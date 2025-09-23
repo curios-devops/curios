@@ -55,46 +55,49 @@ interface ResponsesResponse {
 class SecureOpenAIService {
   // Both services now use the same optimized endpoint
   private getResponsesEndpoint() {
-    // Use the Vite proxy in development, direct endpoint in production
-    return '/api/fetch-openai';
+    // Use Supabase Edge Function endpoint
+  return 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
   }
 
   private getDefaultModel(model?: string) {
     return model || 'gpt-4o-mini';
   }
 
-  private mapMessagesToResponsesInput(messages: ChatCompletionRequest['messages']) {
-    // Basic mapping: concatenate messages into a single string input
-    // Prefer system + user; include assistant where useful
-    const parts = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
-    return parts;
-  }
+  // (Removed unused mapMessagesToResponsesInput)
 
   async createResponse(request: ResponsesRequest): Promise<ResponsesResponse> {
-    const model = this.getDefaultModel(request.model);
     try {
-      const payload: Record<string, unknown> = {
-        model,
-        temperature: request.temperature,
-        response_format: request.response_format || { type: 'text' },
-        max_completion_tokens: request.max_output_tokens || 1500,
-        reasoning_effort: 'medium'
-      };
-
-      if (request.input !== undefined) {
-        payload.input = request.input;
-      } else if (request.messages) {
-        // Send messages directly instead of mapping to string
-        payload.input = request.messages;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseAnonKey) {
+        throw new Error('Supabase anon key not found in environment variables');
       }
-
+      // Use chat completions format for Supabase Edge Function
+      let messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> | undefined = request.messages;
+      if (!messages && request.input) {
+        if (typeof request.input === 'string') {
+          messages = [{ role: 'user', content: request.input }];
+        } else if (Array.isArray(request.input)) {
+          // Try to coerce each message to the correct type
+          messages = (request.input as Array<any>).map((msg) => {
+            let role: 'system' | 'user' | 'assistant' = 'user';
+            if (msg.role === 'system' || msg.role === 'user' || msg.role === 'assistant') {
+              role = msg.role;
+            }
+            return { role, content: String(msg.content) };
+          });
+        }
+      }
       const endpoint = this.getResponsesEndpoint();
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify({
+          prompt: JSON.stringify({ messages })
+        })
       });
-
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`OpenAI Responses error: ${res.status} - ${text}`);
@@ -102,7 +105,6 @@ class SecureOpenAIService {
       const data: ResponsesResponse = await res.json();
       return data;
     } catch (err) {
-      // Bubble up to fallback caller
       throw err;
     }
   }

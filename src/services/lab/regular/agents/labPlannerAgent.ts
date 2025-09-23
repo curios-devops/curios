@@ -16,28 +16,31 @@ export class LabPlannerAgent {
   async execute(prompt: string, type: string): Promise<AgentResponse<PlanResponse>> {
     try {
       logger.info('PlannerAgent: Creating execution plan', { prompt, type });
-      
-      // Use Netlify function for OpenAI API call
-      const response = await fetch('/api/fetch-openai', {
+
+      // Use Supabase Edge Function for OpenAI API call
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseAnonKey) {
+        throw new Error('Supabase anon key not found in environment variables');
+      }
+
+      const systemPrompt = 'You are an expert workflow planner for a multi-agent AI system. Given a user request, break it down into a list of clear, actionable subtasks for agents (e.g., researcher, writer, formatter). For each subtask, provide a short, context-aware detail/explanation. Respond only with a JSON object: {"planDetails": [{"step": string, "detail": string}]}, where step is the main subtask and detail is a short explanation. The steps and details should be user-friendly, actionable, and in the same language as the user request.';
+      const userPrompt = `User request: ${prompt}\nArtifact type: ${type}`;
+
+      const response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          input: [
-            {
-              role: 'system',
-              content: 'You are an expert workflow planner for a multi-agent AI system. Given a user request, break it down into a list of clear, actionable subtasks for agents (e.g., researcher, writer, formatter). For each subtask, provide a short, context-aware detail/explanation. Respond only with a JSON object: {"planDetails": [{"step": string, "detail": string}]}, where step is the main subtask and detail is a short explanation. The steps and details should be user-friendly, actionable, and in the same language as the user request.'
-            },
-            {
-              role: 'user',
-              content: `User request: ${prompt}\nArtifact type: ${type}`
-            }
-          ],
-          temperature: 0.2,
-          max_completion_tokens: 300
-        }),
+          prompt: JSON.stringify({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          })
+        })
       });
 
       if (!response.ok) {
@@ -45,35 +48,26 @@ export class LabPlannerAgent {
       }
 
       const data = await response.json();
-      const content = data.output_text || data.content;
-      
-      if (content) {
-        try {
-          const parsed = JSON.parse(content);
-          if (parsed.planDetails && Array.isArray(parsed.planDetails)) {
-            logger.info('PlannerAgent: Plan created successfully', { 
-              stepsCount: parsed.planDetails.length 
-            });
-            return { success: true, data: parsed };
-          }
-        } catch (_parseError) {
-          logger.warn('PlannerAgent: Failed to parse plan response', { content });
-        }
+      let planResult: PlanResponse | null = null;
+      try {
+        planResult = typeof data.text === 'string' ? JSON.parse(data.text) : null;
+      } catch (e) {
+        logger.warn('PlannerAgent: Failed to parse plan response as JSON', { error: e, textPreview: String(data.text).slice(0, 100) });
+      }
+      if (planResult && Array.isArray(planResult.planDetails)) {
+        logger.info('PlannerAgent: Plan created successfully', { stepsCount: planResult.planDetails.length });
+        return { success: true, data: planResult };
       }
 
       // Fallback plan
       const fallbackPlan = this.createFallbackPlan(prompt, type);
       logger.info('PlannerAgent: Using fallback plan');
-      
       return {
         success: true,
         data: { planDetails: fallbackPlan }
       };
     } catch (error) {
-      logger.error('PlannerAgent: Planning failed', { 
-        error: error instanceof Error ? error.message : error 
-      });
-      
+      logger.error('PlannerAgent: Planning failed', { error: error instanceof Error ? error.message : error });
       const fallbackPlan = this.createFallbackPlan(prompt, type);
       return {
         success: true,

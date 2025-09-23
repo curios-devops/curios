@@ -162,7 +162,7 @@ export class YourAgent extends BaseAgent {
 
 ### OpenAI API Integration
 - **Uses OpenAI Responses API** (NOT chat/completions)
-- **All requests** go through `/api/fetch-openai` Netlify function
+- **All requests** go through `/api/
 - **SecureOpenAI service** provides chat completion interface
 - **Never use OpenAI SDK directly** in frontend - always use secureOpenAI service
 
@@ -267,10 +267,7 @@ node test-simple-openai.js
 # Test specific components
 npm run dev # Then navigate to component
 
-# Test Netlify functions locally
-curl -X POST http://localhost:8888/api/fetch-openai \
-  -H "Content-Type: application/json" \
-  -d '{"input": "test query"}'
+
 ```
 
 ### Common Issues

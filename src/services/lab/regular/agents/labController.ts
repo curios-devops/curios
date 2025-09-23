@@ -1,10 +1,10 @@
 import type { Artifact, ArtifactStep } from '../../../../commonApp/types/index.ts';
 import { logger } from '../../../../utils/logger.ts';
 import { ServiceHealthMonitor } from '../../../../commonService/utils/serviceHealth.ts';
-import { LabPlannerAgent } from './plannerAgent.ts';
-import { LabResearcherAgent } from './researcherAgent.ts';
-import { LabWriterAgent } from './writerAgent.ts';
-import { LabFormatterAgent } from './formatterAgent.ts';
+import { LabPlannerAgent } from './labPlannerAgent.ts';
+import { LabResearcherAgent } from './labResearcherAgent.ts';
+import { LabWriterAgent } from './labWriterAgent.ts';
+import { LabFormatterAgent } from './labFormatterAgent.ts';
 
 const IMAGE_TYPES = ['diagram', 'sketch', 'photo'];
 const GAME_TYPES = ['arcade', 'retro', 'puzzles', 'rpg', 'flashcards'];

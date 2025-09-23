@@ -21,19 +21,29 @@ export class LabWriterAgent {
           .join('\n\n');
       }
 
-      // Prepare the query for the fetch-openai function
-      const systemPrompt = this.getSystemPrompt(type);
-      const userPrompt = `Task: ${prompt}\n\nResearch/Background:\n${researchContent || 'No specific research data provided.'}\n\nPlease create the requested ${type} based on this information.`;
+  // Prepare prompts for chat completions
+  const systemPrompt = this.getSystemPrompt(type);
+  const userPrompt = `Task: ${prompt}\n\nResearch/Background:\n${researchContent || 'No specific research data provided.'}\n\nPlease create the requested ${type} based on this information.`;
       
-      const query = `System: ${systemPrompt}\n\nUser: ${userPrompt}`;
-      
-      // Call the fetch-openai function
-      const response = await fetch('/api/fetch-openai', {
+      // Call the Supabase Edge Function using chat.completions API
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseAnonKey) {
+        throw new Error('Supabase anon key not found in environment variables');
+      }
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ];
+      const response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({
+          prompt: JSON.stringify({ messages })
+        })
       });
 
       if (!response.ok) {
@@ -42,19 +52,28 @@ export class LabWriterAgent {
       }
 
       const data = await response.json();
-      
       if (data.error) {
         throw new Error(`API error: ${data.error}`);
       }
-      
-      // Handle the response format from fetch-openai
+      // Parse the response for content
       let content = '';
-      if (data.results && data.results.length > 0) {
-        content = data.results[0].content || JSON.stringify(data.results[0]);
-      } else if (data.content) {
+      try {
+        if (typeof data.text === 'string') {
+          const parsed = JSON.parse(data.text);
+          if (parsed && typeof parsed.content === 'string') {
+            content = parsed.content;
+          } else if (typeof parsed === 'string') {
+            content = parsed;
+          }
+        }
+      } catch (e) {
+        content = typeof data.text === 'string' ? data.text : '';
+      }
+      if (!content && data.content) {
         content = data.content;
-      } else {
-        content = JSON.stringify(data);
+      }
+      if (!content) {
+        content = data.output_text || '';
       }
 
       if (content && content.trim()) {

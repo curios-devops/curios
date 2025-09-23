@@ -16,6 +16,8 @@ dist-ssr
 
 # MD files
 AGENTS.md
+ToDo.md
+DEPLOY.md
 
 # Editor directories and files
 .vscode/*

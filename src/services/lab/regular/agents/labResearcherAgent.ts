@@ -13,7 +13,7 @@ export class LabResearcherAgent {
   async execute(prompt: string, type: string): Promise<AgentResponse<ResearchResponse>> {
     try {
       logger.info('ResearcherAgent: Starting research', { prompt, type });
-      
+
       // First, gather search results
       let searchResults = '';
       try {
@@ -29,20 +29,31 @@ export class LabResearcherAgent {
         });
       }
 
-      // Prepare the query for the fetch-openai function
+      // Prepare the prompts for the Supabase Edge Function
       const systemPrompt = `You are a research analyst. Your task is to analyze information and provide well-structured research findings. Format your response as a comprehensive research summary that will be used to create a ${type}. Focus on accuracy, relevance, and proper organization of information.`;
-      
       const userPrompt = `Research topic: ${prompt}\n\nSearch Results:\n${searchResults || 'No search results available.'}\n\nPlease provide a comprehensive research summary covering key aspects, facts, and insights related to this topic.`;
-      
-      const query = `System: ${systemPrompt}\n\nUser: ${userPrompt}`;
-      
-      // Call the fetch-openai function
-      const response = await fetch('/api/fetch-openai', {
+
+      // Call the Supabase Edge Function for OpenAI completions
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseAnonKey) {
+        throw new Error('Supabase anon key not found in environment variables');
+      }
+
+      const response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({
+          prompt: JSON.stringify({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          })
+        })
       });
 
       if (!response.ok) {
@@ -51,18 +62,25 @@ export class LabResearcherAgent {
       }
 
       const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(`API error: ${data.error}`);
-      }
-      
-      // Handle the response format from fetch-openai
       let researchContent = '';
-      if (data.results && data.results.length > 0) {
-        researchContent = data.results[0].content || JSON.stringify(data.results[0]);
-      } else if (data.content) {
+      try {
+        if (typeof data.text === 'string') {
+          // Try to parse as JSON if the model returns a JSON string
+          const parsed = JSON.parse(data.text);
+          if (parsed && typeof parsed.content === 'string') {
+            researchContent = parsed.content;
+          } else if (typeof parsed === 'string') {
+            researchContent = parsed;
+          }
+        }
+      } catch (e) {
+        researchContent = typeof data.text === 'string' ? data.text : '';
+        logger.warn('ResearcherAgent: Failed to parse research response as JSON', { error: e, textPreview: String(data.text).slice(0, 100) });
+      }
+      if (!researchContent && data.content) {
         researchContent = data.content;
-      } else {
+      }
+      if (!researchContent) {
         researchContent = JSON.stringify(data);
       }
 
@@ -70,7 +88,6 @@ export class LabResearcherAgent {
         logger.info('ResearcherAgent: Research completed successfully', { 
           contentLength: researchContent.length 
         });
-        
         return {
           success: true,
           data: {
@@ -83,16 +100,12 @@ export class LabResearcherAgent {
       // Fallback research
       const fallbackContent = this.createFallbackResearch(prompt, type);
       logger.info('ResearcherAgent: Using fallback research');
-      
       return {
         success: true,
         data: { content: fallbackContent }
       };
     } catch (error) {
-      logger.error('ResearcherAgent: Research failed', { 
-        error: error instanceof Error ? error.message : error 
-      });
-      
+      logger.error('ResearcherAgent: Research failed', { error: error instanceof Error ? error.message : error });
       const fallbackContent = this.createFallbackResearch(prompt, type);
       return {
         success: true,

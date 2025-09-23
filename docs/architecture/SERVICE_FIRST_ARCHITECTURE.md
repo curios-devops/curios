@@ -54,7 +54,7 @@ CuriosAI has been successfully reorganized from artifact-first to service-first 
     /components             # CleanInput.tsx, etc.
     /types                  # Shared TypeScript types
     /utils                  # Shared utilities
-    /functions              # fetch-openai.js, image-proxy.js, share.js
+    /functions              # image-proxy.js, share.js
     index.ts                # Common exports
 ```
 
@@ -98,7 +98,7 @@ CuriosAI has been successfully reorganized from artifact-first to service-first 
 - **Types**: `services/agents/types.ts` → `common/types/`
 - **Components**: `components/common/` → `common/components/`
 - **Functions**: Core Netlify functions → `common/functions/`
-  - `fetch-openai.js`, `image-proxy.js`, `share.js`
+  - `image-proxy.js`, `share.js`
 
 ## Import Path Updates Required
 
@@ -200,9 +200,7 @@ import { braveSearch } from '../../../common/tools';
 
 #### Functions Moved to Common:
 - **Shared Functions** → `src/common/functions/`:
-  - `fetch-openai.js` (Core OpenAI proxy)
-  - `fetch-openai-chat.js` (Chat completions)
-  - `openai-*.js` (All OpenAI related functions)
+  - 
   - `image-proxy.js` (Image proxying)
   - `share.js` & `share-search.js` (Sharing functionality)
   - `og-image*.js` (Open Graph image generation)

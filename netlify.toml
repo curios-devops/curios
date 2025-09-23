@@ -20,8 +20,6 @@
   functions = "netlify/functions"
   
   # Proxy configuration for local development
-  [dev.proxy]
-    "/api/fetch-openai" = "/.netlify/functions/fetch-openai"
 
 # Edge Functions configuration
 [[edge_functions]]
@@ -38,19 +36,8 @@
   external_node_modules = ["@supabase/supabase-js", "openai"]
   
   # Function-specific settings
-  [functions.fetch-openai]
-    # Timeout in seconds (max 10s for free tier, 30s for Pro)
-    timeout = 10
-    
-    # Memory allocation in MB (128-3008 MB, in 64MB increments)
-    memory = 1024
 
 # Redirects for production
-[[redirects]]
-  from = "/api/fetch-openai"
-  to = "/.netlify/functions/fetch-openai"
-  status = 200
-  force = true
 
 # Security headers for all routes
 [[headers]]
@@ -93,11 +80,6 @@
 
 # API redirects must come FIRST before the SPA catchall redirect
 
-# OpenAI API redirects
-[[redirects]]
-  from = "/api/fetch-openai"
-  to = "/.netlify/functions/fetch-openai"
-  status = 200
 
 # API redirects for Brave Search
 [[redirects]]

@@ -22,11 +22,12 @@
   09.15 - Refactor search flow: Simplify and add comprehensive console logging
   09.16 - Refactor citations: Small compact blue buttons with white text, clickable links
   09.19 - Refactor chat completions. and delete keys
+  09.23 - finsih refactot Locally working.
 # CURIOSAI  Runing Dev
 1. npm run dev
 
 2. if you have a problem with the port 8888
-  > sof -ti:8888 | xargs kill -9
+  > lsof -ti:8888 | xargs kill -9
   verify the port is free and start the development server:
    > lsof -i :8888
 3. IS front end port 5173 is in use then use 
@@ -89,3 +90,12 @@ Check the logs again to confirm the event was processed.
 To download the project From Firebase Studio run:
 tar -czvf project.tar.gz --exclude=".*" .
 then Righ click and Download
+
+
+Restart your TypeScript server or IDE
+
+In VS Code:
+
+Open the Command Palette (Cmd+Shift+P on Mac).
+Type and select: “TypeScript: Restart TS Server”.
+Or simply reload the window (Cmd+Shift+P → “Developer: Reload Window”).

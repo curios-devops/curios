@@ -1,5 +1,5 @@
 // baseAgent.ts
-import { Agent, AgentResponse } from '../types';
+import { Agent, AgentResponse } from '../../commonApp/types';
 import { rateLimitQueue } from '../../commonService/utils/rateLimit';
 import { logger } from '../../utils/logger';
 
@@ -60,49 +60,49 @@ export abstract class BaseAgent implements Agent {
   ): Promise<T> {
     try {
       return await rateLimitQueue.add(async () => {
+        // Use Supabase Edge Function endpoint
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+        // Get Supabase anon key from environment
+        const supabaseAnonKey = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
+        if (!supabaseAnonKey) {
+          logger.error(`${this.name}: Supabase anon key not found in environment variables`);
+          return fallback;
+        }
+        logger.info(`${this.name}: Sending request to Supabase Edge Function`, { url: supabaseEdgeUrl });
         try {
-          const response = await fetch('/.netlify/functions/fetch-openai', {
+          const response = await fetch(supabaseEdgeUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseAnonKey}`
             },
-            body: JSON.stringify({
-              input,
-              model: options.model || 'gpt-4o-mini',
-              temperature: options.temperature || 0.3,
-              max_completion_tokens: options.max_completion_tokens || 2000,
-              response_format: options.response_format || { type: 'json_object' },
-              reasoning_effort: options.reasoning_effort || 'medium'
-            })
+            body: JSON.stringify({ prompt: input })
           });
-
+          logger.info(`${this.name}: OpenAI API response received`, { status: response.status, ok: response.ok });
           if (!response.ok) {
             if (response.status === 429) {
-              console.warn(`${this.name}: Rate limit exceeded, using fallback`);
+              logger.warn(`${this.name}: Rate limit exceeded, using fallback`);
               return fallback;
             }
+            const errorText = await response.text();
+            logger.error(`${this.name}: OpenAI API call failed`, { status: response.status, errorText });
             throw new Error(`OpenAI API call failed: ${response.status}`);
           }
-
           const data = await response.json();
-          
-          // Extract content from the new Responses API format
-          const content = data.output_text || data.content;
-          
+          // The Supabase Edge Function returns { text }
+          const content = data.text;
           if (content && typeof content === 'string') {
-            // If expecting JSON, try to parse it
             if (options.response_format?.type === 'json_object') {
               try {
                 return JSON.parse(content);
               } catch (_parseError) {
-                console.warn(`${this.name}: Failed to parse JSON response, using fallback`);
+                logger.warn(`${this.name}: Failed to parse JSON response, using fallback`);
                 return fallback;
               }
             }
             return content;
           }
-          
-          console.warn(`${this.name}: No content in response, using fallback`);
+          logger.warn(`${this.name}: No content in response, using fallback`);
           return fallback;
         } catch (error) {
           if (
@@ -113,14 +113,14 @@ export abstract class BaseAgent implements Agent {
               error.message.includes('model_not_found')
             )
           ) {
-            console.warn(`${this.name}: OpenAI API error:`, error.message);
+            logger.warn(`${this.name}: OpenAI API error:`, error.message);
             return fallback;
           }
           throw error;
         }
       });
     } catch (error) {
-      console.warn(`${this.name}: OpenAI call failed:`, error);
+      logger.warn(`${this.name}: OpenAI call failed:`, error);
       return fallback;
     }
   }

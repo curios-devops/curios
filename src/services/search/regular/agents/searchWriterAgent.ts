@@ -35,7 +35,7 @@ export class SearchWriterAgent {
     messages: Array<{ role: string; content: string }>,
     model: string = this.defaultModel,
     retryCount: number = 0
-  ): Promise<string> {
+  ): Promise<ArticleResult> {
     const currentRetry = typeof retryCount === 'number' ? retryCount : 0;
     try {
       logger.debug('Calling OpenAI API directly', { 
@@ -45,8 +45,8 @@ export class SearchWriterAgent {
       });
 
 
-      // Use the deployed Supabase Edge Function endpoint
-      const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/test-openai';
+  // Use the deployed Supabase Edge Function endpoint (renamed to fetch-openai)
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
 
       // Get Supabase anon key from environment
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -96,7 +96,56 @@ export class SearchWriterAgent {
         contentLength: data.text.length 
       });
 
-      return data.text;
+      // Debug: log the raw data.text
+      logger.debug('Raw OpenAI data.text', { textPreview: String(data.text).slice(0, 200) });
+      let articleResult: ArticleResult | null = null;
+      try {
+        articleResult = typeof data.text === 'string' ? JSON.parse(data.text) : null;
+        logger.debug('Parsed ArticleResult from data.text', { articleResult });
+      } catch (e) {
+        logger.warn('Failed to parse OpenAI response as JSON', { error: e, textPreview: String(data.text).slice(0, 200) });
+      }
+      if (
+        articleResult &&
+        typeof articleResult.content === 'string' &&
+        Array.isArray(articleResult.followUpQuestions) &&
+        Array.isArray(articleResult.citations)
+      ) {
+        logger.debug('ArticleResult is valid, returning', { articleResult });
+        return articleResult;
+      }
+
+      // If not valid JSON, treat as plain text/Markdown and wrap in ArticleResult
+      if (typeof data.text === 'string') {
+        // Try to extract follow-up questions and citations if present in the text
+        let followUpQuestions: string[] = [];
+        let citations: any[] = [];
+        // Simple heuristics: look for sections in the text
+        const fqMatch = data.text.match(/Follow[- ]?up Questions:?\n([\s\S]*?)(\n\n|$)/i);
+        if (fqMatch) {
+          followUpQuestions = fqMatch[1]
+            .split(/\n|\r/)
+            .map((q: string) => q.trim())
+            .filter((q: string) => q.length > 0 && !/^[-*]?$/.test(q));
+        }
+        const citMatch = data.text.match(/Citations?:?\n([\s\S]*?)(\n\n|$)/i);
+        if (citMatch) {
+          citations = citMatch[1]
+            .split(/\n|\r/)
+            .map((c: string) => c.trim())
+            .filter((c: string) => c.length > 0 && !/^[-*]?$/.test(c))
+            .map((c: string) => ({ url: '', title: c, siteName: '' }));
+        }
+        logger.debug('Wrapped plain text as ArticleResult', { followUpQuestions, citations });
+        return {
+          content: data.text,
+          followUpQuestions,
+          citations
+        };
+      }
+
+      logger.warn('OpenAI response did not match ArticleResult format, using fallback', { textPreview: String(data.text).slice(0, 200), articleResult });
+      return this.getFallbackData(messages[messages.length - 1]?.content || '');
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -124,7 +173,7 @@ export class SearchWriterAgent {
       });
 
       // Return a fallback response that matches the expected format
-      return JSON.stringify({
+      return {
         content: 'Sorry, I encountered an error while generating the response. Please try again later.',
         followUpQuestions: [
           'What specific information would be most valuable about this topic?',
@@ -134,7 +183,7 @@ export class SearchWriterAgent {
           'What practical applications relate to this subject?'
         ],
         citations: []
-      });
+      };
     }
   }
 
@@ -322,7 +371,7 @@ Remember: Base your response entirely on the source material provided. Do not ad
       ];
 
       // Add explicit timeout handling for WriterAgent with proper cleanup
-      const completionPromise = this.callOpenAI(messages, this.defaultModel);
+  const completionPromise = this.callOpenAI(messages, this.defaultModel);
       
       let timeoutId: NodeJS.Timeout | undefined;
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -332,8 +381,9 @@ Remember: Base your response entirely on the source material provided. Do not ad
         }, 30000);
       });
 
+      let articleResult: ArticleResult;
       try {
-        await Promise.race([completionPromise, timeoutPromise]);
+        articleResult = await Promise.race([completionPromise, timeoutPromise]);
         // CRITICAL: Clear timeout on successful completion to prevent memory leak
         if (timeoutId) clearTimeout(timeoutId);
       } catch (error) {
@@ -346,6 +396,10 @@ Remember: Base your response entirely on the source material provided. Do not ad
           data: this.getFallbackData(research.query)
         };
       }
+      return {
+        success: true,
+        data: articleResult
+      };
     } catch (error) {
       logger.error('WriterAgent execution failed:', error);
       // CRITICAL: Send completion signal even on error
