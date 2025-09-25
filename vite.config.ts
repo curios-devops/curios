@@ -116,7 +116,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
             
             // Common service chunks - reduced to avoid circular dependencies
             'common-service': [
-              './src/commonService/openai/secureOpenAI.ts',
               './src/commonService/utils/constants.ts',
               './src/commonService/utils/types.ts'
             ],

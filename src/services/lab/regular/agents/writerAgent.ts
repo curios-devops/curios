@@ -26,7 +26,9 @@ export class LabWriterAgent {
   const userPrompt = `Task: ${prompt}\n\nResearch/Background:\n${researchContent || 'No specific research data provided.'}\n\nPlease create the requested ${type} based on this information.`;
       
       // Call the Supabase Edge Function using chat.completions API
-  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+  const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+    ? import.meta.env.VITE_OPENAI_API_URL
+    : 'VITE_OPENAI_API_URL';
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       if (!supabaseAnonKey) {
         throw new Error('Supabase anon key not found in environment variables');

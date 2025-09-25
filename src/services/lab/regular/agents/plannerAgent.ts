@@ -17,8 +17,10 @@ export class LabPlannerAgent {
     try {
       logger.info('PlannerAgent: Creating execution plan', { prompt, type });
 
-      // Use Supabase Edge Function for OpenAI API call
-  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+      // Use environment variable for OpenAI API endpoint, fallback to hardcoded URL
+      const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+        ? import.meta.env.VITE_OPENAI_API_URL
+        : 'VITE_OPENAI_API_URL';
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       if (!supabaseAnonKey) {
         throw new Error('Supabase anon key not found in environment variables');

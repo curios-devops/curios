@@ -101,7 +101,9 @@ function getFocusContext(focusMode?: string): { approach: string; searchSuffix: 
 // Planner Agent - Creates journalistic research strategy
 async function plannerAgent(query: string, focusMode?: string): Promise<SearchPlan> {
   try {
-    const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+      ? import.meta.env.VITE_OPENAI_API_URL
+      : 'VITE_OPENAI_API_URL';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   // focusContext is used only in prompt, not needed as a variable here
     const response = await fetch(supabaseEdgeUrl, {
@@ -155,7 +157,9 @@ async function searchAgent(searchQuery: string): Promise<{ summary: string; sour
   try {
     // Get real sources from OpenAI web search (via Supabase Edge Function)
     const sources = await performOpenAIWebSearch(searchQuery);
-    const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+      ? import.meta.env.VITE_OPENAI_API_URL
+      : 'VITE_OPENAI_API_URL';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     const response = await fetch(supabaseEdgeUrl, {
       method: 'POST',
@@ -200,7 +204,9 @@ async function searchAgent(searchQuery: string): Promise<{ summary: string; sour
 // Real web search using OpenAI with web search capabilities
 async function performOpenAIWebSearch(query: string, focusMode?: string): Promise<SourceInfo[]> {
   try {
-    const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+      ? import.meta.env.VITE_OPENAI_API_URL
+      : 'VITE_OPENAI_API_URL';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     const focusContext = getFocusSearchContext(focusMode);
     const response = await fetch(supabaseEdgeUrl, {
@@ -437,7 +443,9 @@ async function writerAgent(query: string, searchSummaries: SearchSummary[], focu
     const researchContext = searchSummaries
       .map(s => `**${s.reason}** (Query: "${s.query}"):\n${s.summary}`)
       .join('\n\n');
-    const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+      ? import.meta.env.VITE_OPENAI_API_URL
+      : 'VITE_OPENAI_API_URL';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     const response = await fetch(supabaseEdgeUrl, {
       method: 'POST',

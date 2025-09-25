@@ -1,5 +1,5 @@
 import { AgentResponse } from '../../../../commonApp/types/index';
-import { secureOpenAI } from '../../../../commonService/openai/secureOpenAI';
+
 import { logger } from '../../../../utils/logger';
 
 export interface PlanningRequest {
@@ -56,21 +56,29 @@ Focus Mode: ${focusMode}
 
 Provide a detailed research plan following the JSON structure specified.`;
 
-      const response = await secureOpenAI.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-        response_format: { type: 'json_object' }
-      });
 
-      const content = response.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('No response content from planning agent');
-      }
+      // Supabase Edge Function OpenAI completion
+      const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+        ? import.meta.env.VITE_OPENAI_API_URL
+        : 'VITE_OPENAI_API_URL';
+      const supabaseAnonKey = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
+      if (!supabaseAnonKey) throw new Error('Supabase anon key not found in environment variables');
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ];
+      const fetchResponse = await fetch(supabaseEdgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify({ prompt: JSON.stringify({ messages }) })
+      });
+      if (!fetchResponse.ok) throw new Error('OpenAI completion failed');
+      const data = await fetchResponse.json();
+      const content = data.text || data.content || data.output_text;
+      if (!content) throw new Error('No response content from planning agent');
 
       let planningResult: PlanningResult;
       try {

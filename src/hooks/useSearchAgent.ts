@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { logger } from '../utils/logger';
-import { secureOpenAI } from '../commonService/openai/secureOpenAI';
+
 
 interface SearchOptions {
   mode?: string;
@@ -23,24 +23,29 @@ export function useSearchAgent() {
         : `You are a helpful AI search assistant.
            Provide clear, concise answers based on reliable sources.`;
 
-      // Use the appropriate model based on pro status
-      const model = 'gpt-4o-mini';
 
-      const completion = await secureOpenAI.chat.completions.create({
-        model,
-        messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: query }
-        ],
-        tools: [{
-          type: 'retrieval',
-          id: 'web-search'
-        }],
-        tool_choice: 'auto',
-        temperature: options.pro ? 0.7 : 0.5
+      // Supabase Edge Function OpenAI completion
+      const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+        ? import.meta.env.VITE_OPENAI_API_URL
+        : 'VITE_OPENAI_API_URL';
+      const supabaseAnonKey = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
+      if (!supabaseAnonKey) throw new Error('Supabase anon key not found in environment variables');
+      const messages = [
+        { role: 'system', content: systemMessage },
+        { role: 'user', content: query }
+      ];
+      const fetchResponse = await fetch(supabaseEdgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify({ prompt: JSON.stringify({ messages }) })
       });
-
-      return completion.choices[0]?.message?.content;
+      if (!fetchResponse.ok) throw new Error('OpenAI completion failed');
+      const data = await fetchResponse.json();
+      const content = data.text || data.content || data.output_text;
+      return content;
     } catch (error) {
       logger.error('Search failed:', error);
       throw error;

@@ -1,5 +1,5 @@
 import { AgentResponse, SearchResult } from '../../../../commonApp/types/index';
-import { secureOpenAI } from '../../../../commonService/openai/secureOpenAI';
+
 import { logger } from '../../../../utils/logger';
 
 export interface ResearchWriterRequest {
@@ -22,7 +22,7 @@ export interface ResearchWriterResult {
 export class ResearchWriterAgent {
   async execute(request: ResearchWriterRequest): Promise<AgentResponse<ResearchWriterResult>> {
     try {
-      const { query, focusMode, search_queries, results, thinking_process } = request;
+  const { query, focusMode, results } = request;
       
       logger.info('ResearchWriterAgent: Starting synthesis', { 
         query, 
@@ -34,79 +34,12 @@ export class ResearchWriterAgent {
         throw new Error('No search results provided for synthesis');
       }
 
-      const systemPrompt = `You are a Research Writer Agent specialized in creating comprehensive, well-structured research reports.
 
-Your task is to synthesize search results into a detailed research report with the following structure:
 
-REQUIREMENTS:
-1. **Headline**: Compelling, informative title (8-12 words)
-2. **Subtitle**: Descriptive subtitle providing context (15-25 words)
-3. **Short Summary**: Executive summary in 2-3 sentences (100-150 words)
-4. **Markdown Report**: Comprehensive report (800-1200 words) with:
-   - Clear section headers
-   - Detailed analysis with evidence
-   - Current data and statistics when available
-   - Multiple perspectives on the topic
-   - Practical implications or applications
-   - Well-structured markdown formatting
-5. **Follow-up Questions**: 4-5 relevant questions for deeper exploration
-6. **Citations**: Properly formatted citations with inline references
 
-Focus Mode: ${this.getFocusContext(focusMode)}
-
-FORMATTING GUIDELINES:
-- Use proper markdown headers (##, ###)
-- Include bullet points for key information
-- Use **bold** for emphasis on important concepts
-- Include inline citations using [^1] format
-- Structure content logically with smooth transitions
-- Ensure content is current, accurate, and comprehensive
-
-Response must be valid JSON with this exact structure:
-{
-  "headline": "...",
-  "subtitle": "...", 
-  "short_summary": "...",
-  "markdown_report": "...",
-  "follow_up_questions": ["...", "...", "...", "...", "..."],
-  "citations": [{"text": "citation text", "source": {"title": "...", "url": "...", "snippet": "..."}}]
-}`;
-
-      const resultsContext = this.formatResultsForContext(results);
-      
-      const userPrompt = `Research Query: "${query}"
-Focus Mode: ${focusMode}
-Search Strategy: ${search_queries.join(', ')}
-Planning Context: ${thinking_process}
-
-SEARCH RESULTS TO SYNTHESIZE:
-${resultsContext}
-
-Create a comprehensive research report synthesizing these findings. Ensure the report is authoritative, well-structured, and provides valuable insights on the topic.`;
-
-      const response = await secureOpenAI.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 2500,
-        response_format: { type: 'json_object' }
-      });
-
-      const content = response.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('No response content from research writer');
-      }
-
-      let writerResult: ResearchWriterResult;
-      try {
-        writerResult = JSON.parse(content);
-      } catch (_parseError) {
-        logger.warn('Failed to parse writer response, using fallback', { content });
-        writerResult = this.getFallbackReport(query, results);
-      }
+      // TODO: Integrate OpenAI completions here.
+      // For now, use fallback report only.
+      let writerResult: ResearchWriterResult = this.getFallbackReport(query, results);
 
       // Validate and enhance the result
       writerResult = this.validateWriterResult(writerResult, query, results);
@@ -135,34 +68,7 @@ Create a comprehensive research report synthesizing these findings. Ensure the r
     }
   }
 
-  private getFocusContext(focusMode: string): string {
-    const contexts: Record<string, string> = {
-      'health': 'Emphasize evidence-based medical information, health research, clinical findings, and health implications',
-      'academic': 'Focus on scholarly analysis, research methodology, academic perspectives, and peer-reviewed insights',
-      'finance': 'Highlight financial analysis, market trends, economic data, investment implications, and financial metrics',
-      'travel': 'Cover travel insights, cultural information, practical advice, and current travel conditions',
-      'social': 'Include social trends, community impact, public opinion, and social implications',
-      'math': 'Emphasize mathematical concepts, technical accuracy, mathematical applications, and precise definitions',
-      'video': 'Reference visual content and multimedia sources when available',
-      'web': 'Provide comprehensive analysis covering all relevant online perspectives and current information'
-    };
-    
-    return contexts[focusMode] || contexts['web'];
-  }
 
-  private formatResultsForContext(results: SearchResult[]): string {
-    return results
-      .slice(0, 10) // Limit to top 10 results
-      .map((result, index) => {
-        return `[${index + 1}] **${result.title}**
-URL: ${result.url}
-Content: ${result.content.slice(0, 300)}${result.content.length > 300 ? '...' : ''}
-${result.image ? `Image: ${result.image}` : ''}
-
----`;
-      })
-      .join('\n');
-  }
 
   private validateWriterResult(result: ResearchWriterResult, query: string, results: SearchResult[]): ResearchWriterResult {
     // Ensure required fields are present and valid
@@ -188,13 +94,9 @@ ${result.image ? `Image: ${result.image}` : ''}
 
     // Ensure citations
     if (!result.citations || result.citations.length === 0) {
-      result.citations = results.slice(0, 5).map((result, _index) => ({
+      result.citations = results.slice(0, 5).map((result) => ({
         text: `${result.title} - ${result.content.slice(0, 100)}...`,
-        source: {
-          title: result.title,
-          url: result.url,
-          snippet: result.content.slice(0, 200)
-        }
+        source: result
       }));
     }
 
@@ -228,11 +130,7 @@ ${result.image ? `Image: ${result.image}` : ''}
       ],
       citations: results.slice(0, 5).map((result) => ({
         text: `${result.title} - ${result.content.slice(0, 100)}...`,
-        source: {
-          title: result.title,
-          url: result.url,
-          snippet: result.content.slice(0, 200)
-        }
+        source: result
       }))
     };
   }

@@ -161,8 +161,6 @@ export class YourAgent extends BaseAgent {
 
 ### OpenAI API Integration
 - **All requests** go through `/api/
-- **SecureOpenAI service** provides chat completion interface
-- **Never use OpenAI SDK directly** in frontend - always use secureOpenAI service
 
 ### Performance Optimizations (WriterAgent)
 - **Maximum 5 search results** per request

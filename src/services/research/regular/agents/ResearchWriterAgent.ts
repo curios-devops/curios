@@ -13,7 +13,9 @@ export class ResearchWriterAgent {
         .join('\n\n');
       return await this.safeOpenAICall(
         async () => {
-          const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+          const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+            ? import.meta.env.VITE_OPENAI_API_URL
+            : 'VITE_OPENAI_API_URL';
           const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
           const response = await fetch(supabaseEdgeUrl, {
             method: 'POST',

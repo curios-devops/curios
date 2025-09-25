@@ -46,7 +46,9 @@ export class SearchWriterAgent {
 
 
   // Use the deployed Supabase Edge Function endpoint (renamed to fetch-openai)
-  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+  const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+    ? import.meta.env.VITE_OPENAI_API_URL
+    : 'VITE_OPENAI_API_URL';
 
       // Get Supabase anon key from environment
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -66,7 +68,14 @@ export class SearchWriterAgent {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseAnonKey}`
         },
-        body: JSON.stringify({ prompt: messages[messages.length - 1]?.content })
+        body: JSON.stringify({
+          prompt: JSON.stringify({
+            messages,
+            response_format: { type: 'json_object' },
+            temperature: 0.7,
+            max_output_tokens: 1200
+          })
+        })
       });
 
       logger.debug('OpenAI API response received', {
@@ -87,6 +96,7 @@ export class SearchWriterAgent {
       const data = await response.json();
       
 
+
       // The Supabase Edge Function returns { text, openai }
       if (!data.text) {
         throw new Error('No content in Supabase Edge Function response');
@@ -99,8 +109,18 @@ export class SearchWriterAgent {
       // Debug: log the raw data.text
       logger.debug('Raw OpenAI data.text', { textPreview: String(data.text).slice(0, 200) });
       let articleResult: ArticleResult | null = null;
+      // Try to parse as JSON, fallback to plain text if not valid JSON
       try {
-        articleResult = typeof data.text === 'string' ? JSON.parse(data.text) : null;
+        // Accept either a direct object or a stringified JSON
+        if (typeof data.text === 'object') {
+          articleResult = data.text;
+        } else if (typeof data.text === 'string') {
+          // Remove Markdown code block markers if present
+          let cleanText = data.text.trim();
+          // Remove leading/trailing triple backticks and optional json/lang
+          cleanText = cleanText.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '');
+          articleResult = JSON.parse(cleanText);
+        }
         logger.debug('Parsed ArticleResult from data.text', { articleResult });
       } catch (e) {
         logger.warn('Failed to parse OpenAI response as JSON', { error: e, textPreview: String(data.text).slice(0, 200) });

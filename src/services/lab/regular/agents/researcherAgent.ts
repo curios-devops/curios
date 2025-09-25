@@ -34,7 +34,9 @@ export class LabResearcherAgent {
       const userPrompt = `Research topic: ${prompt}\n\nSearch Results:\n${searchResults || 'No search results available.'}\n\nPlease provide a comprehensive research summary covering key aspects, facts, and insights related to this topic.`;
 
       // Call the Supabase Edge Function for OpenAI completions
-  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+  const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+    ? import.meta.env.VITE_OPENAI_API_URL
+    : 'VITE_OPENAI_API_URL';
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       if (!supabaseAnonKey) {
         throw new Error('Supabase anon key not found in environment variables');

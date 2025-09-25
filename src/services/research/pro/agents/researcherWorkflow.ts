@@ -613,7 +613,9 @@ interface ResearcherResult {
 }
 
 // All completions now go through Supabase Edge Function (chat.completions)
-const SUPABASE_EDGE_URL = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+const SUPABASE_EDGE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+  ? import.meta.env.VITE_OPENAI_API_URL
+  : 'VITE_OPENAI_API_URL';
 const SUPABASE_ANON_KEY = typeof window === 'undefined' ? process.env.VITE_SUPABASE_ANON_KEY : import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 async function chatCompletion({ model, messages, temperature, max_output_tokens, response_format }: {

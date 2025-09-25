@@ -61,7 +61,9 @@ export abstract class BaseAgent implements Agent {
     try {
       return await rateLimitQueue.add(async () => {
         // Use Supabase Edge Function endpoint
-  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+        const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+          ? import.meta.env.VITE_OPENAI_API_URL
+          : 'VITE_OPENAI_API_URL';
         // Get Supabase anon key from environment
         const supabaseAnonKey = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
         if (!supabaseAnonKey) {

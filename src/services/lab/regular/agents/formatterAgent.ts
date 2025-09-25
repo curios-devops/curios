@@ -22,8 +22,9 @@ export class LabFormatterAgent {
         };
       }
 
-      // Use Supabase Edge Function for OpenAI API call
-  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+
+      // Use environment variable for OpenAI API endpoint, fallback to hardcoded URL
+      const openaiApiUrl = import.meta.env.VITE_OPENAI_API_URL || 'VITE_OPENAI_API_URL';
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       if (!supabaseAnonKey) {
         throw new Error('Supabase anon key not found in environment variables');
@@ -32,7 +33,7 @@ export class LabFormatterAgent {
       const systemPrompt = 'You are a professional content formatter. Your task is to improve the formatting, structure, and presentation of content while maintaining its meaning and accuracy. Focus on proper Markdown formatting, clear headings, logical flow, and professional presentation. Do not change the core content, only improve its formatting and structure.';
       const userPrompt = `Please format and improve the structure of this ${artifact.type}:\n\n${artifact.content}\n\nEnsure proper Markdown formatting, clear headings, and professional presentation while preserving all the original content.`;
 
-      const response = await fetch(supabaseEdgeUrl, {
+  const response = await fetch(openaiApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
