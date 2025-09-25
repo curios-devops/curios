@@ -1,5 +1,4 @@
 import { AgentResponse, SearchResult } from '../../../../commonApp/types/index';
-import { secureOpenAI } from '../../../../commonService/openai/secureOpenAI';
 import { logger } from '../../../../utils/logger';
 
 export interface InsightWriterRequest {
@@ -96,18 +95,27 @@ ${resultsContext}
 
 Create actionable insights that identify trends, patterns, opportunities, and strategic implications. Focus on providing strategic value through data-driven analysis and forward-looking perspectives.`;
 
-      const response = await secureOpenAI.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 2500,
-        response_format: { type: 'json_object' }
-      });
 
-      const content = response.choices[0]?.message?.content;
+      // Use Supabase Edge Function for OpenAI chat completions
+      const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const response = await fetch(supabaseEdgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify({
+          prompt: JSON.stringify({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          })
+        })
+      });
+      const data = await response.json();
+      const content = data.text || data.choices?.[0]?.message?.content;
       if (!content) {
         throw new Error('No response content from insight writer');
       }

@@ -1,76 +1,59 @@
 import { Artifact, ArtifactStep, Citation } from '../../../../../commonApp/types/index';
 import { searxngSearch } from '../../../../../commonService/searchTools/searxng';
-import { secureOpenAI } from '../../../../../commonService/openai/secureOpenAI.ts';
 
 // --- OpenAI websearch tool integration ---
-// Uses secureOpenAI with the Responses API (web_search_preview)
-// Fallback to DuckDuckGo/SearxNG if OpenAI service is not available
+// TODO: Refactor to use Supabase Edge Function for OpenAI chat completions/websearch
 
-const hasOpenAI = true; // secureOpenAI always available via Netlify functions
 
-function parseCitationsFromOpenAI(response: any): Citation[] {
-  // Find annotations in the response
-  if (!response || !response.content || !Array.isArray(response.content)) return [];
-  const content = response.content[0];
-  if (!content || !content.annotations) return [];
-  return content.annotations
-    .filter((a: any) => a.type === 'url_citation')
-    .map((a: any) => ({
-      url: a.url,
-      title: a.title,
-      start_index: a.start_index,
-      end_index: a.end_index,
-    }));
-}
 
 async function openaiWebsearch(prompt: string): Promise<{text: string, citations: Citation[]}> {
-  if (!hasOpenAI) {
-    return { text: '', citations: [] };
-  }
+  // Use Supabase Edge Function for OpenAI websearch
+  const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   try {
-    const response = await secureOpenAI.responses.create({
-      model: 'gpt-4o-mini',
-      tools: [{ type: 'web_search_preview' }],
-      input: prompt,
-      tool_choice: { type: 'web_search_preview' },
+    const response = await fetch(supabaseEdgeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        prompt: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: `You are a research assistant. Use web search to find and summarize information for the following prompt. Provide a concise summary and cite sources if possible.`
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.5,
+          max_output_tokens: 600
+        })
+      })
     });
-    let text = '';
-    if (response && (response as any).output_text) {
-      text = (response as any).output_text as string;
-    } else if (response && response.content && response.content[0] && (response.content[0] as any).text) {
-      text = (response.content[0] as any).text as string;
+    const data = await response.json();
+    const content = data.text || data.choices?.[0]?.message?.content;
+    if (content) {
+      // Try to parse citations if present in JSON
+      let parsed;
+      try { parsed = JSON.parse(content); } catch { parsed = {}; }
+      return {
+        text: parsed.summary || parsed.content || content,
+        citations: Array.isArray(parsed.citations) ? parsed.citations : []
+      };
     }
-    const citations = parseCitationsFromOpenAI(response);
-    return { text, citations };
+    return { text: '', citations: [] };
   } catch (e) {
     return { text: '', citations: [] };
   }
 }
 
 async function generateSubtasks(prompt: string): Promise<string[]> {
-  // Use OpenAI if available
-  if (hasOpenAI) {
-    try {
-      const response = await secureOpenAI.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant that breaks down a user question into clear, actionable research subtasks. Respond only with a JSON array of up to 5 subtasks, each as a short imperative sentence.' },
-          { role: 'user', content: `Break down the following question into no more than 5 clear research subtasks. Respond only with a JSON array.\n\nQuestion: ${prompt}` }
-        ],
-        temperature: 0.2,
-        max_tokens: 200,
-        response_format: { type: 'json_object' }
-      });
-      const content = response.choices[0]?.message?.content;
-      if (content) {
-        const parsed = JSON.parse(content);
-        if (Array.isArray(parsed)) return parsed;
-        if (Array.isArray(parsed.subtasks)) return parsed.subtasks;
-      }
-    } catch (e) {
-      // Fallback below
-    }
-  }
+  // TODO: Replace with Supabase Edge Function call for OpenAI chat completions
   // Fallback: split prompt into 1-3 generic subtasks
   return [
     `Research background and context for: ${prompt}`,
@@ -108,20 +91,18 @@ export async function researchWorker(artifact: Artifact, prompt: string, updateA
   });
 
   let result: {text: string, citations: Citation[]} = { text: '', citations: [] };
-  if (hasOpenAI) {
-    try {
-      result = await openaiWebsearch(prompt);
-      console.log('🔎 ResearchWorker: OpenAI websearch result:', result.text);
-      if (result.citations && result.citations.length > 0) {
-        thinkingLog.push('**Web sources found:**');
-        result.citations.forEach((c, idx) => {
-          thinkingLog.push(`${idx + 1}. [${c.title}](${c.url})`);
-        });
-      }
-    } catch (e) {
-      result = { text: '', citations: [] };
-      console.log('🔎 ResearchWorker: OpenAI websearch failed:', e);
+  try {
+    result = await openaiWebsearch(prompt);
+    console.log('🔎 ResearchWorker: OpenAI websearch result:', result.text);
+    if (result.citations && result.citations.length > 0) {
+      thinkingLog.push('**Web sources found:**');
+      result.citations.forEach((c, idx) => {
+        thinkingLog.push(`${idx + 1}. [${c.title}](${c.url})`);
+      });
     }
+  } catch (e) {
+    result = { text: '', citations: [] };
+    console.log('🔎 ResearchWorker: OpenAI websearch failed:', e);
   }
   // Fallback: use searxngSearch (RapidAPI)
   if (!result.text) {

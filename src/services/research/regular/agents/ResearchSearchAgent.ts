@@ -2,14 +2,9 @@
 import { AgentResponse, SearchResult, WebSearchItem } from '../../types';
 import { performSearch } from '../../../search/searchService';
 import { logger } from '../../../../utils/logger';
-import { secureOpenAI } from '../../../../commonService/openai/secureOpenAI';
-
+// TODO: Refactor to use Supabase Edge Function for OpenAI chat completions
 export class ResearchSearchAgent {
-  private openai: typeof secureOpenAI;
-
-  constructor() {
-    this.openai = secureOpenAI;
-  }
+  constructor() {}
 
   async search(searches: WebSearchItem[], useWebSearchTool = false): Promise<AgentResponse<SearchResult[]>> {
     try {
@@ -19,26 +14,34 @@ export class ResearchSearchAgent {
         // Use OpenAI's WebSearchTool for deep research
         for (const search of searches) {
           try {
-            const completion = await this.openai.chat.completions.create({
-              model: 'gpt-4o-mini',
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are a research assistant. Search the web and provide detailed, accurate information.'
-                },
-                {
-                  role: 'user',
-                  content: search.query
-                }
-              ],
-              tools: [{
-                type: 'retrieval',
-                id: 'search'
-              }],
-              tool_choice: 'auto'
+            // Use Supabase Edge Function for OpenAI chat completions
+            const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            const response = await fetch(supabaseEdgeUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseAnonKey}`
+              },
+              body: JSON.stringify({
+                prompt: JSON.stringify({
+                  messages: [
+                    {
+                      role: 'system',
+                      content: 'You are a research assistant. Search the web and provide detailed, accurate information.'
+                    },
+                    {
+                      role: 'user',
+                      content: search.query
+                    }
+                  ],
+                  tools: [{ type: 'retrieval', id: 'search' }],
+                  tool_choice: 'auto'
+                })
+              })
             });
-
-            const searchResult = completion.choices[0]?.message?.content;
+            const data = await response.json();
+            const searchResult = data.text || data.choices?.[0]?.message?.content;
             if (searchResult) {
               results.push({
                 title: search.query,

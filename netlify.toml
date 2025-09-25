@@ -67,7 +67,7 @@
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       img-src 'self' data: https:;
       font-src 'self' https://fonts.gstatic.com data:;
-      connect-src 'self' https://api.openai.com https://*.openai.com https://*.brave.com https://*.tavily.com;
+  connect-src 'self' https://*.brave.com https://*.tavily.com;
       frame-ancestors 'none';
       form-action 'self';
       base-uri 'self';
@@ -92,23 +92,6 @@
   to = "/.netlify/functions/brave-images-search"
   status = 200
 
-# API redirects for OpenAI
-[[redirects]]
-  from = "/api/openai/chat/completions"
-  to = "/.netlify/functions/openai-chat"
-  status = 200
-
-# API redirects for OpenAI Responses
-[[redirects]]
-  from = "/api/openai/responses"
-  to = "/.netlify/functions/openai-responses"
-  status = 200
-
-# API redirects for OpenAI Images
-[[redirects]]
-  from = "/api/openai/images/generations"
-  to = "/.netlify/functions/openai-images"
-  status = 200
 
 # Generic API redirects (MUST be before SPA catchall)
 [[redirects]]

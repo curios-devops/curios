@@ -1,53 +1,41 @@
 import { Artifact, ArtifactStep } from '../../../../../commonApp/types/index';
-import { getOpenAIClient } from '../../../../openai/client.ts';
 
-async function openaiWriteMarkdown(prompt: string, research: string, title?: string): Promise<string> {
-  console.log('🔍 WriterWorker: Initializing OpenAI client');
-  
+
+const SUPABASE_EDGE_URL = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+const SUPABASE_ANON_KEY = typeof window === 'undefined' ? process.env.VITE_SUPABASE_ANON_KEY : import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+async function chatCompletion({ prompt, research, title }: { prompt: string; research: string; title?: string }): Promise<string> {
   try {
-    const openai = getOpenAIClient();
-    
-    const response = await openai.responses.create({
-      model: 'gpt-4.1',
-      input: `Instruction: ${prompt}\n\nBackground/Research: ${research || 'No specific research data provided.'}`,
-      text: {
-        format: {
-          type: 'text'
-        }
+    const messages = [
+      { role: 'system', content: 'You are a professional technical writer. Write clear, well-structured markdown content based on the user instruction and research background.' },
+      { role: 'user', content: `Instruction: ${prompt}\n\nBackground/Research: ${research || 'No specific research data provided.'}` }
+    ];
+    const response = await fetch(SUPABASE_EDGE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
       },
-      reasoning: {
-        effort: 'high'
-      },
-      temperature: 0.7
+      body: JSON.stringify({
+        prompt: JSON.stringify({
+          model: 'gpt-4.1',
+          messages,
+          temperature: 0.7,
+          max_output_tokens: 1200,
+          response_format: { type: 'text' }
+        })
+      })
     });
-    
-    // Extract content from the new response format
-    let content = '';
-    if (response.output && response.output[0]) {
-      const output = response.output[0];
-      if ('content' in output && Array.isArray(output.content)) {
-        // New format with content array
-        content = output.content
-          .filter((item: any) => item.type === 'output_text' && item.text)
-          .map((item: any) => item.text)
-          .join('\n\n');
-      } else if ('text' in output && typeof output.text === 'string') {
-        // Fallback to direct text access
-        content = output.text;
-      }
-    }
-    
-    // Fallback if no content was extracted
+    const data = await response.json();
+    let content = data.text || data.content || data.output_text || data.choices?.[0]?.message?.content;
     if (!content) {
-      console.warn('Could not extract content from response:', response);
+      console.warn('Could not extract content from response:', data);
       content = `# ${title || 'Generated Content'}\n\n${research || 'No specific research data was available.'}`;
     }
     console.log('✅ WriterWorker: OpenAI response received, length:', content.length);
     return content;
-    
   } catch (error) {
     console.error('❌ WriterWorker: OpenAI API error:', error);
-    // Fallback content in case of error
     return `# ${title || prompt}\n\n${research || 'No research data available.'}\n\n*This is a fallback markdown document due to an OpenAI API error: ${error instanceof Error ? error.message : 'Unknown error'}*`;
   }
 }
@@ -96,7 +84,7 @@ export async function writerWorker(artifact: Artifact, prompt: string, updateArt
   }
   console.log('📝 WriterWorker: Starting writing process...');
   // Always use OpenAI LLM if available, fallback only if not
-  const markdown = await openaiWriteMarkdown(prompt, research, artifact.title);
+  const markdown = await chatCompletion({ prompt, research, title: artifact.title });
 
   thinkingLog.push('✔️ **Writing complete.**');
   console.log('📝 WriterWorker: Writing complete. Markdown length:', markdown.length);

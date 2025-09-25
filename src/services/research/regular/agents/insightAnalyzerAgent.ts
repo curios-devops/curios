@@ -1,5 +1,4 @@
 import { AgentResponse } from '../../../../commonApp/types/index';
-import { secureOpenAI } from '../../../../commonService/openai/secureOpenAI';
 import { logger } from '../../../../utils/logger';
 
 export interface InsightAnalysisRequest {
@@ -59,18 +58,27 @@ Focus Mode: ${focusMode}
 
 Identify the key areas where actionable insights can be generated and create an optimal search strategy for insight discovery.`;
 
-      const response = await secureOpenAI.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.8,
-        max_tokens: 1000,
-        response_format: { type: 'json_object' }
-      });
 
-      const content = response.choices[0]?.message?.content;
+      // Use Supabase Edge Function for OpenAI chat completions
+      const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const response = await fetch(supabaseEdgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify({
+          prompt: JSON.stringify({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          })
+        })
+      });
+      const data = await response.json();
+      const content = data.text || data.choices?.[0]?.message?.content;
       if (!content) {
         throw new Error('No response content from insight analyzer');
       }

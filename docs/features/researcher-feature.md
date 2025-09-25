@@ -176,7 +176,7 @@ VITE_RAPIDAPI_KEY=your_rapidapi_key
 ### Caching
 - Search results cached for session
 - Crawl results stored temporarily
-- Agent responses cached to prevent redundant calls
+- Agent cached to prevent redundant calls
 
 ### Error Handling
 - Graceful fallback when search APIs fail

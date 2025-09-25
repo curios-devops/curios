@@ -1,7 +1,7 @@
 // src/common/tools/brave.ts
 
 import axios from 'axios';
-import { SearchResult } from '../types';
+import { SearchResult } from '../../commonApp/types/types';
 import { API_TIMEOUTS, MAX_RESULTS } from '../../commonService/utils/constants';
 import { logger } from '../../utils/logger';
 
@@ -18,7 +18,7 @@ const MAX_RESULTS_IMAGES = MAX_RESULTS.IMAGES;
 // --- Interface Definitions ---
 //
 
-// For text search responses (web, news, video)
+// For text search answers (web, news, video)
 interface MetaUrl {
   scheme: string;
   netloc: string;
@@ -100,7 +100,7 @@ interface WebSearchApiResponse {
   videos?: VideosSection;
 }
 
-// For image search responses (dedicated endpoint)
+// For image search answer (dedicated endpoint)
 interface ImageSearchResult {
   title: string;
   url: string;

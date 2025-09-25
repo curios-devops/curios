@@ -1,4 +1,4 @@
-// Netlify function to proxy OpenAI Responses API with swarm architecture support
+// Supabase function to proxy OpenAI Answer API with swarm architecture support
 exports.handler = async (event, context) => {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -66,7 +66,7 @@ exports.handler = async (event, context) => {
       
       finalInput = `Query: ${query}\n\nRelevant Search Results:\n${searchContext}\n\nPlease provide a comprehensive answer based on the search results above.`;
       
-      // For Responses API, convert to message format for better compatibility
+      // For Answers API, convert to message format for better compatibility
       if (model === 'gpt-5-mini' || model === 'gpt-4o-mini') {
         finalInput = [
           {"role": "system", "content": "You are a helpful AI assistant that provides comprehensive answers based on search results."},
@@ -140,7 +140,7 @@ exports.handler = async (event, context) => {
     } else {
       // For other models, use standard parameters with optimization
       if (rest.max_completion_tokens) {
-        // Use max_output_tokens for Responses API (same as gpt-5-mini)
+        // Use max_output_tokens for Answer API (same as gpt-5-mini)
         openAIRequestBody.max_output_tokens = Math.min(rest.max_completion_tokens || 1200, 1500); // Cap at 1500 for performance
       }
     }
@@ -183,10 +183,23 @@ exports.handler = async (event, context) => {
     }, 25000); // 25 second timeout
 
     try {
-      const response = await fetch('https://api.openai.com/v1/responses', {
+
+      // Use OpenAI Chat Completions endpoint
+      const chatRequestBody = {
+        model: model,
+        messages: Array.isArray(finalInput) ? finalInput : [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          { role: 'user', content: typeof finalInput === 'string' ? finalInput : JSON.stringify(finalInput) }
+        ],
+        temperature: rest.temperature !== undefined ? rest.temperature : 0.7,
+        max_tokens: rest.max_completion_tokens ? Math.min(rest.max_completion_tokens, 1500) : 1200,
+        ...(rest.top_p !== undefined && { top_p: rest.top_p })
+      };
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers,
-        body: JSON.stringify(openAIRequestBody),
+        body: JSON.stringify(chatRequestBody),
         signal: controller.signal
       });
 
@@ -196,7 +209,7 @@ exports.handler = async (event, context) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('OpenAI Responses API error:', response.status, errorText);
+        console.error('OpenAI Answers API error:', response.status, errorText);
         return {
           statusCode: response.status,
           headers: {
@@ -266,7 +279,7 @@ exports.handler = async (event, context) => {
       body: JSON.stringify(enhancedData)
     };
   } catch (error) {
-    console.error('OpenAI Responses proxy error:', error);
+    console.error('OpenAI Answer proxy error:', error);
     return {
       statusCode: 500,
       headers: {
@@ -274,7 +287,7 @@ exports.handler = async (event, context) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ 
-        error: error.message || 'OpenAI Responses proxy failed',
+        error: error.message || 'OpenAI Answers proxy failed',
         timestamp: new Date().toISOString()
       })
     };

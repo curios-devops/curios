@@ -1,70 +1,73 @@
-import { AgentResponse } from '../../types';
-import { ResearchData, SearchResult } from '../../types';
+import { AgentResponse, ResearchData, SearchResult } from '../../types';
 import { logger } from '../../../../utils/logger';
-import { secureOpenAI } from '../../../../commonService/openai/secureOpenAI';
-
+// TODO: Refactor to use Supabase Edge Function for OpenAI chat completions
 export class ResearchWriterAgent {
-  private openai: typeof secureOpenAI | null = null;
-
   constructor() {
-    // All OpenAI API calls are made through secure Netlify functions
-    this.openai = secureOpenAI;
-    logger.info('ResearchWriterAgent: Using secure Netlify function for OpenAI API calls');
+    logger.info('ResearchWriterAgent: Refactor to use Supabase Edge Function for OpenAI API calls');
   }
 
   async execute(query: string, results: SearchResult[]): Promise<AgentResponse<ResearchData>> {
     try {
-      if (!this.openai) {
-        return {
-          success: true,
-          data: this.getFallbackData()
-        };
-      }
-
       const context = results
         .map(result => `Source: ${result.url}\nTitle: ${result.title}\nContent: ${result.content}`)
         .join('\n\n');
-
       return await this.safeOpenAICall(
         async () => {
-          const completion = await this.openai!.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [
-              {
-                role: 'system',
-                content: `You are a research writer synthesizing information from multiple sources.
-            Create a comprehensive report in markdown format with:
-            - An outline of main topics
-            - Detailed content with citations
-            - Follow-up questions for further research
-            Output as JSON with outline, content, and followUpQuestions fields.`
-              },
-              {
-                role: 'user',
-                content: `Query: ${query}\n\nSources:\n${context}`
-              }
-            ],
-            response_format: { type: "json_object" }
+          const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+          const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+          const response = await fetch(supabaseEdgeUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseAnonKey}`
+            },
+            body: JSON.stringify({
+              prompt: JSON.stringify({
+                messages: [
+                  {
+                    role: 'system',
+                    content: `You are a research writer synthesizing information from multiple sources.\nCreate a comprehensive report in markdown format with:\n- An outline of main topics\n- Detailed content with citations\n- Follow-up questions for further research\nOutput as JSON with outline, content, and followUpQuestions fields.`
+                  },
+                  {
+                    role: 'user',
+                    content: `Query: ${query}\n\nSources:\n${context}`
+                  }
+                ],
+                response_format: { type: "json_object" }
+              })
+            })
           });
-
-          const content = completion.choices[0]?.message?.content;
+          const data = await response.json();
+          const content = data.text || data.choices?.[0]?.message?.content;
           if (!content) {
             throw new Error('No content generated');
           }
-
-          const data = this.safeJsonParse(content);
+          const parsed = this.safeJsonParse(content);
+          // Ensure all required ResearchData fields are present
+          // Use type guards to safely access properties
+          const getString = (obj: any, key: string, fallback: string) => typeof obj[key] === 'string' ? obj[key] : fallback;
+          const getArray = (obj: any, key: string, fallback: any[]) => Array.isArray(obj[key]) ? obj[key] : fallback;
           return {
             success: true,
             data: {
-              ...data,
+              query,
+              headline: getString(parsed, 'headline', 'Research Report'),
+              markdown_report: getString(parsed, 'markdown_report', getString(parsed, 'content', '')),
               sources: results,
-              images: [] // Images will be handled separately
+              images: getArray(parsed, 'images', []),
+              outline: getArray(parsed, 'outline', ['Introduction', 'Main Points', 'Conclusion']),
+              followUpQuestions: getArray(parsed, 'followUpQuestions', []),
             }
           };
         },
         {
           success: true,
-          data: this.getFallbackData()
+          data: {
+            ...this.getFallbackData(),
+            images: (this.getFallbackData().images ?? []) as any[],
+            outline: (this.getFallbackData().outline ?? []) as any[],
+            followUpQuestions: (this.getFallbackData().followUpQuestions ?? []) as any[]
+          }
         }
       );
     } catch (error) {
@@ -115,15 +118,17 @@ export class ResearchWriterAgent {
    */
   private getFallbackData(): ResearchData {
     return {
+      query: 'N/A',
+      headline: 'Research Report',
+      markdown_report: '## Research Report\n\nThis is a fallback research report. The AI service is currently unavailable.\n\n### Introduction\n\n### Main Points\n\n### Conclusion',
+      sources: [],
+      images: [], // always an array, never undefined
       outline: ['Introduction', 'Main Points', 'Conclusion'],
-      content: '## Research Report\n\nThis is a fallback research report. The AI service is currently unavailable.\n\n### Introduction\n\n### Main Points\n\n### Conclusion',
       followUpQuestions: [
         'What are the latest developments on this topic?',
         'How does this compare to similar topics?',
         'What are the key challenges in this area?'
-      ],
-      sources: [],
-      images: []
+      ]
     };
   }
 

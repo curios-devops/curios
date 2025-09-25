@@ -67,10 +67,18 @@ export const handler: Handler = async (event) => {
     try {
       body = event.body ? JSON.parse(event.body) : {};
     } catch (e) {
+      let details = '';
+      if (e instanceof Error) {
+        details = e.message;
+      } else if (typeof e === 'object' && e !== null && 'message' in e) {
+        details = String((e as any).message);
+      } else {
+        details = String(e);
+      }
       const error = {
         error: 'Bad Request',
         message: 'Invalid JSON in request body',
-        details: e.message
+        details
       };
       console.error('Invalid JSON:', error);
       return {
@@ -136,12 +144,9 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    console.log('Calling OpenAI Responses API with:', { systemPromptPreview: systemPrompt.slice(0, 60), userMessagePreview: userMessage.slice(0, 60) });
-
-    // Call the modern OpenAI Responses API
-    const openaiUrl = 'https://api.openai.com/v1/responses';
-
-    console.log('Making request to OpenAI Responses API');
+    // Call the OpenAI Chat Completions API
+    const openaiUrl = 'https://api.openai.com/v1/chat/completions';
+    console.log('Making request to OpenAI Chat Completions API');
     const response = await fetch(openaiUrl, {
       method: 'POST',
       headers: {
@@ -151,14 +156,12 @@ export const handler: Handler = async (event) => {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || 'gpt-4.1',
-        input: [
+        messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage }
         ],
         temperature: 0.7,
-        max_output_tokens: 2000,
-        // force text output to stay simple
-        text: { format: { type: 'text' } }
+        max_tokens: 2000
       }),
       // @ts-ignore fetch on Netlify supports timeout
       timeout: 15000, // 15s
@@ -166,28 +169,20 @@ export const handler: Handler = async (event) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI Responses API error:', { status: response.status, errorText });
+      console.error('OpenAI Chat Completions API error:', { status: response.status, errorText });
       throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
 
-    // Robustly extract plain text from Responses API
+    // Extract the assistant's reply
     let textContent = '';
-    if (typeof data.text === 'string' && data.text.length > 0) {
-      textContent = data.text;
-    } else if (Array.isArray(data.output)) {
-      // Find first message.output_text
-      for (const item of data.output) {
-        if (item?.type === 'message' && Array.isArray(item.content)) {
-          const textNode = item.content.find((c: any) => c?.type === 'output_text' && typeof c.text === 'string');
-          if (textNode?.text) { textContent = textNode.text; break; }
-        }
-      }
+    if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
+      textContent = data.choices[0].message?.content || '';
     }
 
     if (!textContent) {
-      console.warn('Responses API returned no text content, using stringified body');
+      console.warn('Chat Completions API returned no text content, using stringified body');
       textContent = JSON.stringify(data);
     }
 
@@ -200,13 +195,13 @@ export const handler: Handler = async (event) => {
       }],
       model: data.model,
       usage: data.usage ? {
-        prompt_tokens: data.usage.input_tokens,
-        completion_tokens: data.usage.output_tokens,
+        prompt_tokens: data.usage.prompt_tokens,
+        completion_tokens: data.usage.completion_tokens,
         total_tokens: data.usage.total_tokens
       } : undefined
     };
 
-    console.log('OpenAI Responses API call successful', {
+    console.log('OpenAI Chat Completions API call successful', {
       model: data.model,
       total_tokens: data.usage?.total_tokens
     });
@@ -218,7 +213,7 @@ export const handler: Handler = async (event) => {
         content: r.content.substring(0, 120) + (r.content.length > 120 ? '...' : '')
       }))
     }, null, 2));
-    
+
     return {
       statusCode: 200,
       headers: {
@@ -229,12 +224,19 @@ export const handler: Handler = async (event) => {
     };
     
   } catch (error) {
+    let errorMessage = 'Unknown error';
+    let errorStack = undefined;
+    let errorName = undefined;
+    if (error && typeof error === 'object') {
+      errorMessage = (error as any).message || errorMessage;
+      errorStack = (error as any).stack;
+      errorName = (error as any).name;
+    }
     console.error('Unhandled error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
+      message: errorMessage,
+      stack: errorStack,
+      name: errorName
     });
-    
     return {
       statusCode: 500,
       headers: {
@@ -244,9 +246,9 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({
         error: 'Internal Server Error',
         message: process.env.NODE_ENV === 'development' 
-          ? error.message 
+          ? errorMessage 
           : 'An unexpected error occurred',
-        ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+        ...(process.env.NODE_ENV === 'development' && errorStack && { stack: errorStack })
       }),
     };
   }

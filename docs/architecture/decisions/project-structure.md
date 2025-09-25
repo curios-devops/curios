@@ -17,7 +17,6 @@ CuriosAI is a multi-agent AI-powered search engine built with modern web technol
 
 ### Backend Architecture
 - **Netlify Functions** for serverless API endpoints
-- **OpenAI Responses API** (not legacy chat/completions) via secure proxy
 - **Supabase** for authentication and user management
 - **Stripe** for subscription handling
 
@@ -161,7 +160,6 @@ export class YourAgent extends BaseAgent {
 ## Critical Implementation Details
 
 ### OpenAI API Integration
-- **Uses OpenAI Responses API** (NOT chat/completions)
 - **All requests** go through `/api/
 - **SecureOpenAI service** provides chat completion interface
 - **Never use OpenAI SDK directly** in frontend - always use secureOpenAI service
@@ -169,7 +167,6 @@ export class YourAgent extends BaseAgent {
 ### Performance Optimizations (WriterAgent)
 - **Maximum 5 search results** per request
 - **300 characters per result content** limit
-- **1200 max tokens** for responses
 - **45-second timeout** with comprehensive fallback
 - **Token estimation**: 4 chars ≈ 1 token, truncate at 2500 tokens
 
@@ -227,7 +224,7 @@ async processQuery(query: string, isPro: boolean = false) {
 ## Common Development Patterns
 
 ### Error Handling
-Always provide fallback responses and handle errors gracefully:
+Always provide fallback  and handle errors gracefully:
 ```typescript
 try {
   const result = await riskyOperation();
@@ -318,10 +315,6 @@ Set in Netlify dashboard under Site Settings > Environment Variables:
 
 ## Architecture Decisions
 
-### Why Responses API over Chat Completions
-- Future-proof with latest OpenAI format
-- Better performance characteristics
-- Enhanced reasoning capabilities with newer models
 
 ### Why Multi-Agent Architecture
 - Specialized agents for specific tasks

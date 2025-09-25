@@ -18,7 +18,7 @@ const MAX_RESULTS_IMAGES = MAX_RESULTS.IMAGES;
 // --- Interface Definitions ---
 //
 
-// For text search responses (web, news, video)
+// For text search answer (web, news, video)
 interface MetaUrl {
   scheme: string;
   netloc: string;
@@ -91,7 +91,7 @@ interface WebSearchApiResponse {
   videos?: VideosSection;
 }
 
-// For image search responses (dedicated endpoint)
+// For image search answers (dedicated endpoint)
 interface ImageSearchResult {
   title: string;
   url: string;

@@ -6,7 +6,6 @@
 // Replaces the OpenAI Agents SDK to avoid React version conflicts
 
 import { logger } from '../../../../utils/logger';
-import { secureOpenAI } from '../../../../commonService/openai/secureOpenAI';
 
 interface SearchPlan {
   thinking_process: string;
@@ -45,7 +44,7 @@ interface InsightsResult {
 }
 
 // Initialize OpenAI client - all calls go through secure Netlify functions
-const openai = secureOpenAI;
+// TODO: Refactor to use Supabase Edge Function for OpenAI chat completions
 
 // Helper function to get current year for dynamic date injection
 function getCurrentYear(): string {
@@ -101,62 +100,36 @@ function getFocusContext(focusMode?: string): { approach: string; searchSuffix: 
 
 // Planner Agent - Creates journalistic research strategy
 async function plannerAgent(query: string, focusMode?: string): Promise<SearchPlan> {
-  if (!openai) {
-    const focusContext = getFocusContext(focusMode);
-    return {
-      thinking_process: `As an investigative journalist, I'll approach "${query}" ${focusContext.approach} by identifying key stakeholders, current developments, and expert perspectives to provide balanced, fact-based reporting.`,
-      key_areas_to_research: ["Expert opinions & stakeholder views", "Latest developments & trends", "Data & statistical evidence"],
-      searches: [
-        { reason: "Expert perspectives", query: `${query} expert analysis ${getCurrentYear()} ${focusContext.searchSuffix}` },
-        { reason: "Recent developments", query: `${query} latest news trends ${focusContext.searchSuffix}` },
-        { reason: "Statistical evidence", query: `${query} data statistics research ${focusContext.searchSuffix}` }
-      ]
-    };
-  }
-
   try {
-    // Use modern OpenAI Responses API
-    const response = await openai.responses.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an elite investigative journalist with decades of experience. Your expertise encompasses deep investigative research, fact-checking, compelling narrative construction, and balanced perspective presentation.
-
-          CURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-
-          ${focusMode ? `FOCUS MODE: You are specifically focusing on "${focusMode}" sources and perspectives. Tailor your research strategy accordingly.` : ''}
-
-          Create a journalistic research strategy that focuses on:
-          - Authoritative sources and expert opinions
-          - Current developments and emerging trends  
-          - Stakeholder perspectives and balanced viewpoints
-          - Factual evidence and statistical data
-          - Future implications and predictions
-
-          Keep your thinking process concise but strategic - around 2-3 sentences explaining your journalistic approach.
-          
-          Output valid JSON with this structure:
-          {
-            "thinking_process": "Your concise journalistic strategy for investigating this topic (2-3 sentences max)",
-            "key_areas_to_research": ["Area 1", "Area 2", "Area 3"],
-            "searches": [
-              {"reason": "Journalistic rationale", "query": "Targeted search term"}
-            ]
-          }`
-        },
-        {
-          role: 'user',
-          content: `Create a journalistic research strategy for: "${query}"${focusMode ? ` (Focus: ${focusMode})` : ''}`
-        }
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-      max_output_tokens: 1000
+    const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  // focusContext is used only in prompt, not needed as a variable here
+    const response = await fetch(supabaseEdgeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        prompt: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: `You are an elite investigative journalist with decades of experience. Your expertise encompasses deep investigative research, fact-checking, compelling narrative construction, and balanced perspective presentation.\n\nCURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}\n\n${focusMode ? `FOCUS MODE: You are specifically focusing on \"${focusMode}\" sources and perspectives. Tailor your research strategy accordingly.` : ''}\n\nCreate a journalistic research strategy that focuses on:\n- Authoritative sources and expert opinions\n- Current developments and emerging trends\n- Stakeholder perspectives and balanced viewpoints\n- Factual evidence and statistical data\n- Future implications and predictions\n\nKeep your thinking process concise but strategic - around 2-3 sentences explaining your journalistic approach.\n\nOutput valid JSON with this structure:\n{\n  \"thinking_process\": \"Your concise journalistic strategy for investigating this topic (2-3 sentences max)\",\n  \"key_areas_to_research\": [\"Area 1\", \"Area 2\", \"Area 3\"],\n  \"searches\": [\n    {\"reason\": \"Journalistic rationale\", \"query\": \"Targeted search term\"}\n  ]\n}`
+            },
+            {
+              role: 'user',
+              content: `Create a journalistic research strategy for: "${query}"${focusMode ? ` (Focus: ${focusMode})` : ''}`
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.7,
+          max_output_tokens: 1000
+        })
+      })
     });
-
-    // Handle modern API response format
-    const content = response?.output_text || response?.content?.[0]?.text;
+    const data = await response.json();
+    const content = data.text || data.choices?.[0]?.message?.content;
     if (content) {
       const parsed = JSON.parse(content);
       return parsed as SearchPlan;
@@ -164,7 +137,6 @@ async function plannerAgent(query: string, focusMode?: string): Promise<SearchPl
   } catch (error) {
     logger.warn('Planner agent failed, using fallback:', error);
   }
-
   // Fallback plan with query-specific thinking
   const focusContext = getFocusContext(focusMode);
   return {
@@ -180,51 +152,42 @@ async function plannerAgent(query: string, focusMode?: string): Promise<SearchPl
 
 // Search Agent - Analyzes sources with journalistic rigor  
 async function searchAgent(searchQuery: string): Promise<{ summary: string; sources: SourceInfo[] }> {
-  if (!openai) {
-    return {
-      summary: `Investigation into "${searchQuery}" reveals significant developments across multiple sectors. Key stakeholders report varying perspectives on implementation challenges and opportunities. Data suggests emerging trends that warrant continued monitoring by industry analysts and policymakers.`,
-      sources: await performOpenAIWebSearch(searchQuery).catch(() => generateFallbackSources(searchQuery))
-    };
-  }
-
   try {
-    // Get real sources from OpenAI web search
+    // Get real sources from OpenAI web search (via Supabase Edge Function)
     const sources = await performOpenAIWebSearch(searchQuery);
-    
-    // Generate summary based on the actual sources found
-    const response = await openai.responses.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a research assistant with expertise in journalistic investigation. Based on the provided sources, create a concise 2-3 paragraph summary that synthesizes the key information found. Focus on factual information and current understanding of the topic.
-
-          CURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-        },
-        {
-          role: 'user',
-          content: `Based on these sources about "${searchQuery}", provide a research summary:
-
-Sources:
-${sources.map(s => `- ${s.title}: ${s.snippet}`).join('\n')}
-
-Create a comprehensive summary of the key findings and insights.`
-        }
-      ],
-      temperature: 0.5,
-      max_output_tokens: 400
+    const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const response = await fetch(supabaseEdgeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        prompt: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: `You are a research assistant with expertise in journalistic investigation. Based on the provided sources, create a concise 2-3 paragraph summary that synthesizes the key information found. Focus on factual information and current understanding of the topic.\n\nCURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+            },
+            {
+              role: 'user',
+              content: `Based on these sources about "${searchQuery}", provide a research summary:\n\nSources:\n${sources.map(s => `- ${s.title}: ${s.snippet}`).join('\\n')}\n\nCreate a comprehensive summary of the key findings and insights.`
+            }
+          ],
+          temperature: 0.5,
+          max_output_tokens: 400
+        })
+      })
     });
-
-    // Handle modern API response format
-    const summaryContent = response?.output_text || response?.content?.[0]?.text;
-
+    const data = await response.json();
+    const summaryContent = data.text || data.choices?.[0]?.message?.content;
     return {
       summary: summaryContent || `Summary for "${searchQuery}": Analysis of current sources reveals key developments and trends in this area.`,
       sources: sources
     };
   } catch (error) {
     logger.warn('Search agent failed, using fallback:', error);
-    
     // Fallback to basic summary with fallback sources
     const fallbackSources = generateFallbackSources(searchQuery);
     return {
@@ -236,63 +199,41 @@ Create a comprehensive summary of the key findings and insights.`
 
 // Real web search using OpenAI with web search capabilities
 async function performOpenAIWebSearch(query: string, focusMode?: string): Promise<SourceInfo[]> {
-  if (!openai) {
-    logger.warn('OpenAI client not available, using fallback sources');
-    return generateFallbackSources(query);
-  }
-
   try {
+    const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     const focusContext = getFocusSearchContext(focusMode);
-    
-    const response = await openai.responses.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert web researcher with access to current internet information. Your task is to find and provide real web sources for the given query.
-
-          ${focusContext ? `FOCUS MODE: ${focusContext}` : ''}
-          
-          Find 4-6 high-quality, authoritative sources related to the query. Return them as JSON with this exact structure:
-          {
-            "sources": [
-              {
-                "title": "Actual page title",
-                "url": "Real URL to the source", 
-                "snippet": "Brief description of the content",
-                "domain": "Domain name (e.g., wikipedia.org, github.com)"
-              }
-            ]
-          }
-
-          Focus on:
-          - Authoritative sources (Wikipedia, academic sites, official documentation)
-          - Recent articles and news (within the last 2 years when relevant)
-          - Technical documentation and guides
-          - Research papers and studies
-          - Industry reports and analysis
-
-          CURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-        },
-        {
-          role: 'user',
-          content: `Find high-quality web sources for: "${query}"`
-        }
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.3,
-      max_output_tokens: 1000
+    const response = await fetch(supabaseEdgeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        prompt: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert web researcher with access to current internet information. Your task is to find and provide real web sources for the given query.\n\n${focusContext ? `FOCUS MODE: ${focusContext}` : ''}\n\nFind 4-6 high-quality, authoritative sources related to the query. Return them as JSON with this exact structure:\n{\n  \"sources\": [\n    {\"title\": \"Actual page title\",\"url\": \"Real URL to the source\",\"snippet\": \"Brief description of the content\",\"domain\": \"Domain name (e.g., wikipedia.org, github.com)\"}\n  ]\n}\n\nFocus on:\n- Authoritative sources (Wikipedia, academic sites, official documentation)\n- Recent articles and news (within the last 2 years when relevant)\n- Technical documentation and guides\n- Research papers and studies\n- Industry reports and analysis\n\nCURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+            },
+            {
+              role: 'user',
+              content: `Find high-quality web sources for: "${query}"`
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.3,
+          max_output_tokens: 1000
+        })
+      })
     });
-
-    // Handle modern API response format
-    const content = response?.output_text || response?.content?.[0]?.text;
+    const data = await response.json();
+    const content = data.text || data.choices?.[0]?.message?.content;
     if (!content) {
       throw new Error('No response from OpenAI');
     }
-
     try {
       const parsed = JSON.parse(content);
-      
       if (parsed.sources && Array.isArray(parsed.sources) && parsed.sources.length > 0) {
         // Transform and validate sources
         const validSources: SourceInfo[] = parsed.sources
@@ -304,13 +245,11 @@ async function performOpenAIWebSearch(query: string, focusMode?: string): Promis
             image: generateSourceImage(source.domain || extractDomainFromUrl(source.url))
           }))
           .slice(0, 6); // Limit to 6 sources
-
         if (validSources.length > 0) {
           logger.info(`Found ${validSources.length} real sources via OpenAI for: ${query}`);
           return validSources;
         }
       }
-      
       throw new Error('No valid sources in OpenAI response');
     } catch (parseError) {
       logger.error('Failed to parse OpenAI web search response:', parseError);
@@ -494,99 +433,38 @@ function generateFocusCategory(query: string, focusMode?: string): string {
 
 // Writer Agent - Creates NYT-style journalistic articles
 async function writerAgent(query: string, searchSummaries: SearchSummary[], focusMode?: string): Promise<InsightsResult> {
-  if (!openai) {
-    // Generate focus category based on query and focus mode
-    const focusCategory = generateFocusCategory(query, focusMode);
-    
-    return {
-      focus_category: focusCategory,
-      headline: `${query}: Major Developments Reshape Industry Landscape`,
-      subtitle: `Investigation reveals significant developments in ${query.toLowerCase()}, with experts highlighting both opportunities and challenges ahead for stakeholders across multiple sectors.`,
-      short_summary: `Investigation reveals significant developments in ${query}, with experts highlighting both opportunities and challenges ahead for stakeholders across multiple sectors.`,
-      markdown_report: `**Industry leaders are grappling with unprecedented changes** as developments in ${query} continue to reshape the competitive landscape, according to our comprehensive analysis of recent trends and expert interviews.
-
-**Current Landscape**
-
-The field has experienced significant momentum, with stakeholders reporting both promising breakthroughs and persistent obstacles. Industry experts emphasize the importance of balancing innovation with practical implementation concerns.
-
-**Key Findings**
-
-Our analysis identifies several critical factors driving current trends:
-
-**Market Dynamics**: Leading organizations are investing heavily in research and development, with early adopters reporting measurable benefits in efficiency and performance.
-
-**Expert Perspectives**: Interviews with industry leaders suggest a cautious optimism about future prospects, though concerns remain about scalability and long-term sustainability.
-
-**Data Insights**: Available statistics indicate steady growth, though regional variations highlight the importance of localized approaches to implementation.
-
-**Industry Impact**
-
-The implications extend beyond immediate applications, potentially influencing regulatory frameworks, competitive landscapes, and consumer expectations. Organizations are adapting strategies to leverage emerging opportunities while managing associated risks.`,
-      follow_up_questions: [
-        `What regulatory changes might affect ${query}?`,
-        `How are industry leaders adapting to these developments?`,
-        `What metrics best measure success in this area?`
-      ]
-    };
-  }
-
   try {
     const researchContext = searchSummaries
       .map(s => `**${s.reason}** (Query: "${s.query}"):\n${s.summary}`)
       .join('\n\n');
-
-    const response = await openai.responses.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an elite investigative journalist with decades of experience writing for The New York Times. Your expertise includes compelling narrative construction, balanced perspective presentation, and complex topic simplification.
-
-          CURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-
-          ${focusMode && focusMode !== 'web' ? `FOCUS MODE: You are writing from a "${focusMode}" perspective. Emphasize ${getFocusContext(focusMode).approach.replace('with a focus on ', '').replace('with emphasis on ', '').replace('focusing on ', '').replace('emphasizing ', '').replace('with focus on ', '').replace('prioritizing ', '').replace('across comprehensive ', '')}.` : ''}
-
-          Write a professional journalistic article that:
-          - Starts with an attention-grabbing headline (without hashtag symbols)
-          - Provides balanced, objective reporting  
-          - Includes expert insights and relevant data
-          - Uses clear, accessible language
-          - Maintains narrative flow and readability
-          - Focuses on impact and implications
-          - Keeps the article concise but comprehensive (Medium-length article style)
-          - DO NOT use markdown headers (# ## ###) in the article content
-          - DO NOT include a conclusions section or any concluding remarks
-          - Format section headers as **Bold Text** instead of markdown headers
-          
-          Output valid JSON with this structure:
-          {
-            "focus_category": "Topic category in UPPERCASE (e.g., TECHNOLOGY, BUSINESS, SCIENCE, POLITICS, etc.)",
-            "headline": "Compelling, news-style headline without hashtag symbols",
-            "subtitle": "Engaging subtitle that provides context and hooks the reader",
-            "short_summary": "Compelling 2-3 sentence lead that captures the essence and significance",
-            "markdown_report": "Professional NYT-style article (500-800 words, well-structured with clear sections but NO conclusions section)",
-            "follow_up_questions": ["Investigative question 1", "Investigative question 2", "Investigative question 3"]
-          }
-          
-          Focus on factual reporting, expert perspectives, and real-world implications. Do not include conclusions or wrap-up sections.`
-        },
-        {
-          role: 'user',
-          content: `Assignment: Write a professional news article about: ${query}${focusMode && focusMode !== 'web' ? ` (Focus: ${focusMode})` : ''}
-
-Research Sources:
-${researchContext}
-
-Write an engaging, well-balanced journalistic piece that informs readers about the current state, key developments, and implications of this topic.`
-        }
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-      max_output_tokens: 1200
+    const supabaseEdgeUrl = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const response = await fetch(supabaseEdgeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        prompt: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: `You are an elite investigative journalist with decades of experience writing for The New York Times. Your expertise includes compelling narrative construction, balanced perspective presentation, and complex topic simplification.\n\nCURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}\n\n${focusMode && focusMode !== 'web' ? `FOCUS MODE: You are writing from a \"${focusMode}\" perspective. Emphasize ${getFocusContext(focusMode).approach.replace('with a focus on ', '').replace('with emphasis on ', '').replace('focusing on ', '').replace('emphasizing ', '').replace('with focus on ', '').replace('prioritizing ', '').replace('across comprehensive ', '')}.` : ''}\n\nWrite a professional journalistic article that:\n- Starts with an attention-grabbing headline (without hashtag symbols)\n- Provides balanced, objective reporting\n- Includes expert insights and relevant data\n- Uses clear, accessible language\n- Maintains narrative flow and readability\n- Focuses on impact and implications\n- Keeps the article concise but comprehensive (Medium-length article style)\n- DO NOT use markdown headers (# ## ###) in the article content\n- DO NOT include a conclusions section or any concluding remarks\n- Format section headers as **Bold Text** instead of markdown headers\n\nOutput valid JSON with this structure:\n{\n  \"focus_category\": \"Topic category in UPPERCASE (e.g., TECHNOLOGY, BUSINESS, SCIENCE, POLITICS, etc.)\",\n  \"headline\": \"Compelling, news-style headline without hashtag symbols\",\n  \"subtitle\": \"Engaging subtitle that provides context and hooks the reader\",\n  \"short_summary\": \"Compelling 2-3 sentence lead that captures the essence and significance\",\n  \"markdown_report\": \"Professional NYT-style article (500-800 words, well-structured with clear sections but NO conclusions section)\",\n  \"follow_up_questions\": [\"Investigative question 1\", \"Investigative question 2\", \"Investigative question 3\"]\n}\n\nFocus on factual reporting, expert perspectives, and real-world implications. Do not include conclusions or wrap-up sections.`
+            },
+            {
+              role: 'user',
+              content: `Assignment: Write a professional news article about: ${query}${focusMode && focusMode !== 'web' ? ` (Focus: ${focusMode})` : ''}\n\nResearch Sources:\n${researchContext}\n\nWrite an engaging, well-balanced journalistic piece that informs readers about the current state, key developments, and implications of this topic.`
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.7,
+          max_output_tokens: 1200
+        })
+      })
     });
-
-    // Handle modern API response format
-    const content = response?.output_text || response?.content?.[0]?.text;
+    const data = await response.json();
+    const content = data.text || data.choices?.[0]?.message?.content;
     if (content) {
       const parsed = JSON.parse(content);
       return parsed as InsightsResult;
@@ -594,24 +472,14 @@ Write an engaging, well-balanced journalistic piece that informs readers about t
   } catch (error) {
     logger.warn('Writer agent failed, using fallback:', error);
   }
-
   // Fallback result - NYT style
   const focusCategory = generateFocusCategory(query, focusMode);
-  
   return {
     focus_category: focusCategory,
     headline: `${query}: Breaking Analysis Reveals Evolving Landscape`,
     subtitle: `Investigation into ${query.toLowerCase()} uncovers rapidly evolving situation with significant implications for stakeholders across multiple sectors.`,
     short_summary: `Investigation into ${query} reveals evolving landscape with significant implications for stakeholders across multiple sectors.`,
-    markdown_report: `**Breaking developments in ${query} are reshaping conversations** in boardrooms and policy circles, with experts predicting continued evolution in the coming months.
-
-**Key Findings**
-
-${searchSummaries.map(s => `**${s.reason}**: ${s.summary}`).join('\n\n')}
-
-**Industry Impact**
-
-The developments surrounding ${query} are creating ripple effects across multiple industries, with leaders closely monitoring emerging trends and preparing strategic responses.`,
+    markdown_report: `**Breaking developments in ${query} are reshaping conversations** in boardrooms and policy circles, with experts predicting continued evolution in the coming months.\n\n**Key Findings**\n\n${searchSummaries.map(s => `**${s.reason}**: ${s.summary}`).join('\\n\\n')}\n\n**Industry Impact**\n\nThe developments surrounding ${query} are creating ripple effects across multiple industries, with leaders closely monitoring emerging trends and preparing strategic answers.`,
     follow_up_questions: [
       `What regulatory changes might impact ${query}?`,
       `How are industry leaders responding to these developments?`,
