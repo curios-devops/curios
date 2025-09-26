@@ -244,4 +244,14 @@ Each service tier now has an `index.ts` file for clean imports:
 - `src/services/lab/regular/index.ts`
 - `src/common/tools/index.ts`
 
+## Functions Called vs Available:
+Function Called	Supabase Function	Status
+OpenAI API	fetch-openai ✅ Available
+Brave Web Search	brave-web-search ✅ Available
+Brave Images	brave-images-search ✅ Available
+Social Sharing	social-share ✅ Available
+OG Image Gen	social-og-image ✅ Available
+Subscriptions	check-subscription ✅ Available
+Stripe Checkout	create-checkout ✅ Available
+
 This service-first architecture provides a much cleaner, more maintainable codebase that scales well and makes the relationship between features clear and manageable.
