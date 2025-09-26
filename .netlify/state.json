@@ -11,11 +11,11 @@
 				"name": "Catalonia"
 			},
 			"timezone": "Europe/Madrid",
-			"latitude": 41.387,
-			"longitude": 2.1701,
-			"postalCode": "08003"
+			"latitude": 41.3954,
+			"longitude": 2.2048,
+			"postalCode": "08005"
 		},
-		"timestamp": 1758798899667
+		"timestamp": 1758897578026
 	},
 	"liveTunnelSlug": "51d0a220",
 	"promptVSCodeSettings": true

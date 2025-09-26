@@ -11,7 +11,26 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
   // Environment variables loaded (debug output removed for cleaner development experience)
 
   const proxyConfig = {
-    // Proxy for Netlify functions in development
+    // Proxy API requests to Brave Search API - PUT THESE FIRST!
+    '^/api/brave/web/search': {
+      target: 'https://api.search.brave.com/res/v1',
+      changeOrigin: true,
+      secure: true,
+      rewrite: (path: string) => path.replace(/^\/api\/brave/, ''),
+      headers: {
+        'X-Subscription-Token': env.VITE_BRAVE_API_KEY || ''
+      }
+    },
+    '^/api/brave/images/search': {
+      target: 'https://api.search.brave.com/res/v1',
+      changeOrigin: true,
+      secure: true,
+      rewrite: (path: string) => path.replace(/^\/api\/brave/, ''),
+      headers: {
+        'X-Subscription-Token': env.VITE_BRAVE_API_KEY || ''
+      }
+    },
+    // Proxy for Netlify functions in development - Keep this after more specific routes
     '^/api/.*': {
       target: 'http://localhost:8888',
       changeOrigin: true,
@@ -25,25 +44,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       changeOrigin: true,
       secure: false,
       ws: true
-    },
-    // Proxy API requests to Brave Search API
-    '^/api/brave/web/search': {
-      target: 'https://api.search.brave.com/res/v1/web/search',
-      changeOrigin: true,
-      secure: true,
-      rewrite: (path: string) => path.replace(/^\/api\/brave\/web\/search/, ''),
-      headers: {
-        'X-Subscription-Token': env.VITE_BRAVE_API_KEY || ''
-      }
-    },
-    '^/api/brave/images/search': {
-      target: 'https://api.search.brave.com/res/v1/images/search',
-      changeOrigin: true,
-      secure: true,
-      rewrite: (path: string) => path.replace(/^\/api\/brave\/images\/search/, ''),
-      headers: {
-        'X-Subscription-Token': env.VITE_BRAVE_API_KEY || ''
-      }
     }
   };
 

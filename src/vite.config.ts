@@ -20,12 +20,12 @@ export default defineConfig(({ mode }) => {
         '/api/brave': {
           target: 'https://api.search.brave.com/res/v1',
           changeOrigin: true,
-          secure: false,
+          secure: true,
           rewrite: (path) => path.replace(/^\/api\/brave/, ''),
           headers: {
-            'X-RapidAPI-Key': process.env.VITE_BRAVE_API_KEY || '',
-            'X-RapidAPI-Host': 'api.search.brave.com',
-            'Content-Type': 'application/json'
+            'X-Subscription-Token': env.VITE_BRAVE_API_KEY || '',
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip'
           }
         }
       },
