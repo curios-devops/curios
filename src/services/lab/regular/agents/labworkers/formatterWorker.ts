@@ -1,21 +1,14 @@
 import { Artifact, ArtifactStep } from '../../../../../commonApp/types/index';
 
-// --- Real PDF formatting tool integration ---
-// Replace with your real PDF formatting logic or API
-import { PDFDocument } from 'pdf-lib';
+// --- Simplified formatting without external dependencies ---
 
-async function realFormatToDocOrPdf(content: string, type: 'doc' | 'pdf'): Promise<string> {
+async function formatContent(content: string, type: 'doc' | 'pdf'): Promise<string> {
   if (type === 'pdf') {
-    // Use pdf-lib to create a simple PDF
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage();
-    page.drawText(content, { x: 50, y: 700, size: 12 });
-    const pdfBytes = await pdfDoc.save();
-    // Return as base64 for now (could be a file download in real app)
-    return `data:application/pdf;base64,${Buffer.from(pdfBytes).toString('base64')}`;
+    // Return HTML that can be converted to PDF by the browser or a service
+    return `<html><head><title>Formatted Document</title></head><body><pre>${content}</pre></body></html>`;
   }
-  // For 'doc', just return the content (could use docx library)
-  return content;
+  // For 'doc', just return the content wrapped in basic HTML
+  return `<html><head><title>Formatted Document</title></head><body><pre>${content}</pre></body></html>`;
 }
 
 export async function formatterWorker(artifact: Artifact, _prompt: string, updateArtifact: (partial: Artifact) => void): Promise<Artifact> {
@@ -26,7 +19,7 @@ export async function formatterWorker(artifact: Artifact, _prompt: string, updat
 
   // Only allow 'doc' or 'pdf' as type
   const formatType: 'doc' | 'pdf' = artifact.type === 'pdf' ? 'pdf' : 'doc';
-  const formatted = await realFormatToDocOrPdf(artifact.content, formatType);
+  const formatted = await formatContent(artifact.content, formatType);
 
   const updatedArtifact = {
     ...artifact,
@@ -35,4 +28,4 @@ export async function formatterWorker(artifact: Artifact, _prompt: string, updat
   };
   updateArtifact(updatedArtifact);
   return updatedArtifact;
-} 
+}

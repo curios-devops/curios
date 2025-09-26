@@ -82,7 +82,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
             'vendor-supabase': ['@supabase/supabase-js', '@supabase/ssr'],
             'vendor-stripe': ['@stripe/stripe-js'],
             'vendor-utils': ['axios', 'zod'],
-            'vendor-pdf': ['pdf-lib'],
             
             // Service chunks - separate by domain
             'services-search': [
