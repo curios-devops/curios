@@ -50,6 +50,13 @@ export class SearchWriterAgent {
     ? import.meta.env.VITE_OPENAI_API_URL
     : 'VITE_OPENAI_API_URL';
 
+      if (supabaseEdgeUrl === 'VITE_OPENAI_API_URL') {
+        logger.error('Supabase Edge URL environment variable missing or defaulting', {
+          environmentUrl: import.meta.env.VITE_OPENAI_API_URL
+        });
+        throw new Error('Supabase Edge Function URL not configured');
+      }
+
       // Get Supabase anon key from environment
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       if (!supabaseAnonKey) {
@@ -61,6 +68,15 @@ export class SearchWriterAgent {
         model,
         messageCount: messages.length
       });
+
+      logger.debug('Preparing to fetch Supabase Edge Function', { 
+        url: supabaseEdgeUrl,
+        hasAnonKey: !!supabaseAnonKey 
+      });
+
+      // Add timeout to prevent infinite hanging in production
+      const controller = new AbortController();
+      const fetchTimeout = setTimeout(() => controller.abort(), 25000); // 25 seconds timeout
 
       const response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
@@ -76,8 +92,11 @@ export class SearchWriterAgent {
             temperature: 0.7,
             max_output_tokens: 1200
           })
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(fetchTimeout);
 
       logger.debug('OpenAI API response received', {
         status: response.status,
@@ -170,11 +189,21 @@ export class SearchWriterAgent {
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+        ? import.meta.env.VITE_OPENAI_API_URL
+        : 'VITE_OPENAI_API_URL';
 
       // Handle AbortError specifically
       if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('Fetch request was aborted due to timeout', {
+        logger.error('Fetch request was aborted due to timeout (Supabase Edge Function not responding)', {
           error: errorMessage,
+          url: supabaseEdgeUrl,
+          query: messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No query'
+        });
+      } else if (error instanceof Error && error.name === 'TypeError' && error.message.includes('fetch')) {
+        logger.error('Network fetch error (likely production environment issue)', {
+          error: errorMessage,
+          url: supabaseEdgeUrl,
           query: messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No query'
         });
       }

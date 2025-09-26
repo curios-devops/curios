@@ -147,11 +147,22 @@ export async function performSearch(
               resultsCount: researchData.results.length,
               timestamp: new Date().toISOString()
             });
-            
-            const writerResponse = await writerAgent.execute(researchData, (status) => {
-              console.log('🔍 [WRITER]', status);
-              onStatusUpdate?.(status);
-            });
+
+            let writerResponse;
+            try {
+              console.log('🔍 [SEARCH] SearchWriterAgent execution starting NOW');
+              writerResponse = await writerAgent.execute(researchData, (status) => {
+                console.log('🔍 [WRITER]', status);
+                onStatusUpdate?.(status);
+              });
+              console.log('🔍 [SEARCH] SearchWriterAgent execution completed');
+            } catch (writerError) {
+              console.error('🔍 [SEARCH] SearchWriterAgent threw an error:', writerError);
+              writerResponse = {
+                success: false,
+                data: null
+              };
+            }
             
             console.log('🔍 [SEARCH] SearchWriterAgent response:', {
               success: writerResponse.success,
