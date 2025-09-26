@@ -71,6 +71,7 @@ export class SearchWriterAgent {
         body: JSON.stringify({
           prompt: JSON.stringify({
             messages,
+            model,
             response_format: { type: 'json_object' },
             temperature: 0.7,
             max_output_tokens: 1200

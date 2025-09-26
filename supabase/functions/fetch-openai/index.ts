@@ -18,16 +18,24 @@ Deno.serve(async (req: Request) => {
   }
   try {
     const { prompt } = await req.json();
+    let parsedPrompt;
+    try {
+      parsedPrompt = typeof prompt === 'string' ? JSON.parse(prompt) : prompt;
+    } catch {
+      parsedPrompt = { messages: [{ role: 'user', content: prompt }] };
+    }
+    
     const payload = {
-      model: "gpt-4.1-mini",
-      messages: [
+      model: parsedPrompt.model || "gpt-4o",
+      messages: parsedPrompt.messages || [
         {
           role: "user",
-          content: prompt
+          content: typeof prompt === 'string' ? prompt : JSON.stringify(prompt)
         }
       ],
-      temperature: 0.3,
-      max_tokens: 1500
+      temperature: parsedPrompt.temperature || 0.7,
+      max_tokens: parsedPrompt.max_output_tokens || 1200,
+      response_format: parsedPrompt.response_format || { type: 'json_object' }
     };
     const response = await fetch(OPENAI_API_URL, {
       method: "POST",

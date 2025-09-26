@@ -21,8 +21,8 @@ export abstract class BaseAgent implements Agent {
     this.instructions = instructions;
     this.functions = functions;
     
-    // All OpenAI API calls are made through secure Netlify functions
-    logger.info(`${name}: Using secure Netlify function for OpenAI API calls`);
+    // All OpenAI API calls are made through secure Supabase Edge Functions
+    logger.info(`${name}: Using secure Supabase Edge Function for OpenAI API calls`);
   }
 
   /**
