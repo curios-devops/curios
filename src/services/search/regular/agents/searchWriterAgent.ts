@@ -37,20 +37,42 @@ export class SearchWriterAgent {
     retryCount: number = 0
   ): Promise<ArticleResult> {
     const currentRetry = typeof retryCount === 'number' ? retryCount : 0;
+
+    // DEBUG: Environment variables check
+    console.log(' [DEBUG] Environment check:', {
+      hasViteOpenaiUrl: !!import.meta.env?.VITE_OPENAI_API_URL,
+      hasSupabaseAnonKey: !!import.meta.env?.VITE_SUPABASE_ANON_KEY,
+      viteOpenaiUrl: import.meta.env?.VITE_OPENAI_API_URL || 'UNDEFINED',
+      viteSupabaseAnonKey: import.meta.env?.VITE_SUPABASE_ANON_KEY ? '[PRESENT]' : 'MISSING',
+      timestamp: new Date().toISOString(),
+      retryCount: currentRetry
+    });
+
     try {
-      logger.debug('Calling OpenAI API directly', { 
-        model, 
+      logger.debug('Calling OpenAI API directly', {
+        model,
         messageCount: messages.length,
-        retryCount 
+        retryCount
       });
 
+      // Use the deployed Supabase Edge Function endpoint
+      const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+        ? import.meta.env.VITE_OPENAI_API_URL
+        : 'VITE_OPENAI_API_URL';
 
-  // Use the deployed Supabase Edge Function endpoint
-  const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
-    ? import.meta.env.VITE_OPENAI_API_URL
-    : 'VITE_OPENAI_API_URL';
+      // DEBUG: URL validation
+      console.log(' [DEBUG] Supabase Edge URL:', {
+        url: supabaseEdgeUrl,
+        isDefault: supabaseEdgeUrl === 'VITE_OPENAI_API_URL',
+        timestamp: new Date().toISOString()
+      });
 
       if (supabaseEdgeUrl === 'VITE_OPENAI_API_URL') {
+        const errorMsg = 'Supabase Edge URL environment variable missing or defaulting';
+        console.error(' [ERROR] Environment variable issue:', {
+          environmentUrl: import.meta.env.VITE_OPENAI_API_URL,
+          error: errorMsg
+        });
         logger.error('Supabase Edge URL environment variable missing or defaulting', {
           environmentUrl: import.meta.env.VITE_OPENAI_API_URL
         });
@@ -60,23 +82,50 @@ export class SearchWriterAgent {
       // Get Supabase anon key from environment
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       if (!supabaseAnonKey) {
-        throw new Error('Supabase anon key not found in environment variables');
+        const errorMsg = 'Supabase anon key not found in environment variables';
+        console.error(' [ERROR] Missing Supabase anon key:', errorMsg);
+        throw new Error(errorMsg);
       }
 
-      logger.debug('Sending request to Supabase Edge Function', { 
+      // DEBUG: Request preparation
+      console.log(' [DEBUG] Preparing Supabase Edge Function request:', {
         url: supabaseEdgeUrl,
         model,
-        messageCount: messages.length
-      });
-
-      logger.debug('Preparing to fetch Supabase Edge Function', { 
-        url: supabaseEdgeUrl,
-        hasAnonKey: !!supabaseAnonKey 
+        messageCount: messages.length,
+        hasAnonKey: !!supabaseAnonKey,
+        timeout: 25000,
+        timestamp: new Date().toISOString()
       });
 
       // Add timeout to prevent infinite hanging in production
       const controller = new AbortController();
-      const fetchTimeout = setTimeout(() => controller.abort(), 25000); // 25 seconds timeout
+      const fetchTimeout = setTimeout(() => {
+        console.error(' [TIMEOUT] Fetch request timed out after 25 seconds');
+        controller.abort();
+      }, 25000); // 25 seconds timeout
+
+      const requestPayload = {
+        prompt: JSON.stringify({
+          messages,
+          model,
+          response_format: { type: 'json_object' },
+          temperature: 0.7,
+          max_output_tokens: 1200
+        })
+      };
+
+      // DEBUG: Exact request details
+      console.log(' [DEBUG] Making fetch request:', {
+        url: supabaseEdgeUrl,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': '[REDACTED]'
+        },
+        payloadSize: JSON.stringify(requestPayload).length,
+        payloadPreview: JSON.stringify(requestPayload).substring(0, 200) + '...',
+        timestamp: new Date().toISOString()
+      });
 
       const response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
@@ -84,27 +133,30 @@ export class SearchWriterAgent {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseAnonKey}`
         },
-        body: JSON.stringify({
-          prompt: JSON.stringify({
-            messages,
-            model,
-            response_format: { type: 'json_object' },
-            temperature: 0.7,
-            max_output_tokens: 1200
-          })
-        }),
+        body: JSON.stringify(requestPayload),
         signal: controller.signal
       });
 
       clearTimeout(fetchTimeout);
 
-      logger.debug('OpenAI API response received', {
+      // DEBUG: Response details
+      console.log(' [DEBUG] Received response:', {
         status: response.status,
-        ok: response.ok
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+        timestamp: new Date().toISOString()
       });
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(' [ERROR] Supabase Edge Function error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText.substring(0, 500),
+          fullErrorLength: errorText.length,
+          timestamp: new Date().toISOString()
+        });
         logger.error('Error from OpenAI API', {
           status: response.status,
           statusText: response.statusText,
@@ -114,49 +166,85 @@ export class SearchWriterAgent {
       }
 
       const data = await response.json();
-      
 
+      // DEBUG: Response data
+      console.log(' [DEBUG] Parsed response data:', {
+        hasText: !!data.text,
+        textType: typeof data.text,
+        textLength: data.text?.length || 0,
+        textPreview: data.text ? String(data.text).substring(0, 200) + '...' : 'NO TEXT',
+        fullResponseKeys: Object.keys(data),
+        timestamp: new Date().toISOString()
+      });
 
       // The Supabase Edge Function returns { text, openai }
       if (!data.text) {
+        console.error(' [ERROR] No text in Supabase Edge Function response:', data);
         throw new Error('No content in Supabase Edge Function response');
       }
 
-      logger.debug('Successfully received content from Supabase Edge Function', { 
-        contentLength: data.text.length 
+      logger.debug('Successfully received content from Supabase Edge Function', {
+        contentLength: data.text.length
       });
 
       // Debug: log the raw data.text
       logger.debug('Raw OpenAI data.text', { textPreview: String(data.text).slice(0, 200) });
+
+      // DEBUG: Parsing attempt
+      console.log(' [DEBUG] Attempting to parse response as ArticleResult...');
       let articleResult: ArticleResult | null = null;
+
       // Try to parse as JSON, fallback to plain text if not valid JSON
       try {
         // Accept either a direct object or a stringified JSON
         if (typeof data.text === 'object') {
           articleResult = data.text;
+          console.log(' [SUCCESS] Parsed as direct object');
         } else if (typeof data.text === 'string') {
           // Remove Markdown code block markers if present
           let cleanText = data.text.trim();
           // Remove leading/trailing triple backticks and optional json/lang
           cleanText = cleanText.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '');
+
+          console.log(' [DEBUG] Cleaned text for parsing:', {
+            originalLength: data.text.length,
+            cleanedLength: cleanText.length,
+            startsWithBackticks: data.text.trim().startsWith('```'),
+            endsWithBackticks: data.text.trim().endsWith('```')
+          });
+
           articleResult = JSON.parse(cleanText);
+          console.log(' [SUCCESS] Parsed as JSON string');
         }
         logger.debug('Parsed ArticleResult from data.text', { articleResult });
       } catch (e) {
+        console.warn(' [WARNING] Failed to parse OpenAI response as JSON:', {
+          error: e,
+          textPreview: String(data.text).slice(0, 200),
+          textType: typeof data.text
+        });
         logger.warn('Failed to parse OpenAI response as JSON', { error: e, textPreview: String(data.text).slice(0, 200) });
       }
+
+      // DEBUG: Validation check
       if (
         articleResult &&
         typeof articleResult.content === 'string' &&
         Array.isArray(articleResult.followUpQuestions) &&
         Array.isArray(articleResult.citations)
       ) {
+        console.log(' [SUCCESS] ArticleResult validation passed:', {
+          contentLength: articleResult.content.length,
+          followUpQuestionsCount: articleResult.followUpQuestions.length,
+          citationsCount: articleResult.citations.length
+        });
         logger.debug('ArticleResult is valid, returning', { articleResult });
         return articleResult;
       }
 
       // If not valid JSON, treat as plain text/Markdown and wrap in ArticleResult
       if (typeof data.text === 'string') {
+        console.log(' [FALLBACK] Wrapping plain text as ArticleResult');
         // Try to extract follow-up questions and citations if present in the text
         let followUpQuestions: string[] = [];
         let citations: any[] = [];
@@ -184,6 +272,10 @@ export class SearchWriterAgent {
         };
       }
 
+      console.warn(' [WARNING] OpenAI response did not match ArticleResult format, using fallback', {
+        textPreview: String(data.text).slice(0, 200),
+        articleResult
+      });
       logger.warn('OpenAI response did not match ArticleResult format, using fallback', { textPreview: String(data.text).slice(0, 200), articleResult });
       return this.getFallbackData(messages[messages.length - 1]?.content || '');
 
@@ -192,6 +284,18 @@ export class SearchWriterAgent {
       const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
         ? import.meta.env.VITE_OPENAI_API_URL
         : 'VITE_OPENAI_API_URL';
+
+      // DEBUG: Error details
+      console.error(' [ERROR] Exception in callOpenAI:', {
+        error: errorMessage,
+        errorType: error instanceof Error ? error.name : 'Unknown',
+        isAbortError: error instanceof Error && error.name === 'AbortError',
+        isNetworkError: error instanceof Error && error.name === 'TypeError' && errorMessage.includes('fetch'),
+        url: supabaseEdgeUrl,
+        retryCount: currentRetry,
+        maxRetries: MAX_RETRIES,
+        timestamp: new Date().toISOString()
+      });
 
       // Handle AbortError specifically
       if (error instanceof Error && error.name === 'AbortError') {
@@ -210,6 +314,7 @@ export class SearchWriterAgent {
 
       if (currentRetry < MAX_RETRIES) {
         const delay = INITIAL_RETRY_DELAY * Math.pow(2, currentRetry);
+        console.log(` [RETRY] Retrying in ${delay}ms (attempt ${currentRetry + 1}/${MAX_RETRIES})`);
         logger.warn(`Retry ${currentRetry + 1}/${MAX_RETRIES} after error:`, {
           error: errorMessage
         });
@@ -217,6 +322,7 @@ export class SearchWriterAgent {
         return this.callOpenAI(messages, model, currentRetry + 1);
       }
 
+      console.error(' [ERROR] Max retries reached, returning fallback response');
       logger.error('Max retries reached, returning fallback response', {
         error: errorMessage,
         query: messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No query'
@@ -248,7 +354,7 @@ export class SearchWriterAgent {
     onStatusUpdate?: (status: string) => void
   ): Promise<AgentResponse<ArticleResult>> {
     try {
-      console.log('✍️ [WRITER] Starting SearchWriterAgent execution', {
+      console.log(' [WRITER] Starting SearchWriterAgent execution', {
         hasResearch: !!research,
         query: research?.query,
         resultsCount: research?.results?.length || 0,
@@ -260,13 +366,13 @@ export class SearchWriterAgent {
       onStatusUpdate?.('Writer agent starting...');
       
       if (!research || !research.query) {
-        console.error('✍️ [WRITER] Invalid research data: missing query');
+        console.error(' [WRITER] Invalid research data: missing query');
         throw new Error('Invalid research data: missing query');
       }
       
       const { query, results = [] } = research;
       
-      console.log('✍️ [WRITER] Processing research data', {
+      console.log(' [WRITER] Processing research data', {
         query,
         resultsCount: results.length,
         timestamp: new Date().toISOString()
@@ -324,7 +430,7 @@ Content: ${truncatedContent}
 
       onStatusUpdate?.('Generating comprehensive answer...');
 
-      console.log('✍️ [WRITER] Making OpenAI API call', {
+      console.log(' [WRITER] Making OpenAI API call', {
         sourceContextLength: sourceContext.length,
         maxResults,
         model: this.defaultModel,

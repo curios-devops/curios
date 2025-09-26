@@ -101,26 +101,41 @@ export class SearchRetrieverAgent extends BaseAgent {
           // CRITICAL: Clear timeout on successful completion to prevent memory leak
           if (braveTimeoutId) clearTimeout(braveTimeoutId);
           
-          logger.info('Brave Search completed', { 
+          logger.info('Brave Search completed', {
             webCount: braveResults.web?.length || 0,
             newsCount: braveResults.news?.length || 0,
             imagesCount: braveResults.images?.length || 0,
             videoCount: braveResults.video?.length || 0
           });
-          
+
+          console.log('🔍 [DEBUG] Brave Search completed successfully:', {
+            webCount: braveResults.web?.length || 0,
+            newsCount: braveResults.news?.length || 0,
+            imagesCount: braveResults.images?.length || 0,
+            videoCount: braveResults.video?.length || 0,
+            timestamp: new Date().toISOString()
+          });
+
           // Convert Brave results to match expected format
           const mappedImages = braveResults.images.map(img => ({
             url: (img.image || img.url || '').startsWith('https://') ? (img.image || img.url) : '',
             alt: img.title || img.content || 'Search result image',
             source_url: img.url // The page URL where the image was found
           })).filter(img => img.url !== ''); // Filter out empty URLs
-          
+
           logger.info('Brave image mapping', {
             originalImagesCount: braveResults.images.length,
             mappedImagesCount: mappedImages.length,
             sampleImage: mappedImages[0] || 'none'
           });
-          
+
+          console.log('🔍 [DEBUG] Image mapping completed:', {
+            originalImagesCount: braveResults.images.length,
+            mappedImagesCount: mappedImages.length,
+            sampleImage: mappedImages[0] || 'none',
+            timestamp: new Date().toISOString()
+          });
+
           searchResults = {
             web: [...braveResults.web, ...braveResults.news], // Combine web and news
             images: mappedImages,
@@ -131,18 +146,25 @@ export class SearchRetrieverAgent extends BaseAgent {
               duration: ''
             }))
           };
-          
+
           // Check if we got meaningful results
           if (searchResults.web.length === 0 && searchResults.images.length === 0) {
             logger.warn('Brave search returned no results, triggering fallback');
             throw new Error('No results from Brave Search');
           }
-          
-          logger.info('Brave Search successful', { 
+
+          logger.info('Brave Search successful', {
             finalWebCount: searchResults.web.length,
-            finalImagesCount: searchResults.images.length 
+            finalImagesCount: searchResults.images.length
           });
-          
+
+          console.log('🔍 [DEBUG] Final Brave Search results:', {
+            finalWebCount: searchResults.web.length,
+            finalImagesCount: searchResults.images.length,
+            finalVideosCount: searchResults.videos?.length || 0,
+            timestamp: new Date().toISOString()
+          });
+
           // Send completion signal for successful Brave search
           onStatusUpdate?.('Search completed successfully!');
           await new Promise(resolve => setTimeout(resolve, 150));
@@ -233,16 +255,11 @@ export class SearchRetrieverAgent extends BaseAgent {
           generalResults = {
             web: [...braveResults.web, ...braveResults.news],
             images: braveResults.images.map(img => ({
-              url: (img.image || img.url || '').startsWith('https://') ? (img.image || img.url) : '',
+              url: img.image || img.url,
               alt: img.title || img.content || 'Search result image',
               source_url: img.url
             })),
-            videos: braveResults.video.map(vid => ({
-              title: vid.title,
-              url: vid.url,
-              thumbnail: vid.image,
-              duration: ''
-            }))
+            videos: braveResults.video.map(vid => ({ title: vid.title, url: vid.url, thumbnail: vid.image, duration: '' }))
           };
         } catch (braveError) {
           logger.warn('Brave Search failed for general query, using SearXNG', {

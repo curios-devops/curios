@@ -125,26 +125,38 @@ export async function performSearch(
               resultsCount: searchResponse.data?.results?.length || 0,
               timestamp: new Date().toISOString()
             });
-            
+
+            console.log('🔍 [DEBUG] Detailed SearchRetrieverAgent response:', {
+              success: searchResponse.success,
+              hasData: !!searchResponse.data,
+              resultsCount: searchResponse.data?.results?.length || 0,
+              imagesCount: searchResponse.data?.images?.length || 0,
+              videosCount: searchResponse.data?.videos?.length || 0,
+              perspectivesCount: searchResponse.data?.perspectives?.length || 0,
+              firstResultTitle: searchResponse.data?.results?.[0]?.title || 'NO RESULTS',
+              timestamp: new Date().toISOString()
+            });
+
             if (!searchResponse.success || !searchResponse.data) {
               console.error('🔍 [SEARCH] SearchRetrieverAgent failed');
               throw new Error('Search retrieval failed');
             }
-            
+
             // Step 2: Article Generation
             console.log('🔍 [SEARCH] Step 2: Starting SearchWriterAgent');
             onStatusUpdate?.('Generating comprehensive answer...');
-            
+
             const researchData = {
               query,
               perspectives: [], // regular search has no perspectives
               results: searchResponse.data.results || []
             };
-            
-            console.log('🔍 [SEARCH] Calling SearchWriterAgent with data:', {
+
+            console.log('🔍 [DEBUG] Preparing research data for SearchWriterAgent:', {
               query,
               perspectivesCount: researchData.perspectives.length,
               resultsCount: researchData.results.length,
+              firstResultTitle: researchData.results[0]?.title || 'NO RESULTS',
               timestamp: new Date().toISOString()
             });
 
@@ -163,7 +175,16 @@ export async function performSearch(
                 data: null
               };
             }
-            
+
+            console.log('🔍 [DEBUG] SearchWriterAgent response:', {
+              success: writerResponse.success,
+              hasData: !!writerResponse.data,
+              contentLength: writerResponse.data?.content?.length || 0,
+              followUpQuestionsCount: writerResponse.data?.followUpQuestions?.length || 0,
+              citationsCount: writerResponse.data?.citations?.length || 0,
+              timestamp: new Date().toISOString()
+            });
+
             console.log('🔍 [SEARCH] SearchWriterAgent response:', {
               success: writerResponse.success,
               hasData: !!writerResponse.data,
