@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "openai": "^5.9.0",
-    "node-fetch": "^2.7.0"
-  }
-}

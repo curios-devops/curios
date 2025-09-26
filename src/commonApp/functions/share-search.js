@@ -20,7 +20,7 @@ exports.handler = async (event, context) => {
 
     // If it's a bot and we have a query, redirect to share function
     if (isBot && query) {
-      const shareUrl = `/.netlify/functions/share?query=${encodeURIComponent(query)}${snippet ? `&snippet=${encodeURIComponent(snippet)}` : ''}`;
+      const shareUrl = `/functions/v1/social-share?query=${encodeURIComponent(query)}${snippet ? `&snippet=${encodeURIComponent(snippet)}` : ''}`;
       
       return {
         statusCode: 302,

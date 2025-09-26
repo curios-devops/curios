@@ -30,21 +30,8 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         'X-Subscription-Token': env.VITE_BRAVE_API_KEY || ''
       }
     },
-    // Proxy for Netlify functions in development - Keep this after more specific routes
-    '^/api/.*': {
-      target: 'http://localhost:8888',
-      changeOrigin: true,
-      secure: false,
-      // Don't rewrite the path, let Netlify handle it
-      ws: true
-    },
-    // Fallback proxy for direct function access
-    '^/\.netlify/functions/': {
-      target: 'http://localhost:8888',
-      changeOrigin: true,
-      secure: false,
-      ws: true
-    }
+    // Legacy Netlify functions replaced by Supabase Edge Functions
+    // Supabase handles all API calls now
   };
 
   return {

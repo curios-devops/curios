@@ -23,6 +23,7 @@
   09.16 - Refactor citations: Small compact blue buttons with white text, clickable links
   09.19 - Refactor chat completions. and delete keys
   09.23 - finsih refactot Locally working.
+  09.26 - netfily backend deleted
 # CURIOSAI  Runing Dev
 1. npm run dev
 
@@ -58,9 +59,9 @@ Good Luck!!!
 
 
 
-## Deploying SUPABASE Edge Function
-Steps to Upload/Update the Supabase Webhook Function
-(Make Sure You’re in the Right Directory)
+## Deploying SUPABASE Edge Functions
+Steps to Upload/Update Supabase Edge Functions
+(Make Sure You're in the Right Directory)
 
 1. Ensure your working directory is at the root of your Supabase project. It should look like this:
 
@@ -69,23 +70,36 @@ Curios/
     functions/
       stripe-webhook/
         index.ts
-2. Run the Deploy Command (be sure Docker is Open):
+      social-share/
+        index.ts
+      social-og-image/
+        index.ts
+      social-share-search/
+        index.ts
+      fetch-openai/
+        index.ts
+2. Run the Deploy Commands (be sure Docker is Open):
 
  > supabase functions deploy stripe-webhook
+ > supabase functions deploy social-share
+ > supabase functions deploy social-og-image  
+ > supabase functions deploy social-share-search
+ > supabase functions deploy brave-web-search
+ > supabase functions deploy brave-images-search
+ > supabase functions deploy fetch-openai
 
-3. Verify the Deployment After deploying, verify that the function was successfully updated:
+3. Verify the Deployment After deploying, verify that the functions were successfully updated:
  > supabase functions list
-You should see stripe-webhook listed as one of the deployed functions.
+You should see all functions listed: stripe-webhook, social-share, social-og-image, social-share-search, brave-web-search, brave-images-search, fetch-openai.
 
-4. Check the Logs To ensure everything is working correctly after the update, monitor the logs for the function:
+4. Check the Logs To ensure everything is working correctly:
+> supabase functions logs fetch-openai
+> supabase functions logs social-share
 
-> supabase functions logs stripe-webhook
-Test the Webhook
-
-5. Go to the Stripe Dashboard → Webhooks.
-Select your webhook endpoint and trigger a test event:
-
-Check the logs again to confirm the event was processed.
+5. Test the Functions
+Test each function to ensure they work correctly:
+> curl https://your-project.supabase.co/functions/v1/fetch-openai
+> curl https://your-project.supabase.co/functions/v1/social-share
 
 To download the project From Firebase Studio run:
 tar -czvf project.tar.gz --exclude=".*" .

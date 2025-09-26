@@ -124,7 +124,11 @@ export class SwarmController {
               `How does ${query} impact different industries?`,
               `What are the main challenges with ${query}?`
             ],
-            citations: searchResponse.data?.results?.map((r: SearchResult) => r.url) || []
+            citations: searchResponse.data?.results?.map((r: SearchResult) => ({
+              url: r.url,
+              title: r.title,
+              siteName: this.extractSiteName(r.url)
+            })) || []
           }
         };
       }
@@ -224,5 +228,10 @@ export class SwarmController {
       logger.error('Failed to get perspectives:', error);
       return [];
     }
+  }
+
+  private extractSiteName(url: string): string {
+    const urlObject = new URL(url);
+    return urlObject.hostname.replace('www.', '');
   }
 }

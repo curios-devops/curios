@@ -84,11 +84,11 @@ exports.handler = async (event) => {
   const host = event.headers['x-forwarded-host'] || event.headers['host'] || 'curiosai.com';
   const base = `${proto}://${host}`;
 
-  // Use provided image or generate dynamic SVG image
-  const ogImage = image || `${base}/.netlify/functions/og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
+  // Use provided image or generate dynamic SVG image with Supabase Edge Function
+  const ogImage = image || `${base}/functions/v1/social-og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
 
   // Generate share URL (canonical for crawlers)
-  const shareUrl = `${base}/.netlify/functions/share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
+  const shareUrl = `${base}/functions/v1/social-share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
