@@ -45,7 +45,7 @@ export class SearchWriterAgent {
       });
 
 
-  // Use the deployed Supabase Edge Function endpoint (renamed to fetch-openai)
+  // Use the deployed Supabase Edge Function endpoint
   const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
     ? import.meta.env.VITE_OPENAI_API_URL
     : 'VITE_OPENAI_API_URL';

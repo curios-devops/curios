@@ -10,7 +10,6 @@
     "clean": "rm -rf node_modules/.vite && rm -rf node_modules/.cache",
     "build": "vite build",
     "preview": "vite preview --port 5174",
-  "test": "node scripts/fetch-openai-integration.js",
     "lint": "eslint .",
     "functions:build": "netlify functions:build",
     "functions:serve": "netlify functions:serve --port 5174"
