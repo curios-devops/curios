@@ -170,6 +170,15 @@ export class SearchRetrieverAgent extends BaseAgent {
             timestamp: new Date().toISOString()
           });
 
+          // 🐛 SUPER OBVIOUS RETRIEVER DEBUG
+          console.error('🔍🔍🔍 RETRIEVER GOT RESULTS:', {
+            webCount: searchResults.web?.length || 0,
+            imagesCount: searchResults.images?.length || 0,
+            videosCount: searchResults.videos?.length || 0,
+            firstWebTitle: searchResults.web?.[0]?.title || 'NO WEB RESULTS',
+            timestamp: new Date().toISOString()
+          });
+
           logger.info('Brave Search successful', {
             finalWebCount: searchResults.web.length,
             finalImagesCount: searchResults.images.length
@@ -309,6 +318,14 @@ export class SearchRetrieverAgent extends BaseAgent {
         timestamp: new Date().toISOString()
       });
 
+      // 🐛 SUPER OBVIOUS PROCESSING DEBUG
+      console.error('⚙️⚙️⚙️ RESULTS PROCESSED:', {
+        originalWeb: searchResults.web?.length || 0,
+        finalValid: validResults.length,
+        firstTitle: validResults[0]?.title || 'NO VALID RESULTS',
+        timestamp: new Date().toISOString()
+      });
+
       // Deduplicate and limit image search results.
       const validImages = this.deduplicateImages(searchResults.images)
         .slice(0, MAX_RESULTS.IMAGES);
@@ -409,6 +426,15 @@ export class SearchRetrieverAgent extends BaseAgent {
         resultsCount: validResults.length,
         imagesCount: validImages.length,
         videosCount: validVideos.length,
+        timestamp: new Date().toISOString()
+      });
+
+      // 🐛 SUPER OBVIOUS RETRIEVER COMPLETE DEBUG
+      console.error('🎯🎯🎯 RETRIEVER AGENT COMPLETE:', {
+        query: trimmedQuery,
+        resultsCount: validResults.length,
+        imagesCount: validImages.length,
+        firstResultTitle: validResults[0]?.title || 'NO RESULTS',
         timestamp: new Date().toISOString()
       });
 

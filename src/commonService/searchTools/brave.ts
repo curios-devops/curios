@@ -300,6 +300,15 @@ async function braveSearch(query: string): Promise<{
       firstResult: textData?.web?.results?.[0]?.title || 'NO RESULTS'
     });
 
+    // 🐛 SUPER OBVIOUS - Should definitely show up
+    console.error('🔥🔥🔥 BRAVE SEARCH DEBUG - TEXT RESPONSE:', {
+      success: true,
+      hasWeb: !!textData?.web,
+      webResultsCount: textData?.web?.results?.length || 0,
+      firstTitle: textData?.web?.results?.[0]?.title || 'NO TITLE',
+      timestamp: new Date().toISOString()
+    });
+
     const webResults = textData.web && textData.web.results
       ? processWebResults(textData.web.results, MAX_RESULTS_WEB)
       : [];
@@ -340,6 +349,14 @@ async function braveSearch(query: string): Promise<{
       timestamp: new Date().toISOString()
     });
 
+    // 🐛 SUPER OBVIOUS IMAGE DEBUG
+    console.error('🖼️🖼️🖼️ BRAVE IMAGE SEARCH DEBUG:', {
+      success: true,
+      imageResultsCount: imageData?.results?.length || 0,
+      firstImageTitle: imageData?.results?.[0]?.title || 'NO IMAGE TITLE',
+      timestamp: new Date().toISOString()
+    });
+
     const imageResults = imageData.results
       ? processImageSearchResults(imageData.results, MAX_RESULTS_IMAGES)
       : [];
@@ -359,6 +376,16 @@ async function braveSearch(query: string): Promise<{
       videoResultsCount: videoResults.length,
       totalResults: webResults.length + newsResults.length + imageResults.length + videoResults.length,
       firstWebTitle: webResults[0]?.title || 'NO WEB RESULTS',
+      timestamp: new Date().toISOString()
+    });
+
+    // 🐛 SUPER OBVIOUS FINAL DEBUG
+    console.error('✅✅✅ BRAVE SEARCH COMPLETE - RETURNING:', {
+      web: webResults.length,
+      news: newsResults.length,
+      images: imageResults.length,
+      videos: videoResults.length,
+      total: webResults.length + newsResults.length + imageResults.length + videoResults.length,
       timestamp: new Date().toISOString()
     });
 

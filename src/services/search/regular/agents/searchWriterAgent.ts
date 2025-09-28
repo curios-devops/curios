@@ -361,6 +361,13 @@ export class SearchWriterAgent {
         perspectivesCount: research?.perspectives?.length || 0,
         timestamp: new Date().toISOString()
       });
+
+      // 🐛 SUPER OBVIOUS WRITER START DEBUG
+      console.error('✍️✍️✍️ WRITER AGENT STARTED:', {
+        query: research?.query,
+        resultsCount: research?.results?.length || 0,
+        timestamp: new Date().toISOString()
+      });
       
       // CRITICAL: Signal that writer agent has started
       onStatusUpdate?.('Writer agent starting...');
