@@ -251,7 +251,10 @@ async function braveSearch(query: string): Promise<{
 
   try {
     logger.info('Starting Brave Search', { query });
-    
+
+    // 🐛 DEBUG: Function entry point
+    console.log('🔥 BRAVE SEARCH FUNCTION CALLED with query:', query);
+
     // --- Text Search Call ---
     const textResponse = await axios.request<WebSearchApiResponse>({
       ...createBraveWebConfig(query),
@@ -289,6 +292,14 @@ async function braveSearch(query: string): Promise<{
       timestamp: new Date().toISOString()
     });
 
+    // 🐛 OBVIOUS DEBUG
+    console.warn('🚨 BRAVE SEARCH - Response received:', {
+      hasData: !!textData,
+      type: typeof textData,
+      webCount: textData?.web?.results?.length || 0,
+      firstResult: textData?.web?.results?.[0]?.title || 'NO RESULTS'
+    });
+
     const webResults = textData.web && textData.web.results
       ? processWebResults(textData.web.results, MAX_RESULTS_WEB)
       : [];
@@ -318,6 +329,17 @@ async function braveSearch(query: string): Promise<{
         video: videoResults
       };
     }
+
+    // 🐛 DEBUG: Image API response
+    console.log('🔍 [DEBUG] Brave Image API response:', {
+      responseType: typeof imageData,
+      isString: typeof imageData === 'string',
+      isHtmlError: typeof imageData === 'string' && (imageData as string).trim().startsWith('<!DOCTYPE html>'),
+      resultsCount: imageData?.results?.length || 0,
+      firstResult: imageData?.results?.[0] || 'NO RESULTS',
+      timestamp: new Date().toISOString()
+    });
+
     const imageResults = imageData.results
       ? processImageSearchResults(imageData.results, MAX_RESULTS_IMAGES)
       : [];
@@ -327,6 +349,17 @@ async function braveSearch(query: string): Promise<{
       processedImageResultsCount: imageResults.length,
       sampleImageResult: imageResults[0] || 'none',
       sampleRawResult: imageData.results?.[0] || 'none'
+    });
+
+    // 🐛 DEBUG: Final return data
+    console.log('🔍 [DEBUG] Final Brave Search return data:', {
+      webResultsCount: webResults.length,
+      newsResultsCount: newsResults.length,
+      imageResultsCount: imageResults.length,
+      videoResultsCount: videoResults.length,
+      totalResults: webResults.length + newsResults.length + imageResults.length + videoResults.length,
+      firstWebTitle: webResults[0]?.title || 'NO WEB RESULTS',
+      timestamp: new Date().toISOString()
     });
 
     clearTimeout(timeoutId);

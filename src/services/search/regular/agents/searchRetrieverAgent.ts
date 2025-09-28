@@ -299,6 +299,16 @@ export class SearchRetrieverAgent extends BaseAgent {
         .filter(result => result.url !== '#' && result.title && result.content)
         .slice(0, MAX_RESULTS.WEB);
 
+      // 🐛 DEBUG: Results processing
+      console.log('🔍 [DEBUG] Results processing:', {
+        originalWebCount: searchResults.web?.length || 0,
+        afterDeduplication: this.deduplicateResults(searchResults.web).length,
+        afterFiltering: this.deduplicateResults(searchResults.web).filter(result => result.url !== '#' && result.title && result.content).length,
+        finalValidResults: validResults.length,
+        firstValidResult: validResults[0]?.title || 'NO VALID RESULTS',
+        timestamp: new Date().toISOString()
+      });
+
       // Deduplicate and limit image search results.
       const validImages = this.deduplicateImages(searchResults.images)
         .slice(0, MAX_RESULTS.IMAGES);

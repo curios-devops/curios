@@ -152,6 +152,7 @@ export async function performSearch(
               results: searchResponse.data.results || []
             };
 
+            // 🐛 DEBUG: Research data preparation
             console.log('🔍 [DEBUG] Preparing research data for SearchWriterAgent:', {
               query,
               perspectivesCount: researchData.perspectives.length,
@@ -163,9 +164,6 @@ export async function performSearch(
             let writerResponse;
             try {
               console.log('🔍 [SEARCH] SearchWriterAgent execution starting NOW');
-              console.log('🔍 [DEBUG] SearchWriterAgent execution start:', {
-                timestamp: new Date().toISOString()
-              });
               writerResponse = await writerAgent.execute(researchData, (status) => {
                 console.log('🔍 [WRITER]', status);
                 onStatusUpdate?.(status);
@@ -179,6 +177,7 @@ export async function performSearch(
               };
             }
 
+            // 🐛 DEBUG: Writer response
             console.log('🔍 [DEBUG] SearchWriterAgent response:', {
               success: writerResponse.success,
               hasData: !!writerResponse.data,
