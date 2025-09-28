@@ -153,6 +153,23 @@ export class SearchRetrieverAgent extends BaseAgent {
             throw new Error('No results from Brave Search');
           }
 
+          // 🐛 DEBUG: Brave results analysis
+          console.log('🔍 [DEBUG] Brave results analysis:', {
+            webResultsCount: searchResults.web?.length || 0,
+            imagesCount: searchResults.images?.length || 0,
+            videosCount: searchResults.videos?.length || 0,
+            firstWebResult: searchResults.web?.[0] ? {
+              title: searchResults.web[0].title,
+              url: searchResults.web[0].url,
+              contentLength: searchResults.web[0].content?.length || 0
+            } : 'NO WEB RESULTS',
+            firstImageResult: searchResults.images?.[0] ? {
+              url: searchResults.images[0].url,
+              alt: searchResults.images[0].alt
+            } : 'NO IMAGE RESULTS',
+            timestamp: new Date().toISOString()
+          });
+
           logger.info('Brave Search successful', {
             finalWebCount: searchResults.web.length,
             finalImagesCount: searchResults.images.length

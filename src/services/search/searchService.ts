@@ -163,6 +163,9 @@ export async function performSearch(
             let writerResponse;
             try {
               console.log('🔍 [SEARCH] SearchWriterAgent execution starting NOW');
+              console.log('🔍 [DEBUG] SearchWriterAgent execution start:', {
+                timestamp: new Date().toISOString()
+              });
               writerResponse = await writerAgent.execute(researchData, (status) => {
                 console.log('🔍 [WRITER]', status);
                 onStatusUpdate?.(status);

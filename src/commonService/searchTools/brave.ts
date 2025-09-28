@@ -274,6 +274,21 @@ async function braveSearch(query: string): Promise<{
       textData = textData.replace(/<[^>]*>/g, '');
       textData = JSON.parse(textData);
     }
+
+    // 🐛 DEBUG: Brave API response analysis
+    console.log('🔍 [DEBUG] Brave API response analysis:', {
+      responseType: typeof textData,
+      isString: typeof textData === 'string',
+      hasWeb: !!textData?.web,
+      hasNews: !!textData?.news,
+      hasVideos: !!textData?.videos,
+      webResultsCount: textData?.web?.results?.length || 0,
+      newsResultsCount: textData?.news?.results?.length || 0,
+      videosResultsCount: textData?.videos?.results?.length || 0,
+      rawDataPreview: typeof textData === 'object' ? JSON.stringify(textData).substring(0, 500) + '...' : 'STRING RESPONSE',
+      timestamp: new Date().toISOString()
+    });
+
     const webResults = textData.web && textData.web.results
       ? processWebResults(textData.web.results, MAX_RESULTS_WEB)
       : [];

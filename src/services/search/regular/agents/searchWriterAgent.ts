@@ -38,8 +38,8 @@ export class SearchWriterAgent {
   ): Promise<ArticleResult> {
     const currentRetry = typeof retryCount === 'number' ? retryCount : 0;
 
-    // DEBUG: Environment variables check
-    console.log(' [DEBUG] Environment check:', {
+    // 🐛 DEBUG: Environment variables check
+    console.log('🔍 [DEBUG] Environment check:', {
       hasViteOpenaiUrl: !!import.meta.env?.VITE_OPENAI_API_URL,
       hasSupabaseAnonKey: !!import.meta.env?.VITE_SUPABASE_ANON_KEY,
       viteOpenaiUrl: import.meta.env?.VITE_OPENAI_API_URL || 'UNDEFINED',
