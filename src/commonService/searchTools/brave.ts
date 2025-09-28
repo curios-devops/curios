@@ -255,6 +255,9 @@ async function braveSearch(query: string): Promise<{
     // 🐛 DEBUG: Function entry point
     console.log('🔥 BRAVE SEARCH FUNCTION CALLED with query:', query);
 
+    // 🐛 IMMEDIATE DEBUG - Right after function starts
+    console.warn('🚨 IMMEDIATE DEBUG - Function started, about to make API call');
+
     // --- Text Search Call ---
     const textResponse = await axios.request<WebSearchApiResponse>({
       ...createBraveWebConfig(query),
@@ -270,7 +273,14 @@ async function braveSearch(query: string): Promise<{
     });
     
     logger.info('Brave web search completed', { status: textResponse.status });
-    
+
+    // 🐛 IMMEDIATE DEBUG - Right after API response
+    console.error('⚡⚡⚡ IMMEDIATE DEBUG - API response received:', {
+      status: textResponse.status,
+      hasData: !!textResponse.data,
+      dataType: typeof textResponse.data
+    });
+
     let textData: any = textResponse.data;
     // Remove HTML tags if the response is a string (as in the PHP sample)
     if (typeof textData === 'string') {
