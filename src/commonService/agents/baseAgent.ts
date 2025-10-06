@@ -1,38 +1,39 @@
 // baseAgent.ts
 import { Agent, AgentResponse } from '../../commonApp/types';
-import { rateLimitQueue } from '../utils/rateLimit';
 import { logger } from '../../utils/logger';
 
 /**
- * BaseAgent provides the foundational logic for all agents.
- * It implements common functionality such as error handling,
- * safe OpenAI API calls with rate limiting, JSON parsing, and fallback data.
+ * BaseAgent provides minimal foundation for agents following Swarm architecture.
  * 
- * NOTE: OpenAI API calls are made through Netlify functions to keep API keys secure.
+ * Swarm Principles:
+ * - Lightweight: Minimal abstractions, no complex logic
+ * - Stateless: No rate limiting, no queues, no caching
+ * - Simple: Clear error handling, straightforward execution
+ * 
+ * NOTE: OpenAI API calls are made through Supabase Edge Functions to keep API keys secure.
  */
 export abstract class BaseAgent implements Agent {
   name: string;
   instructions: string;
   functions?: Array<(...args: unknown[]) => Promise<unknown>>;
-  protected timeout: number = 30000;
 
   constructor(name: string, instructions: string, functions?: Array<(...args: unknown[]) => Promise<unknown>>) {
     this.name = name;
     this.instructions = instructions;
     this.functions = functions;
-    
-    // All OpenAI API calls are made through secure Supabase Edge Functions
-    logger.info(`${name}: Using secure Supabase Edge Function for OpenAI API calls`);
   }
 
   /**
-   * Handles errors by logging and returning fallback data.
+   * Simple error handler. Logs the error and returns fallback data.
    * @param error The caught error.
+   * @param context Optional context string for logging.
    * @returns An AgentResponse with fallback data.
    */
-  protected handleError(error: unknown): AgentResponse {
+  protected handleError(error: unknown, context?: string): AgentResponse {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.warn(`${this.name} error:`, errorMessage);
+    const logContext = context ? `${this.name} (${context})` : this.name;
+    
+    logger.error(`${logContext}: ${errorMessage}`);
     
     return {
       success: true,
@@ -40,96 +41,11 @@ export abstract class BaseAgent implements Agent {
     };
   }
 
-  /**
-   * Makes a secure OpenAI API call through Netlify functions with rate limiting and fallback support.
-   * @param input The input message for the OpenAI API
-   * @param options Additional options for the API call
-   * @param fallback A fallback value in case of errors
-   * @returns The result of the operation or the fallback value
-   */
-  protected async safeOpenAICall<T>(
-    input: string,
-    options: {
-      model?: string;
-      temperature?: number;
-      max_completion_tokens?: number;
-      response_format?: { type: string };
-      reasoning_effort?: string;
-    } = {},
-    fallback: T
-  ): Promise<T> {
-    try {
-      return await rateLimitQueue.add(async () => {
-        // Use Supabase Edge Function endpoint
-        const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
-          ? import.meta.env.VITE_OPENAI_API_URL
-          : 'VITE_OPENAI_API_URL';
-        // Get Supabase anon key from environment
-        const supabaseAnonKey = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
-        if (!supabaseAnonKey) {
-          logger.error(`${this.name}: Supabase anon key not found in environment variables`);
-          return fallback;
-        }
-        logger.info(`${this.name}: Sending request to Supabase Edge Function`, { url: supabaseEdgeUrl });
-        try {
-          const response = await fetch(supabaseEdgeUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseAnonKey}`
-            },
-            body: JSON.stringify({ prompt: input })
-          });
-          logger.info(`${this.name}: OpenAI API response received`, { status: response.status, ok: response.ok });
-          if (!response.ok) {
-            if (response.status === 429) {
-              logger.warn(`${this.name}: Rate limit exceeded, using fallback`);
-              return fallback;
-            }
-            const errorText = await response.text();
-            logger.error(`${this.name}: OpenAI API call failed`, { status: response.status, errorText });
-            throw new Error(`OpenAI API call failed: ${response.status}`);
-          }
-          const data = await response.json();
-          // The Supabase Edge Function returns { text }
-          const content = data.text;
-          if (content && typeof content === 'string') {
-            if (options.response_format?.type === 'json_object') {
-              try {
-                return JSON.parse(content);
-              } catch (_parseError) {
-                logger.warn(`${this.name}: Failed to parse JSON response, using fallback`);
-                return fallback;
-              }
-            }
-            return content;
-          }
-          logger.warn(`${this.name}: No content in response, using fallback`);
-          return fallback;
-        } catch (error) {
-          if (
-            error instanceof Error && (
-              error.message.includes('429') || 
-              error.message.includes('quota') ||
-              error.message.includes('insufficient_quota') ||
-              error.message.includes('model_not_found')
-            )
-          ) {
-            logger.warn(`${this.name}: OpenAI API error:`, error.message);
-            return fallback;
-          }
-          throw error;
-        }
-      });
-    } catch (error) {
-      logger.warn(`${this.name}: OpenAI call failed:`, error);
-      return fallback;
-    }
-  }
+  
 
   /**
-   * Provides fallback data when API calls fail.
-   * This data structure includes a placeholder for video results.
+   * Provides fallback data when operations fail.
+   * Override in subclasses for agent-specific defaults.
    * @returns An object with default fallback values.
    */
   protected getFallbackData(): Record<string, unknown> {
@@ -137,24 +53,8 @@ export abstract class BaseAgent implements Agent {
       perspectives: [],
       content: '',
       sources: [],
-      videos: []  // Added fallback for video results.
+      videos: []
     };
-  }
-
-  /**
-   * Safely parses a JSON string.
-   * @param content A JSON string or null.
-   * @returns The parsed object or null if parsing fails.
-   */
-  protected safeJsonParse(content: string | null): Record<string, unknown> | null {
-    if (!content) return null;
-    
-    try {
-      return JSON.parse(content) as Record<string, unknown>;
-    } catch (error) {
-      console.warn(`${this.name}: JSON parse error:`, error);
-      return null;
-    }
   }
 
   /**

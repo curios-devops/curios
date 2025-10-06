@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test OpenAI Key Edge Function</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    #result { margin-top: 1em; padding: 1em; background: #f6f6f6; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h2>Test Supabase Edge Functions</h2>
+  <button id="testKeyBtn">Test OPENAI_API_KEY</button>
+  <button id="testOpenAIBtn">Test OpenAI Call</button>
+  <button id="testBraveBtn">Test Brave Search</button>
+  <button id="testApifyBtn">Test Apify Search (cat)</button>
+  <pre id="result"></pre>
+  <script>
+    document.getElementById('testApifyBtn').onclick = async function() {
+      result.textContent = 'Testing Apify Search (direct call)...';
+      try {
+        // Direct call to Apify API (will likely fail due to CORS unless Apify allows it)
+        const API_KEY = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_APIFY_API_KEY) || '';
+        if (!API_KEY) {
+          result.textContent = 'No VITE_APIFY_API_KEY found in environment.';
+          return;
+        }
+        const res = await fetch('https://api.apify.com/v2/acts/apify~google-search-scraper/run-sync-get-dataset-items?token=' + API_KEY, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ queries: 'cat', resultsPerPage: 5 })
+        });
+        let text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          result.textContent = 'Apify Search response:\n' + JSON.stringify(data, null, 2);
+        } catch (jsonErr) {
+          result.textContent = 'Error parsing JSON: ' + jsonErr + '\n\nRaw response:\n' + text;
+        }
+      } catch (err) {
+        result.textContent = 'Fetch error: ' + err + '\n\nIf you see a CORS error, direct browser calls to Apify are not allowed. Use a backend proxy or Supabase Edge Function.';
+      }
+    };
+    const result = document.getElementById('result');
+  const SUPABASE_URL = 'https://gpfccicfqynahflehpqo.supabase.co';
+  // Use the anon key from your .env file (SUPABASE_ANON_KEY)
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZmNjaWNmcXluYWhmbGVocHFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxNDIyMDYsImV4cCI6MjA1MDcxODIwNn0.wLnIXxThhq144sQpUFzLd_ifimgr1oetMwvchDmMF84';
+    document.getElementById('testBraveBtn').onclick = async function() {
+      result.textContent = 'Testing Brave Search...';
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/brave-web-search`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ query: 'cat' })
+        });
+        let text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          result.textContent = 'Brave Search response:\n' + JSON.stringify(data, null, 2);
+        } catch (jsonErr) {
+          result.textContent = 'Error parsing JSON: ' + jsonErr + '\n\nRaw response:\n' + text;
+        }
+      } catch (err) {
+        result.textContent = 'Fetch error: ' + err;
+      }
+    };
+    document.getElementById('testKeyBtn').onclick = async function() {
+      result.textContent = 'Testing OPENAI_API_KEY...';
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/test-openai-key`, {
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        let text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          if (data.apiKey) {
+            result.textContent = 'OPENAI_API_KEY is available:\n' + data.apiKey;
+          } else {
+            result.textContent = 'OPENAI_API_KEY not found.\n' + JSON.stringify(data, null, 2);
+          }
+        } catch (jsonErr) {
+          result.textContent = 'Error parsing JSON: ' + jsonErr + '\n\nRaw response:\n' + text;
+        }
+      } catch (err) {
+        result.textContent = 'Fetch error: ' + err;
+      }
+    };
+
+    document.getElementById('testOpenAIBtn').onclick = async function() {
+      result.textContent = 'Testing OpenAI call...';
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/fetch-openai`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ prompt: 'Write a one-sentence bedtime story about a unicorn.' })
+        });
+        let text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          if (data.text) {
+            result.textContent = 'OpenAI response:\n' + data.text;
+          } else {
+            result.textContent = 'OpenAI call failed.\n' + JSON.stringify(data, null, 2);
+          }
+        } catch (jsonErr) {
+          result.textContent = 'Error parsing JSON: ' + jsonErr + '\n\nRaw response:\n' + text;
+        }
+      } catch (err) {
+        result.textContent = 'Fetch error: ' + err;
+      }
+    };
+  </script>
+</body>
+</html>

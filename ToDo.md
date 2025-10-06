@@ -1,100 +1,41 @@
-Open AI format:
-import OpenAI from "openai";
+answer your last question : 
 
-const openai = new OpenAI();
+I do not see you DON'T see 🟢. I see initial vite violations : [Violation] 'message' handler took 258ms
+inner.html:1 [Violation] 'load' handler took 158ms
+out-4.5.45.js:1 [Violation] 'setTimeout' handler took 50ms
+logger.ts:95 ; those are last messages I see on console : "🔍 [WRITER] Article generation completed!
+searchService.ts:169 🔍 [SEARCH] SearchWriterAgent execution completed
+searchService.ts:179 🔍 [DEBUG] SearchWriterAgent response: {success: true, hasData: true, contentLength: 3153, followUpQuestionsCount: 5, citationsCount: 7, …}
+searchService.ts:188 🔍 [SEARCH] SearchWriterAgent response: {success: true, hasData: true, contentLength: 3153, timestamp: '2025-10-03T06:09:13.599Z'}"; 
 
-async function main() {
-  const completion = await openai.chat.completions.create({
-    messages: [{ role: "developer", content: "You are a helpful assistant." }],
-    model: "gpt-4.1-mini",
-    store: true,
-  });
+what I wory most is I do not see Brave responses. 
+I think we are overcomplicated things. So lets do this to do list:
 
-  console.log(completion.choices[0]);
-}
+1. we need to validate  why we have 3 brave files:
+brave.ts in common/tools
+brave.ts in commonService/searchTools
+braveSearchTools in commonService/searchTools
 
-main();
-Response
-{
-  "id": "chatcmpl-B9MBs8CjcvOU2jLn4n570S5qMJKcT",
-  "object": "chat.completion",
-  "created": 1741569952,
-  "model": "gpt-4.1-2025-04-14",
-  "choices": [
-    {
-      "index": 0,
-      "message": {
-        "role": "assistant",
-        "content": "Hello! How can I assist you today?",
-        "refusal": null,
-        "annotations": []
-      },
-      "logprobs": null,
-      "finish_reason": "stop"
-    }
-  ],
-  "usage": {
-    "prompt_tokens": 19,
-    "completion_tokens": 10,
-    "total_tokens": 29,
-    "prompt_tokens_details": {
-      "cached_tokens": 0,
-      "audio_tokens": 0
-    },
-    "completion_tokens_details": {
-      "reasoning_tokens": 0,
-      "audio_tokens": 0,
-      "accepted_prediction_tokens": 0,
-      "rejected_prediction_tokens": 0
-    }
-  },
-  "service_tier": "default"
-}
+2. Retrofit swarm to have commonService or common but no both is confusing
 
-1. we need to create a test for Supabase edge function , let start with a clean new page :
-you can test a minimal working test, for this you can use the oficail template from supabase:
+3. Retrofit Brave to unify in one braveSearchTool file so merge the other two fies here
 
-/ Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { OpenAI } from "npm:openai@4.8.0"
+4. Validate (maybe with a partila write in the console) that  we are getting the full answer not just a 200 success with empty results, also double check for image results and decide  if you will be getting the images using the DeepResult
+Aggregated deep results from images.
 
-const openai = new OpenAI({
-  apiKey: Deno.env.get('OPENAI_API_KEY')
-})
+[Field	Type	Required	Description
+news	list [ NewsResult ]	false	
+A list of news results associated with the result.
 
-Deno.serve(async (req)=>{
-  const { prompt } = await req.json()
-  const response = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
-    messages: [
-      {
-        role: "user",
-        content: prompt
-      }
-    ]
-  })
-  return new Response(JSON.stringify({
-    text: response.choices[0].message.content
-  }), {
-    headers: {
-      'Content-Type': 'application/json',
-      'Connection': 'keep-alive'
-    }
-  })
-})
+videos	list [ VideoResult ]	false	
+Videos associated with the result.
 
-'''
-you can use the suggested model or try new models form openaAI like GPT 4 or even 5  
+images	list [ Image ]	false	
+Images associated with the result.]
+or as a plan B , get images using the  Brave Image Search API that is currently available at the following endpoint and exposes an API to get images from the web relevant to the query.
 
-Summary Table
-Step	Action
-1	Remove/disable old fetch-openai Netlify function
-2	Ensure frontend calls Supabase Edge Function for OpenAI completions
-3	Add logging before/after OpenAI fetch in frontend
-4	Verify Netlify env vars for Supabase Edge Function URL/anon key
-5	Redeploy and test
+https://api.search.brave.com/res/v1/images/search
+th
 
-STEP1. made . STEP2.. I look in the code and I see a critical file bae agent that seems to call fetch-openai. so I guess we need to update to use the https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai. STEP3. Add Logging
-Add console.log before and after the OpenAI fetch in your frontend to confirm:
-The request is being made.
-The response is received or an error occurs. Step 4: I Check Environment Variables in Netlify and they use VITE_ANON_KEY is that correct or should I need to declare without VITE? 
+5. review agian the swarm to be sure is simple and robuts and handel well problems with brave result 
+exist and are not empty and include images and is in the format agent writer is expecting unify and validate the right format for the agent writer [like validate the response structure is data.results.web NOT data.data.web! The edge function returns results as a direct property, not nested under data.]

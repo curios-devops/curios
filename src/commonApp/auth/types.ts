@@ -1,3 +1,8 @@
+// AuthState type for useAuth and AuthProvider context
+export interface AuthState {
+  user: import('@supabase/supabase-js').User | null;
+  loading: boolean;
+}
 export interface AuthResponse {
   user?: object;
   session?: object;

@@ -1,62 +1,34 @@
 // src/services/agents/retrieverAgent.ts
+// Simplified following Swarm architecture: lightweight, stateless, minimal abstractions
+// Regular search flow: Query → Brave Search Tool → Results (with Apify fallback if needed)
 
-import { API_TIMEOUTS, MAX_RESULTS } from '../../../../commonService/utils/constants.ts';
+import { MAX_RESULTS } from '../../../../commonService/utils/constants.ts';
 import { BaseAgent } from '../../../../commonService/agents/baseAgent.ts';
-import { AgentResponse, SearchResult, Perspective } from '../../../../commonApp/types/index.ts';
+import { AgentResponse, SearchResult } from '../../../../commonApp/types/index.ts';
 import { ImageResult, VideoResult } from '../../../../commonApp/types/index.ts';
-import { searxngSearch } from '../../../../commonService/searchTools/searxng.ts';
-import { tavilySearch } from '../../../../commonService/searchTools/tavily.ts';
-import { braveSearch } from '../../../../commonService/searchTools/brave.ts';
-import { rateLimitQueue } from '../../../../commonService/utils/rateLimit.ts';
+import { braveSearchTool } from '../../../../commonService/searchTools/braveSearchTool.ts';
+import { apifySearchTool } from '../../../../commonService/searchTools/apifySearchTool.ts';
 import { logger } from '../../../../utils/logger.ts';
-
-// Helper function to delay execution for a given number of milliseconds.
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Wraps an API call using the rateLimitQueue and retries once on error.
-async function safeCall<T>(operation: () => Promise<T>): Promise<T> {
-  try {
-    return await rateLimitQueue.add(operation);
-  } catch (error) {
-    logger.warn('First attempt failed, retrying after 1 second', {
-      error: error instanceof Error ? error.message : error,
-    });
-    await delay(1000);
-    return rateLimitQueue.add(operation);
-  }
-}
 
 export class SearchRetrieverAgent extends BaseAgent {
   constructor() {
     super(
       'Retriever Agent',
-      'Collects and compiles information (text and images) from multiple sources'
+      'Collects search results using Brave Search API'
     );
   }
 
   async execute(
     query: string,
-    onStatusUpdate?: (status: string) => void,
-    perspectives: Perspective[] = [],
-    isPro: boolean = false
+    onStatusUpdate?: (status: string) => void
   ): Promise<AgentResponse<{
     query: string;
-    perspectives: Perspective[];
     results: SearchResult[];
     images: ImageResult[];
     videos: VideoResult[];
   }>> {
     try {
       const trimmedQuery = query.trim();
-      
-      console.log('🔍 [RETRIEVER] SearchRetrieverAgent starting', {
-        query: trimmedQuery,
-        perspectivesCount: perspectives.length,
-        isPro,
-        timestamp: new Date().toISOString()
-      });
       
       if (!trimmedQuery) {
         return {
@@ -65,411 +37,141 @@ export class SearchRetrieverAgent extends BaseAgent {
         };
       }
 
-      logger.info('SearchRetrieverAgent executing', { 
-        query: trimmedQuery,
-        perspectivesCount: perspectives.length,
-        isPro
-      });
-
-      onStatusUpdate?.('Starting search...');
+      logger.info('SearchRetrieverAgent executing', { query: trimmedQuery });
+      onStatusUpdate?.('Searching with Brave Search...');
       
-      // Initialize search results
-      let searchResults: { web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] };
+      // Try Brave Search Tool first
+      let searchResults: { web: SearchResult[]; images: ImageResult[]; videos: VideoResult[] };
       
       try {
-        // All users: Try Brave first, fallback to SearXNG
-        let braveTimeoutId: NodeJS.Timeout | undefined;
+        // Simple tool call - no complex logic
+        const braveResults = await braveSearchTool(trimmedQuery);
         
-        try {
-          onStatusUpdate?.('Searching with Brave Search...');
-          logger.info('Attempting Brave Search', { query: trimmedQuery });
-          
-          // Create timeout with proper cleanup to prevent memory leaks
-          const braveSearchPromise = braveSearch(trimmedQuery);
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            braveTimeoutId = setTimeout(() => {
-              logger.warn('Brave search timeout triggered', { timeout: API_TIMEOUTS.BRAVE });
-              reject(new Error('Brave search timeout'));
-            }, API_TIMEOUTS.BRAVE);
-          });
-          
-          const braveResults = await Promise.race([
-            braveSearchPromise,
-            timeoutPromise
-          ]) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
-          
-          // CRITICAL: Clear timeout on successful completion to prevent memory leak
-          if (braveTimeoutId) clearTimeout(braveTimeoutId);
-          
-          logger.info('Brave Search completed', {
-            webCount: braveResults.web?.length || 0,
-            newsCount: braveResults.news?.length || 0,
-            imagesCount: braveResults.images?.length || 0,
-            videoCount: braveResults.video?.length || 0
-          });
-
-          console.log('🔍 [DEBUG] Brave Search completed successfully:', {
-            webCount: braveResults.web?.length || 0,
-            newsCount: braveResults.news?.length || 0,
-            imagesCount: braveResults.images?.length || 0,
-            videoCount: braveResults.video?.length || 0,
-            timestamp: new Date().toISOString()
-          });
-
-          // Convert Brave results to match expected format
-          const mappedImages = braveResults.images.map(img => ({
-            url: (img.image || img.url || '').startsWith('https://') ? (img.image || img.url) : '',
-            alt: img.title || img.content || 'Search result image',
-            source_url: img.url // The page URL where the image was found
-          })).filter(img => img.url !== ''); // Filter out empty URLs
-
-          logger.info('Brave image mapping', {
-            originalImagesCount: braveResults.images.length,
-            mappedImagesCount: mappedImages.length,
-            sampleImage: mappedImages[0] || 'none'
-          });
-
-          console.log('🔍 [DEBUG] Image mapping completed:', {
-            originalImagesCount: braveResults.images.length,
-            mappedImagesCount: mappedImages.length,
-            sampleImage: mappedImages[0] || 'none',
-            timestamp: new Date().toISOString()
-          });
-
-          searchResults = {
-            web: [...braveResults.web, ...braveResults.news], // Combine web and news
-            images: mappedImages,
-            videos: braveResults.video.map(vid => ({
-              title: vid.title,
-              url: vid.url,
-              thumbnail: vid.image,
-              duration: ''
-            }))
-          };
-
-          // Check if we got meaningful results
-          if (searchResults.web.length === 0 && searchResults.images.length === 0) {
-            logger.warn('Brave search returned no results, triggering fallback');
-            throw new Error('No results from Brave Search');
-          }
-
-          // 🐛 DEBUG: Brave results analysis
-          console.log('🔍 [DEBUG] Brave results analysis:', {
-            webResultsCount: searchResults.web?.length || 0,
-            imagesCount: searchResults.images?.length || 0,
-            videosCount: searchResults.videos?.length || 0,
-            firstWebResult: searchResults.web?.[0] ? {
-              title: searchResults.web[0].title,
-              url: searchResults.web[0].url,
-              contentLength: searchResults.web[0].content?.length || 0
-            } : 'NO WEB RESULTS',
-            firstImageResult: searchResults.images?.[0] ? {
-              url: searchResults.images[0].url,
-              alt: searchResults.images[0].alt
-            } : 'NO IMAGE RESULTS',
-            timestamp: new Date().toISOString()
-          });
-
-          // 🐛 SUPER OBVIOUS RETRIEVER DEBUG
-          console.error('🔍🔍🔍 RETRIEVER GOT RESULTS:', {
-            webCount: searchResults.web?.length || 0,
-            imagesCount: searchResults.images?.length || 0,
-            videosCount: searchResults.videos?.length || 0,
-            firstWebTitle: searchResults.web?.[0]?.title || 'NO WEB RESULTS',
-            timestamp: new Date().toISOString()
-          });
-
-          logger.info('Brave Search successful', {
-            finalWebCount: searchResults.web.length,
-            finalImagesCount: searchResults.images.length
-          });
-
-          console.log('🔍 [DEBUG] Final Brave Search results:', {
-            finalWebCount: searchResults.web.length,
-            finalImagesCount: searchResults.images.length,
-            finalVideosCount: searchResults.videos?.length || 0,
-            timestamp: new Date().toISOString()
-          });
-
-          // Send completion signal for successful Brave search
-          onStatusUpdate?.('Search completed successfully!');
-          await new Promise(resolve => setTimeout(resolve, 150));
-          
-        } catch (braveError) {
-          // CRITICAL: Clear timeout on error to prevent memory leak
-          if (braveTimeoutId) clearTimeout(braveTimeoutId);
-          
-          logger.warn('Brave Search failed, falling back to SearXNG', {
-            error: braveError instanceof Error ? braveError.message : braveError,
-            query: trimmedQuery
-          });
-          
-          onStatusUpdate?.('Brave Search failed, trying SearXNG...');
-          
-          let searxngTimeoutId: NodeJS.Timeout | undefined;
-          
-          try {
-            logger.info('Starting SearXNG fallback', { query: trimmedQuery });
-            
-            const searxngSearchPromise = searxngSearch(trimmedQuery);
-            const searxngTimeoutPromise = new Promise<never>((_, reject) => {
-              searxngTimeoutId = setTimeout(() => {
-                logger.warn('SearXNG search timeout triggered', { timeout: API_TIMEOUTS.SEARXNG });
-                reject(new Error('SearXNG search timeout'));
-              }, API_TIMEOUTS.SEARXNG);
-            });
-            
-            searchResults = await Promise.race([
-              searxngSearchPromise,
-              searxngTimeoutPromise
-            ]) as { web: SearchResult[]; images: ImageResult[]; videos: VideoResult[] };
-            
-            // CRITICAL: Clear timeout on successful completion to prevent memory leak
-            if (searxngTimeoutId) clearTimeout(searxngTimeoutId);
-            
-            logger.info('SearXNG fallback successful', {
-              webCount: searchResults.web?.length || 0,
-              imagesCount: searchResults.images?.length || 0
-            });
-            
-            onStatusUpdate?.('Search completed with SearXNG!');
-            await new Promise(resolve => setTimeout(resolve, 150));
-            
-          } catch (searxngError) {
-            // CRITICAL: Clear timeout on SearXNG error to prevent memory leak
-            if (searxngTimeoutId) clearTimeout(searxngTimeoutId);
-            
-            logger.error('Both Brave and SearXNG failed', {
-              braveError: braveError instanceof Error ? braveError.message : braveError,
-              searxngError: searxngError instanceof Error ? searxngError.message : searxngError
-            });
-            
-            // Send completion signal even when all providers fail
-            onStatusUpdate?.('Search completed - using fallback results');
-            await new Promise(resolve => setTimeout(resolve, 150));
-            throw new Error('All search providers failed');
-          }
-        }
-      } catch (error) {
-        logger.error('Search failed', {
-          error: error instanceof Error ? error.message : error,
-          isPro
+        // 🐛 DEBUG: Log what we got from Brave tool
+        console.log('🔍 [RETRIEVER] Brave tool returned:', {
+          webCount: braveResults.web?.length || 0,
+          imageCount: braveResults.images?.length || 0,
+          newsCount: braveResults.news?.length || 0,
+          videoCount: braveResults.videos?.length || 0,
+          firstWeb: braveResults.web?.[0]?.title || 'NO WEB',
+          firstImage: braveResults.images?.[0]?.url || 'NO IMAGES'
         });
         
-        // Critical: Always send completion signal, even on total failure
-        onStatusUpdate?.('Search completed with fallback data');
-        await new Promise(resolve => setTimeout(resolve, 150));
-        
-        return {
-          success: true,
-          data: this.getFallbackData(trimmedQuery)
+        // Combine web and news for final results
+        searchResults = {
+          web: [...braveResults.web, ...braveResults.news],
+          images: braveResults.images,
+          videos: braveResults.videos
         };
-      }
 
-      await delay(1000); // Enforce a 1-second gap after search
+        console.log('🔍 [RETRIEVER] Combined search results:', {
+          webCount: searchResults.web.length,
+          imageCount: searchResults.images.length,
+          videoCount: searchResults.videos.length
+        });
 
-      // If no text results, try a more general query.
-      if (!searchResults.web || searchResults.web.length === 0) {
-        const generalQuery = this.generateGeneralQuery(trimmedQuery);
-        onStatusUpdate?.('No results found; trying broader search terms...');
+        logger.info('Brave Search Tool completed', {
+          webResultsCount: searchResults.web.length,
+          imagesCount: searchResults.images.length,
+          videosCount: searchResults.videos.length
+        });
+
+        onStatusUpdate?.('Search completed successfully!');
         
-        let generalResults: { web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] };
+      } catch (braveError) {
+        logger.warn('Brave Search Tool failed, falling back to Apify', {
+          error: braveError instanceof Error ? braveError.message : braveError
+        });
         
-        // All users: Try Brave first, then SearXNG for general query
+        onStatusUpdate?.('Brave Search failed, trying Apify...');
+        
+        // Wait 1 second before fallback (rate limit respect)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         try {
-          const braveResults = await safeCall(() => braveSearch(generalQuery)) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
-          generalResults = {
-            web: [...braveResults.web, ...braveResults.news],
-            images: braveResults.images.map(img => ({
-              url: img.image || img.url,
-              alt: img.title || img.content || 'Search result image',
-              source_url: img.url
-            })),
-            videos: braveResults.video.map(vid => ({ title: vid.title, url: vid.url, thumbnail: vid.image, duration: '' }))
+          // Simple tool call - no complex logic
+          const apifyResults = await apifySearchTool(trimmedQuery);
+          
+          searchResults = {
+            web: apifyResults.web,
+            images: apifyResults.images,
+            videos: [] // Apify doesn't support video search
           };
-        } catch (braveError) {
-          logger.warn('Brave Search failed for general query, using SearXNG', {
-            error: braveError instanceof Error ? braveError.message : braveError
+          
+          logger.info('Apify Search Tool completed', {
+            webCount: searchResults.web.length,
+            imagesCount: searchResults.images.length
           });
-          generalResults = await safeCall(() => searxngSearch(generalQuery));
-        }
-        
-        await delay(1000);
-        
-        if (generalResults.web) searchResults.web = [...(searchResults.web || []), ...generalResults.web];
-        if (generalResults.images) searchResults.images = [...(searchResults.images || []), ...generalResults.images];
-        if ('videos' in searchResults && generalResults.videos) {
-          searchResults.videos = [...(searchResults.videos || []), ...generalResults.videos];
+          
+          onStatusUpdate?.('Search completed with Apify!');
+          
+        } catch (apifyError) {
+          logger.error('Both Brave and Apify failed', {
+            braveError: braveError instanceof Error ? braveError.message : braveError,
+            apifyError: apifyError instanceof Error ? apifyError.message : apifyError
+          });
+          
+          // Return fallback data
+          return this.handleError(apifyError, 'All search providers failed') as AgentResponse<{
+            query: string;
+            results: SearchResult[];
+            images: ImageResult[];
+            videos: VideoResult[];
+          }>;
         }
       }
 
-      // Deduplicate and limit web search results.
+      // Deduplicate and validate results
       const validResults = this.deduplicateResults(searchResults.web)
         .filter(result => result.url !== '#' && result.title && result.content)
         .slice(0, MAX_RESULTS.WEB);
 
-      // 🐛 DEBUG: Results processing
-      console.log('🔍 [DEBUG] Results processing:', {
-        originalWebCount: searchResults.web?.length || 0,
-        afterDeduplication: this.deduplicateResults(searchResults.web).length,
-        afterFiltering: this.deduplicateResults(searchResults.web).filter(result => result.url !== '#' && result.title && result.content).length,
-        finalValidResults: validResults.length,
-        firstValidResult: validResults[0]?.title || 'NO VALID RESULTS',
-        timestamp: new Date().toISOString()
-      });
-
-      // 🐛 SUPER OBVIOUS PROCESSING DEBUG
-      console.error('⚙️⚙️⚙️ RESULTS PROCESSED:', {
-        originalWeb: searchResults.web?.length || 0,
-        finalValid: validResults.length,
-        firstTitle: validResults[0]?.title || 'NO VALID RESULTS',
-        timestamp: new Date().toISOString()
-      });
-
-      // Deduplicate and limit image search results.
       const validImages = this.deduplicateImages(searchResults.images)
         .slice(0, MAX_RESULTS.IMAGES);
-        
-      logger.info('Image processing results', {
-        originalImagesCount: searchResults.images.length,
-        deduplicatedImagesCount: validImages.length,
-        sampleImage: validImages[0] || 'none'
-      });
 
-      // Process videos
-      const validVideos = (searchResults.videos || [])
-        .filter(video => video.url && video.title)
-        .map(video => ({
-          title: video.title || 'Untitled Video',
-          url: video.url,
-          thumbnail: video.thumbnail,
-          duration: video.duration
-        }))
-        .slice(0, MAX_RESULTS.VIDEO);
-
-      // Process perspective-specific text searches in parallel.
-      const perspectiveResults = await Promise.all(
-        (perspectives || []).map(async (perspective) => {
-          onStatusUpdate?.(`Exploring perspective: ${perspective.title}...`);
-          
-          let perspectiveSearchResults: { web: SearchResult[]; images: ImageResult[]; videos?: VideoResult[] };
-          if (isPro && typeof perspective.id === 'string') {
-            const engine = perspective.id.toLowerCase();
-            if (engine === 'tavily') {
-              const tavilyResults = await safeCall(() => tavilySearch(perspective.title)) as { web: SearchResult[]; images: ImageResult[] };
-              perspectiveSearchResults = { web: tavilyResults.web, images: tavilyResults.images, videos: [] };
-            } else if (engine === 'searxng') {
-              perspectiveSearchResults = await safeCall(() => searxngSearch(perspective.title));
-            } else {
-              try {
-                const braveResults = await safeCall(() => braveSearch(perspective.title)) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
-                perspectiveSearchResults = {
-                  web: [...braveResults.web, ...braveResults.news],
-                  images: braveResults.images.map(img => ({
-                    url: img.image || img.url,
-                    alt: img.title || img.content || 'Search result image',
-                    source_url: img.url
-                  })),
-                  videos: braveResults.video.map(vid => ({ title: vid.title, url: vid.url, thumbnail: vid.image, duration: '' }))
-                };
-              } catch (braveError) {
-                logger.warn(`Brave Search failed for perspective "${perspective.title}", using SearXNG`, { error: braveError instanceof Error ? braveError.message : braveError });
-                perspectiveSearchResults = await safeCall(() => searxngSearch(perspective.title));
-              }
-            }
-          } else {
-            try {
-              const braveResults = await safeCall(() => braveSearch(perspective.title)) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
-              perspectiveSearchResults = {
-                web: [...braveResults.web, ...braveResults.news],
-                images: braveResults.images.map(img => ({
-                  url: img.image || img.url,
-                  alt: img.title || img.content || 'Search result image',
-                  source_url: img.url
-                })),
-                videos: braveResults.video.map(vid => ({ title: vid.title, url: vid.url, thumbnail: vid.image, duration: '' }))
-              };
-            } catch (braveError) {
-              logger.warn(`Brave Search failed for perspective "${perspective.title}", using SearXNG`, { error: braveError instanceof Error ? braveError.message : braveError });
-              perspectiveSearchResults = await safeCall(() => searxngSearch(perspective.title));
-            }
-          }
-          
-          // Process and validate sources for this perspective
-          const validSources = (perspectiveSearchResults.web || [])
-            .filter(result => result.url && result.title)
-            .map(result => ({
-              title: result.title,
-              url: result.url.trim(),
-              snippet: this.sanitizeContent(result.content || '')
-            }))
-            .slice(0, 5);
-
-          return { ...perspective, sources: validSources };
-        })
-      );
+      const validVideos = searchResults.videos?.slice(0, MAX_RESULTS.VIDEO) || [];
 
       logger.info('Retrieval completed', {
         resultsCount: validResults.length,
         imagesCount: validImages.length,
-        perspectivesCount: perspectiveResults.length,
-        perspectivesWithSources: perspectiveResults.filter(p => p.sources?.length > 0).length
+        videosCount: validVideos.length
       });
 
-      // CRITICAL: Send completion signal for successful retrieval
-      onStatusUpdate?.('Search completed successfully!');
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      console.log('🔍 [RETRIEVER] SearchRetrieverAgent completing successfully', {
-        query: trimmedQuery,
-        perspectivesCount: perspectiveResults.length,
+      // 🐛 DEBUG: Log what we're returning
+      console.log('🔍 [RETRIEVER] Returning final data:', {
         resultsCount: validResults.length,
         imagesCount: validImages.length,
         videosCount: validVideos.length,
-        timestamp: new Date().toISOString()
-      });
-
-      // 🐛 SUPER OBVIOUS RETRIEVER COMPLETE DEBUG
-      console.error('🎯🎯🎯 RETRIEVER AGENT COMPLETE:', {
-        query: trimmedQuery,
-        resultsCount: validResults.length,
-        imagesCount: validImages.length,
-        firstResultTitle: validResults[0]?.title || 'NO RESULTS',
-        timestamp: new Date().toISOString()
-      });
-
-      logger.info('SearchRetrieverAgent returning data', {
-        query: trimmedQuery,
-        perspectivesCount: perspectiveResults.length,
-        resultsCount: validResults.length,
-        imagesCount: validImages.length,
-        videosCount: validVideos.length,
-        success: true
+        firstResult: validResults[0]?.title || 'NO RESULTS',
+        firstImage: validImages[0]?.url || 'NO IMAGES',
+        firstVideo: validVideos[0]?.title || 'NO VIDEOS'
       });
 
       return {
         success: true,
         data: {
           query: trimmedQuery,
-          perspectives: perspectiveResults,
           results: validResults,
           images: validImages,
-          videos: validVideos,
-        },
+          videos: validVideos
+        }
       };
+      
     } catch (error) {
       logger.error('Retrieval failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        query,
+        query
       });
-      return {
-        success: true,
-        data: this.getFallbackData(query)
-      };
+      return this.handleError(error, 'execute') as AgentResponse<{
+        query: string;
+        results: SearchResult[];
+        images: ImageResult[];
+        videos: VideoResult[];
+      }>;
     }
   }
 
-  // Deduplicates web search results based on URL.
+  // Deduplicates web search results based on URL
   private deduplicateResults(results: SearchResult[]): SearchResult[] {
     const seen = new Set<string>();
     return results.filter(result => {
@@ -479,7 +181,7 @@ export class SearchRetrieverAgent extends BaseAgent {
     });
   }
 
-  // Deduplicates image search results based on URL.
+  // Deduplicates image search results based on URL
   private deduplicateImages(images: ImageResult[]): ImageResult[] {
     const seen = new Set<string>();
     return images.filter(image => {
@@ -489,47 +191,24 @@ export class SearchRetrieverAgent extends BaseAgent {
     });
   }
 
-  // Sanitize content by removing HTML tags and decoding entities
-  private sanitizeContent(content: string): string {
-    return content
-      .replace(/<[^>]*>/g, '') // Remove HTML tags
-      .replace(/&[^;]+;/g, '') // Remove HTML entities
-      .replace(/\s+/g, ' ')    // Normalize whitespace
-      .trim();
-  }
-
-  // Returns fallback data in case retrieval fails.
-  protected override getFallbackData(query: string = ''): {
+  // Returns fallback data in case retrieval fails
+  protected override getFallbackData(): {
     query: string;
-    perspectives: Perspective[];
     results: SearchResult[];
     images: ImageResult[];
     videos: VideoResult[];
   } {
     return {
-      query,
-      perspectives: [],
+      query: '',
       results: [
         {
-          title: 'No Results Found',
+          title: 'Search Unavailable',
           url: '#',
-          content: 'We could not find any results for your search. Please try different keywords or check back later.'
+          content: 'We could not complete your search at this time. Please try again later.'
         }
       ],
       images: [],
       videos: []
     };
-  }
-
-  // Generates a more general query by removing digits, quotes, and short words.
-  private generateGeneralQuery(query: string): string {
-    return query
-      .replace(/\d+/g, '')
-      .replace(/['"]/g, '')
-      .split(' ')
-      .filter(word => word.length > 2)
-      .slice(0, 3)
-      .join(' ')
-      .trim();
   }
 }

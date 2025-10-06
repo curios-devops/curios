@@ -1,13 +1,21 @@
 import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { useSession } from './useSession';
 import { createCheckoutSession, checkSubscription } from '../commonApp/stripe/api';
 import { STRIPE_CONFIG } from '../commonApp/stripe/config';
 
-// Initialize Stripe once
-const stripePromise = STRIPE_CONFIG.publishableKey
-  ? loadStripe(STRIPE_CONFIG.publishableKey)
-  : Promise.reject(new Error('Stripe publishable key is missing'));
+// Lazy-load Stripe only when needed (not on module import)
+let stripePromise: Promise<Stripe | null> | null = null;
+
+const getStripe = () => {
+  if (!stripePromise) {
+    if (!STRIPE_CONFIG.publishableKey) {
+      throw new Error('Stripe publishable key is missing');
+    }
+    stripePromise = loadStripe(STRIPE_CONFIG.publishableKey);
+  }
+  return stripePromise;
+};
 
 export function useStripe() {
   const { session } = useSession();
@@ -19,8 +27,8 @@ export function useStripe() {
       setLoading(true);
       setError(null);
 
-      // Ensure Stripe is initialized
-      const stripe = await stripePromise;
+      // Lazy-load Stripe only when checkout is initiated
+      const stripe = await getStripe();
       if (!stripe) {
         throw new Error('Stripe failed to initialize');
       }

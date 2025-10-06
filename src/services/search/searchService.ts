@@ -102,139 +102,53 @@ export async function performSearch(
           
         } else {
           // REGULAR SEARCH: Simplified direct flow
-          console.log('🔍 [SEARCH] Starting Regular Search flow', { query, timestamp: new Date().toISOString() });
+          console.log('🔍 Starting regular search:', query);
           
           try {
-            // Step 1: Search Retrieval
-            console.log('🔍 [SEARCH] Step 1: Starting SearchRetrieverAgent');
+            // Step 1: Get search results
             onStatusUpdate?.('Searching for information...');
+            const searchResponse = await retrieverAgent.execute(query, onStatusUpdate);
             
-            const searchResponse = await retrieverAgent.execute(
-              query,
-              (status) => {
-                console.log('🔍 [RETRIEVER]', status);
-                onStatusUpdate?.(status);
-              },
-              [], // no perspectives for regular search
-              false // isPro = false
-            );
-            
-            console.log('🔍 [SEARCH] SearchRetrieverAgent response:', {
-              success: searchResponse.success,
-              hasData: !!searchResponse.data,
-              resultsCount: searchResponse.data?.results?.length || 0,
-              timestamp: new Date().toISOString()
-            });
-
-            console.log('🔍 [DEBUG] Detailed SearchRetrieverAgent response:', {
-              success: searchResponse.success,
-              hasData: !!searchResponse.data,
-              resultsCount: searchResponse.data?.results?.length || 0,
-              imagesCount: searchResponse.data?.images?.length || 0,
-              videosCount: searchResponse.data?.videos?.length || 0,
-              perspectivesCount: searchResponse.data?.perspectives?.length || 0,
-              firstResultTitle: searchResponse.data?.results?.[0]?.title || 'NO RESULTS',
-              timestamp: new Date().toISOString()
-            });
-
             if (!searchResponse.success || !searchResponse.data) {
-              console.error('🔍 [SEARCH] SearchRetrieverAgent failed');
               throw new Error('Search retrieval failed');
             }
 
-            // Step 2: Article Generation
-            console.log('🔍 [SEARCH] Step 2: Starting SearchWriterAgent');
+            // Step 2: Generate article
             onStatusUpdate?.('Generating comprehensive answer...');
-
             const researchData = {
               query,
-              perspectives: [], // regular search has no perspectives
+              perspectives: [],
               results: searchResponse.data.results || []
             };
 
-            // 🐛 DEBUG: Research data preparation
-            console.log('🔍 [DEBUG] Preparing research data for SearchWriterAgent:', {
-              query,
-              perspectivesCount: researchData.perspectives.length,
-              resultsCount: researchData.results.length,
-              firstResultTitle: researchData.results[0]?.title || 'NO RESULTS',
-              timestamp: new Date().toISOString()
-            });
-
-            let writerResponse;
-            try {
-              console.log('🔍 [SEARCH] SearchWriterAgent execution starting NOW');
-              writerResponse = await writerAgent.execute(researchData, (status) => {
-                console.log('🔍 [WRITER]', status);
-                onStatusUpdate?.(status);
-              });
-              console.log('🔍 [SEARCH] SearchWriterAgent execution completed');
-            } catch (writerError) {
-              console.error('🔍 [SEARCH] SearchWriterAgent threw an error:', writerError);
-              writerResponse = {
-                success: false,
-                data: null
-              };
-            }
-
-            // 🐛 DEBUG: Writer response
-            console.log('🔍 [DEBUG] SearchWriterAgent response:', {
-              success: writerResponse.success,
-              hasData: !!writerResponse.data,
-              contentLength: writerResponse.data?.content?.length || 0,
-              followUpQuestionsCount: writerResponse.data?.followUpQuestions?.length || 0,
-              citationsCount: writerResponse.data?.citations?.length || 0,
-              timestamp: new Date().toISOString()
-            });
-
-            console.log('🔍 [SEARCH] SearchWriterAgent response:', {
-              success: writerResponse.success,
-              hasData: !!writerResponse.data,
-              contentLength: writerResponse.data?.content?.length || 0,
-              timestamp: new Date().toISOString()
+            console.log('🔍 [SEARCH] Calling WriterAgent...');
+            const writerResponse = await writerAgent.execute(researchData, onStatusUpdate);
+            
+            console.log('✅ WriterAgent complete:', {
+              success: writerResponse?.success,
+              hasContent: !!writerResponse?.data?.content
             });
             
-            if (!writerResponse.success || !writerResponse.data) {
-              console.error('🔍 [SEARCH] SearchWriterAgent failed');
-              throw new Error('Article generation failed');
+            if (!writerResponse?.success || !writerResponse?.data?.content) {
+              throw new Error('Writer failed to generate content');
             }
             
-            // Step 3: Format Response
-            console.log('🔍 [SEARCH] Step 3: Formatting final response');
+            // Step 3: Format & Return
+            console.log('✅ Formatting response...');
             
-            const validatedImages = (searchResponse.data.images || []).filter((img: { url: string }) => {
-              try {
-                const u = new URL(img.url);
-                return u.protocol === 'https:';
-              } catch {
-                return false;
-              }
-            });
-
-            const response: SearchResponse = {
-              answer: writerResponse.data.content || 'No results found. Please try again.',
-              sources: (searchResponse.data.results || []).map((result: { title: string; url: string; content: string }) => ({
-                title: result.title,
-                url: result.url,
-                snippet: result.content,
+            return {
+              answer: writerResponse.data.content,
+              sources: (searchResponse.data.results || []).map((r: any) => ({
+                title: r.title,
+                url: r.url,
+                snippet: r.content
               })),
-              images: validatedImages,
+              images: searchResponse.data.images || [],
               videos: searchResponse.data.videos || [],
               provider: 'Standard Search',
               perspectives: undefined,
-              citations: writerResponse.data.citations || [],
+              citations: writerResponse.data.citations || []
             };
-            
-            console.log('🔍 [SEARCH] Regular search completed successfully:', {
-              sourcesCount: response.sources.length,
-              imagesCount: response.images.length,
-              videosCount: response.videos.length,
-              provider: response.provider,
-              timestamp: new Date().toISOString()
-            });
-            
-            onStatusUpdate?.('Search completed!');
-            return response;
             
           } catch (error) {
             console.error('🔍 [SEARCH] Regular search failed:', {

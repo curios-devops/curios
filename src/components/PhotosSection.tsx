@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Image, ChevronRight } from 'lucide-react';
 import type { ImageResult } from '../types';
 
@@ -8,7 +8,7 @@ interface PhotosSectionProps {
 }
 
 export default function PhotosSection({ images, maxImages = 7 }: PhotosSectionProps) {
-  const [showAll, setShowAll] = useState(false);
+  const [, setShowAll] = useState(false);
 
   // Filter out invalid images and ensure unique URLs
   const validImages = Array.from(
@@ -61,8 +61,12 @@ export default function PhotosSection({ images, maxImages = 7 }: PhotosSectionPr
               <img
                 src={mainImage.url}
                 alt={mainImage.alt}
-                className="w-full aspect-[16/9] object-cover hover:scale-105 transition-transform duration-300"
+                className="w-full aspect-[16/9] object-cover hover:scale-105 transition-transform duration-300 bg-gray-800"
                 loading="lazy"
+                onError={(e) => {
+                  // Hide broken images gracefully
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
               />
             </a>
           )}
@@ -81,8 +85,11 @@ export default function PhotosSection({ images, maxImages = 7 }: PhotosSectionPr
                   <img
                     src={image.url}
                     alt={image.alt}
-                    className="w-full aspect-[16/9] object-cover hover:scale-105 transition-transform duration-300"
+                    className="w-full aspect-[16/9] object-cover hover:scale-105 transition-transform duration-300 bg-gray-800"
                     loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 </a>
               ))}
@@ -102,8 +109,11 @@ export default function PhotosSection({ images, maxImages = 7 }: PhotosSectionPr
                 <img
                   src={lastRowLeftImage.url}
                   alt={lastRowLeftImage.alt}
-                  className="w-full aspect-[16/9] object-cover hover:scale-105 transition-transform duration-300"
+                  className="w-full aspect-[16/9] object-cover hover:scale-105 transition-transform duration-300 bg-gray-800"
                   loading="lazy"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
                 />
               </a>
 
@@ -121,8 +131,11 @@ export default function PhotosSection({ images, maxImages = 7 }: PhotosSectionPr
                       <img
                         src={image.url}
                         alt={image.alt}
-                        className="w-full aspect-[16/9] object-cover hover:scale-105 transition-transform duration-300"
+                        className="w-full aspect-square object-cover hover:scale-105 transition-transform duration-300 bg-gray-800"
                         loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
                       />
                     </a>
                   ))}

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import ProModal from './subscription/ProModal.tsx';
+import { useState, lazy, Suspense } from 'react';
+
+// Lazy load ProModal to avoid loading Stripe unnecessarily
+const ProModal = lazy(() => import('./subscription/ProModal.tsx'));
 
 export default function StandardUserBanner() {
   const [isVisible, setIsVisible] = useState(true);
@@ -54,12 +56,14 @@ export default function StandardUserBanner() {
         </div>
       </div>
 
-      {/* Pro modal */}
+      {/* Pro modal - lazy loaded */}
       {showProModal && (
-        <ProModal
-          isOpen={showProModal}
-          onClose={() => setShowProModal(false)}
-        />
+        <Suspense fallback={<div>Loading...</div>}>
+          <ProModal
+            isOpen={showProModal}
+            onClose={() => setShowProModal(false)}
+          />
+        </Suspense>
       )}
     </>
   );

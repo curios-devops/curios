@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Focus, Paperclip } from 'lucide-react';
 import ActionButton from './ActionButton.tsx';
 import ToggleSwitch from './ToggleSwitch.tsx';
 import SearchButton from './SearchButton.tsx';
 import SearchTextArea from './SearchTextArea.tsx';
-import ProModal from '../subscription/ProModal.tsx';
 import ProTooltip from '../subscription/ProTooltip.tsx';
 import { useSession } from '../../hooks/useSession.ts';
 import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
 import { useSubscription } from '../../hooks/useSubscription.ts';
+
+// Lazy load ProModal to avoid loading Stripe unnecessarily
+const ProModal = lazy(() => import('../subscription/ProModal.tsx'));
 
 export default function SearchBox() {
   const navigate = useNavigate();
@@ -119,10 +121,14 @@ export default function SearchBox() {
         </div>
       </div>
 
-      <ProModal 
-        isOpen={showProModal}
-        onClose={() => setShowProModal(false)}
-      />
+      {showProModal && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <ProModal 
+            isOpen={showProModal}
+            onClose={() => setShowProModal(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

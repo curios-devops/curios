@@ -16,6 +16,17 @@ Deno.serve(async (req: Request) => {
       headers: corsHeaders
     });
   }
+  // Require Authorization header
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return new Response(JSON.stringify({
+      error: 'Missing authorization header',
+      code: 401
+    }), {
+      status: 401,
+      headers: corsHeaders
+    });
+  }
   try {
     const { prompt } = await req.json();
     let parsedPrompt;
@@ -24,7 +35,6 @@ Deno.serve(async (req: Request) => {
     } catch {
       parsedPrompt = { messages: [{ role: 'user', content: prompt }] };
     }
-    
     const payload = {
       model: parsedPrompt.model || "gpt-4o",
       messages: parsedPrompt.messages || [

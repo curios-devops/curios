@@ -31,6 +31,13 @@ export interface SearchResponse {
   sources: Source[];
   images: ImageResult[];
   videos: VideoResult[];
+  news?: Array<{
+    title: string;
+    url: string;
+    snippet?: string;
+    image?: string;
+    extra_snippets?: string[];
+  }>;
   provider?: string;
   perspectives?: Perspective[];
   followUpQuestions?: string[];

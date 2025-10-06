@@ -41,7 +41,7 @@ export const env = {
   },
   rapidapi: {
     key: optionalEnvVars.VITE_RAPIDAPI_KEY,
-    host: 'searxng.p.rapidapi.com'
+    host: 'searx-search-api.p.rapidapi.com'
   },
   brave: {
     apiKey: optionalEnvVars.VITE_BRAVE_API_KEY // Already has fallback in optionalEnvVars

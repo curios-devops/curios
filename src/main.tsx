@@ -15,6 +15,7 @@ const InsightsResults = lazy(() => import('./services/research/regular/pages/Ins
 const ResearcherResults = lazy(() => import('./services/research/regular/pages/ResearcherResults.tsx'));
 const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx'));
 const Settings = lazy(() => import('./mainPages/Settings.tsx'));
+const TestPage = lazy(() => import('./pages/test.tsx'));
 const Policies = lazy(() => import('./mainPages/Policies.tsx'));
 const AuthCallback = lazy(() => import('./components/auth/AuthCallback.tsx'));
 const SubscriptionSuccess = lazy(() => import('./mainPages/SubscriptionSuccess.tsx'));
@@ -53,11 +54,17 @@ const router = createBrowserRouter(
         { path: '/pro-labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
         { path: '/settings', element: <LazyPageWrapper><Settings /></LazyPageWrapper> },
         { path: '/policies', element: <LazyPageWrapper><Policies /></LazyPageWrapper> },
-        { path: '/auth/callback', element: <LazyPageWrapper><AuthCallback /></LazyPageWrapper> },
-        { path: '/subscription/success', element: <LazyPageWrapper><SubscriptionSuccess /></LazyPageWrapper> }
+  { path: '/auth/callback', element: <LazyPageWrapper><AuthCallback /></LazyPageWrapper> },
+  { path: '/subscription/success', element: <LazyPageWrapper><SubscriptionSuccess /></LazyPageWrapper> },
+  { path: '/test', element: <LazyPageWrapper><TestPage /></LazyPageWrapper> }
       ]
     }
-  ]
+  ],
+  {
+    future: {
+      v7_startTransition: true,
+    },
+  }
 );
 
 // Configure error handling for unhandled promises

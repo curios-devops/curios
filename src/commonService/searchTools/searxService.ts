@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { SearchResult, ImageResult } from '../utils/types';
-import { env } from '../../../config/env';
-import { withRetry } from '../utils/utils';
 import { rateLimitQueue } from '../utils/rateLimit';
+
+const RAPIDAPI_KEY = import.meta.env.VITE_RAPIDAPI_KEY;
+const RAPIDAPI_HOST = 'searx-search-api.p.rapidapi.com';
 
 interface SearxResponse {
   results?: Array<{
@@ -15,7 +16,7 @@ interface SearxResponse {
 
 const createSearchConfig = (query: string, method: 'GET' | 'POST') => ({
   method,
-  url: 'https://searxng.p.rapidapi.com/search',
+  url: `https://${RAPIDAPI_HOST}/search`,
   params: {
     q: query,
     categories: method === 'POST' ? 'general,images' : 'general',
@@ -28,8 +29,8 @@ const createSearchConfig = (query: string, method: 'GET' | 'POST') => ({
     safesearch: '0'
   },
   headers: {
-    'X-RapidAPI-Key': env.rapidapi.key,
-    'X-RapidAPI-Host': env.rapidapi.host,
+    'X-RapidAPI-Key': RAPIDAPI_KEY,
+    'X-RapidAPI-Host': RAPIDAPI_HOST,
     'Content-Type': 'application/json'
   }
 });
@@ -46,7 +47,7 @@ export async function performRapidAPISearch(
   }
 
   // Validate API credentials
-  if (!env.rapidapi.key || !env.rapidapi.host) {
+  if (!RAPIDAPI_KEY) {
     console.warn('RapidAPI credentials not configured');
     return { results: [], images: [] };
   }

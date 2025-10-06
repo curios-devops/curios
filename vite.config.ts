@@ -1,35 +1,15 @@
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import process from 'node:process';
 import type { ConfigEnv, UserConfig } from 'vite';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
-  // Load environment variables
-  const env = loadEnv(mode, process.cwd(), '');
+export default defineConfig((_: ConfigEnv): UserConfig => {
+  // Load environment variables (only if needed for other configurations)
+  // const env = loadEnv(mode, process.cwd(), '');
 
   // Environment variables loaded (debug output removed for cleaner development experience)
 
   const proxyConfig = {
-    // Proxy API requests to Brave Search API - PUT THESE FIRST!
-    '^/api/brave/web/search': {
-      target: 'https://api.search.brave.com/res/v1',
-      changeOrigin: true,
-      secure: true,
-      rewrite: (path: string) => path.replace(/^\/api\/brave/, ''),
-      headers: {
-        'X-Subscription-Token': env.VITE_BRAVE_API_KEY || ''
-      }
-    },
-    '^/api/brave/images/search': {
-      target: 'https://api.search.brave.com/res/v1',
-      changeOrigin: true,
-      secure: true,
-      rewrite: (path: string) => path.replace(/^\/api\/brave/, ''),
-      headers: {
-        'X-Subscription-Token': env.VITE_BRAVE_API_KEY || ''
-      }
-    },
     // Legacy Netlify functions replaced by Supabase Edge Functions
     // Supabase handles all API calls now
   };

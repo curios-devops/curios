@@ -1,18 +1,19 @@
+// searchWriterAgent.ts
+// Simplified following Swarm architecture: lightweight, stateless, minimal abstractions
+// Regular search flow: Research data → OpenAI (via Supabase Edge Function) → Article
+
 import { AgentResponse, ResearchResult, ArticleResult, SearchResult } from '../../../../commonApp/types/index';
 import { logger } from '../../../../utils/logger.ts';
 
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 1000; // 1 second
-
 export class SearchWriterAgent {
-  private readonly defaultModel: string = 'gpt-4o'; // Use gpt-4o model
+  private readonly defaultModel: string = 'gpt-4o';
 
   constructor() {
-    logger.info('SearchWriterAgent: Initialized with direct OpenAI API integration');
+    logger.info('SearchWriterAgent: Initialized');
   }
 
   /**
-   * Provides fallback article data if article generation fails.
+   * Provides fallback article data if generation fails
    */
   private getFallbackData(query: string): ArticleResult {
     return {
@@ -29,374 +30,182 @@ export class SearchWriterAgent {
   }
 
   /**
-   * Calls the OpenAI API directly with retry logic
+   * Calls OpenAI API via Supabase Edge Function (simplified - no retries)
    */
   private async callOpenAI(
     messages: Array<{ role: string; content: string }>,
-    model: string = this.defaultModel,
-    retryCount: number = 0
+    model: string = this.defaultModel
   ): Promise<ArticleResult> {
-    const currentRetry = typeof retryCount === 'number' ? retryCount : 0;
-
-    // 🐛 DEBUG: Environment variables check
-    console.log('🔍 [DEBUG] Environment check:', {
-      hasViteOpenaiUrl: !!import.meta.env?.VITE_OPENAI_API_URL,
-      hasSupabaseAnonKey: !!import.meta.env?.VITE_SUPABASE_ANON_KEY,
-      viteOpenaiUrl: import.meta.env?.VITE_OPENAI_API_URL || 'UNDEFINED',
-      viteSupabaseAnonKey: import.meta.env?.VITE_SUPABASE_ANON_KEY ? '[PRESENT]' : 'MISSING',
-      timestamp: new Date().toISOString(),
-      retryCount: currentRetry
-    });
-
     try {
-      logger.debug('Calling OpenAI API directly', {
+      logger.debug('Calling OpenAI API via Supabase Edge Function', {
         model,
-        messageCount: messages.length,
-        retryCount
+        messageCount: messages.length
       });
 
-      // Use the deployed Supabase Edge Function endpoint
-      const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
-        ? import.meta.env.VITE_OPENAI_API_URL
-        : 'VITE_OPENAI_API_URL';
+      // Get environment variables
+      const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // DEBUG: URL validation
-      console.log(' [DEBUG] Supabase Edge URL:', {
-        url: supabaseEdgeUrl,
-        isDefault: supabaseEdgeUrl === 'VITE_OPENAI_API_URL',
-        timestamp: new Date().toISOString()
-      });
-
-      if (supabaseEdgeUrl === 'VITE_OPENAI_API_URL') {
-        const errorMsg = 'Supabase Edge URL environment variable missing or defaulting';
-        console.error(' [ERROR] Environment variable issue:', {
-          environmentUrl: import.meta.env.VITE_OPENAI_API_URL,
-          error: errorMsg
-        });
-        logger.error('Supabase Edge URL environment variable missing or defaulting', {
-          environmentUrl: import.meta.env.VITE_OPENAI_API_URL
-        });
+      if (!supabaseEdgeUrl) {
         throw new Error('Supabase Edge Function URL not configured');
       }
 
-      // Get Supabase anon key from environment
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       if (!supabaseAnonKey) {
-        const errorMsg = 'Supabase anon key not found in environment variables';
-        console.error(' [ERROR] Missing Supabase anon key:', errorMsg);
-        throw new Error(errorMsg);
+        throw new Error('Supabase anon key not found');
       }
 
-      // DEBUG: Request preparation
-      console.log(' [DEBUG] Preparing Supabase Edge Function request:', {
-        url: supabaseEdgeUrl,
-        model,
-        messageCount: messages.length,
-        hasAnonKey: !!supabaseAnonKey,
-        timeout: 25000,
-        timestamp: new Date().toISOString()
-      });
-
-      // Add timeout to prevent infinite hanging in production
+      // Simple fetch call with timeout (matching test page pattern)
       const controller = new AbortController();
-      const fetchTimeout = setTimeout(() => {
-        console.error(' [TIMEOUT] Fetch request timed out after 25 seconds');
-        controller.abort();
-      }, 25000); // 25 seconds timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      const requestPayload = {
-        prompt: JSON.stringify({
-          messages,
-          model,
-          response_format: { type: 'json_object' },
-          temperature: 0.7,
-          max_output_tokens: 1200
-        })
-      };
-
-      // DEBUG: Exact request details
-      console.log(' [DEBUG] Making fetch request:', {
-        url: supabaseEdgeUrl,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': '[REDACTED]'
-        },
-        payloadSize: JSON.stringify(requestPayload).length,
-        payloadPreview: JSON.stringify(requestPayload).substring(0, 200) + '...',
-        timestamp: new Date().toISOString()
-      });
-
-      const response = await fetch(supabaseEdgeUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify(requestPayload),
-        signal: controller.signal
-      });
-
-      clearTimeout(fetchTimeout);
-
-      // DEBUG: Response details
-      console.log(' [DEBUG] Received response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries()),
-        timestamp: new Date().toISOString()
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(' [ERROR] Supabase Edge Function error:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText: errorText.substring(0, 500),
-          fullErrorLength: errorText.length,
-          timestamp: new Date().toISOString()
-        });
-        logger.error('Error from OpenAI API', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText
-        });
-        throw new Error(`OpenAI API error! status: ${response.status}, body: ${errorText}`);
-      }
-
-      const data = await response.json();
-
-      // DEBUG: Response data
-      console.log(' [DEBUG] Parsed response data:', {
-        hasText: !!data.text,
-        textType: typeof data.text,
-        textLength: data.text?.length || 0,
-        textPreview: data.text ? String(data.text).substring(0, 200) + '...' : 'NO TEXT',
-        fullResponseKeys: Object.keys(data),
-        timestamp: new Date().toISOString()
-      });
-
-      // The Supabase Edge Function returns { text, openai }
-      if (!data.text) {
-        console.error(' [ERROR] No text in Supabase Edge Function response:', data);
-        throw new Error('No content in Supabase Edge Function response');
-      }
-
-      logger.debug('Successfully received content from Supabase Edge Function', {
-        contentLength: data.text.length
-      });
-
-      // Debug: log the raw data.text
-      logger.debug('Raw OpenAI data.text', { textPreview: String(data.text).slice(0, 200) });
-
-      // DEBUG: Parsing attempt
-      console.log(' [DEBUG] Attempting to parse response as ArticleResult...');
-      let articleResult: ArticleResult | null = null;
-
-      // Try to parse as JSON, fallback to plain text if not valid JSON
       try {
-        // Accept either a direct object or a stringified JSON
-        if (typeof data.text === 'object') {
-          articleResult = data.text;
-          console.log(' [SUCCESS] Parsed as direct object');
-        } else if (typeof data.text === 'string') {
-          // Remove Markdown code block markers if present
-          let cleanText = data.text.trim();
-          // Remove leading/trailing triple backticks and optional json/lang
-          cleanText = cleanText.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '');
+        const response = await fetch(supabaseEdgeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseAnonKey}`
+          },
+          body: JSON.stringify({
+            prompt: JSON.stringify({
+              messages,
+              model,
+              response_format: { type: 'json_object' },
+              temperature: 0.7,
+              max_output_tokens: 1200
+            })
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
 
-          console.log(' [DEBUG] Cleaned text for parsing:', {
-            originalLength: data.text.length,
-            cleanedLength: cleanText.length,
-            startsWithBackticks: data.text.trim().startsWith('```'),
-            endsWithBackticks: data.text.trim().endsWith('```')
+        if (!response.ok) {
+          const errorText = await response.text();
+          logger.error('OpenAI API error', {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText.substring(0, 500)
+          });
+          throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+
+        // The Supabase Edge Function returns { text, openai }
+        if (!data.text) {
+          throw new Error('No content in Supabase Edge Function response');
+        }
+
+        logger.debug('Successfully received content from Supabase Edge Function', {
+          contentLength: data.text.length
+        });
+
+        // Parse the response
+        let articleResult: ArticleResult;
+
+        try {
+          // Accept either a direct object or a stringified JSON
+          if (typeof data.text === 'object') {
+            articleResult = data.text;
+          } else if (typeof data.text === 'string') {
+            // Remove Markdown code block markers if present
+            let cleanText = data.text.trim();
+            cleanText = cleanText.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '');
+            articleResult = JSON.parse(cleanText);
+          } else {
+            throw new Error('Unexpected data.text type');
+          }
+
+          logger.debug('Parsed ArticleResult from data.text', { articleResult });
+        } catch (parseError) {
+          logger.warn('Failed to parse OpenAI response as JSON', {
+            error: parseError,
+            textPreview: String(data.text).slice(0, 200)
           });
 
-          articleResult = JSON.parse(cleanText);
-          console.log(' [SUCCESS] Parsed as JSON string');
+          // Fallback: wrap as plain text
+          if (typeof data.text === 'string') {
+            return {
+              content: data.text,
+              followUpQuestions: [],
+              citations: []
+            };
+          }
+
+          throw new Error('Failed to parse OpenAI response');
         }
-        logger.debug('Parsed ArticleResult from data.text', { articleResult });
-      } catch (e) {
-        console.warn(' [WARNING] Failed to parse OpenAI response as JSON:', {
-          error: e,
-          textPreview: String(data.text).slice(0, 200),
-          textType: typeof data.text
-        });
-        logger.warn('Failed to parse OpenAI response as JSON', { error: e, textPreview: String(data.text).slice(0, 200) });
-      }
 
-      // DEBUG: Validation check
-      if (
-        articleResult &&
-        typeof articleResult.content === 'string' &&
-        Array.isArray(articleResult.followUpQuestions) &&
-        Array.isArray(articleResult.citations)
-      ) {
-        console.log(' [SUCCESS] ArticleResult validation passed:', {
-          contentLength: articleResult.content.length,
-          followUpQuestionsCount: articleResult.followUpQuestions.length,
-          citationsCount: articleResult.citations.length
-        });
-        logger.debug('ArticleResult is valid, returning', { articleResult });
-        return articleResult;
-      }
-
-      // If not valid JSON, treat as plain text/Markdown and wrap in ArticleResult
-      if (typeof data.text === 'string') {
-        console.log(' [FALLBACK] Wrapping plain text as ArticleResult');
-        // Try to extract follow-up questions and citations if present in the text
-        let followUpQuestions: string[] = [];
-        let citations: any[] = [];
-        // Simple heuristics: look for sections in the text
-        const fqMatch = data.text.match(/Follow[- ]?up Questions:?\n([\s\S]*?)(\n\n|$)/i);
-        if (fqMatch) {
-          followUpQuestions = fqMatch[1]
-            .split(/\n|\r/)
-            .map((q: string) => q.trim())
-            .filter((q: string) => q.length > 0 && !/^[-*]?$/.test(q));
+        // Validate the result
+        if (
+          articleResult &&
+          typeof articleResult.content === 'string' &&
+          Array.isArray(articleResult.followUpQuestions) &&
+          Array.isArray(articleResult.citations)
+        ) {
+          logger.debug('ArticleResult is valid, returning', {
+            contentLength: articleResult.content.length,
+            followUpQuestionsCount: articleResult.followUpQuestions.length,
+            citationsCount: articleResult.citations.length
+          });
+          return articleResult;
         }
-        const citMatch = data.text.match(/Citations?:?\n([\s\S]*?)(\n\n|$)/i);
-        if (citMatch) {
-          citations = citMatch[1]
-            .split(/\n|\r/)
-            .map((c: string) => c.trim())
-            .filter((c: string) => c.length > 0 && !/^[-*]?$/.test(c))
-            .map((c: string) => ({ url: '', title: c, siteName: '' }));
+
+        logger.warn('OpenAI response did not match ArticleResult format');
+        throw new Error('Invalid ArticleResult format');
+
+      } catch (error: unknown) {
+        clearTimeout(timeoutId);
+        
+        // Handle timeout specifically
+        if (error instanceof Error && error.name === 'AbortError') {
+          logger.error('OpenAI call timeout after 30 seconds');
+          throw new Error('OpenAI request timeout - please try again');
         }
-        logger.debug('Wrapped plain text as ArticleResult', { followUpQuestions, citations });
-        return {
-          content: data.text,
-          followUpQuestions,
-          citations
-        };
+        
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('OpenAI call failed', { error: errorMessage });
+        throw error;
       }
-
-      console.warn(' [WARNING] OpenAI response did not match ArticleResult format, using fallback', {
-        textPreview: String(data.text).slice(0, 200),
-        articleResult
-      });
-      logger.warn('OpenAI response did not match ArticleResult format, using fallback', { textPreview: String(data.text).slice(0, 200), articleResult });
-      return this.getFallbackData(messages[messages.length - 1]?.content || '');
-
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
-        ? import.meta.env.VITE_OPENAI_API_URL
-        : 'VITE_OPENAI_API_URL';
-
-      // DEBUG: Error details
-      console.error(' [ERROR] Exception in callOpenAI:', {
-        error: errorMessage,
-        errorType: error instanceof Error ? error.name : 'Unknown',
-        isAbortError: error instanceof Error && error.name === 'AbortError',
-        isNetworkError: error instanceof Error && error.name === 'TypeError' && errorMessage.includes('fetch'),
-        url: supabaseEdgeUrl,
-        retryCount: currentRetry,
-        maxRetries: MAX_RETRIES,
-        timestamp: new Date().toISOString()
-      });
-
-      // Handle AbortError specifically
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('Fetch request was aborted due to timeout (Supabase Edge Function not responding)', {
-          error: errorMessage,
-          url: supabaseEdgeUrl,
-          query: messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No query'
-        });
-      } else if (error instanceof Error && error.name === 'TypeError' && error.message.includes('fetch')) {
-        logger.error('Network fetch error (likely production environment issue)', {
-          error: errorMessage,
-          url: supabaseEdgeUrl,
-          query: messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No query'
-        });
-      }
-
-      if (currentRetry < MAX_RETRIES) {
-        const delay = INITIAL_RETRY_DELAY * Math.pow(2, currentRetry);
-        console.log(` [RETRY] Retrying in ${delay}ms (attempt ${currentRetry + 1}/${MAX_RETRIES})`);
-        logger.warn(`Retry ${currentRetry + 1}/${MAX_RETRIES} after error:`, {
-          error: errorMessage
-        });
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return this.callOpenAI(messages, model, currentRetry + 1);
-      }
-
-      console.error(' [ERROR] Max retries reached, returning fallback response');
-      logger.error('Max retries reached, returning fallback response', {
-        error: errorMessage,
-        query: messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No query'
-      });
-
-      // Return a fallback response that matches the expected format
-      return {
-        content: 'Sorry, I encountered an error while generating the response. Please try again later.',
-        followUpQuestions: [
-          'What specific information would be most valuable about this topic?',
-          'How can I explore different aspects of this subject?',
-          'What current developments should I know about?',
-          'Where can I find expert insights on this topic?',
-          'What practical applications relate to this subject?'
-        ],
-        citations: []
-      };
+      logger.error('OpenAI call failed (outer catch)', { error: errorMessage });
+      throw error;
     }
   }
 
   /**
-   * Executes the article generation process following the proven BaseAgent pattern.
-   * @param research - The research data gathered by the Retriever/UI agents.
+   * Executes the article generation process
+   * @param research - The research data gathered by the Retriever agent
    * @param onStatusUpdate - Optional callback for status updates
-   * @returns An AgentResponse containing the generated article and follow-up questions.
+   * @returns An AgentResponse containing the generated article
    */
   async execute(
-    research: ResearchResult, 
+    research: ResearchResult,
     onStatusUpdate?: (status: string) => void
   ): Promise<AgentResponse<ArticleResult>> {
     try {
-      console.log(' [WRITER] Starting SearchWriterAgent execution', {
-        hasResearch: !!research,
+      logger.info('WriterAgent: Starting execution', {
         query: research?.query,
-        resultsCount: research?.results?.length || 0,
-        perspectivesCount: research?.perspectives?.length || 0,
-        timestamp: new Date().toISOString()
+        resultsCount: research?.results?.length || 0
       });
 
-      // 🐛 SUPER OBVIOUS WRITER START DEBUG
-      console.error('✍️✍️✍️ WRITER AGENT STARTED:', {
-        query: research?.query,
-        resultsCount: research?.results?.length || 0,
-        timestamp: new Date().toISOString()
-      });
-      
-      // CRITICAL: Signal that writer agent has started
-      onStatusUpdate?.('Writer agent starting...');
-      
+      onStatusUpdate?.('Analyzing search results...');
+
       if (!research || !research.query) {
-        console.error(' [WRITER] Invalid research data: missing query');
         throw new Error('Invalid research data: missing query');
       }
-      
+
       const { query, results = [] } = research;
-      
-      console.log(' [WRITER] Processing research data', {
+
+      logger.info('WriterAgent: Processing research data', {
         query,
-        resultsCount: results.length,
-        timestamp: new Date().toISOString()
-      });
-      
-      onStatusUpdate?.('Analyzing search results...');
-      
-      logger.info('WriterAgent: Starting execution', { 
-        query, 
-        resultsCount: results.length 
+        resultsCount: results.length
       });
 
-      logger.info('WriterAgent: Preparing source context');
-      // Prepare detailed context with full source information for better grounding
-      const maxResults = 8; // Increase to 8 most relevant results for better coverage
-      const maxContentPerResult = 600; // Increase content length for more comprehensive analysis
-      
+      // Prepare source context from search results
+      const maxResults = 8;
+      const maxContentPerResult = 600;
+
       // Helper function to extract website name from URL
       const extractSiteName = (url: string): string => {
         try {
@@ -406,20 +215,20 @@ export class SearchWriterAgent {
           return 'Unknown Site';
         }
       };
-      
+
       const sourceContext = results
         .slice(0, maxResults)
         .map((result: SearchResult, index: number) => {
-          const content = 'content' in result 
+          const content = 'content' in result
             ? (result as { content?: string }).content || ''
-            : 'snippet' in result 
+            : 'snippet' in result
               ? (result as { snippet?: string }).snippet || ''
               : '';
-          const truncatedContent = content.length > maxContentPerResult 
+          const truncatedContent = content.length > maxContentPerResult
             ? content.slice(0, maxContentPerResult) + '...'
             : content;
           const siteName = extractSiteName(result.url);
-          
+
           return `Source ${index + 1} - ${siteName}:
 URL: ${result.url}
 Website: ${siteName}
@@ -429,21 +238,12 @@ Content: ${truncatedContent}
         })
         .join('\n\n');
 
-      logger.info('WriterAgent: Making OpenAI API call', { 
+      logger.info('WriterAgent: Source context prepared', {
         sourceContextLength: sourceContext.length,
-        maxResults,
-        model: this.defaultModel
+        maxResults
       });
 
       onStatusUpdate?.('Generating comprehensive answer...');
-
-      console.log(' [WRITER] Making OpenAI API call', {
-        sourceContextLength: sourceContext.length,
-        maxResults,
-        model: this.defaultModel,
-        url: 'https://api.openai.com/v1/chat/completions',
-        timestamp: new Date().toISOString()
-      });
 
       const systemPrompt = `You are an expert research analyst creating comprehensive, well-sourced articles with intelligent follow-up questions.
 
@@ -454,7 +254,7 @@ RESPONSE FORMAT - Return a JSON object with this exact structure:
   "content": "Your comprehensive answer here...",
   "followUpQuestions": [
     "Follow-up question 1",
-    "Follow-up question 2", 
+    "Follow-up question 2",
     "Follow-up question 3",
     "Follow-up question 4",
     "Follow-up question 5"
@@ -533,50 +333,32 @@ Remember: Base your response entirely on the source material provided. Do not ad
         { role: 'user', content: userPrompt }
       ];
 
-      // Add explicit timeout handling for WriterAgent with proper cleanup
-  const completionPromise = this.callOpenAI(messages, this.defaultModel);
-      
-      let timeoutId: NodeJS.Timeout | undefined;
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          logger.warn('WriterAgent OpenAI call timeout after 30 seconds');
-          reject(new Error('WriterAgent OpenAI call timeout after 30 seconds'));
-        }, 30000);
+      logger.info('WriterAgent: Calling OpenAI', { model: this.defaultModel });
+
+      // Simple call without retries or Promise.race
+      const articleResult = await this.callOpenAI(messages, this.defaultModel);
+
+      logger.info('WriterAgent: Successfully generated article', {
+        contentLength: articleResult.content.length,
+        followUpQuestionsCount: articleResult.followUpQuestions.length,
+        citationsCount: articleResult.citations.length
       });
 
-      let articleResult: ArticleResult;
-      try {
-        articleResult = await Promise.race([completionPromise, timeoutPromise]);
-        // CRITICAL: Clear timeout on successful completion to prevent memory leak
-        if (timeoutId) clearTimeout(timeoutId);
-      } catch (error) {
-        logger.error('WriterAgent execution failed:', error);
-        // CRITICAL: Send completion signal even on error
-        onStatusUpdate?.('Article generation completed with fallback content');
-        await new Promise(resolve => setTimeout(resolve, 150));
-        return {
-          success: true,
-          data: this.getFallbackData(research.query)
-        };
-      }
+      onStatusUpdate?.('Article generation completed!');
+
       return {
         success: true,
         data: articleResult
       };
+
     } catch (error) {
       logger.error('WriterAgent execution failed:', error);
-      // CRITICAL: Send completion signal even on error
       onStatusUpdate?.('Article generation completed with fallback content');
-      await new Promise(resolve => setTimeout(resolve, 150));
+
       return {
         success: true,
-        data: this.getFallbackData(research.query)
+        data: this.getFallbackData(research?.query || '')
       };
     }
-    // If for some reason the try block completes without returning, return fallback
-    return {
-      success: true,
-      data: this.getFallbackData(research?.query || '')
-    };
   }
 }

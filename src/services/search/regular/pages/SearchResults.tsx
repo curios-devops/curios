@@ -142,8 +142,20 @@ export default function Results() {
           }
         });
 
+        console.log('🔍 SearchResults received response:', {
+          hasSources: !!response.sources?.length,
+          sourcesCount: response.sources?.length || 0,
+          hasImages: !!response.images?.length,
+          imagesCount: response.images?.length || 0,
+          hasVideos: !!response.videos?.length,
+          videosCount: response.videos?.length || 0,
+          hasAnswer: !!response.answer,
+          responseType: typeof response
+        });
+
         // Only update state if this is still the current request and component is mounted
         if (!isCurrentRequest || !isMountedRef.current) {
+          console.log('🚫 SearchResults: Request cancelled or component unmounted');
           return;
         }
 
@@ -157,9 +169,11 @@ export default function Results() {
         // Use functional update to ensure state consistency
         setSearchState(prevState => {
           if (!isCurrentRequest || !isMountedRef.current) {
+            console.log('🚫 setSearchState: Request cancelled or component unmounted');
             return prevState; // Don't update if component unmounted
           }
           
+          console.log('📊 setSearchState: Updating state with response data');
           const newState = {
             isLoading: false,
             error: null,

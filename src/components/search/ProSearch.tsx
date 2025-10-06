@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Focus, Paperclip, ChevronDown, Check, Sparkles, LightbulbIcon, Microscope, Brain, User } from 'lucide-react';
 import ActionButton from '../SearchInput/ActionButton.tsx';
@@ -6,11 +6,13 @@ import ToggleSwitch from '../SearchInput/ToggleSwitch.tsx';
 import SearchButton from '../SearchInput/SearchButton.tsx';
 import SearchTextArea from '../SearchInput/SearchTextArea.tsx';
 import FocusModal from './FocusModal.tsx';
-import ProModal from '../subscription/ProModal.tsx';
 import ProTooltip from '../subscription/ProTooltip.tsx';
 import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
 import { useSubscription } from '../../hooks/useSubscription.ts';
 import type { FocusMode } from './types.ts';
+
+// Lazy load ProModal to avoid loading Stripe unnecessarily
+const ProModal = lazy(() => import('../subscription/ProModal.tsx'));
 
 const searchTypes = [
   {
@@ -256,10 +258,14 @@ export default function ProSearch({ isProEnabled, searchType, onUpdatePreference
         onSelectMode={setSelectedMode}
       />
 
-      <ProModal 
-        isOpen={showProModal}
-        onClose={() => setShowProModal(false)}
-      />
+      {showProModal && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <ProModal 
+            isOpen={showProModal}
+            onClose={() => setShowProModal(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

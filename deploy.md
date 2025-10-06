@@ -1,3 +1,29 @@
+## Testing Supabase Edge Functions with HTML
+
+You can use the HTML test page at `http://localhost:5173/supabase/test-openai-key.html` 
+
+http://localhost:5173/test 
+(or the correct dev server URL) to verify your Supabase edge functions from the browser.
+
+### Steps:
+1. Open `supabase/test-openai-key.html` in your browser.
+2. Make sure you have set the correct Supabase anon key in the script:
+  - Use the value of `SUPABASE_ANON_KEY` from your `.env` file (not the VITE_ version).
+  - Example:
+    ```js
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+    ```
+3. The page has two buttons:
+  - **Test OPENAI_API_KEY**: Checks if your edge function can access the OpenAI key.
+  - **Test OpenAI Call**: Sends a prompt to your OpenAI edge function and displays the response.
+4. Both buttons use the full Supabase URL and send the anon key in the Authorization header.
+
+### Troubleshooting
+- If you see authorization errors, double-check the anon key and that it matches your Supabase project.
+- If you see 404 errors, make sure the edge function is deployed and the name matches the route.
+- If you see HTML responses, update the fetch URL to use the full Supabase URL, not a local path.
+
+This page is useful for quick browser-based verification of your Supabase edge functions.
 ## HISTORY VERSION
 **2024**
   11.15 - Add Sources Format
@@ -24,6 +50,9 @@
   09.19 - Refactor chat completions. and delete keys
   09.23 - finsih refactot Locally working.
   09.26 - netfily backend deleted
+  09.28 - brave call migrated to backend
+  10.06 - Brave working locall (no image)
+  
 # CURIOSAI  Runing Dev
 1. npm run dev
 
@@ -129,3 +158,13 @@ VITE_CLIENT_SECRET
 VITE_OPENAI_ORG_ID
 VITE_PROJECT_ID
 VITE_SUPABASE_PUBLISHABLE_KEY
+
+# Start unified development environment
+npm run dev
+
+# Stop Supabase server when done
+npm run dev:stop
+
+# Individual servers (if needed)
+npm run vite:dev      # Vite only
+npm run supabase:dev  # Supabase only

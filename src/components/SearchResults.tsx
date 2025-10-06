@@ -16,14 +16,15 @@ export default function SearchResults() {
   const [searchStartTime] = useState(Date.now());
   const [timeAgo, setTimeAgo] = useState('just now');
   const [showAllSources, setShowAllSources] = useState(false);
-  
   const [searchState, setSearchState] = useState<SearchState>({
     isLoading: true,
     error: null,
     data: null
   });
-
   const [statusMessage, setStatusMessage] = useState('Initializing search...');
+
+  // Automatically show Brave modal when search results arrive
+  // Show Brave modal as soon as Brave search starts
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -131,6 +132,70 @@ export default function SearchResults() {
                   answer={searchState.data.answer}
                   citations={searchState.data.citations}
                 />
+                  {/* News Results Section */}
+                  {searchState.data.news && searchState.data.news.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-lg font-semibold mb-4 text-white">News Results</h3>
+                      <div className="space-y-4">
+                        {searchState.data.news.slice(0, 6).map((news, idx) => {
+                          let domain = '';
+                          try {
+                            domain = new URL(news.url).hostname.replace('www.', '');
+                          } catch {}
+                          return (
+                            <div
+                              key={idx}
+                              className="flex items-start gap-4 p-4 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors bg-[#18181b]"
+                            >
+                              {/* Number indicator */}
+                              <div className="flex-shrink-0 w-6 h-6 bg-[#0095FF] text-white rounded text-xs font-medium flex items-center justify-center mt-1">
+                                {idx + 1}
+                              </div>
+                              {/* News Image or Favicon */}
+                              {news.image ? (
+                                <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+                                  <img
+                                    src={news.image}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                    onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = 'none'; }}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-shrink-0 w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                                    <img
+                                      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+                                      alt=""
+                                      className="w-5 h-5 rounded"
+                                      loading="lazy"
+                                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                  </div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                                    {domain}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <a
+                                  href={news.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-lg font-medium text-gray-100 hover:text-[#0095FF] transition-colors block mb-2"
+                                >
+                                  {news.title}
+                                </a>
+                                <p className="text-sm text-gray-400 leading-relaxed">
+                                  {news.snippet || (news.extra_snippets && news.extra_snippets[0]) || ''}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
               </>
             )}
           </div>
