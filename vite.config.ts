@@ -59,7 +59,7 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
             'vendor-ui': ['lucide-react', 'react-markdown'],
             'vendor-openai': ['openai'],
-            'vendor-supabase': ['@supabase/supabase-js', '@supabase/ssr'],
+            'vendor-supabase': ['@supabase/supabase-js'],
             'vendor-stripe': ['@stripe/stripe-js'],
             'vendor-utils': ['axios', 'zod'],
             
