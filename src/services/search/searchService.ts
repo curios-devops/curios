@@ -136,6 +136,16 @@ export async function performSearch(
             // Step 3: Format & Return
             console.log('✅ Formatting response...');
             
+            // 🔍 DEBUG: Check what images we actually have
+            console.log('🔍 [SEARCH] Images investigation:', {
+              hasSearchResponse: !!searchResponse,
+              hasData: !!searchResponse.data,
+              hasImages: !!searchResponse.data.images,
+              imagesLength: searchResponse.data.images?.length || 0,
+              firstImage: searchResponse.data.images?.[0] || 'NO IMAGES',
+              imagesArray: searchResponse.data.images
+            });
+            
             return {
               answer: writerResponse.data.content,
               sources: (searchResponse.data.results || []).map((r: any) => ({

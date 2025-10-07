@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
     // Helper to build Brave API URL for each type
     function getApiUrl(type: string, query: string): string {
       if (type === 'web') {
-        return `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&text_decorations=false`;
+        return `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&text_decorations=false&extra_snippets=true`;
       } else if (type === 'images') {
         return `https://api.search.brave.com/res/v1/images/search?q=${encodeURIComponent(query)}&safesearch=strict&count=20&search_lang=en&country=us&spellcheck=1`;
       } else if (type === 'news') {

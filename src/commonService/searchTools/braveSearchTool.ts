@@ -1,12 +1,12 @@
 // braveSearchTool.ts
-// Simple Brave Search wrapper matching test page pattern exactly
+// Simple Brave Search wrapper using separate web and images endpoints
 // Returns: { web, images, news, videos }
 
 import { logger } from '../../utils/logger';
 import type { SearxResult, ImageResult, VideoResult } from '../../types';
 
 const SUPABASE_URL = 'https://gpfccicfqynahflehpqo.supabase.co';
-const SEARCH_TIMEOUT = 30000; // 30 seconds - Brave API can be slow with multiple types
+const SEARCH_TIMEOUT = 30000; // 30 seconds
 
 export interface BraveSearchResults {
   web: SearxResult[];
@@ -16,7 +16,7 @@ export interface BraveSearchResults {
 }
 
 /**
- * Brave Search - Simple wrapper matching test page pattern
+ * Brave Search - Calls separate web and images endpoints
  * @param query Search query string
  * @returns Formatted search results
  */
@@ -28,213 +28,137 @@ export async function braveSearchTool(query: string): Promise<BraveSearchResults
     throw new Error('Supabase anon key not found');
   }
 
-  // Add timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-    logger.warn('Brave search timeout', { query, timeout: SEARCH_TIMEOUT });
-  }, SEARCH_TIMEOUT);
-
   try {
-    // EXACT same pattern as test page
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/brave-search`, {
+    // Call both web and images endpoints with rate limiting
+    console.log('🔍 [BRAVE TOOL] Starting search for:', query);
+    
+    // Call web search first
+    const webResponse = await fetch(`${SUPABASE_URL}/functions/v1/brave-web-search`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ 
-        query: query,
-        types: ['web', 'images', 'news', 'videos']
-      }),
-      signal: controller.signal
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT)
     });
 
-    clearTimeout(timeoutId);
+    // Wait 1 second to respect Brave API rate limits
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error('Brave edge function error', { 
-        status: response.status, 
-        error: errorText 
+    // Call images search after delay
+    const imagesResponse = await fetch(`${SUPABASE_URL}/functions/v1/brave-images-search`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT)
+    });
+
+    // Check web response
+    if (!webResponse.ok) {
+      const errorText = await webResponse.text();
+      logger.error('Brave web search error', { 
+        status: webResponse.status, 
+        error: errorText,
+        query 
       });
-      throw new Error(`Brave search failed: ${response.status}`);
+      throw new Error(`Web search failed: ${webResponse.status} - ${errorText}`);
     }
-
-    const responseData = await response.json();
     
-    // 🐛 DEBUG: Log the FULL response (first 3000 chars)
-    console.log('🔍 [BRAVE TOOL] Full responseData (first 3000 chars):', 
-      JSON.stringify(responseData).substring(0, 3000)
-    );
-    
-    // 🐛 DEBUG: Log the response structure summary
-    console.log('🔍 [BRAVE TOOL] Response structure:', {
-      success: responseData.success,
-      hasResults: !!responseData.results,
-      hasData: !!responseData.data,
-      hasTypes: !!responseData.types,
-      hasType: !!responseData.type,
-      hasErrors: !!responseData.errors,
-      errorCount: responseData.errors?.length || 0
-    });
-    
-    // Handle two possible response structures:
-    // 1. { success, results: { web, images, news, videos }, query, types } ← Expected from edge function
-    // 2. { success, type, data: { web, images, news, videos }, query } ← Legacy/alternative format
-    let data: any;
-    
-    if (responseData.results) {
-      // Structure 1: results is direct property
-      data = responseData.results;
-      console.log('🔍 [BRAVE TOOL] Using structure 1: responseData.results');
-    } else if (responseData.data) {
-      // Structure 2: data is direct property
-      data = responseData.data;
-      console.log('🔍 [BRAVE TOOL] Using structure 2: responseData.data');
+    // Check images response (don't fail if images fail - might be API tier limitation)
+    let imagesData = { results: [] };
+    if (!imagesResponse.ok) {
+      const errorText = await imagesResponse.text();
+      logger.warn('Brave images search failed (continuing without images)', { 
+        status: imagesResponse.status, 
+        error: errorText,
+        query 
+      });
+      console.log('🔍 [BRAVE TOOL] Images search failed (continuing without images):', {
+        status: imagesResponse.status,
+        error: errorText,
+        note: 'This might be due to API tier limitations or quota'
+      });
     } else {
-      console.error('🔍 [BRAVE TOOL] Unknown response structure!', responseData);
-      throw new Error('Unexpected Brave API response structure');
-    }
-    
-    // 🐛 DEBUG: Log what we extracted
-    console.log('🔍 [BRAVE TOOL] Extracted data:', {
-      hasWeb: !!data.web,
-      hasImages: !!data.images,
-      hasNews: !!data.news,
-      hasVideos: !!data.videos,
-      webResultsLength: data.web?.results?.length || 0,
-      imageResultsLength: data.images?.results?.length || 0,
-      newsResultsLength: data.news?.results?.length || 0,
-      videoResultsLength: data.videos?.results?.length || 0
-    });
-    
-    // Extract results - data is now pointing to the correct object
-    const webResults = data.web?.results || [];
-    const imageResults = data.images?.results || [];
-    const newsResults = data.news?.results || [];
-    const videoResults = data.videos?.results || [];
-
-    // 🎯 EXTRACT IMAGES FROM DEEP RESULTS
-    // Brave embeds images in web.results[].deep_results.images[]
-    const deepImages: ImageResult[] = [];
-    
-    // 🐛 DEBUG: Log first web result's deep_results structure
-    if (webResults.length > 0) {
-      console.log('🔍 [BRAVE TOOL] First web result structure:', {
-        hasDeepResults: !!webResults[0].deep_results,
-        deepResultsKeys: webResults[0].deep_results ? Object.keys(webResults[0].deep_results) : [],
-        hasImages: !!webResults[0].deep_results?.images,
-        imagesLength: webResults[0].deep_results?.images?.length || 0
-      });
-    }
-    
-    console.log('🔍 [BRAVE TOOL] Starting deep_results extraction...');
-    
-    try {
-      webResults.forEach((result: any, idx: number) => {
-        if (result.deep_results?.images) {
-          console.log(`🔍 [BRAVE TOOL] Found deep_results.images in web result ${idx}: ${result.deep_results.images.length} images`);
-          result.deep_results.images.forEach((img: any) => {
-            const imageUrl = img.properties?.url || img.thumbnail?.src || '';
-            if (imageUrl) {
-              deepImages.push({
-                url: imageUrl,
-                alt: img.title || result.title || 'Search result image',
-                source_url: result.url || ''
-              });
-            }
-          });
-        }
-      });
-    } catch (deepError) {
-      console.error('🔍 [BRAVE TOOL] Error extracting deep_results:', deepError);
+      imagesData = await imagesResponse.json();
+      console.log('🔍 [BRAVE TOOL] Images search successful');
     }
 
-    console.log('🔍 [BRAVE TOOL] Deep_results extraction complete. Count:', deepImages.length);
-
-    logger.info('Brave Search Tool: Success', {
-      webCount: webResults.length,
-      imageCount: imageResults.length,
-      deepImagesCount: deepImages.length,
-      newsCount: newsResults.length,
-      videoCount: videoResults.length
-    });
+    // Parse web response
+    const webData = await webResponse.json();
     
-    // 🐛 DEBUG: Log what we're actually returning
-    console.log('🔍 [BRAVE TOOL] Returning formatted results:', {
-      webCount: webResults.length,
-      imageCount: imageResults.length,
-      deepImagesCount: deepImages.length,
-      newsCount: newsResults.length,
-      videoCount: videoResults.length,
-      firstWebResult: webResults[0] || 'NO WEB',
-      firstImage: imageResults[0] || 'NO IMAGES',
-      firstDeepImage: deepImages[0] || 'NO DEEP IMAGES'
+    console.log('🔍 [BRAVE TOOL] Raw API responses:', {
+      webKeys: Object.keys(webData),
+      webHasResults: !!webData.web?.results,
+      webResultsCount: webData.web?.results?.length || 0,
+      imagesKeys: Object.keys(imagesData),
+      imagesHasResults: !!imagesData.results,
+      imagesResultsCount: imagesData.results?.length || 0
     });
 
-    // Map regular images to our format
-    const mappedImages = imageResults.map((img: any) => ({
-      url: img.properties?.url || img.thumbnail?.src || '',
-      alt: img.title || 'Search result image',
-      source_url: img.url || ''
+    // Extract web results (direct from Brave Web API response)
+    const webResults: SearxResult[] = (webData.web?.results || webData.results || []).map((item: any) => ({
+      title: item.title || '',
+      url: item.url || '',
+      content: item.description || ''
+    }));
+
+    // Extract news results from web response
+    const newsResults: SearxResult[] = (webData.news?.results || []).map((item: any) => ({
+      title: item.title || '',
+      url: item.url || '',
+      content: item.description || ''
+    }));
+
+    // Extract video results from web response
+    const videoResults: VideoResult[] = (webData.videos?.results || []).map((item: any) => ({
+      title: item.title || '',
+      url: item.url || '',
+      thumbnail: item.thumbnail?.src || '',
+      duration: item.age || ''
+    }));
+
+    // Extract image results from images response (direct from Brave Images API)
+    const imageResults: ImageResult[] = (imagesData.results || []).map((item: any) => ({
+      url: item.properties?.url || item.thumbnail?.src || '',
+      alt: item.title || 'Search result image',
+      source_url: item.url || ''
     })).filter((img: ImageResult) => img.url !== '');
 
-    // Combine regular images with deep_results images
-    const allImages = [...mappedImages, ...deepImages];
-
-    console.log('🔍 [BRAVE TOOL] Preparing final return object...');
-
-    // Map to our format
     const finalResult = {
-      web: webResults.map((item: any) => ({
-        title: item.title || '',
-        url: item.url || '',
-        content: item.description || ''
-      })),
-      images: allImages,
-      news: newsResults.map((item: any) => ({
-        title: item.title || '',
-        url: item.url || '',
-        content: item.description || ''
-      })),
-      videos: videoResults.map((vid: any) => ({
-        title: vid.title || '',
-        url: vid.url || '',
-        thumbnail: vid.thumbnail?.src || '',
-        duration: ''
-      }))
+      web: webResults,
+      images: imageResults,
+      news: newsResults,
+      videos: videoResults
     };
-    
-    console.log('🔍 [BRAVE TOOL] Returning result with counts:', {
+
+    logger.info('Brave Search Tool: Success', {
+      webCount: finalResult.web.length,
+      imageCount: finalResult.images.length,
+      newsCount: finalResult.news.length,
+      videoCount: finalResult.videos.length
+    });
+
+    console.log('🔍 [BRAVE TOOL] Final results:', {
       web: finalResult.web.length,
       images: finalResult.images.length,
       news: finalResult.news.length,
       videos: finalResult.videos.length
     });
-    
+
     return finalResult;
 
   } catch (err: any) {
-    clearTimeout(timeoutId);
-    
-    // 🐛 DEBUG: Log detailed error information
-    console.error('🔍 [BRAVE TOOL] Error caught:', {
-      errorName: err.name,
-      errorMessage: err.message,
-      isAbortError: err.name === 'AbortError',
-      timeout: SEARCH_TIMEOUT,
-      query
-    });
-    
-    if (err.name === 'AbortError') {
+    if (err.name === 'TimeoutError') {
       logger.error('Brave search timeout', { timeout: SEARCH_TIMEOUT, query });
       throw new Error(`Brave search timeout after ${SEARCH_TIMEOUT}ms`);
     }
     
     logger.error('Brave Search Tool: Error', { 
       error: err.message, 
-      stack: err.stack?.substring(0, 200),
       query 
     });
     throw err;

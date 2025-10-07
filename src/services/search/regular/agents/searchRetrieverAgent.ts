@@ -126,8 +126,21 @@ export class SearchRetrieverAgent extends BaseAgent {
         .filter(result => result.url !== '#' && result.title && result.content)
         .slice(0, MAX_RESULTS.WEB);
 
+      // 🔍 DEBUG: Image processing investigation
+      console.log('🔍 [RETRIEVER] Image processing debug:', {
+        rawImagesCount: searchResults.images?.length || 0,
+        firstRawImage: searchResults.images?.[0] || 'NO RAW IMAGES',
+        rawImagesStructure: searchResults.images?.slice(0, 2) || []
+      });
+
       const validImages = this.deduplicateImages(searchResults.images)
         .slice(0, MAX_RESULTS.IMAGES);
+
+      console.log('🔍 [RETRIEVER] After deduplication:', {
+        validImagesCount: validImages.length,
+        firstValidImage: validImages[0] || 'NO VALID IMAGES',
+        maxImagesAllowed: MAX_RESULTS.IMAGES
+      });
 
       const validVideos = searchResults.videos?.slice(0, MAX_RESULTS.VIDEO) || [];
 
