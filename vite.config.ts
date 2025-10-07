@@ -58,7 +58,7 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
             // Vendor chunks - separate large libraries
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
             'vendor-ui': ['lucide-react', 'react-markdown'],
-            'vendor-openai': ['openai', '@openai/agents'],
+            'vendor-openai': ['openai'],
             'vendor-supabase': ['@supabase/supabase-js', '@supabase/ssr'],
             'vendor-stripe': ['@stripe/stripe-js'],
             'vendor-utils': ['axios', 'zod'],
