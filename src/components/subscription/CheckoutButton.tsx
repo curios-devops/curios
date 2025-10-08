@@ -1,5 +1,6 @@
-import React from 'react';
-import { useStripe } from '../../hooks/useStripe';
+import { useState, ReactNode } from 'react';
+import { useSession } from '../../hooks/useSession';
+import { createCheckoutSession } from '../../commonApp/stripe/api';
 
 interface CheckoutButtonProps {
   interval: 'month' | 'year';
@@ -7,10 +8,10 @@ interface CheckoutButtonProps {
   loading?: boolean;
   onError?: (error: string) => void;
   className?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
-// Stripe is now lazy-loaded in useStripe hook - no initialization here
+// Stripe is now truly lazy-loaded only when checkout is clicked
 
 export default function CheckoutButton({
   interval,
@@ -20,22 +21,24 @@ export default function CheckoutButton({
   className = '',
   children
 }: CheckoutButtonProps) {
-  const { createCheckoutSession, loading: internalLoading } = useStripe();
+  const { session } = useSession();
+  const [internalLoading, setInternalLoading] = useState(false);
   const loading = externalLoading || internalLoading;
 
   const handleClick = async () => {
     try {
-      // Validate Stripe initialization
-      const stripe = await stripePromise;
-      if (!stripe) {
-        throw new Error('Stripe failed to initialize');
+      setInternalLoading(true);
+      
+      if (!session?.user) {
+        throw new Error('You must be logged in to subscribe');
       }
-
-      // Create checkout session
-      const url = await createCheckoutSession(interval);
-      if (!url) {
-        throw new Error('Failed to create checkout session');
-      }
+      
+      // Create checkout session directly without loading Stripe client-side
+      const { url } = await createCheckoutSession(
+        session.user.id,
+        session.user.email || '',
+        interval
+      );
 
       console.log('Redirecting to Stripe Checkout:', url);
       window.location.href = url;
@@ -52,6 +55,8 @@ export default function CheckoutButton({
           ? error.message 
           : 'Failed to start checkout. Please try again.'
       );
+    } finally {
+      setInternalLoading(false);
     }
   };
 
