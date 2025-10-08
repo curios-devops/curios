@@ -10,15 +10,8 @@
 Two problematic empty checks were causing instant fallbacks:
 
 1. **In searchRetrieverAgent.ts** (line ~88): Already fixed
-2. **In brave.ts** (line ~199): **NEW DISCOVERY** - This was the culprit!
 
-```typescript
-// PROBLEMATIC CODE IN brave.ts (line 199-202)
-if (webResults.length === 0 && newsResults.length === 0 && 
-    imageResults.length === 0 && videoResults.length === 0) {
-  logger.warn('Brave search returned no results', { query });
-  throw new Error('Brave search returned no results'); // <-- THROWING ERROR!
-}
+
 ```
 
 **Why This Was Bad**:
@@ -174,9 +167,6 @@ className="w-full aspect-square object-cover ..."
 ---
 
 ## Files Modified
-
-### 1. brave.ts
-**Location**: `src/commonService/searchTools/brave.ts`
 
 **Changes**:
 - ✅ Added timeout handling with AbortController

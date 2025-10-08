@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Variables Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .env-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 4px solid #007acc;
+            background-color: #f8f9fa;
+        }
+        .missing {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .present {
+            border-left-color: #28a745;
+            background-color: #d4edda;
+        }
+        .value {
+            font-family: monospace;
+            font-size: 0.9em;
+            margin-top: 5px;
+            padding: 5px;
+            background-color: #e9ecef;
+            border-radius: 3px;
+        }
+        button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #005fa3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Environment Variables Debug Tool</h1>
+        <p>This tool helps debug environment variable issues in production vs development.</p>
+        
+        <button onclick="checkEnvVars()">Check Environment Variables</button>
+        <button onclick="testOpenAICall()">Test OpenAI Call</button>
+        <button onclick="downloadEnvReport()">Download Report</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const requiredVars = [
+            'VITE_OPENAI_API_URL',
+            'VITE_SUPABASE_URL',
+            'VITE_SUPABASE_ANON_KEY',
+            'VITE_STRIPE_PUBLISHABLE_KEY'
+        ];
+
+        const optionalVars = [
+            'VITE_RAPIDAPI_KEY',
+            'VITE_BRAVE_API_KEY',
+            'VITE_TAVILY_API_KEY',
+            'VITE_OPENAI_ORG_ID',
+            'VITE_PROJECT_ID'
+        ];
+
+        function checkEnvVars() {
+            const results = document.getElementById('results');
+            let html = '<h2>Environment Variables Status</h2>';
+            
+            // Check if import.meta.env exists (Vite build)
+            let hasImportMeta = false;
+            let importMetaEnv = null;
+            
+            try {
+                // Use eval to avoid syntax errors in non-Vite environments
+                hasImportMeta = eval('typeof import !== "undefined" && import.meta && import.meta.env');
+                if (hasImportMeta) {
+                    importMetaEnv = eval('import.meta.env');
+                }
+            } catch (e) {
+                hasImportMeta = false;
+            }
+            
+            html += `<div class="env-item"><strong>import.meta.env available:</strong> ${hasImportMeta ? 'Yes' : 'No'}</div>`;
+            
+            if (hasImportMeta && importMetaEnv) {
+                html += '<h3>Required Variables</h3>';
+                requiredVars.forEach(varName => {
+                    const value = importMetaEnv[varName];
+                    const isPresent = !!value;
+                    html += `<div class="env-item ${isPresent ? 'present' : 'missing'}">
+                        <strong>${varName}:</strong> ${isPresent ? 'Present' : 'Missing'}
+                        ${isPresent ? `<div class="value">${value.substring(0, 50)}${value.length > 50 ? '...' : ''}</div>` : ''}
+                    </div>`;
+                });
+
+                html += '<h3>Optional Variables</h3>';
+                optionalVars.forEach(varName => {
+                    const value = importMetaEnv[varName];
+                    const isPresent = !!value;
+                    html += `<div class="env-item ${isPresent ? 'present' : 'missing'}">
+                        <strong>${varName}:</strong> ${isPresent ? 'Present' : 'Missing'}
+                        ${isPresent ? `<div class="value">${value.substring(0, 50)}${value.length > 50 ? '...' : ''}</div>` : ''}
+                    </div>`;
+                });
+
+                // Show all available VITE_ variables
+                html += '<h3>All VITE_ Variables</h3>';
+                const allViteVars = Object.keys(importMetaEnv).filter(key => key.startsWith('VITE_'));
+                allViteVars.forEach(varName => {
+                    const value = importMetaEnv[varName];
+                    html += `<div class="env-item present">
+                        <strong>${varName}:</strong> Present
+                        <div class="value">${value.substring(0, 100)}${value.length > 100 ? '...' : ''}</div>
+                    </div>`;
+                });
+            }
+            
+            results.innerHTML = html;
+        }
+
+        async function testOpenAICall() {
+            const results = document.getElementById('results');
+            let html = '<h2>OpenAI API Test</h2>';
+            
+            try {
+                let supabaseEdgeUrl, supabaseAnonKey;
+                
+                try {
+                    // Use eval to avoid syntax errors in non-Vite environments
+                    supabaseEdgeUrl = eval('import.meta.env.VITE_OPENAI_API_URL');
+                    supabaseAnonKey = eval('import.meta.env.VITE_SUPABASE_ANON_KEY');
+                } catch (e) {
+                    supabaseEdgeUrl = undefined;
+                    supabaseAnonKey = undefined;
+                }
+                
+                html += `<div class="env-item">
+                    <strong>VITE_OPENAI_API_URL:</strong> ${supabaseEdgeUrl || 'Missing'}
+                </div>`;
+                html += `<div class="env-item">
+                    <strong>VITE_SUPABASE_ANON_KEY:</strong> ${supabaseAnonKey ? 'Present' : 'Missing'}
+                </div>`;
+
+                if (!supabaseEdgeUrl) {
+                    html += '<div class="env-item missing"><strong>Error:</strong> VITE_OPENAI_API_URL is missing</div>';
+                    results.innerHTML = html;
+                    return;
+                }
+
+                if (!supabaseAnonKey) {
+                    html += '<div class="env-item missing"><strong>Error:</strong> VITE_SUPABASE_ANON_KEY is missing</div>';
+                    results.innerHTML = html;
+                    return;
+                }
+
+                html += '<div class="env-item"><strong>Making test call...</strong></div>';
+                results.innerHTML = html;
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+                const response = await fetch(supabaseEdgeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${supabaseAnonKey}`
+                    },
+                    body: JSON.stringify({
+                        prompt: JSON.stringify({
+                            messages: [{ role: 'user', content: 'Say "Hello from debug test"' }],
+                            model: 'gpt-4o',
+                            response_format: { type: 'json_object' },
+                            temperature: 0.7,
+                            max_output_tokens: 100
+                        })
+                    }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    html += `<div class="env-item missing">
+                        <strong>Error:</strong> ${response.status} - ${response.statusText}
+                        <div class="value">${errorText}</div>
+                    </div>`;
+                } else {
+                    const data = await response.json();
+                    html += `<div class="env-item present">
+                        <strong>Success:</strong> OpenAI API call completed
+                        <div class="value">${JSON.stringify(data, null, 2)}</div>
+                    </div>`;
+                }
+
+            } catch (error) {
+                html += `<div class="env-item missing">
+                    <strong>Error:</strong> ${error.message}
+                    <div class="value">${error.stack}</div>
+                </div>`;
+            }
+            
+            results.innerHTML = html;
+        }
+
+        function downloadEnvReport() {
+            const reportData = {
+                timestamp: new Date().toISOString(),
+                url: window.location.href,
+                userAgent: navigator.userAgent,
+                hasImportMeta: false,
+                envVars: {}
+            };
+
+            try {
+                // Use eval to avoid syntax errors in non-Vite environments
+                reportData.hasImportMeta = eval('typeof import !== "undefined" && import.meta && import.meta.env');
+                
+                if (reportData.hasImportMeta) {
+                    const importMetaEnv = eval('import.meta.env');
+                    // Only include VITE_ variables for security
+                    Object.keys(importMetaEnv).forEach(key => {
+                        if (key.startsWith('VITE_')) {
+                            const value = importMetaEnv[key];
+                            // Truncate long values for security
+                            reportData.envVars[key] = value ? (value.length > 100 ? value.substring(0, 100) + '...' : value) : 'empty';
+                        }
+                    });
+                }
+            } catch (e) {
+                reportData.hasImportMeta = false;
+                reportData.envVars['error'] = e.message;
+            }
+
+            const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `env-debug-report-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Auto-check on load
+        window.addEventListener('load', checkEnvVars);
+    </script>
+</body>
+</html>

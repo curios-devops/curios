@@ -51,7 +51,7 @@ This page is useful for quick browser-based verification of your Supabase edge f
   09.23 - finsih refactot Locally working.
   09.26 - netfily backend deleted
   09.28 - brave call migrated to backend
-  10.06 - Brave working locall (no image)
+  10.07 - Brave working local
   
 # CURIOSAI  Runing Dev
 1. npm run dev
@@ -151,15 +151,7 @@ Or simply reload the window (Cmd+Shift+P → “Developer: Reload Window”).
 
 
 
-VITE_OPENAI_API_KEY
-VITE_SUPABASE_API_KEY
-VITE_CLIENT_ID
-VITE_CLIENT_SECRET
-VITE_OPENAI_ORG_ID
-VITE_PROJECT_ID
-VITE_SUPABASE_PUBLISHABLE_KEY
-
-# Start unified development environment
+Start unified development environment
 npm run dev
 
 # Stop Supabase server when done
