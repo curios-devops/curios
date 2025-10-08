@@ -6,7 +6,7 @@ import { BaseAgent } from '../../../../commonService/agents/baseAgent.ts';
 import { AgentResponse, SearchResult, Perspective } from '../../../../commonApp/types/index.ts';
 import { ImageResult, VideoResult } from '../../../../commonApp/types/index.ts';
 import { tavilySearch } from '../../../../commonService/searchTools/tavily.ts';
-import { braveSearch } from '../../../../commonService/searchTools/braveSearchTool.ts';
+import { braveSearchTool, BraveSearchResults } from '../../../../commonService/searchTools/braveSearchTool.ts';
 import { logger } from '../../../../utils/logger.ts';
 
 export class SearchRetrieverAgent extends BaseAgent {
@@ -64,27 +64,29 @@ export class SearchRetrieverAgent extends BaseAgent {
           logger.info('Attempting Brave Search', { query: trimmedQuery });
           
           // Direct call without Promise.race wrapper
-          const braveResults = await braveSearch(trimmedQuery) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
+          const braveResults: BraveSearchResults = await braveSearchTool(trimmedQuery);
           
+
           logger.info('Brave Search completed', {
             webCount: braveResults.web?.length || 0,
             newsCount: braveResults.news?.length || 0,
             imagesCount: braveResults.images?.length || 0,
-            videoCount: braveResults.video?.length || 0
+            videoCount: braveResults.videos?.length || 0
           });
+
 
           console.log('🔍 [DEBUG] Brave Search completed successfully:', {
             webCount: braveResults.web?.length || 0,
             newsCount: braveResults.news?.length || 0,
             imagesCount: braveResults.images?.length || 0,
-            videoCount: braveResults.video?.length || 0,
+            videoCount: braveResults.videos?.length || 0,
             timestamp: new Date().toISOString()
           });
 
           // Convert Brave results to match expected format
           const mappedImages = braveResults.images.map(img => ({
             url: (img.image || img.url || '').startsWith('https://') ? (img.image || img.url) : '',
-            alt: img.title || img.content || 'Search result image',
+            alt: img.title || 'Search result image',
             source_url: img.url // The page URL where the image was found
           })).filter(img => img.url !== ''); // Filter out empty URLs
 
@@ -101,14 +103,15 @@ export class SearchRetrieverAgent extends BaseAgent {
             timestamp: new Date().toISOString()
           });
 
+
           searchResults = {
             web: [...braveResults.web, ...braveResults.news], // Combine web and news
             images: mappedImages,
-            videos: braveResults.video.map(vid => ({
+            videos: (braveResults.videos || []).map((vid: VideoResult) => ({
               title: vid.title,
               url: vid.url,
-              thumbnail: vid.image,
-              duration: ''
+              thumbnail: vid.thumbnail,
+              duration: vid.duration || ''
             }))
           };
 
@@ -206,7 +209,7 @@ export class SearchRetrieverAgent extends BaseAgent {
             
             // Convert to SearchResult format
             searchResults = {
-              web: organicResults.slice(0, 10).map((item: any, index: number) => ({
+              web: organicResults.slice(0, 10).map((item: any) => ({
                 title: item.title || 'No title',
                 url: item.url || item.link || '',
                 content: item.description || item.snippet || ''
@@ -259,15 +262,20 @@ export class SearchRetrieverAgent extends BaseAgent {
         
         // Try Brave for general query (simplified - no retries)
         try {
-          const braveResults = await braveSearch(generalQuery) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
+          const braveResults: BraveSearchResults = await braveSearchTool(generalQuery);
           generalResults = {
             web: [...braveResults.web, ...braveResults.news],
             images: braveResults.images.map(img => ({
-              url: img.image || img.url,
-              alt: img.title || img.content || 'Search result image',
+              url: (img as any).image || img.url,
+              alt: (img as any).title || (img as any).content || 'Search result image',
               source_url: img.url
             })),
-            videos: braveResults.video.map(vid => ({ title: vid.title, url: vid.url, thumbnail: vid.image, duration: '' }))
+            videos: (braveResults.videos || []).map((vid: VideoResult) => ({
+              title: vid.title,
+              url: vid.url,
+              thumbnail: vid.thumbnail,
+              duration: vid.duration || ''
+            }))
           };
         } catch (braveError) {
           logger.warn('Brave Search failed for general query, skipping', {
@@ -336,20 +344,25 @@ export class SearchRetrieverAgent extends BaseAgent {
           if (isPro && typeof perspective.id === 'string') {
             const engine = perspective.id.toLowerCase();
             if (engine === 'tavily') {
-              const tavilyResults = await safeCall(() => tavilySearch(perspective.title)) as { web: SearchResult[]; images: ImageResult[] };
+              const tavilyResults = await tavilySearch(perspective.title) as { web: SearchResult[]; images: ImageResult[] };
               perspectiveSearchResults = { web: tavilyResults.web, images: tavilyResults.images, videos: [] };
             } else {
               // Pro: Use Brave, no fallback for perspectives
               try {
-                const braveResults = await safeCall(() => braveSearch(perspective.title)) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
+                const braveResults: BraveSearchResults = await braveSearchTool(perspective.title);
                 perspectiveSearchResults = {
                   web: [...braveResults.web, ...braveResults.news],
                   images: braveResults.images.map(img => ({
-                    url: img.image || img.url,
-                    alt: img.title || img.content || 'Search result image',
+                    url: (img as any).image || img.url,
+                    alt: (img as any).title || (img as any).content || 'Search result image',
                     source_url: img.url
                   })),
-                  videos: braveResults.video.map(vid => ({ title: vid.title, url: vid.url, thumbnail: vid.image, duration: '' }))
+                  videos: (braveResults.videos || []).map((vid: VideoResult) => ({
+                    title: vid.title,
+                    url: vid.url,
+                    thumbnail: vid.thumbnail,
+                    duration: vid.duration || ''
+                  }))
                 };
               } catch (braveError) {
                 logger.warn(`Brave Search failed for perspective "${perspective.title}", returning empty`, { error: braveError instanceof Error ? braveError.message : braveError });
@@ -359,15 +372,20 @@ export class SearchRetrieverAgent extends BaseAgent {
           } else {
             // Regular: Use Brave only
             try {
-              const braveResults = await safeCall(() => braveSearch(perspective.title)) as { web: SearchResult[]; news: SearchResult[]; images: SearchResult[]; video: SearchResult[] };
+              const braveResults: BraveSearchResults = await braveSearchTool(perspective.title);
               perspectiveSearchResults = {
                 web: [...braveResults.web, ...braveResults.news],
                 images: braveResults.images.map(img => ({
-                  url: img.image || img.url,
-                  alt: img.title || img.content || 'Search result image',
+                  url: (img as any).image || img.url,
+                  alt: (img as any).title || (img as any).content || 'Search result image',
                   source_url: img.url
                 })),
-                videos: braveResults.video.map(vid => ({ title: vid.title, url: vid.url, thumbnail: vid.image, duration: '' }))
+                videos: (braveResults.videos || []).map((vid: VideoResult) => ({
+                  title: vid.title,
+                  url: vid.url,
+                  thumbnail: vid.thumbnail,
+                  duration: vid.duration || ''
+                }))
               };
             } catch (braveError) {
               logger.warn(`Brave Search failed for perspective "${perspective.title}", returning empty`, { error: braveError instanceof Error ? braveError.message : braveError });
