@@ -6,7 +6,7 @@ import { BaseAgent } from '../../../../commonService/agents/baseAgent.ts';
 import { AgentResponse, SearchResult, Perspective } from '../../../../commonApp/types/index.ts';
 import { ImageResult, VideoResult } from '../../../../commonApp/types/index.ts';
 import { tavilySearch } from '../../../../commonService/searchTools/tavily.ts';
-import { braveSearch } from '../../../../commonService/searchTools/brave.ts';
+import { braveSearch } from '../../../../commonService/searchTools/braveSearchTool.ts';
 import { logger } from '../../../../utils/logger.ts';
 
 export class SearchRetrieverAgent extends BaseAgent {
