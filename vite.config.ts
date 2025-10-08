@@ -89,7 +89,6 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
             // Search tools in separate chunk to prevent initialization issues
             'search-tools': [
               './src/commonService/searchTools/tavily.ts',
-              './src/commonService/searchTools/brave.ts',
               './src/commonService/searchTools/searxng.ts'
             ],
             
