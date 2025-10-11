@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+// import { Link } from "react-router-dom";
 import { HelpCircle } from "lucide-react";
 import { useTheme } from "./theme/ThemeContext";
 import { useTranslation } from "../hooks/useTranslation";
@@ -34,40 +34,42 @@ export default function HelpButton() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-7 h-7 rounded-full border flex items-center justify-center bg-theme-theme-toggle text-gray-700 text-sm font-medium transition-colors border-[#23272A] dark:border-[#23272A]/60 border-[#E3E6E3]/60 focus:outline-none"
+        className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium transition-colors shadow-md relative group border
+          ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+            ? 'bg-[#23272A] hover:bg-[#33393B] text-[#F3F6F4] border-[#23272A]'
+            : 'bg-[#FAFBF9] hover:border-[#007BFF] text-[#2A3B39] border-[#E3E6E3]'}
+        `}
         aria-label={`${t('help')} menu`}
       >
-        <HelpCircle size={18} className="text-on-surface text-gray-700 dark:text-[#F3F6F4]" />
-        <span className="sr-only">{t('help')}</span>
+  <HelpCircle size={18} className={theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'text-[#F3F6F4]' : 'text-[#2A3B39]'} />
+        {/* Tooltip */}
+        <span
+          className={`absolute bottom-9 right-0 translate-x-0 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50
+            ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+              ? 'bg-gray-800 text-gray-100'
+              : 'bg-gray-100 text-gray-800'}
+          `}
+        >
+          {t('helpFaqTooltip')}
+        </span>
       </button>
-
       {isOpen && (
-        <div className={`absolute bottom-full right-0 mb-2 w-56 rounded-xl shadow-lg border transition-colors duration-200 py-1 z-50 animate-fade-in text-xs
+        <div className={`absolute right-0 bottom-full mb-2 w-44 rounded-xl shadow-lg border transition-colors duration-200 py-1 z-50 animate-fade-in text-xs
           ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
             ? 'bg-[#181A1B] border-[#23272A] text-white'
             : 'bg-white border-[#E3E6E3] text-[#222E2A]'}
         `}>
-          {menuItems.map((item, index) => (
-            <Link
-              key={index}
-              to={item.href}
-              className={`flex items-center gap-2 px-4 py-2 text-left rounded-lg transition-colors font-normal text-xs
-                ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-                  ? 'bg-transparent text-[#F3F6F4] hover:bg-[#23272A] hover:text-[#F3F6F4]'
-                  : 'bg-transparent text-[#222E2A] hover:bg-[#F5F7F6] hover:text-[#222E2A]'}
-              `}
-              onClick={() => setIsOpen(false)}
-            >
-              <span className="text-base mr-1">
-                {index === 0 && <span className="inline-block w-4 h-4 align-middle"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="7" /><text x="8" y="11" textAnchor="middle" fontSize="8" fill="currentColor">?</text></svg></span>}
-                {index === 1 && <span className="inline-block w-4 h-4 align-middle"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="12" height="12" rx="2" /><line x1="4" y1="6" x2="12" y2="6" /><line x1="4" y1="10" x2="12" y2="10" /></svg></span>}
-                {index === 2 && <span className="inline-block w-4 h-4 align-middle"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="10" height="10" rx="2" /><line x1="5" y1="7" x2="11" y2="7" /><line x1="5" y1="9" x2="11" y2="9" /></svg></span>}
-                {index === 3 && <span className="inline-block w-4 h-4 align-middle"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="12" height="8" rx="2" /><rect x="5" y="2" width="6" height="2" rx="1" /></svg></span>}
-                {index === 4 && <span className="inline-block w-4 h-4 align-middle"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="8,2 14,14 2,14" /></svg></span>}
-              </span>
-              {item.label}
-            </Link>
-          ))}
+          <div className="flex flex-col">
+            {menuItems.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                className="flex items-center gap-2 px-4 py-2 text-left rounded-lg transition-colors font-normal text-xs hover:bg-[#23272A]/10"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
         </div>
       )}
     </div>

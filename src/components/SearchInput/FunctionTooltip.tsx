@@ -140,22 +140,22 @@ export default function FunctionTooltip({
         ref={tooltipRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-800 w-64 z-50"
+        className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
       >
         {/* Header */}
         <div className="text-left mb-2.5">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-xs font-medium text-white">{config.title}</h3>
+            <h3 className="text-xs font-medium text-gray-900 dark:text-white">{config.title}</h3>
             {config.badge && (
               <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
                 {config.badge}
               </span>
             )}
           </div>
-          <p className="text-gray-400 text-[10px]">{config.description}</p>
+          <p className="text-gray-600 dark:text-gray-400 text-[10px]">{config.description}</p>
         </div>
         {/* Divider */}
-        <div className="border-t border-gray-700 my-2.5"></div>
+        <div className="border-t border-gray-200 dark:border-gray-700 my-2.5"></div>
         {/* Pro Toggle Section */}
         <div className="mb-2.5">
           <div className="flex items-center justify-between mb-1.5">
@@ -169,14 +169,14 @@ export default function FunctionTooltip({
             <button
               type="button"
               onClick={onSignIn}
-              className="relative w-8 h-4 rounded-full bg-gray-600 hover:bg-gray-500 transition-colors cursor-pointer group"
+              className="relative w-8 h-4 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer group"
               title="Sign in to enable Pro features"
             >
               <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-all group-hover:bg-gray-100"></div>
               <div className="absolute inset-0 rounded-full ring-2 ring-transparent group-hover:ring-[#007BFF] group-hover:ring-opacity-30 transition-all"></div>
             </button>
           </div>
-          <p className="text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
+          <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
         </div>
         {/* Sign In Button */}
         <button
@@ -187,7 +187,7 @@ export default function FunctionTooltip({
           Sign in for access
         </button>
         {/* Arrow pointer */}
-        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-[#1a1a1a] border-l border-t border-gray-800 rotate-45"></div>
+        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
       </div>
     );
   }

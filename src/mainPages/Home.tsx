@@ -5,8 +5,9 @@ import { useSession } from '../hooks/useSession.ts';
 import HelpButton from '../components/HelpButton.tsx';
 import InputContainer from '../components/search/InputContainer.tsx';
 import ThemeToggle from '../components/theme/ThemeToggle.tsx';
-import { LanguageSelector } from '../components/common/LanguageSelector.tsx';
+import LanguageSelector from '../components/common/LanguageSelector.tsx';
 import CookieConsentModal from '../components/common/CookieConsentModal.tsx';
+import CookieButton from '../components/common/CookieButton.tsx';
 import GuestSignUpBanner from '../components/GuestSignUpBanner.tsx';
 import StandardUserBanner from '../components/StandardUserBanner.tsx';
 import SignUpModal from '../components/auth/SignUpModal.tsx';
@@ -19,25 +20,28 @@ export default function Home() {
   const { subscription } = useSubscription();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [bannerEnabled, setBannerEnabled] = useState(false);
-  
+  const [showCookieModal, setShowCookieModal] = useState(false);
+  const [cookiesAccepted, setCookiesAccepted] = useState(() => !!localStorage.getItem('cookieConsent'));
+
   const isGuest = !session; // Guest = not logged in
   const isStandard = session && !subscription?.isActive; // Logged in but not pro
 
   const handleAcceptAllCookies = () => {
-    // Handle accept all cookies logic
-    console.log('User accepted all cookies');
+    localStorage.setItem('cookieConsent', 'all');
     setBannerEnabled(true);
+    setCookiesAccepted(true);
+    setShowCookieModal(false);
   };
 
   const handleNecessaryCookies = () => {
-    // Handle necessary cookies only logic
-    console.log('User accepted necessary cookies only');
+    localStorage.setItem('cookieConsent', 'necessary');
     setBannerEnabled(true);
+    setCookiesAccepted(true);
+    setShowCookieModal(false);
   };
 
   const handleCloseCookieModal = () => {
-    // Handle close without selection (optional)
-    console.log('User closed cookie modal');
+    setShowCookieModal(false);
   };
 
   const handleShowSignUp = () => {
@@ -45,6 +49,12 @@ export default function Home() {
   };
 
   const { t } = useTranslation();
+
+
+  // Debug logs
+  console.log('isGuest:', isGuest, 'cookiesAccepted:', cookiesAccepted);
+  const showCookieButton = isGuest && !cookiesAccepted;
+  console.log('showCookieButton:', showCookieButton);
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#1a1a1a] relative transition-colors duration-200 pt-40">
@@ -73,9 +83,15 @@ export default function Home() {
       </div>
 
       {/* Bottom near right, not overlapping cookies */}
+      {/* Bottom right: Language and Help */}
       <div className="fixed bottom-2 right-4 flex items-center gap-2 z-[200]">
         <LanguageSelector />
         <HelpButton />
+      </div>
+
+      {/* Cookie button: just right of sidebar */}
+      <div className="fixed bottom-2 left-56 z-[200]">
+        <CookieButton onClick={() => setShowCookieModal(true)} hidden={!showCookieButton} showTooltip={!showCookieModal} />
       </div>
 
       {/* Guest Sign Up Banner - only show for guest users and after cookie consent */}
@@ -84,8 +100,8 @@ export default function Home() {
       {/* Standard User Banner - only show for logged-in free tier users */}
       {isStandard && <StandardUserBanner />}
 
-      {/* Cookie Consent Modal - only show for guest users */}
-      {isGuest && (
+      {/* Cookie Consent Modal - only show when button pressed and not accepted */}
+      {showCookieModal && isGuest && !cookiesAccepted && (
         <CookieConsentModal
           onAcceptAll={handleAcceptAllCookies}
           onNecessaryOnly={handleNecessaryCookies}

@@ -147,23 +147,23 @@ export default function TabTooltip({
       ref={tooltipRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-800 w-64 z-50"
+      className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
     >
       {/* Header */}
       <div className="text-left mb-2.5">
         <div className="flex items-center gap-2 mb-1">
-          <h3 className="text-xs font-medium text-white">{config.title}</h3>
+          <h3 className="text-xs font-medium text-gray-900 dark:text-white">{config.title}</h3>
           {config.badge && (
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
               {config.badge}
             </span>
           )}
         </div>
-        <p className="text-gray-400 text-[10px]">{config.description}</p>
+        <p className="text-gray-600 dark:text-gray-400 text-[10px]">{config.description}</p>
       </div>
 
       {/* Divider */}
-      <div className="border-t border-gray-700 my-2.5"></div>
+      <div className="border-t border-gray-200 dark:border-gray-700 my-2.5"></div>
 
       {/* Pro Toggle Section */}
       <div className="mb-2.5">
@@ -178,7 +178,7 @@ export default function TabTooltip({
           <button
             type="button"
             onClick={handleProFeatureClick}
-            className="relative w-8 h-4 rounded-full bg-gray-600 hover:bg-gray-500 transition-colors cursor-pointer group"
+            className="relative w-8 h-4 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer group"
             title="Sign in to enable Pro features"
           >
             <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-all group-hover:bg-gray-100"></div>
@@ -186,7 +186,7 @@ export default function TabTooltip({
           </button>
         </div>
 
-        <p className="text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
       </div>
 
       {/* Sign In Button */}
@@ -199,7 +199,7 @@ export default function TabTooltip({
       </button>
 
       {/* Arrow pointer */}
-      <div className={`absolute -top-2 transform -translate-x-1/2 w-4 h-4 bg-[#1a1a1a] border-l border-t border-gray-800 rotate-45 ${getArrowPosition()}`}></div>
+      <div className={`absolute -top-2 transform -translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45 ${getArrowPosition()}`}></div>
     </div>
   );
 
@@ -208,28 +208,28 @@ export default function TabTooltip({
       ref={tooltipRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-800 w-64 z-50"
+      className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
     >
       {/* Header */}
       <div className="text-left mb-2.5">
         <div className="flex items-center gap-2 mb-1">
-          <h3 className="text-xs font-medium text-white">{config.title}</h3>
+          <h3 className="text-xs font-medium text-gray-900 dark:text-white">{config.title}</h3>
           {config.badge && (
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
               {config.badge}
             </span>
           )}
         </div>
-        <p className="text-gray-400 text-[10px]">{config.description}</p>
+        <p className="text-gray-600 dark:text-gray-400 text-[10px]">{config.description}</p>
       </div>
 
       {/* Usage Stats */}
       <div className="mb-2.5">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-gray-300 text-[10px]">Usage today</span>
-          <span className="text-white text-[10px]">{maxSearches - remainingSearches}/{maxSearches}</span>
+          <span className="text-gray-600 dark:text-gray-300 text-[10px]">Usage today</span>
+          <span className="text-gray-900 dark:text-white text-[10px]">{maxSearches - remainingSearches}/{maxSearches}</span>
         </div>
-        <div className="w-full bg-gray-700 rounded-full h-1">
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
           <div 
             className="bg-[#007BFF] h-1 rounded-full transition-all" 
             style={{ width: `${((maxSearches - remainingSearches) / maxSearches) * 100}%` }}
@@ -238,7 +238,7 @@ export default function TabTooltip({
       </div>
 
       {/* Divider */}
-      <div className="border-t border-gray-700 my-2.5"></div>
+      <div className="border-t border-gray-200 dark:border-gray-700 my-2.5"></div>
 
       {/* Pro Features */}
       <div className="mb-2.5">
@@ -252,7 +252,7 @@ export default function TabTooltip({
           <button
             type="button"
             onClick={handleProFeatureClick}
-            className="relative w-8 h-4 rounded-full bg-gray-600 hover:bg-gray-500 transition-colors cursor-pointer group"
+            className="relative w-8 h-4 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer group"
             title="Upgrade to Premium for Pro features"
           >
             <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-all group-hover:bg-gray-100"></div>
@@ -260,14 +260,14 @@ export default function TabTooltip({
           </button>
         </div>
 
-        <p className="text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
 
         {/* Features List */}
         <div className="space-y-0.5 mb-2.5">
           {proFeatures.features.map((feature, index) => (
             <div key={index} className="flex items-center gap-1.5">
               <Check size={10} className="text-[#007BFF] flex-shrink-0" />
-              <span className="text-gray-300 text-[10px]">{feature}</span>
+              <span className="text-gray-600 dark:text-gray-300 text-[10px]">{feature}</span>
             </div>
           ))}
         </div>
@@ -283,7 +283,7 @@ export default function TabTooltip({
       </button>
 
       {/* Arrow pointer */}
-      <div className={`absolute -top-2 transform -translate-x-1/2 w-4 h-4 bg-[#1a1a1a] border-l border-t border-gray-800 rotate-45 ${getArrowPosition()}`}></div>
+      <div className={`absolute -top-2 transform -translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45 ${getArrowPosition()}`}></div>
     </div>
   );
 
@@ -292,12 +292,12 @@ export default function TabTooltip({
       ref={tooltipRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-800 w-64 z-50"
+      className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
     >
       {/* Header */}
       <div className="text-left mb-2.5">
         <div className="flex items-center gap-2 mb-1">
-          <h3 className="text-xs font-medium text-white">{config.title}</h3>
+          <h3 className="text-xs font-medium text-gray-900 dark:text-white">{config.title}</h3>
           {config.badge && (
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
               {config.badge}
@@ -307,7 +307,7 @@ export default function TabTooltip({
             Premium
           </span>
         </div>
-        <p className="text-gray-400 text-[10px]">{config.description}</p>
+        <p className="text-gray-600 dark:text-gray-400 text-[10px]">{config.description}</p>
       </div>
 
       {/* Pro Features Enabled */}
@@ -317,21 +317,21 @@ export default function TabTooltip({
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-green-600 text-white rounded">
               PRO
             </span>
-            <span className="text-green-400 text-[10px] font-bold">{proFeatures.title} ✓</span>
+            <span className="text-green-600 dark:text-green-400 text-[10px] font-bold">{proFeatures.title} ✓</span>
           </div>
           <div className="relative w-8 h-4 rounded-full bg-[#007BFF] cursor-default">
             <div className="absolute top-0.5 right-0.5 w-3 h-3 bg-white rounded-full"></div>
           </div>
         </div>
 
-        <p className="text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
 
         {/* Features List */}
         <div className="space-y-0.5">
           {proFeatures.features.map((feature, index) => (
             <div key={index} className="flex items-center gap-1.5">
-              <Check size={10} className="text-green-400 flex-shrink-0" />
-              <span className="text-gray-300 text-[10px]">{feature}</span>
+              <Check size={10} className="text-green-600 dark:text-green-400 flex-shrink-0" />
+              <span className="text-gray-600 dark:text-gray-300 text-[10px]">{feature}</span>
             </div>
           ))}
         </div>

@@ -49,7 +49,7 @@ CuriosAI has been successfully reorganized from artifact-first to service-first 
         /functions         # Pro lab functions (future)
         index.ts           # Service exports
   /common                   # Shared across all services
-    /tools                  # brave.ts, tavily.ts, searxng.ts
+    /tools                  # tavily.ts, searxng.ts
     /agents                 # baseAgent.ts
     /components             # CleanInput.tsx, etc.
     /types                  # Shared TypeScript types
@@ -93,7 +93,7 @@ CuriosAI has been successfully reorganized from artifact-first to service-first 
 
 ### Common Shared Resources
 - **Tools**: `services/searchTools/` → `common/tools/`
-  - `brave.ts`, `tavily.ts`, `searxng.ts`
+  - `tavily.ts`, `searxng.ts`
 - **Agents**: `services/agents/baseAgent.ts` → `common/agents/`
 - **Types**: `services/agents/types.ts` → `common/types/`
 - **Components**: `components/common/` → `common/components/`
@@ -230,7 +230,6 @@ mkdir -p src/common/{tools,agents,components,types,utils,functions}
 # Moved files to new locations (examples)
 cp src/pages/SearchResults.tsx src/services/search/regular/pages/
 cp src/services/agents/swarmController.ts src/services/search/pro/agents/
-cp src/services/searchTools/brave.ts src/common/tools/
 ```
 
 ## Index Files Created

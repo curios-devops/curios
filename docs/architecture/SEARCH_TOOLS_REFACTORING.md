@@ -6,7 +6,6 @@
 
 **Issue**: Retriever agent was getting empty results despite successful Brave API calls.
 
-**Root Cause**: The `brave.ts` file and retriever agent had complex logic that wasn't matching the working test page structure.
 
 **Test Page Pattern (Working)** ✅:
 ```typescript
@@ -106,7 +105,6 @@ try {
 
 ```
 src/commonService/searchTools/
-├── brave.ts (OLD - 213 lines, complex)
 ├── braveSearchTool.ts (NEW - 113 lines, clean) ✅
 ├── apifySearchTool.ts (NEW - 156 lines, clean) ✅
 ├── tavily.ts (existing)
@@ -174,8 +172,6 @@ try {
 ## Migration Path
 
 ### Old Pattern (Deprecated)
-```typescript
-import { braveSearch } from '../../../../commonService/searchTools/brave.ts';
 
 // Complex inline logic
 const braveResults = await braveSearch(query) as { 
@@ -273,9 +269,7 @@ searchResults = {
    - Check console logs
 
 2. **If working, deprecate old files**:
-   - Mark `brave.ts` as deprecated
-   - Update any other references
-   - Eventually remove old file
+   
 
 3. **Apply pattern to other search tools**:
    - Create `tavilySearchTool.ts`

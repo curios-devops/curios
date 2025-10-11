@@ -10,6 +10,10 @@ export type Translations = {
 
 export const translations: Translations = {
   en: {
+  cookieTooltip: 'Cookies',
+  languageSelectorTooltip: 'Language selector',
+  helpFaqTooltip: 'Help & FAQ',
+  themeSelectorTooltip: 'Theme selector',
     search: 'Search',
     settings: 'Settings',
     help: 'Help',
@@ -79,6 +83,10 @@ export const translations: Translations = {
     mainTitle: 'What are you curious about?',
   },
   es: {
+  cookieTooltip: 'Cookies',
+  languageSelectorTooltip: 'Selector de idioma',
+  helpFaqTooltip: 'Ayuda y Preguntas Frecuentes',
+  themeSelectorTooltip: 'Selector de tema',
     search: 'Buscar',
     settings: 'Ajustes',
     help: 'Ayuda',
@@ -148,6 +156,10 @@ export const translations: Translations = {
     mainTitle: '¿Sobre qué tienes curiosidad?',
   },
   de: {
+  cookieTooltip: 'Cookies',
+  languageSelectorTooltip: 'Sprachauswahl',
+  helpFaqTooltip: 'Hilfe & FAQ',
+  themeSelectorTooltip: 'Designauswahl',
     search: 'Suchen',
     settings: 'Einstellungen',
     help: 'Hilfe',
@@ -217,6 +229,10 @@ export const translations: Translations = {
     mainTitle: 'Was macht Sie neugierig?',
   },
   fr: {
+  cookieTooltip: 'Cookies',
+  languageSelectorTooltip: 'Sélecteur de langue',
+  helpFaqTooltip: 'Aide et FAQ',
+  themeSelectorTooltip: 'Sélecteur de thème',
     search: 'Rechercher',
     settings: 'Paramètres',
     help: 'Aide',
@@ -286,6 +302,10 @@ export const translations: Translations = {
     mainTitle: 'Qu\'est-ce qui vous rend curieux ?',
   },
   it: {
+  cookieTooltip: 'Cookie',
+  languageSelectorTooltip: 'Selettore lingua',
+  helpFaqTooltip: 'Aiuto e FAQ',
+  themeSelectorTooltip: 'Selettore tema',
     search: 'Cerca',
     settings: 'Impostazioni',
     help: 'Aiuto',
@@ -355,6 +375,10 @@ export const translations: Translations = {
     mainTitle: 'Cosa ti rende curioso?',
   },
   pt: {
+  cookieTooltip: 'Cookies',
+  languageSelectorTooltip: 'Seletor de idioma',
+  helpFaqTooltip: 'Ajuda & FAQ',
+  themeSelectorTooltip: 'Seletor de tema',
     search: 'Pesquisar',
     settings: 'Configurações',
     help: 'Ajuda',
@@ -419,6 +443,10 @@ export const translations: Translations = {
     mainTitle: 'O que te deixa curioso?',
   },
   ca: {
+  cookieTooltip: 'Galetes',
+  languageSelectorTooltip: 'Selector d\'idioma',
+  helpFaqTooltip: 'Ajuda i PMF',
+  themeSelectorTooltip: 'Selector de tema',
     search: 'Cerca',
     settings: 'Configuració',
     help: 'Ajuda',
@@ -488,6 +516,10 @@ export const translations: Translations = {
     mainTitle: 'Què et fa curiós?',
   },
   ja: {
+  cookieTooltip: 'クッキー',
+  languageSelectorTooltip: '言語セレクター',
+  helpFaqTooltip: 'ヘルプとFAQ',
+  themeSelectorTooltip: 'テーマセレクター',
     search: '検索',
     settings: '設定',
     help: 'ヘルプ',

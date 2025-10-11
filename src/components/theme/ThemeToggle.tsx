@@ -41,22 +41,32 @@ export default function ThemeToggle() {
 		setOpen(false);
 	};
 
-	return (
-		<div className="relative" ref={ref}>
-			<button
-				onClick={() => setOpen(!open)}
-				className={`flex items-center justify-center w-7 h-7 rounded-full border focus:outline-none transition-colors duration-200
-					${(selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-						? 'bg-[#181A1B] border-[#23272A] text-white hover:border-[#33393B]'
-						: 'bg-[#FAFBF9] border-[#E3E6E3] text-[#2A3B39] hover:border-[#007BFF]'}
-					${open ? (selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-						? 'ring-2 ring-[#23272A]' : 'ring-2 ring-[#007BFF]') : ''}`}
-				title="Theme settings"
-			>
-				{selectedTheme === 'light' && <Sun size={15} />}
-				{selectedTheme === 'dark' && <Moon size={15} />}
-				{selectedTheme === 'system' && <Monitor size={15} />}
-			</button>
+		return (
+			<div className="relative" ref={ref}>
+				<button
+					onClick={() => setOpen(!open)}
+					className={`flex items-center justify-center w-7 h-7 rounded-full border focus:outline-none transition-colors duration-200
+							${(selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+								? 'bg-[#181A1B] border-[#23272A] text-white hover:border-[#33393B]'
+								: 'bg-[#FAFBF9] border-[#E3E6E3] text-[#2A3B39] hover:border-[#007BFF]'}
+							${open ? (selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+								? 'ring-2 ring-[#23272A]' : 'ring-2 ring-[#007BFF]') : ''} relative group`}
+					aria-label="Theme selector"
+				>
+					{selectedTheme === 'light' && <Sun size={15} />}
+					{selectedTheme === 'dark' && <Moon size={15} />}
+					{selectedTheme === 'system' && <Monitor size={15} />}
+														{/* Tooltip below button, right-aligned */}
+														<span
+															className={`absolute top-full mt-2 right-0 translate-x-0 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50
+																${(selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+																	? 'bg-gray-800 text-gray-100'
+																	: 'bg-gray-100 text-gray-800'}
+															`}
+														>
+															{t('themeSelectorTooltip')}
+														</span>
+				</button>
 			{open && (
 				<div className={`absolute right-0 top-full mt-2 w-40 rounded-xl shadow-lg z-50 py-1 animate-fade-in text-xs border transition-colors duration-200
 					${(selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
