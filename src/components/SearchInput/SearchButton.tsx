@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react';
+import { useAccentColor } from '../../hooks/useAccentColor';
 
 interface SearchButtonProps {
   onClick: () => void;
@@ -6,7 +7,8 @@ interface SearchButtonProps {
   isActive: boolean;
 }
 
-export default function SearchButton({ onClick, disabled, isActive }: SearchButtonProps) {
+export default function SearchButton({ onClick, disabled }: SearchButtonProps) {
+  const accentColor = useAccentColor();
   return (
     <button
       type="button"
@@ -20,21 +22,26 @@ export default function SearchButton({ onClick, disabled, isActive }: SearchButt
           ? 'opacity-50 cursor-not-allowed' 
           : 'hover:shadow-lg'
         }
-        ${isActive 
-          ? 'bg-[#007BFF] hover:bg-[#0056b3]' 
-          : 'bg-gray-100 dark:bg-[#007BFF] hover:bg-gray-200 dark:hover:bg-[#0056b3]'
-        }
         !opacity-100
       `}
+      style={{
+        backgroundColor: accentColor.primary,
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.backgroundColor = accentColor.hover;
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.backgroundColor = accentColor.primary;
+        }
+      }}
       aria-label="Search"
     >
       <ArrowRight 
         size={18} 
-        className={`transition-colors duration-250 ease-in-out ${
-          isActive 
-            ? 'text-white' 
-            : 'text-gray-600 dark:text-white'
-        }`}
+        className="transition-colors duration-250 ease-in-out text-white"
       />
     </button>
   );

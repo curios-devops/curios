@@ -1,6 +1,7 @@
 import { Focus, Globe, Users, PlayCircle, Calculator, Plane, HeartPulse, GraduationCap, LineChart } from 'lucide-react';
 import type { FocusMode } from '../search/types.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import type { LucideIcon } from 'lucide-react';
 
 interface ActionButtonProps {
@@ -25,6 +26,7 @@ export default function ActionButton({
   className
 }: ActionButtonProps) {
   const { theme } = useTheme();
+  const accentColor = useAccentColor();
 
   const getFocusIcon = () => {
     if (!mode || Icon !== Focus) return Icon;
@@ -65,11 +67,22 @@ export default function ActionButton({
             disabled
               ? 'text-gray-600 cursor-not-allowed'
               : isActive
-              ? 'text-[#007BFF] bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
-              : 'text-gray-500 bg-gray-100 dark:bg-transparent hover:text-[#007BFF] hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
+              ? 'bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
+              : 'text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
           }
           ${className || ''}
         `}
+        style={isActive ? { color: accentColor.primary } : undefined}
+        onMouseEnter={(e) => {
+          if (!disabled && !isActive) {
+            e.currentTarget.style.color = accentColor.primary;
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!disabled && !isActive) {
+            e.currentTarget.style.color = '';
+          }
+        }}
         aria-label={label}
       >
         <FinalIcon size={18} />

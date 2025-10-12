@@ -2,12 +2,13 @@ import { Sun, Moon, Monitor } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
-
-
+import { useAccentColor } from '../../hooks/useAccentColor';
+import { AccentColor, accentColors } from '../../config/themeColors';
 
 export default function ThemeToggle() {
-	const { theme, setTheme } = useTheme();
+	const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor } = useTheme();
 	const { t } = useTranslation();
+	const accentColor = useAccentColor();
 
 	const THEME_OPTIONS = [
 		{ key: 'light', label: t('light'), icon: Sun },
@@ -41,18 +42,32 @@ export default function ThemeToggle() {
 		setOpen(false);
 	};
 
+	const isDarkMode = (selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+
 		return (
-			<div className="relative" ref={ref}>
-				<button
-					onClick={() => setOpen(!open)}
-					className={`flex items-center justify-center w-7 h-7 rounded-full border focus:outline-none transition-colors duration-200
-							${(selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-								? 'bg-[#181A1B] border-[#23272A] text-white hover:border-[#33393B]'
-								: 'bg-[#FAFBF9] border-[#E3E6E3] text-[#2A3B39] hover:border-[#007BFF]'}
-							${open ? (selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-								? 'ring-2 ring-[#23272A]' : 'ring-2 ring-[#007BFF]') : ''} relative group`}
-					aria-label="Theme selector"
-				>
+		<div className="relative" ref={ref}>
+			<button
+				onClick={() => setOpen(!open)}
+				className={`flex items-center justify-center w-7 h-7 rounded-full border focus:outline-none shadow-md relative group
+						${isDarkMode
+							? 'bg-[#23272A] border-[#3A3F42] text-white'
+							: 'bg-[#FAFBF9] border-[#D1D5DB] text-[#2A3B39]'}
+						`}
+				style={{
+					boxShadow: open 
+						? (isDarkMode ? '0 0 0 2px #23272A' : `0 0 0 2px ${accentColor.primary}`)
+						: undefined,
+					outline: 'none',
+					transition: 'border-color 200ms'
+				}}
+				onMouseEnter={(e) => {
+					e.currentTarget.style.borderColor = accentColor.primary;
+				}}
+				onMouseLeave={(e) => {
+					e.currentTarget.style.borderColor = isDarkMode ? '#3A3F42' : '#D1D5DB';
+				}}
+				aria-label="Theme selector"
+			>
 					{selectedTheme === 'light' && <Sun size={15} />}
 					{selectedTheme === 'dark' && <Moon size={15} />}
 					{selectedTheme === 'system' && <Monitor size={15} />}
@@ -95,6 +110,34 @@ export default function ThemeToggle() {
 								</button>
 							);
 						})}
+						
+						{/* Color Selector */}
+						<div className={`border-t mt-1 pt-2 px-4 pb-2 ${isDarkMode ? 'border-[#23272A]' : 'border-[#E3E6E3]'}`}>
+							<div className="text-[10px] mb-2 opacity-70">{t('accentColor')}</div>
+							<div className="flex gap-2 justify-center">
+								{(['blue', 'green', 'purple', 'orange'] as AccentColor[]).map((color) => {
+									const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
+									const isSelectedColor = selectedAccentColor === color;
+
+									// Border styles for selected/unselected (lighter gray border for better contrast)
+									const selectedBorderClass = 'border-gray-400';
+
+									return (
+										<button
+											key={color}
+											onClick={() => setAccentColor(color)}
+											className={`w-5 h-5 rounded-md transition-transform ${isSelectedColor ? `border-2 ${selectedBorderClass} scale-105` : 'border border-transparent hover:scale-105'}`}
+											style={{
+												backgroundColor: colorConfig.primary,
+												boxShadow: isSelectedColor ? '0 1px 3px rgba(0,0,0,0.2)' : undefined
+											}}
+											title={color.charAt(0).toUpperCase() + color.slice(1)}
+											aria-label={`Select ${color} accent color`}
+										/>
+									);
+								})}
+							</div>
+						</div>
 					</div>
 				</div>
 			)}

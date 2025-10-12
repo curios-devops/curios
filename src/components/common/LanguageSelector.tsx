@@ -2,14 +2,17 @@ import { useLanguage } from '../../contexts/LanguageContext.tsx';
 import { languages, Language } from '../../types/language.ts';
 import { useTheme } from '../theme/ThemeContext';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useAccentColor } from '../../hooks/useAccentColor';
 import { useState, useRef, useEffect } from 'react';
 
 const LanguageSelector = () => {
   const { currentLanguage, setLanguage } = useLanguage();
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const accentColor = useAccentColor();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const isDarkMode = (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -26,11 +29,24 @@ const LanguageSelector = () => {
       <button
         type='button'
         onClick={() => setOpen(!open)}
-  className={`px-3 h-7 rounded-full flex items-center justify-center text-sm font-medium transition-colors shadow-md relative group border
-    ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-      ? 'bg-[#23272A] hover:bg-[#33393B] text-[#F3F6F4] border-[#23272A]'
-      : 'bg-[#FAFBF9] hover:border-[#007BFF] text-[#2A3B39] border-[#E3E6E3]'}
-    ${open ? ((theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) ? 'ring-2 ring-blue-500 scale-105' : 'ring-2 ring-[#007BFF] scale-105') : ''}`}
+        className={`px-3 h-7 rounded-full flex items-center justify-center text-sm font-medium shadow-md relative group border
+          ${isDarkMode
+            ? 'bg-[#23272A] border-[#3A3F42] text-[#F3F6F4]'
+            : 'bg-[#FAFBF9] border-[#D1D5DB] text-[#2A3B39]'}
+        `}
+        style={{
+          boxShadow: open 
+            ? (isDarkMode ? '0 0 0 2px #23272A' : `0 0 0 2px ${accentColor.primary}`)
+            : undefined,
+          outline: 'none',
+          transition: 'border-color 200ms'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = accentColor.primary;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = isDarkMode ? '#3A3F42' : '#D1D5DB';
+        }}
         aria-label="Language selector"
       >
         {/* Flag + short code for active language */}

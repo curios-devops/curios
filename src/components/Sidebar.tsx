@@ -3,6 +3,7 @@ import { FolderKanban, Globe2, HomeIcon, Library, User } from "lucide-react";
 import * as ReactRouterDom from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation.ts";
 import { useSession } from "../hooks/useSession.ts";
+import { useAccentColor } from "../hooks/useAccentColor.ts";
 import NavItem from "./sidebar/NavItem.tsx";
 import CollapseButton from "./sidebar/CollapseButton.tsx";
 import SignInModal from "./auth/SignInModal.tsx";
@@ -21,6 +22,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
   const { session } = useSession(); // Call useSession hook and safely access session
  const { currentLanguage } = useLanguage();
  const { t } = useTranslation();
+ const accentColor = useAccentColor();
  const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
 
  const handleSignInClick = () => setShowSignInModal(true);
@@ -109,7 +111,9 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                       <button
                         type="button"
                         onClick={handleSignInClick}
-                        className={`flex items-center justify-center p-2.5 rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-400 hover:text-[#007BFF] dark:hover:text-[#007BFF] hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a] w-full`}
+                        className={`flex items-center justify-center p-2.5 rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-400 hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a] w-full`}
+                        onMouseEnter={(e) => e.currentTarget.style.color = accentColor.primary}
+                        onMouseLeave={(e) => e.currentTarget.style.color = ''}
                       >
                         <User size={24} className="transition-colors duration-200" />
                       </button>
@@ -121,7 +125,9 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                     <button
                       type="button"
                       onClick={handleSignInClick}
-                      className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-400 hover:text-[#007BFF] dark:hover:text-[#007BFF] hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a] w-full`}
+                      className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-400 hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a] w-full`}
+                      onMouseEnter={(e) => e.currentTarget.style.color = accentColor.primary}
+                      onMouseLeave={(e) => e.currentTarget.style.color = ''}
                     >
                       <User size={24} className="transition-colors duration-200" />
                       <span className="text-sm font-medium tracking-[-0.01em]">

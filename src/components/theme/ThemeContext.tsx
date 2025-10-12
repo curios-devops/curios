@@ -1,11 +1,14 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { AccentColor, applyThemeColors } from '../../config/themeColors';
 
 type Theme = 'light' | 'dark' | 'system';
 
 interface ThemeContextType {
   theme: Theme;
+  accentColor: AccentColor;
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
+  setAccentColor: (color: AccentColor) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -26,29 +29,46 @@ function getInitialTheme(): Theme {
   return 'system';
 }
 
+function getInitialAccentColor(): AccentColor {
+  const stored = localStorage.getItem('accentColor') as AccentColor;
+  if (stored && ['blue', 'green', 'purple', 'orange'].includes(stored)) {
+    return stored;
+  }
+  return 'blue';
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const [accentColor, setAccentColorState] = useState<AccentColor>(getInitialAccentColor);
 
-  const applyTheme = useCallback((mode: Theme) => {
+  const applyTheme = useCallback((mode: Theme, accent: AccentColor) => {
+    let effectiveTheme: 'light' | 'dark';
+    
     if (mode === 'system') {
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      effectiveTheme = isDark ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', effectiveTheme);
     } else {
+      effectiveTheme = mode;
       document.documentElement.setAttribute('data-theme', mode);
     }
+    
+    // Apply accent colors as CSS variables
+    applyThemeColors(effectiveTheme, accent);
   }, []);
 
   useEffect(() => {
-    applyTheme(theme);
+    applyTheme(theme, accentColor);
     localStorage.setItem('theme', theme);
+    localStorage.setItem('accentColor', accentColor);
     
     if (theme === 'system') {
       const media = window.matchMedia('(prefers-color-scheme: dark)');
-      const handler = () => applyTheme('system');
+      const handler = () => applyTheme('system', accentColor);
       media.addEventListener('change', handler);
       return () => media.removeEventListener('change', handler);
     }
-  }, [theme, applyTheme]);
+  }, [theme, accentColor, applyTheme]);
 
   const toggleTheme = () => {
     setTheme(current => 
@@ -57,8 +77,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const setAccentColor = (color: AccentColor) => {
+    setAccentColorState(color);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, accentColor, toggleTheme, setTheme, setAccentColor }}>
       {children}
     </ThemeContext.Provider>
   );

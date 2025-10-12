@@ -1,6 +1,6 @@
-import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "../../hooks/useSession.ts";
+import { useAccentColor } from "../../hooks/useAccentColor.ts";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavItemProps {
@@ -26,6 +26,7 @@ export default function NavItem({
 }: NavItemProps) {
   const navigate = useNavigate();
   const { session } = useSession();
+  const accentColor = useAccentColor();
   const isGuest = !session;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -47,9 +48,20 @@ export default function NavItem({
         isCollapsed ? "justify-center" : "gap-3"
       } p-2.5 rounded-lg transition-colors duration-200 ${
         isActive
-          ? "text-[#007BFF] bg-[#eef1f2] dark:bg-[#1a1a1a] font-medium"
-          : "text-gray-600 dark:text-gray-400 hover:text-[#007BFF] dark:hover:text-[#007BFF] hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a]"
+          ? "bg-[#eef1f2] dark:bg-[#1a1a1a] font-medium"
+          : "text-gray-600 dark:text-gray-400 hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a]"
       }`}
+      style={isActive ? { color: accentColor.primary } : undefined}
+      onMouseEnter={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.color = accentColor.primary;
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.color = '';
+        }
+      }}
     >
       <Icon size={24} />
       {!isCollapsed && (

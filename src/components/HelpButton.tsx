@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 // import { Link } from "react-router-dom";
-import { HelpCircle } from "lucide-react";
 import { useTheme } from "./theme/ThemeContext";
 import { useTranslation } from "../hooks/useTranslation";
+import { useAccentColor } from "../hooks/useAccentColor";
 
 export default function HelpButton() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const accentColor = useAccentColor();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -29,28 +30,39 @@ export default function HelpButton() {
     { label: t('reportIllegalContent'), href: "#" },
   ];
 
+  const isDarkMode = (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+
   return (
     <div className="relative" ref={menuRef}>
       <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium transition-colors shadow-md relative group border
-          ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-            ? 'bg-[#23272A] hover:bg-[#33393B] text-[#F3F6F4] border-[#23272A]'
-            : 'bg-[#FAFBF9] hover:border-[#007BFF] text-[#2A3B39] border-[#E3E6E3]'}
+        onClick={() => setIsOpen(true)}
+        className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-md relative group border
+          ${isDarkMode
+            ? 'bg-[#23272A] border-[#3A3F42] text-white'
+            : 'bg-[#FAFBF9] border-[#D1D5DB] text-[#2A3B39]'}
         `}
-        aria-label={`${t('help')} menu`}
+        style={{ 
+          zIndex: 201,
+          transition: 'border-color 200ms'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = accentColor.primary;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = isDarkMode ? '#3A3F42' : '#D1D5DB';
+        }}
+        aria-label={t('help')}
       >
-  <HelpCircle size={18} className={theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'text-[#F3F6F4]' : 'text-[#2A3B39]'} />
+        <span className="text-sm">?</span>
         {/* Tooltip */}
         <span
-          className={`absolute bottom-9 right-0 translate-x-0 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50
-            ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+          className={`absolute bottom-9 left-1/2 -translate-x-1/2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap font-bold
+            ${isDarkMode
               ? 'bg-gray-800 text-gray-100'
               : 'bg-gray-100 text-gray-800'}
           `}
         >
-          {t('helpFaqTooltip')}
+          {t('help')}
         </span>
       </button>
       {isOpen && (

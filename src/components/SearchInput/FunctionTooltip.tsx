@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { Check, Sparkles, FlaskConical, BookOpen } from 'lucide-react';
+import { useAccentColor } from '../../hooks/useAccentColor';
 
 interface FunctionTooltipProps {
   tab: 'search' | 'insights' | 'labs';
@@ -101,6 +102,7 @@ export default function FunctionTooltip({
   const config = tabConfig[tab];
   const proFeatures = proConfig[tab];
   const [isProEnabled, setIsProEnabled] = useState(false);
+  const accentColor = useAccentColor();
 
   const handleMouseEnter = () => {
     onMouseEnter?.();
@@ -147,7 +149,7 @@ export default function FunctionTooltip({
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-xs font-medium text-gray-900 dark:text-white">{config.title}</h3>
             {config.badge && (
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
                 {config.badge}
               </span>
             )}
@@ -160,10 +162,10 @@ export default function FunctionTooltip({
         <div className="mb-2.5">
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
                 PRO
               </span>
-              <span className="text-[#007BFF] text-[10px] font-bold">{proFeatures.title}</span>
+              <span className="text-[10px] font-bold" style={{ color: accentColor.primary }}>{proFeatures.title}</span>
             </div>
             {/* Interactive Toggle Switch for Guests (triggers sign-in) */}
             <button
@@ -171,9 +173,10 @@ export default function FunctionTooltip({
               onClick={onSignIn}
               className="relative w-8 h-4 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer group"
               title="Sign in to enable Pro features"
+              onMouseEnter={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor.primary}4D`}
+              onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
             >
               <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-all group-hover:bg-gray-100"></div>
-              <div className="absolute inset-0 rounded-full ring-2 ring-transparent group-hover:ring-[#007BFF] group-hover:ring-opacity-30 transition-all"></div>
             </button>
           </div>
           <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
@@ -182,7 +185,10 @@ export default function FunctionTooltip({
         <button
           type="button"
           onClick={onSignIn}
-          className="w-full bg-[#007BFF] hover:bg-[#0056b3] text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
+          className="w-full text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
+          style={{ backgroundColor: accentColor.primary }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accentColor.hover}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor.primary}
         >
           Sign in for access
         </button>
@@ -208,7 +214,7 @@ export default function FunctionTooltip({
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <config.icon className="text-[#007BFF]" size={18} />
+              <config.icon size={18} style={{ color: accentColor.primary }} />
               <h3 className="text-gray-900 dark:text-white font-medium">{config.title}</h3>
               <span className="text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded-full font-medium">
                 PREMIUM
@@ -298,7 +304,7 @@ export default function FunctionTooltip({
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <config.icon className="text-[#007BFF]" size={18} />
+              <config.icon size={18} style={{ color: accentColor.primary }} />
               <h3 className="text-gray-900 dark:text-white font-medium">{config.title}</h3>
               {config.badge && (
                 <span className="text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-medium">
@@ -317,7 +323,7 @@ export default function FunctionTooltip({
           {/* Pro Toggle */}
           <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
             <div className="flex items-center gap-2">
-              <Sparkles className="text-[#007BFF]" size={16} />
+              <Sparkles size={16} style={{ color: accentColor.primary }} />
               <span className="text-sm font-medium text-gray-900 dark:text-white">Pro Mode</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -328,8 +334,8 @@ export default function FunctionTooltip({
                 onChange={handleProToggle}
               />
               <div className={`w-11 h-6 rounded-full transition-colors ${
-                isProEnabled ? 'bg-[#007BFF]' : 'bg-gray-200 dark:bg-gray-600'
-              }`}>
+                isProEnabled ? '' : 'bg-gray-200 dark:bg-gray-600'
+              }`} style={isProEnabled ? { backgroundColor: accentColor.primary } : undefined}>
                 <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
                   isProEnabled ? 'translate-x-5' : 'translate-x-0'
                 } mt-0.5 ml-0.5`}></div>
@@ -341,12 +347,12 @@ export default function FunctionTooltip({
           <div className="mb-4">
             {isProEnabled ? (
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h4 className="text-sm font-medium text-[#007BFF] mb-2">{proFeatures.title}</h4>
+                <h4 className="text-sm font-medium mb-2" style={{ color: accentColor.primary }}>{proFeatures.title}</h4>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">{proFeatures.description}</p>
                 <ul className="space-y-1">
                   {proFeatures.features.map((feature, index) => (
                     <li key={index} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                      <Check size={12} className="text-[#007BFF]" />
+                      <Check size={12} style={{ color: accentColor.primary }} />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -374,8 +380,8 @@ export default function FunctionTooltip({
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
-                className="bg-[#007BFF] h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(remainingQuota / 5) * 100}%` }}
+                className="h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(remainingQuota / 5) * 100}%`, backgroundColor: accentColor.primary }}
               />
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
@@ -392,7 +398,10 @@ export default function FunctionTooltip({
           {/* Action Button */}
           <button
             onClick={onUpgrade}
-            className="w-full bg-[#007BFF] text-white py-2 px-4 rounded-lg hover:bg-[#0056b3] transition-colors text-sm font-medium"
+            className="w-full text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium"
+            style={{ backgroundColor: accentColor.primary }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accentColor.hover}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor.primary}
           >
             Upgrade to Premium
           </button>

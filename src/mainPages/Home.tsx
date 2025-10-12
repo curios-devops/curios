@@ -14,10 +14,12 @@ import SignUpModal from '../components/auth/SignUpModal.tsx';
 import { useSubscription } from '../hooks/useSubscription.ts';
 import { languages } from '../types/language.ts';
 import { useTranslation } from '../hooks/useTranslation.ts';
+import { useAccentColor } from '../hooks/useAccentColor.ts';
 
 export default function Home() {
   const { session } = useSession();
   const { subscription } = useSubscription();
+  const accentColors = useAccentColor();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
@@ -65,7 +67,16 @@ export default function Home() {
           <ThemeToggle />
         </div>
         <button
-          className="h-7 px-3 rounded-full flex items-center justify-center text-sm font-medium bg-[#007BFF] hover:bg-[#0056b3] text-white transition-colors shadow-md"
+          className="h-7 px-3 rounded-full flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
+          style={{
+            backgroundColor: accentColors.primary,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = accentColors.hover;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = accentColors.primary;
+          }}
           type="button"
           onClick={handleShowSignUp}
         >

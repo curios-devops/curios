@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Focus, Paperclip } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 import ActionButton from '../SearchInput/ActionButton.tsx';
 import FunctionSelector from '../SearchInput/FunctionSelector.tsx';
@@ -14,6 +14,7 @@ import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
 import { useProQuota } from '../../hooks/useProQuota.ts';
 import { useSession } from '../../hooks/useSession.ts';
 import type { FocusMode } from './types.ts';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
 export default function ThreeSelector() {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ export default function ThreeSelector() {
   const { decrementSearches, remainingSearches, hasSearchesLeft } = useSearchLimit();
   const { decrementProQuota, hasProQuotaLeft, canAccessPro } = useProQuota();
   const { session } = useSession();
+  const accentColor = useAccentColor();
 
   // Function mapping for navigation
   const getFunctionRoute = (functionType: FunctionType): string => {
@@ -113,7 +115,22 @@ export default function ThreeSelector() {
   return (
     <div className="w-full max-w-xl mx-auto">
       {/* Unified container with border encompassing both input and buttons */}
-      <div className="relative border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#2a2a2a] focus-within:border-blue-500 dark:focus-within:border-blue-400 transition-colors">
+      <div 
+        className="relative border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#2a2a2a] transition-colors"
+        style={{
+          borderColor: undefined, // default
+        }}
+        onFocus={(e) => {
+          if (e.currentTarget.contains(e.target)) {
+            e.currentTarget.style.borderColor = accentColor.primary;
+          }
+        }}
+        onBlur={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node) === false) {
+            e.currentTarget.style.borderColor = '';
+          }
+        }}
+      >
         {/* Text input area */}
         <div className="relative">
           <SearchTextArea
@@ -192,7 +209,6 @@ export default function ThreeSelector() {
       <SignUpModal 
         isOpen={showSignUpModal}
         onClose={() => setShowSignUpModal(false)}
-        context="default"
         currentLanguage={{ code: 'en', name: 'English', flag: '🇺🇸' }}
       />
     </div>

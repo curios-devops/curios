@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Search, BookOpen, FlaskConical } from 'lucide-react';
 import { useSession } from '../../hooks/useSession.ts';
 import { useSubscription } from '../../hooks/useSubscription.ts';
 import { useProQuota } from '../../hooks/useProQuota.ts';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import FunctionTooltip from './FunctionTooltip.tsx';
 
 export type FunctionType = 'search' | 'insights' | 'labs' | 'pro-search' | 'research' | 'pro-labs';
@@ -65,6 +66,7 @@ export default function FunctionSelector({
   const { session } = useSession();
   const { subscription } = useSubscription();
   const { remainingQuota } = useProQuota();
+  const accentColor = useAccentColor();
 
   // Determine user type
   const getUserType = (): UserType => {
@@ -234,12 +236,13 @@ export default function FunctionSelector({
                   className={`
                     transition-colors duration-200
                     ${isActive 
-                      ? (isPro ? 'text-[#007BFF]' : 'text-[#007BFF]')
+                      ? ''
                       : isHovered 
                         ? 'text-gray-600 dark:text-gray-300' 
                         : 'text-gray-500 dark:text-gray-400'
                     }
-                  `} 
+                  `}
+                  style={isActive ? { color: accentColor.primary } : undefined}
                 />
                 {tab.badge && (
                   <span className="text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-medium">
@@ -247,7 +250,7 @@ export default function FunctionSelector({
                   </span>
                 )}
                 {isPro && (
-                  <span className="text-[10px] bg-[#007BFF] text-white px-1.5 py-0.5 rounded-full font-medium">
+                  <span className="text-[10px] text-white px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: accentColor.primary }}>
                     PRO
                   </span>
                 )}
