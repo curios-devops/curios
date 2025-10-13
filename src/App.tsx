@@ -108,7 +108,7 @@ function AppContent() {
             {mobileSidebarOpen && (
               <>
                 <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setMobileSidebarOpen(false)} />
-                <aside className="fixed top-0 left-0 z-50 h-full w-64 shadow-lg transition-transform duration-300" style={{ transform: mobileSidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
+                <aside className="fixed top-0 left-0 z-50 h-full w-48 shadow-lg transition-transform duration-300" style={{ transform: mobileSidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
                   <Sidebar embedded isCollapsed={false} toggleSidebar={() => setMobileSidebarOpen(false)} />
                 </aside>
               </>
