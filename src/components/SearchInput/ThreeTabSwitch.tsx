@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Search, BookOpen, FlaskConical } from 'lucide-react';
 import TabTooltip from './TabTooltip.tsx';
+import { useTranslation } from '../../hooks/useTranslation.ts';
 
 export type TabType = 'search' | 'insights' | 'labs';
 
@@ -14,27 +15,9 @@ interface Tab {
 }
 
 const tabs: Tab[] = [
-  {
-    id: 'search',
-    label: 'Search',
-    description: 'Fast answers to everyday questions',
-    icon: Search,
-    tooltip: 'Get quick answers with web search and AI analysis'
-  },
-  {
-    id: 'insights',
-    label: 'Insights',
-    description: 'Multi-agent research reports',
-    icon: BookOpen,
-    tooltip: 'Get in-depth, multi-agent research reports'
-  },
-  {
-    id: 'labs',
-    label: 'Labs',
-    description: 'Create projects from scratch',
-    icon: FlaskConical,
-    tooltip: 'Turn your ideas into completed docs, slides, dashboards, and more'
-  }
+  { id: 'search', label: 'search', description: 'Fast answers to everyday questions', icon: Search, tooltip: 'Get quick answers with web search and AI analysis' },
+  { id: 'insights', label: 'insights', description: 'Multi-agent research reports', icon: BookOpen, tooltip: 'Get in-depth, multi-agent research reports' },
+  { id: 'labs', label: 'labs', description: 'Create projects from scratch', icon: FlaskConical, tooltip: 'Turn your ideas into completed docs, slides, dashboards, and more' }
 ];
 
 interface ThreeTabSwitchProps {
@@ -58,6 +41,7 @@ export default function ThreeTabSwitch({
   onUpgrade = () => {},
   onSignIn = () => {}
 }: ThreeTabSwitchProps) {
+  const { t } = useTranslation();
   const [hoveredTab, setHoveredTab] = useState<TabType | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipTimeoutRef = useRef<number | null>(null);
@@ -166,7 +150,7 @@ export default function ThreeTabSwitch({
                   }
                 `}
               >
-                <Icon 
+          <Icon 
                   size={16} 
                   className={`
                     transition-colors duration-200
@@ -178,6 +162,8 @@ export default function ThreeTabSwitch({
                     }
                   `} 
                 />
+                {/* label is localized via translation */}
+                <span className="sr-only">{t(tab.id)}</span>
               </button>
             </div>
           );

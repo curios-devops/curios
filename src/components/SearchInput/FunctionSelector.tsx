@@ -5,6 +5,7 @@ import { useSubscription } from '../../hooks/useSubscription.ts';
 import { useProQuota } from '../../hooks/useProQuota.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import FunctionTooltip from './FunctionTooltip.tsx';
+import { useTranslation } from '../../hooks/useTranslation.ts';
 
 export type FunctionType = 'search' | 'insights' | 'labs' | 'pro-search' | 'research' | 'pro-labs';
 export type TabType = 'search' | 'insights' | 'labs';
@@ -56,6 +57,7 @@ export default function FunctionSelector({
   onSignUpRequired,
   className = ''
 }: FunctionSelectorProps) {
+  const { t } = useTranslation();
   const [hoveredTab, setHoveredTab] = useState<TabType | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [isProEnabled, setIsProEnabled] = useState(false);
@@ -251,7 +253,7 @@ export default function FunctionSelector({
                 )}
                 {isPro && (
                   <span className="text-[10px] text-white px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: accentColor.primary }}>
-                    PRO
+                    {t('pro')}
                   </span>
                 )}
               </button>

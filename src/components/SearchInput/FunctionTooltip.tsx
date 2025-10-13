@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Check, Sparkles, FlaskConical, BookOpen } from 'lucide-react';
 import { useAccentColor } from '../../hooks/useAccentColor';
+import { useTranslation } from '../../hooks/useTranslation.ts';
 
 interface FunctionTooltipProps {
   tab: 'search' | 'insights' | 'labs';
@@ -15,76 +16,15 @@ interface FunctionTooltipProps {
 }
 
 interface TabConfig {
-  title: string;
-  description: string;
   icon: React.ElementType;
-  features: string[];
   badge?: string;
 }
 
+// keep icons/badges in code, but fetch all text (title/description/features/pro text) from translations
 const tabConfig: Record<'search' | 'insights' | 'labs', TabConfig> = {
-  search: {
-    title: 'Search',
-    description: 'Fast answers to everyday questions',
-    icon: Sparkles,
-    features: [
-      '3x more sources',
-      'More detailed answers', 
-      'Advanced AI models'
-    ]
-  },
-  insights: {
-    title: 'Insights',
-    description: 'Multi-agent research reports for any topic',
-    icon: BookOpen,
-    features: [
-      'Planner, Search, and Writer agents',
-      'Web search and synthesis',
-      'Detailed markdown report',
-      'Follow-up research questions'
-    ]
-  },
-  labs: {
-    title: 'Labs',
-    description: 'Execute simple tasks and create projects',
-    icon: FlaskConical,
-    features: [
-      'Create docs, slides, dashboards',
-      'Interactive prototypes',
-      'AI-powered content generation'
-    ]
-  }
-};
-
-// Pro features description for each tab
-const proConfig: Record<'search' | 'insights' | 'labs', { title: string; description: string; features: string[] }> = {
-  search: {
-    title: 'Try Pro Search',
-    description: '3x more sources with powerful models and increased limits',
-    features: [
-      '3x more sources',
-      'More detailed answers', 
-      'Advanced AI models'
-    ]
-  },
-  insights: {
-    title: 'Try Research',
-    description: 'In-depth reports with more sources and advanced reasoning',
-    features: [
-      'Multi-agent coordination',
-      'Deeper source analysis',
-      'Advanced reasoning models'
-    ]
-  },
-  labs: {
-    title: 'Try Pro Labs',
-    description: 'Tackle big tasks with AI — create docs, slides, webs, or even book a trip or order dinner',
-    features: [
-      'Complex project generation',
-      'Advanced task automation',
-      'Unlimited iterations'
-    ]
-  }
+  search: { icon: Sparkles },
+  insights: { icon: BookOpen },
+  labs: { icon: FlaskConical }
 };
 
 export default function FunctionTooltip({ 
@@ -100,9 +40,29 @@ export default function FunctionTooltip({
 }: FunctionTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const config = tabConfig[tab];
-  const proFeatures = proConfig[tab];
   const [isProEnabled, setIsProEnabled] = useState(false);
   const accentColor = useAccentColor();
+  const { t } = useTranslation();
+
+  // derive all text from translations so UI updates with language
+  const title = t(tab);
+  const description = t(`${tab}_description`);
+  const features: string[] = [];
+  for (let i = 1; i <= 10; i++) {
+    const key = `${tab}_feature_${i}`;
+    const val = t(key);
+    if (!val || val === key) break;
+    features.push(val);
+  }
+  const proTitle = t(`${tab}_pro_title`);
+  const proDescription = t(`${tab}_pro_description`);
+  const proFeatures: string[] = [];
+  for (let i = 1; i <= 10; i++) {
+    const key = `${tab}_pro_feature_${i}`;
+    const val = t(key);
+    if (!val || val === key) break;
+    proFeatures.push(val);
+  }
 
   const handleMouseEnter = () => {
     onMouseEnter?.();
@@ -146,15 +106,15 @@ export default function FunctionTooltip({
       >
         {/* Header */}
         <div className="text-left mb-2.5">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-xs font-medium text-gray-900 dark:text-white">{config.title}</h3>
+            <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-xs font-medium text-gray-900 dark:text-white">{title}</h3>
             {config.badge && (
               <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
                 {config.badge}
               </span>
             )}
           </div>
-          <p className="text-gray-600 dark:text-gray-400 text-[10px]">{config.description}</p>
+          <p className="text-gray-600 dark:text-gray-400 text-[10px]">{description}</p>
         </div>
         {/* Divider */}
         <div className="border-t border-gray-200 dark:border-gray-700 my-2.5"></div>
@@ -163,23 +123,23 @@ export default function FunctionTooltip({
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-2">
               <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
-                PRO
+                {t('pro')}
               </span>
-              <span className="text-[10px] font-bold" style={{ color: accentColor.primary }}>{proFeatures.title}</span>
+              <span className="text-[10px] font-bold" style={{ color: accentColor.primary }}>{proTitle}</span>
             </div>
             {/* Interactive Toggle Switch for Guests (triggers sign-in) */}
             <button
               type="button"
               onClick={onSignIn}
               className="relative w-8 h-4 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer group"
-              title="Sign in to enable Pro features"
+              title={t('signInToUpgrade')}
               onMouseEnter={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor.primary}4D`}
               onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
             >
               <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-all group-hover:bg-gray-100"></div>
             </button>
           </div>
-          <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
+          <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proDescription}</p>
         </div>
         {/* Sign In Button */}
         <button
@@ -190,7 +150,7 @@ export default function FunctionTooltip({
           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accentColor.hover}
           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor.primary}
         >
-          Sign in for access
+          {t('signInForAccess')}
         </button>
         {/* Arrow pointer */}
         <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
@@ -215,9 +175,9 @@ export default function FunctionTooltip({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <config.icon size={18} style={{ color: accentColor.primary }} />
-              <h3 className="text-gray-900 dark:text-white font-medium">{config.title}</h3>
+              <h3 className="text-gray-900 dark:text-white font-medium">{title}</h3>
               <span className="text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded-full font-medium">
-                PREMIUM
+                {t('premium')}
               </span>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -226,13 +186,13 @@ export default function FunctionTooltip({
           </div>
 
           {/* Description */}
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{config.description}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{description}</p>
 
           {/* Pro Toggle */}
           <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
             <div className="flex items-center gap-2">
               <Sparkles className="text-[#007BFF]" size={16} />
-              <span className="text-sm font-medium text-gray-900 dark:text-white">Pro Mode</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">{t('proMode')}</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -255,12 +215,12 @@ export default function FunctionTooltip({
           <div className="mb-4">
             {isProEnabled ? (
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h4 className="text-sm font-medium text-[#007BFF] mb-2">{proFeatures.title}</h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">{proFeatures.description}</p>
+                <h4 className="text-sm font-medium mb-2" style={{ color: accentColor.primary }}>{proTitle}</h4>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">{proDescription}</p>
                 <ul className="space-y-1">
-                  {proFeatures.features.map((feature, index) => (
+                  {proFeatures.map((feature, index) => (
                     <li key={index} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                      <Check size={12} className="text-[#007BFF]" />
+                      <Check size={12} style={{ color: accentColor.primary }} />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -268,7 +228,7 @@ export default function FunctionTooltip({
               </div>
             ) : (
               <ul className="space-y-2">
-                {config.features.map((feature, index) => (
+                {features.map((feature, index) => (
                   <li key={index} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <Check size={14} className="text-green-500" />
                     <span>{feature}</span>
@@ -280,8 +240,8 @@ export default function FunctionTooltip({
 
           {/* Premium Benefits */}
           <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-            <h4 className="text-sm font-medium text-green-600 mb-1">✨ Premium Benefits Active</h4>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Unlimited searches • Full Pro access • Priority support</p>
+            <h4 className="text-sm font-medium text-green-600 mb-1">✨ {t('usageToday')}</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400">{t('unlockPremiumFeatures')}</p>
           </div>
         </div>
       </div>
@@ -305,7 +265,7 @@ export default function FunctionTooltip({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <config.icon size={18} style={{ color: accentColor.primary }} />
-              <h3 className="text-gray-900 dark:text-white font-medium">{config.title}</h3>
+              <h3 className="text-gray-900 dark:text-white font-medium">{title}</h3>
               {config.badge && (
                 <span className="text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-medium">
                   {config.badge}
@@ -318,13 +278,13 @@ export default function FunctionTooltip({
           </div>
 
           {/* Description */}
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{config.description}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{description}</p>
 
           {/* Pro Toggle */}
           <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
             <div className="flex items-center gap-2">
               <Sparkles size={16} style={{ color: accentColor.primary }} />
-              <span className="text-sm font-medium text-gray-900 dark:text-white">Pro Mode</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">{t('proMode')}</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -347,10 +307,10 @@ export default function FunctionTooltip({
           <div className="mb-4">
             {isProEnabled ? (
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h4 className="text-sm font-medium mb-2" style={{ color: accentColor.primary }}>{proFeatures.title}</h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">{proFeatures.description}</p>
+                <h4 className="text-sm font-medium mb-2" style={{ color: accentColor.primary }}>{proTitle}</h4>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">{proDescription}</p>
                 <ul className="space-y-1">
-                  {proFeatures.features.map((feature, index) => (
+                  {proFeatures.map((feature, index) => (
                     <li key={index} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                       <Check size={12} style={{ color: accentColor.primary }} />
                       <span>{feature}</span>
@@ -360,7 +320,7 @@ export default function FunctionTooltip({
               </div>
             ) : (
               <ul className="space-y-2">
-                {config.features.map((feature, index) => (
+                {features.map((feature, index) => (
                   <li key={index} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <Check size={14} className="text-green-500" />
                     <span>{feature}</span>
@@ -372,8 +332,8 @@ export default function FunctionTooltip({
 
           {/* Usage Stats - Free users have 5 daily Pro uses */}
           <div className="mb-4 p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Daily Pro Quota</span>
+              <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('dailyProQuota')}</span>
               <span className="text-sm font-medium text-gray-900 dark:text-white">
                 {remainingQuota}/5
               </span>
@@ -385,14 +345,14 @@ export default function FunctionTooltip({
               />
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-              Pro Search, Research & Pro Labs count towards quota
+              {t('proQuotaNote')}
             </p>
           </div>
 
           {/* Upgrade CTA */}
           <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-            <h4 className="text-sm font-medium text-orange-600 mb-1">🚀 Upgrade to Premium</h4>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Get unlimited Pro searches and full Pro access</p>
+            <h4 className="text-sm font-medium text-orange-600 mb-1">🚀 {t('upgradeToPremium')}</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400">{t('unlockPremiumFeatures')}</p>
           </div>
 
           {/* Action Button */}
@@ -403,7 +363,7 @@ export default function FunctionTooltip({
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accentColor.hover}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor.primary}
           >
-            Upgrade to Premium
+            {t('upgradeToPremium')}
           </button>
         </div>
       </div>

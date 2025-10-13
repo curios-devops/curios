@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react';
+import { useTranslation } from '../../hooks/useTranslation.ts';
 import { Check, Sparkles, FlaskConical, BookOpen } from 'lucide-react';
 
 interface TabTooltipProps {
@@ -15,77 +16,17 @@ interface TabTooltipProps {
 }
 
 interface TabConfig {
-  title: string;
-  description: string;
   icon: React.ElementType;
-  features: string[];
   badge?: string;
 }
 
 const tabConfig: Record<'search' | 'insights' | 'labs', TabConfig> = {
-  search: {
-    title: 'Search',
-    description: 'Fast answers to everyday questions',
-    icon: Sparkles,
-    features: [
-      '3x more sources',
-      'More detailed answers', 
-      'Advanced AI models'
-    ]
-  },
-  labs: {
-    title: 'Labs',
-    description: 'Execute simple tasks and create projects',
-    icon: FlaskConical,
-    features: [
-      'Create docs, slides, dashboards',
-      'Interactive prototypes',
-      'AI-powered content generation'
-    ]
-  },
-  insights: {
-    title: 'Insights',
-    description: 'Multi-agent research reports for any topic',
-    icon: BookOpen,
-    features: [
-      'Planner, Search, and Writer agents',
-      'Web search and synthesis',
-      'Detailed markdown report',
-      'Follow-up research questions'
-    ]
-  }
+  search: { icon: Sparkles },
+  labs: { icon: FlaskConical },
+  insights: { icon: BookOpen }
 };
 
-// Pro features description for each tab
-const proConfig: Record<'search' | 'insights' | 'labs', { title: string; description: string; features: string[] }> = {
-  search: {
-    title: 'Try Pro Search',
-    description: '3x more sources with powerful models and increased limits',
-    features: [
-      '3x more sources',
-      'More detailed answers', 
-      'Advanced AI models'
-    ]
-  },
-  insights: {
-    title: 'Try Research',
-    description: 'In-depth reports with more sources and advanced reasoning',
-    features: [
-      'Multi-agent coordination',
-      'Deeper source analysis',
-      'Advanced reasoning models'
-    ]
-  },
-  labs: {
-    title: 'Try Pro Labs',
-    description: 'Tackle big tasks with AI — create docs, slides, webs, or even book a trip or order dinner',
-    features: [
-      'Complex project generation',
-      'Advanced task automation',
-      'Unlimited iterations'
-    ]
-  }
-};
+// text/content comes from translations via t(...)
 
 export default function TabTooltip({ 
   tab,
@@ -99,7 +40,25 @@ export default function TabTooltip({
   onMouseLeave}: TabTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const config = tabConfig[tab];
-  const proFeatures = proConfig[tab];
+  const { t } = useTranslation();
+  const title = t(tab);
+  const description = t(`${tab}_description`);
+  const proTitle = t(`${tab}_pro_title`);
+  const proDescription = t(`${tab}_pro_description`);
+  const features: string[] = [];
+  for (let i = 1; i <= 10; i++) {
+    const key = `${tab}_feature_${i}`;
+    const val = t(key);
+    if (!val || val === key) break;
+    features.push(val);
+  }
+  const proFeatures: string[] = [];
+  for (let i = 1; i <= 10; i++) {
+    const key = `${tab}_pro_feature_${i}`;
+    const val = t(key);
+    if (!val || val === key) break;
+    proFeatures.push(val);
+  }
 
   // Calculate arrow position - always centered since container is positioned correctly
   const getArrowPosition = () => {
@@ -152,14 +111,14 @@ export default function TabTooltip({
       {/* Header */}
       <div className="text-left mb-2.5">
         <div className="flex items-center gap-2 mb-1">
-          <h3 className="text-xs font-medium text-gray-900 dark:text-white">{config.title}</h3>
+          <h3 className="text-xs font-medium text-gray-900 dark:text-white">{title}</h3>
           {config.badge && (
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
               {config.badge}
             </span>
           )}
         </div>
-        <p className="text-gray-600 dark:text-gray-400 text-[10px]">{config.description}</p>
+  <p className="text-gray-600 dark:text-gray-400 text-[10px]">{description}</p>
       </div>
 
       {/* Divider */}
@@ -172,30 +131,30 @@ export default function TabTooltip({
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
               PRO
             </span>
-            <span className="text-[#007BFF] text-[10px] font-bold">{proFeatures.title}</span>
+            <span className="text-[#007BFF] text-[10px] font-bold">{proTitle}</span>
           </div>
           {/* Interactive Toggle Switch for Guests */}
           <button
             type="button"
             onClick={handleProFeatureClick}
             className="relative w-8 h-4 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer group"
-            title="Sign in to enable Pro features"
+            title={t('signInToUpgrade')}
           >
             <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-all group-hover:bg-gray-100"></div>
             <div className="absolute inset-0 rounded-full ring-2 ring-transparent group-hover:ring-[#007BFF] group-hover:ring-opacity-30 transition-all"></div>
           </button>
         </div>
 
-        <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
+  <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proDescription}</p>
       </div>
 
       {/* Sign In Button */}
-      <button
+        <button
         type="button"
         onClick={onSignIn}
         className="w-full bg-[#007BFF] hover:bg-[#0056b3] text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
       >
-        Sign in for access
+        {t('signInForAccess')}
       </button>
 
       {/* Arrow pointer */}
@@ -213,20 +172,20 @@ export default function TabTooltip({
       {/* Header */}
       <div className="text-left mb-2.5">
         <div className="flex items-center gap-2 mb-1">
-          <h3 className="text-xs font-medium text-gray-900 dark:text-white">{config.title}</h3>
+          <h3 className="text-xs font-medium text-gray-900 dark:text-white">{title}</h3>
           {config.badge && (
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
               {config.badge}
             </span>
           )}
         </div>
-        <p className="text-gray-600 dark:text-gray-400 text-[10px]">{config.description}</p>
+  <p className="text-gray-600 dark:text-gray-400 text-[10px]">{description}</p>
       </div>
 
       {/* Usage Stats */}
       <div className="mb-2.5">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-gray-600 dark:text-gray-300 text-[10px]">Usage today</span>
+          <span className="text-gray-600 dark:text-gray-300 text-[10px]">{t('usageToday')}</span>
           <span className="text-gray-900 dark:text-white text-[10px]">{maxSearches - remainingSearches}/{maxSearches}</span>
         </div>
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
@@ -247,27 +206,27 @@ export default function TabTooltip({
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
               PRO
             </span>
-            <span className="text-[#007BFF] text-[10px] font-bold">{proFeatures.title}</span>
+            <span className="text-[#007BFF] text-[10px] font-bold">{proTitle}</span>
           </div>
           <button
             type="button"
             onClick={handleProFeatureClick}
             className="relative w-8 h-4 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer group"
-            title="Upgrade to Premium for Pro features"
+            title={t('upgradeToPremium')}
           >
             <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-all group-hover:bg-gray-100"></div>
             <div className="absolute inset-0 rounded-full ring-2 ring-transparent group-hover:ring-[#007BFF] group-hover:ring-opacity-30 transition-all"></div>
           </button>
         </div>
 
-        <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
+  <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proDescription}</p>
 
         {/* Features List */}
         <div className="space-y-0.5 mb-2.5">
-          {proFeatures.features.map((feature, index) => (
+          {proFeatures.map((_, index) => (
             <div key={index} className="flex items-center gap-1.5">
               <Check size={10} className="text-[#007BFF] flex-shrink-0" />
-              <span className="text-gray-600 dark:text-gray-300 text-[10px]">{feature}</span>
+              <span className="text-gray-600 dark:text-gray-300 text-[10px]">{t(`${tab}_pro_feature_${index+1}`)}</span>
             </div>
           ))}
         </div>
@@ -279,7 +238,7 @@ export default function TabTooltip({
         onClick={onUpgrade}
         className="w-full bg-[#007BFF] hover:bg-[#0056b3] text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
       >
-        Upgrade to Premium
+  {t('upgradeToPremium')}
       </button>
 
       {/* Arrow pointer */}
@@ -297,17 +256,17 @@ export default function TabTooltip({
       {/* Header */}
       <div className="text-left mb-2.5">
         <div className="flex items-center gap-2 mb-1">
-          <h3 className="text-xs font-medium text-gray-900 dark:text-white">{config.title}</h3>
+          <h3 className="text-xs font-medium text-gray-900 dark:text-white">{title}</h3>
           {config.badge && (
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
               {config.badge}
             </span>
           )}
           <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-green-600 text-white rounded">
-            Premium
+            {t('premium')}
           </span>
         </div>
-        <p className="text-gray-600 dark:text-gray-400 text-[10px]">{config.description}</p>
+  <p className="text-gray-600 dark:text-gray-400 text-[10px]">{description}</p>
       </div>
 
       {/* Pro Features Enabled */}
@@ -317,18 +276,18 @@ export default function TabTooltip({
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-green-600 text-white rounded">
               PRO
             </span>
-            <span className="text-green-600 dark:text-green-400 text-[10px] font-bold">{proFeatures.title} ✓</span>
+            <span className="text-green-600 dark:text-green-400 text-[10px] font-bold">{proTitle} ✓</span>
           </div>
           <div className="relative w-8 h-4 rounded-full bg-[#007BFF] cursor-default">
             <div className="absolute top-0.5 right-0.5 w-3 h-3 bg-white rounded-full"></div>
           </div>
         </div>
 
-        <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proFeatures.description}</p>
+  <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proDescription}</p>
 
         {/* Features List */}
         <div className="space-y-0.5">
-          {proFeatures.features.map((feature, index) => (
+          {proFeatures.map((feature, index) => (
             <div key={index} className="flex items-center gap-1.5">
               <Check size={10} className="text-green-600 dark:text-green-400 flex-shrink-0" />
               <span className="text-gray-600 dark:text-gray-300 text-[10px]">{feature}</span>
