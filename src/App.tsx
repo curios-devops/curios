@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { logger } from './utils/logger.ts';
 import { ThemeProvider } from './components/theme/ThemeContext.tsx';
@@ -8,6 +8,7 @@ import Logo from './components/sidebar/Logo.tsx';
 import { Menu } from 'lucide-react';
 import ThemeToggle from './components/theme/ThemeToggle.tsx';
 import { useTranslation } from './hooks/useTranslation.ts';
+import { useAccentColor } from './hooks/useAccentColor.ts';
 
 // Main App Content Component that can access translation context
 function AppContent() {
@@ -34,7 +35,7 @@ function AppContent() {
   }, []);
 
   // Configure React error handling
-  React.useEffect(() => {
+  useEffect(() => {
     const originalConsoleError = console.error;
     console.error = (...args) => {
       logger.error('React Console Error:', args);
@@ -50,9 +51,39 @@ function AppContent() {
     setIsCollapsed(!isCollapsed);
   };
 
+  // Mobile Get Started component so it can access AppContent scope (t, state)
+  function MobileGetStarted() {
+    const accent = useAccentColor();
+    return (
+      <button
+        className="h-7 px-3 rounded-full flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
+        type="button"
+        onClick={() => setShowSignUpModal(true)}
+        style={{ backgroundColor: accent.primary }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = accent.hover }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = accent.primary }}
+      >
+        {t('getStarted')}
+      </button>
+    );
+  }
+
+  function MobileContinueEmail() {
+    const accent = useAccentColor();
+    return (
+      <button
+        type="button"
+        className="w-full py-2 px-4 text-white rounded-md transition-colors"
+        style={{ backgroundColor: accent.primary }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = accent.hover }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = accent.primary }}
+      >
+        Continue with email
+      </button>
+    );
+  }
+
   return (
-    <LanguageProvider>
-    <ThemeProvider>
       <div className="flex min-h-screen bg-white dark:bg-[#111111] text-gray-900 dark:text-white transition-colors duration-200">
         {!isMobilePortrait && (
           <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
@@ -70,21 +101,15 @@ function AppContent() {
               </div>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
-                <button
-                  className="h-7 px-3 rounded-full flex items-center justify-center text-sm font-medium bg-[#007BFF] hover:bg-[#0056b3] text-white transition-colors shadow-md"
-                  type="button"
-                  onClick={() => setShowSignUpModal(true)}
-                >
-                  {t('getStarted')}
-                </button>
+                <MobileGetStarted />
               </div>
             </header>
             {/* Mobile Sidebar Drawer */}
             {mobileSidebarOpen && (
               <>
                 <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setMobileSidebarOpen(false)} />
-                <aside className="fixed top-0 left-0 z-50 h-full w-64 bg-[#f9f9f8] dark:bg-[#111111] border-r border-gray-200 dark:border-gray-800 shadow-lg transition-transform duration-300" style={{ transform: mobileSidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
-                  <Sidebar isCollapsed={false} toggleSidebar={() => setMobileSidebarOpen(false)} />
+                <aside className="fixed top-0 left-0 z-50 h-full w-64 shadow-lg transition-transform duration-300" style={{ transform: mobileSidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
+                  <Sidebar embedded isCollapsed={false} toggleSidebar={() => setMobileSidebarOpen(false)} />
                 </aside>
               </>
             )}
@@ -104,9 +129,7 @@ function AppContent() {
                   </div>
                   <p className="text-gray-600 dark:text-gray-300 mb-6">Create an account to save your searches and access premium features.</p>
                   <div className="flex flex-col gap-3">
-                    <button type="button" className="w-full py-2 px-4 bg-[#007BFF] hover:bg-[#0056b3] text-white rounded-md transition-colors">
-                      Continue with email
-                    </button>
+                    <MobileContinueEmail />
                     <button type="button" className="w-full py-2 px-4 bg-white dark:bg-[#222222] border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white rounded-md flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-[#333333] transition-colors">
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -130,11 +153,8 @@ function AppContent() {
           <Outlet />
         </main>
       </div>
-    </ThemeProvider>
-  </LanguageProvider>
   );
 }
-
 export default function App() {
   return (
     <LanguageProvider>

@@ -15,9 +15,12 @@ interface SidebarProps {
  isCollapsed: boolean;
  toggleSidebar: () => void;
  className?: string;
+ // When embedded inside another wrapper (like the mobile drawer),
+ // avoid using fixed positioning and let the parent control size and position.
+ embedded?: boolean;
 }
 
-export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
+export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }: SidebarProps) {
  const location = ReactRouterDom.useLocation();
   const { session } = useSession(); // Call useSession hook and safely access session
  const { currentLanguage } = useLanguage();
@@ -32,8 +35,8 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
   return (
     <>
       <aside
-        className={`fixed left-0 top-0 h-screen bg-[#f9f9f8] dark:bg-[#2a2a2a] border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 ${
-          isCollapsed ? "w-20" : "w-48"
+        className={`${embedded ? 'relative h-full w-full' : 'fixed left-0 top-0 h-screen'} bg-[#f9f9f8] dark:bg-[#2a2a2a] border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 ${
+          embedded ? '' : (isCollapsed ? 'w-20' : 'w-48')
         }`}
       >
         <div className="flex-shrink-0 p-4">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Cookie } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../hooks/useTranslation.ts';
+import { useAccentColor } from '../../../src/hooks/useAccentColor';
 
 interface CookieConsentModalProps {
   onAcceptAll: () => void;
@@ -16,6 +17,7 @@ export default function CookieConsentModal({
   onShowSignUp
 }: CookieConsentModalProps) {
   const { t } = useTranslation();
+  const accentColor = useAccentColor();
   const [isVisible, setIsVisible] = useState(false);
   const navigate = useNavigate();
 
@@ -62,8 +64,8 @@ export default function CookieConsentModal({
       <div className="bg-[#2a2a2a] border border-gray-700 rounded-md shadow-xl max-w-[280px] p-3 relative">
         {/* Header with icon */}
         <div className="flex items-center gap-1.5 mb-2">
-          <div className="p-1 bg-gray-700 rounded-full">
-            <Cookie className="text-white" size={12} />
+          <div className="p-1 rounded-full" style={{ backgroundColor: 'transparent' }}>
+            <Cookie size={12} style={{ color: accentColor.primary }} />
           </div>
           <h3 className="text-white font-medium text-xs">{t('cookiePolicy')}</h3>
         </div>
@@ -75,7 +77,10 @@ export default function CookieConsentModal({
             <button
               type="button"
               onClick={handlePrivacyPolicyClick}
-              className="text-[#007BFF] hover:text-[#0056b3] underline transition-colors"
+              className="underline transition-colors"
+              style={{ color: accentColor.primary }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = accentColor.hover)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = accentColor.primary)}
             >
               {t('privacyPolicy')}
             </button>
@@ -88,7 +93,10 @@ export default function CookieConsentModal({
           <button
             type="button"
             onClick={handleNecessaryOnly}
-            className="flex-1 bg-[#007BFF] hover:bg-[#0056b3] text-white font-medium py-1.5 px-2 rounded text-[10px] transition-colors"
+            className="flex-1 text-white font-medium py-1.5 px-2 rounded text-[10px] transition-colors"
+            style={{ backgroundColor: accentColor.primary }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = accentColor.hover)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = accentColor.primary)}
           >
             {t('necessaryOnly')}
           </button>
