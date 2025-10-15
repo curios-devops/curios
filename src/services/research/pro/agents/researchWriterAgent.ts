@@ -4,7 +4,6 @@ import { logger } from '../../../../utils/logger';
 
 export interface ResearchWriterRequest {
   query: string;
-  focusMode: string;
   search_queries: string[];
   results: SearchResult[];
   thinking_process: string;
@@ -22,11 +21,10 @@ export interface ResearchWriterResult {
 export class ResearchWriterAgent {
   async execute(request: ResearchWriterRequest): Promise<AgentResponse<ResearchWriterResult>> {
     try {
-  const { query, focusMode, results } = request;
+  const { query, results } = request;
       
       logger.info('ResearchWriterAgent: Starting synthesis', { 
         query, 
-        focusMode, 
         resultsCount: results.length 
       });
 

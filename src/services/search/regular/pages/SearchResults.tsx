@@ -12,7 +12,6 @@ export default function Results() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
-  const mode = searchParams.get('mode') || 'focus';
 
   const [searchStartTime] = useState(Date.now());
   const [timeAgo, setTimeAgo] = useState('just now');
@@ -125,14 +124,13 @@ export default function Results() {
       }
 
       try {
-        logger.info('Starting search', { query, mode });
+        logger.info('Starting search', { query });
         
         if (isCurrentRequest && isMountedRef.current) {
           setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
         }
         
         const response = await performSearch(query, {
-          mode,
           isPro: false,
           onStatusUpdate: (status: string) => {
             if (isCurrentRequest && isMountedRef.current) {
@@ -191,8 +189,7 @@ export default function Results() {
         if (isCurrentRequest && isMountedRef.current) {
           logger.error('Search failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
-            query,
-            mode
+            query
           });
           setSearchState({
             isLoading: false,
@@ -209,7 +206,7 @@ export default function Results() {
     return () => {
       isCurrentRequest = false;
     };
-  }, [query, mode]);
+  }, [query]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">

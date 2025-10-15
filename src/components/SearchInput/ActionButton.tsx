@@ -1,17 +1,14 @@
-import { Focus, Globe, Users, PlayCircle, Calculator, Plane, HeartPulse, GraduationCap, LineChart } from 'lucide-react';
-import type { FocusMode } from '../search/types.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import type { LucideIcon } from 'lucide-react';
 
 interface ActionButtonProps {
   icon: LucideIcon;
-    label: string;
+  label: string;
   tooltip?: string;
   onClick: () => void;
   isActive?: boolean;
   disabled?: boolean;
-  mode?: FocusMode;
   className?: string;
 }
 
@@ -22,38 +19,10 @@ export default function ActionButton({
   onClick,
   isActive = false,
   disabled = false,
-  mode,
   className
 }: ActionButtonProps) {
   const { theme } = useTheme();
   const accentColor = useAccentColor();
-
-  const getFocusIcon = () => {
-    if (!mode || Icon !== Focus) return Icon;
-    
-    switch (mode) {
-      case 'web':
-        return Globe;
-      case 'social':
-        return Users;
-      case 'video':
-        return PlayCircle;
-      case 'math':
-        return Calculator;
-      case 'travel':
-        return Plane;
-      case 'health':
-        return HeartPulse;
-      case 'academic':
-        return GraduationCap;
-      case 'finance':
-        return LineChart;
-      default:
-        return Focus;
-    }
-  };
-
-  const FinalIcon = getFocusIcon();
 
   return (
     <div className="relative group">
@@ -85,7 +54,7 @@ export default function ActionButton({
         }}
         aria-label={label}
       >
-        <FinalIcon size={18} />
+        <Icon size={18} />
       </button>
       
       {tooltip && (

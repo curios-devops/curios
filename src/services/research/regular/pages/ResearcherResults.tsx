@@ -1,24 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ArrowLeft, Brain, Search as SearchIcon, FileText, Sparkles } from 'lucide-react';
-import { researchService, ResearchResult, ResearchProgressCallback } from '../../researchService';
+import { researchService } from '../../researchService';
+import { ResearchResult, ResearchProgressCallback, SearchResult } from '../../types';
 import ResearcherProgress from '../../../../components/ResearcherProgress.tsx';
 import TabSystem from '../../../../components/TabSystem.tsx';
-
-// Helper function to get focus mode display name
-const getFocusModeDisplayName = (focusMode: string): string => {
-  const focusDisplayNames: Record<string, string> = {
-    'health': 'Health & Medical',
-    'academic': 'Academic Research', 
-    'finance': 'Financial Analysis',
-    'travel': 'Travel & Local',
-    'social': 'Social Media',
-    'math': 'Mathematical',
-    'video': 'Video Content',
-    'web': 'Internet'
-  };
-  return focusDisplayNames[focusMode] || focusMode.charAt(0).toUpperCase() + focusMode.slice(1);
-};
 
 interface ProgressState {
   stage: string;
@@ -26,12 +12,7 @@ interface ProgressState {
   progress: number;
   thinkingSteps: string[];
   searchTerms: string[];
-  sources: Array<{
-    title: string;
-    url: string;
-    snippet: string;
-    image?: string;
-  }>;
+  sources: SearchResult[];
   currentAgent?: string;
   agentActions?: string[];
   researchPhase?: 'planning' | 'searching' | 'analyzing' | 'synthesizing' | 'citing';
@@ -42,7 +23,6 @@ export default function ResearcherResults() {
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
-  const focusMode = searchParams.get('mode') || 'web';
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<ResearchResult | null>(null);
@@ -66,12 +46,7 @@ export default function ResearcherResults() {
     progress: number, 
     thinkingStep: string,
     searchTerms: string[] = [],
-    sources: Array<{
-      title: string;
-      url: string;
-      snippet: string;
-      image?: string;
-    }> = [],
+    sources: SearchResult[] = [],
     currentAgent?: string,
     agentAction?: string,
     researchPhase?: 'planning' | 'searching' | 'analyzing' | 'synthesizing' | 'citing'
@@ -108,7 +83,7 @@ export default function ResearcherResults() {
       researchPhase: 'planning'
     });
 
-    researchService.performResearch(query, focusMode, true, handleProgress)
+    researchService.performResearch(query, true, handleProgress)
       .then((researchResult: ResearchResult) => {
         setResult(researchResult);
         setLoading(false);
@@ -117,7 +92,7 @@ export default function ResearcherResults() {
         setError('Failed to perform research: ' + (err?.message || 'Unknown error'));
         setLoading(false);
       });
-  }, [query, workflowStarted, focusMode]);
+  }, [query, workflowStarted]);
 
   const getPhaseIcon = (phase?: string) => {
     switch (phase) {
@@ -147,12 +122,6 @@ export default function ResearcherResults() {
               <Brain className="text-[#0095FF]" size={14} />
               <span className="text-[#0095FF] text-sm font-medium">Researcher</span>
             </div>
-            {/* Focus Mode Indicator next to Researcher */}
-            {focusMode && focusMode !== 'web' && (
-              <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 px-2 py-1 text-xs font-medium uppercase tracking-wider rounded">
-                {getFocusModeDisplayName(focusMode)}
-              </span>
-            )}
             {/* Research Phase Indicator */}
             {progressState.researchPhase && (
               <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
@@ -221,7 +190,6 @@ export default function ResearcherResults() {
             result={result}
             progressState={progressState}
             loading={loading}
-            focusMode={focusMode}
           />
         )}
       </main>

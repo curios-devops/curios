@@ -1,14 +1,13 @@
-import { RetrieverAgent } from '../search/regular/agents/retrieverAgent';
-import { ResearchPlannerAgent } from './pro/agents/researchPlannerAgent';
-import { ResearchWriterAgent } from './pro/agents/researchWriterAgent';
-import { AgentResponse, SearchResult, Perspective } from '../../commonApp/types/index';
-import { logger } from '../../utils/logger';
-import { ServiceHealthMonitor } from '../../commonService/utils/serviceHealth';
-import type { ImageResult, VideoResult } from '../../commonApp/types/index';
+import { SearchRetrieverAgent } from '../../../search/regular/agents/searchRetrieverAgent';
+import { ResearchPlannerAgent } from './researchPlannerAgent';
+import { ResearchWriterAgent } from './researchWriterAgent';
+import { AgentResponse, SearchResult } from '../../../../commonApp/types/index';
+import { logger } from '../../../../utils/logger';
+import { ServiceHealthMonitor } from '../../../../commonService/utils/serviceHealth';
+import type { ImageResult, VideoResult } from '../../../../commonApp/types/index';
 
 export interface ResearchRequest {
   query: string;
-  focusMode?: string;
   isPro?: boolean;
 }
 
@@ -37,13 +36,13 @@ export interface ResearchResult {
 
 export class ResearchSwarmController {
   private plannerAgent: ResearchPlannerAgent;
-  private retrieverAgent: RetrieverAgent;
+  private retrieverAgent: SearchRetrieverAgent;
   private writerAgent: ResearchWriterAgent;
   private healthMonitor: ServiceHealthMonitor;
 
   constructor() {
     this.plannerAgent = new ResearchPlannerAgent();
-    this.retrieverAgent = new RetrieverAgent();
+    this.retrieverAgent = new SearchRetrieverAgent();
     this.writerAgent = new ResearchWriterAgent();
     this.healthMonitor = ServiceHealthMonitor.getInstance();
   }
@@ -63,14 +62,14 @@ export class ResearchSwarmController {
     ) => void
   ): Promise<ResearchResult> {
     try {
-      const { query, focusMode = 'web', isPro = true } = request;
+      const { query, isPro = true } = request;
 
       // Validate the query
       if (!query?.trim()) {
         throw new Error('Research query cannot be empty');
       }
 
-      logger.info('Starting research query processing', { query, focusMode, isPro });
+      logger.info('Starting research query processing', { query, isPro });
 
       // Step 1: Planning Phase
       onStatusUpdate?.(
@@ -86,7 +85,7 @@ export class ResearchSwarmController {
       );
 
       const planResponse = await this.executeWithHealthCheck(
-        () => this.plannerAgent.execute({ query, focusMode }),
+        () => this.plannerAgent.execute({ query }),
         'ResearchPlannerAgent'
       ) as AgentResponse<{
         complexity: string;
@@ -124,20 +123,20 @@ export class ResearchSwarmController {
       for (const searchQuery of searchQueries.slice(0, 3)) { // Limit to 3 queries
         try {
           const searchResponse = await this.executeWithHealthCheck(
-            () => this.retrieverAgent.execute(searchQuery, [], isPro, 
-              (status: string) => onStatusUpdate?.(
+            () => this.retrieverAgent.execute(searchQuery, 
+              () => onStatusUpdate?.(
                 'Searching Sources',
                 'About 2-3 minutes remaining',
                 40 + (searchQueries.indexOf(searchQuery) * 10),
                 `Searching for: ${searchQuery}`,
                 searchQueries,
                 [],
-                'RetrieverAgent',
+                'SearchRetrieverAgent',
                 `Searching: ${searchQuery}`,
                 'searching'
               )
             ),
-            'RetrieverAgent'
+            'SearchRetrieverAgent'
           ) as AgentResponse<{
             results: SearchResult[];
             images: ImageResult[];
@@ -181,7 +180,6 @@ export class ResearchSwarmController {
       const writerResponse = await this.executeWithHealthCheck(
         () => this.writerAgent.execute({
           query,
-          focusMode,
           search_queries: searchQueries,
           results: uniqueResults,
           thinking_process: thinkingProcess

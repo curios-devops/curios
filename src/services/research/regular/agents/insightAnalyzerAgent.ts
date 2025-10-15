@@ -3,7 +3,6 @@ import { logger } from '../../../../utils/logger';
 
 export interface InsightAnalysisRequest {
   query: string;
-  focusMode: string;
 }
 
 export interface InsightAnalysisResult {
@@ -16,9 +15,9 @@ export interface InsightAnalysisResult {
 export class InsightAnalyzerAgent {
   async execute(request: InsightAnalysisRequest): Promise<AgentResponse<InsightAnalysisResult>> {
     try {
-      const { query, focusMode } = request;
+      const { query } = request;
       
-      logger.info('InsightAnalyzerAgent: Starting analysis', { query, focusMode });
+      logger.info('InsightAnalyzerAgent: Starting analysis', { query });
 
       const systemPrompt = `You are an Insight Analyzer Agent responsible for identifying key areas for actionable insight generation.
 
@@ -27,8 +26,6 @@ Your task is to:
 2. Generate 3-4 strategic search queries optimized for insight discovery
 3. Create an analysis strategy focused on finding patterns, trends, and actionable intelligence
 4. Predict the types of insights that should be discoverable
-
-Focus Mode Context: ${this.getFocusContext(focusMode)}
 
 Guidelines for Insight Areas:
 - Focus on actionable intelligence rather than basic facts
@@ -54,7 +51,6 @@ Response must be valid JSON with this structure:
       const userPrompt = `Analyze this query for insight generation opportunities:
 
 Query: "${query}"
-Focus Mode: ${focusMode}
 
 Identify the key areas where actionable insights can be generated and create an optimal search strategy for insight discovery.`;
 
@@ -90,11 +86,11 @@ Identify the key areas where actionable insights can be generated and create an 
         analysisResult = JSON.parse(content);
       } catch (parseError) {
         logger.warn('Failed to parse analysis response, using fallback', { content });
-        analysisResult = this.getFallbackAnalysis(query, focusMode);
+        analysisResult = this.getFallbackAnalysis(query);
       }
 
       // Validate and sanitize the result
-      analysisResult = this.validateAnalysisResult(analysisResult, query, focusMode);
+      analysisResult = this.validateAnalysisResult(analysisResult, query);
 
       logger.info('InsightAnalyzerAgent: Analysis completed', {
         insightAreasCount: analysisResult.insight_areas.length,
@@ -115,27 +111,12 @@ Identify the key areas where actionable insights can be generated and create an 
       // Return fallback analysis
       return {
         success: true,
-        data: this.getFallbackAnalysis(request.query, request.focusMode)
+        data: this.getFallbackAnalysis(request.query)
       };
     }
   }
 
-  private getFocusContext(focusMode: string): string {
-    const contexts: Record<string, string> = {
-      'health': 'Focus on health trends, medical innovations, treatment outcomes, health policy implications, and public health insights',
-      'academic': 'Emphasize research trends, academic developments, institutional insights, scholarly impact, and educational implications',
-      'finance': 'Prioritize market trends, financial patterns, investment insights, economic indicators, and financial strategy implications',
-      'travel': 'Look for travel trends, destination insights, tourism patterns, travel technology developments, and industry changes',
-      'social': 'Focus on social trends, community insights, behavioral patterns, social media analytics, and cultural implications',
-      'math': 'Emphasize mathematical trends, computational insights, application patterns, and technological mathematical developments',
-      'video': 'Prioritize video content trends, multimedia insights, platform analytics, and visual communication patterns',
-      'web': 'Cover general web trends, digital insights, technology patterns, and online behavior analytics'
-    };
-    
-    return contexts[focusMode] || contexts['web'];
-  }
-
-  private validateAnalysisResult(result: InsightAnalysisResult, query: string, focusMode: string): InsightAnalysisResult {
+  private validateAnalysisResult(result: InsightAnalysisResult, query: string): InsightAnalysisResult {
     // Ensure insight_areas is valid and not empty
     if (!result.insight_areas || !Array.isArray(result.insight_areas) || result.insight_areas.length === 0) {
       result.insight_areas = [
@@ -168,7 +149,7 @@ Identify the key areas where actionable insights can be generated and create an 
     }
 
     // Ensure required fields are present
-    result.analysis_strategy = result.analysis_strategy || `Comprehensive insight analysis on ${query} using ${focusMode} focus to identify trends, patterns, and actionable intelligence`;
+    result.analysis_strategy = result.analysis_strategy || `Comprehensive insight analysis on ${query} to identify trends, patterns, and actionable intelligence`;
     
     result.expected_insights = result.expected_insights || [
       'Current market trends and patterns',
@@ -181,7 +162,7 @@ Identify the key areas where actionable insights can be generated and create an 
     return result;
   }
 
-  private getFallbackAnalysis(query: string, focusMode: string): InsightAnalysisResult {
+  private getFallbackAnalysis(query: string): InsightAnalysisResult {
     return {
       insight_areas: [
         `Current trends in ${query}`,
@@ -196,7 +177,7 @@ Identify the key areas where actionable insights can be generated and create an 
         `${query} growth forecast`,
         `${query} industry analysis`
       ],
-      analysis_strategy: `Comprehensive insight analysis approach for "${query}" using ${focusMode} focus mode. Strategy involves analyzing current trends, market dynamics, growth patterns, and competitive landscape to generate actionable insights.`,
+      analysis_strategy: `Comprehensive insight analysis approach for "${query}". Strategy involves analyzing current trends, market dynamics, growth patterns, and competitive landscape to generate actionable insights.`,
       expected_insights: [
         'Market trend identification',
         'Growth pattern analysis',

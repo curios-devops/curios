@@ -15,7 +15,6 @@ export default function Results() {
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
-  const mode = searchParams.get('mode') || 'focus';
 
   const [searchStartTime] = useState(Date.now());
   const [timeAgo, setTimeAgo] = useState('just now');
@@ -48,11 +47,10 @@ export default function Results() {
       }
 
       try {
-        logger.info('Starting search', { query, mode });
+        logger.info('Starting search', { query });
         setSearchState((prev: SearchState) => ({ ...prev, isLoading: true, error: null }));
         
         const response = await performSearch(query, {
-          mode,
           isPro: false,
           onStatusUpdate: (status: string) => {
             logger.debug('Search status update', { status });
@@ -74,8 +72,7 @@ export default function Results() {
       } catch (error) {
         logger.error('Search failed', {
           error: error instanceof Error ? error.message : 'Unknown error',
-          query,
-          mode
+          query
         });
 
         setSearchState({
@@ -87,7 +84,7 @@ export default function Results() {
     };
 
     fetchResults();
-  }, [query, mode]);
+  }, [query]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">

@@ -4,33 +4,8 @@ import { useLocation, useNavigate } from 'react-router';
 import { ArrowLeft, BookOpen, TrendingUp, BarChart3, Target } from 'lucide-react';
 import { researchService } from '../../researchService.ts';
 import { InsightProgressCallback, SearchResult } from '../../types.ts';
-import { InsightResult } from '../researchRegularIndex.ts';
 import ResearchProgress from '../../../../components/ResearchProgress';
 import TabSystem from '../../../../components/TabSystem';
-
-// Helper function to get focus mode display name
-const getFocusModeDisplayName = (focusMode: string): string => {
-  const focusDisplayNames: Record<string, string> = {
-    'health': 'Health & Medical',
-    'academic': 'Academic Research', 
-    'finance': 'Financial Analysis',
-    'travel': 'Travel & Local',
-    'social': 'Social Media',
-    'math': 'Mathematical',
-    'video': 'Video Content',
-    'web': 'Internet'
-  };
-  return focusDisplayNames[focusMode] || focusMode.charAt(0).toUpperCase() + focusMode.slice(1);
-};
-
-// Helper function to map focus mode to search type
-const getSearchTypeFromFocusMode = (focusMode: string): 'web' | 'news' | 'academic' => {
-  if (focusMode === 'academic') {
-    return 'academic';
-  }
-  // Map other focus modes to appropriate search types
-  return 'web'; // Default to web search for most focus modes
-};
 
 interface ProgressState {
   stage: string;
@@ -49,10 +24,9 @@ export default function InsightsResults() {
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
-  const focusMode = searchParams.get('mode') || 'web'; // Extract focus mode from URL
 
   const [loading, setLoading] = useState(true);
-  const [result, setResult] = useState<InsightResult | null>(null);
+  const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [workflowStarted, setWorkflowStarted] = useState(false);
   const [progressState, setProgressState] = useState<ProgressState>({
@@ -110,8 +84,8 @@ export default function InsightsResults() {
       insightPhase: 'analyzing'
     });
 
-    researchService.performInsightAnalysis(query, getSearchTypeFromFocusMode(focusMode), false, handleProgress)
-      .then((insightResult: InsightResult) => {
+    researchService.performInsightAnalysis(query, false, handleProgress)
+      .then((insightResult) => {
         setResult(insightResult);
         setLoading(false);
       })
@@ -119,7 +93,7 @@ export default function InsightsResults() {
         setError('Failed to perform insight analysis: ' + (err?.message || 'Unknown error'));
         setLoading(false);
       });
-  }, [query, workflowStarted, focusMode]);
+  }, [query, workflowStarted]);
 
   const getPhaseIcon = (phase?: string) => {
     switch (phase) {
@@ -148,12 +122,6 @@ export default function InsightsResults() {
               <BookOpen className="text-[#0095FF]" size={14} />
               <span className="text-[#0095FF] text-sm font-medium">Insights</span>
             </div>
-            {/* Focus Mode Indicator next to Insights */}
-            {focusMode && focusMode !== 'web' && (
-              <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 text-xs font-medium uppercase tracking-wider rounded">
-                {getFocusModeDisplayName(focusMode)}
-              </span>
-            )}
             {/* Insight Phase Indicator */}
             {progressState.insightPhase && (
               <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
@@ -219,7 +187,6 @@ export default function InsightsResults() {
             result={result}
             progressState={progressState}
             loading={loading}
-            focusMode={focusMode}
           />
         )}
       </main>

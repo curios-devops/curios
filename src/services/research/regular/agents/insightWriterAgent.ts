@@ -3,7 +3,6 @@ import { logger } from '../../../../utils/logger';
 
 export interface InsightWriterRequest {
   query: string;
-  focusMode: string;
   insight_areas: string[];
   search_queries: string[];
   results: SearchResult[];
@@ -23,11 +22,10 @@ export interface InsightWriterResult {
 export class InsightWriterAgent {
   async execute(request: InsightWriterRequest): Promise<AgentResponse<InsightWriterResult>> {
     try {
-      const { query, focusMode, insight_areas, search_queries, results, analysis_strategy } = request;
+      const { query, insight_areas, search_queries, results, analysis_strategy } = request;
       
       logger.info('InsightWriterAgent: Starting insight generation', { 
         query, 
-        focusMode, 
         resultsCount: results.length,
         insightAreasCount: insight_areas.length
       });
@@ -56,8 +54,6 @@ REQUIREMENTS:
 5. **Follow-up Questions**: 4-5 strategic questions for deeper investigation
 6. **Citations**: Properly formatted citations with inline references
 
-Focus Mode: ${this.getFocusContext(focusMode)}
-
 INSIGHT AREAS TO ADDRESS:
 ${insight_areas.map(area => `- ${area}`).join('\n')}
 
@@ -85,7 +81,6 @@ Response must be valid JSON with this exact structure:
       const userPrompt = `Generate comprehensive strategic insights for:
 
 Query: "${query}"
-Focus Mode: ${focusMode}
 Target Insight Areas: ${insight_areas.join(', ')}
 Search Strategy: ${search_queries.join(', ')}
 Analysis Approach: ${analysis_strategy}
@@ -156,21 +151,6 @@ Create actionable insights that identify trends, patterns, opportunities, and st
         data: this.getFallbackInsights(request.query, request.results)
       };
     }
-  }
-
-  private getFocusContext(focusMode: string): string {
-    const contexts: Record<string, string> = {
-      'health': 'Generate health industry insights, medical trend analysis, healthcare innovation patterns, and public health implications',
-      'academic': 'Focus on educational insights, research trends, academic innovation, institutional analysis, and scholarly impact',
-      'finance': 'Provide financial market insights, investment trends, economic analysis, risk assessment, and financial strategy implications',
-      'travel': 'Deliver travel industry insights, tourism trends, destination analysis, travel technology, and hospitality patterns',
-      'social': 'Generate social trend insights, community behavior analysis, social media patterns, and cultural implications',
-      'math': 'Focus on mathematical application insights, computational trends, analytical method developments, and quantitative analysis',
-      'video': 'Analyze video content trends, multimedia insights, platform dynamics, and visual communication patterns',
-      'web': 'Provide comprehensive digital insights, web technology trends, online behavior patterns, and internet ecosystem analysis'
-    };
-    
-    return contexts[focusMode] || contexts['web'];
   }
 
   private formatResultsForContext(results: SearchResult[]): string {

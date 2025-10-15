@@ -40,26 +40,10 @@ const getCurrentDateTime = () => {
   return now.toLocaleDateString('en-US', options).toUpperCase();
 };
 
-// Helper function to get focus mode display name
-const getFocusModeDisplayName = (focusMode: string): string => {
-  const focusDisplayNames: Record<string, string> = {
-    'health': 'Health & Medical',
-    'academic': 'Academic Research', 
-    'finance': 'Financial Analysis',
-    'travel': 'Travel & Local',
-    'social': 'Social Media',
-    'math': 'Mathematical',
-    'video': 'Video Content',
-    'web': 'Internet'
-  };
-  return focusDisplayNames[focusMode] || focusMode.charAt(0).toUpperCase() + focusMode.slice(1);
-};
-
 interface TabSystemProps {
   result: any;
   progressState: any;
   loading: boolean;
-  focusMode?: string;
 }
 
 interface SourceItemProps {
@@ -101,16 +85,13 @@ const SourceItem: React.FC<SourceItemProps> = ({ source, index }) => (
   </div>
 );
 
-export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loading, focusMode }) => {
+export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loading }) => {
   const [activeTab, setActiveTab] = useState<'curios' | 'steps' | 'sources'>('curios');
 
   // Handle follow-up question clicks
   const handleFollowUpClick = (question: string) => {
     const searchParams = new URLSearchParams();
     searchParams.set('q', question);
-    if (focusMode && focusMode !== 'web') {
-      searchParams.set('mode', focusMode);
-    }
     searchParams.set('type', 'insights');
     // Force page reload to trigger new insights workflow
     window.location.href = `/insights-results?${searchParams.toString()}`;
@@ -285,12 +266,6 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Research Process</h2>
-              {/* Focus Mode Info */}
-              {focusMode && focusMode !== 'web' && (
-                <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                  Researched with {getFocusModeDisplayName(focusMode)}
-                </div>
-              )}
             </div>
             
             {/* Process Steps - now first */}

@@ -1,33 +1,53 @@
 import { useState } from 'react';
-import { Focus, Paperclip } from 'lucide-react';
+import { type LucideIcon, Plus } from 'lucide-react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+
+// SVG for mic icon, styled to match lucide-react icons
+const MicIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg ref={ref} width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="9" y="2" width="6" height="12" rx="3" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="22" />
+    <line x1="8" y1="22" x2="16" y2="22" />
+  </svg>
+)) as LucideIcon;
+MicIcon.displayName = 'MicIcon';
+
+// SVG for camera icon, styled to match lucide-react icons
+const CameraIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg ref={ref} width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="3" y="7" width="18" height="13" rx="2" />
+    <circle cx="12" cy="13.5" r="3.5" />
+    <path d="M8.5 7l1-3h5l1 3" />
+  </svg>
+)) as LucideIcon;
+CameraIcon.displayName = 'CameraIcon';
 
 import ActionButton from '../SearchInput/ActionButton.tsx';
 import FunctionSelector from '../SearchInput/FunctionSelector.tsx';
 import type { FunctionType } from '../SearchInput/FunctionSelector.tsx';
 import SearchButton from '../SearchInput/SearchButton.tsx';
 import SearchTextArea from '../SearchInput/SearchTextArea.tsx';
-import FocusModal from './FocusModal.tsx';
 import ProModal from '../subscription/ProModal.tsx';
 import SignUpModal from '../auth/SignUpModal.tsx';
 import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
 import { useProQuota } from '../../hooks/useProQuota.ts';
 import { useSession } from '../../hooks/useSession.ts';
-import type { FocusMode } from './types.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
+import { useTranslation } from '../../hooks/useTranslation.ts';
 
 export default function ThreeSelector() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [selectedFunction, setSelectedFunction] = useState<FunctionType>('search');
-  const [selectedMode, setSelectedMode] = useState<FocusMode>('focus');
-  const [showFocusModal, setShowFocusModal] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const { decrementSearches, remainingSearches, hasSearchesLeft } = useSearchLimit();
   const { decrementProQuota, hasProQuotaLeft, canAccessPro } = useProQuota();
   const { session } = useSession();
   const accentColor = useAccentColor();
+  const { t } = useTranslation();
 
   // Function mapping for navigation
   const getFunctionRoute = (functionType: FunctionType): string => {
@@ -99,9 +119,8 @@ export default function ThreeSelector() {
     if (success) {
       const route = getFunctionRoute(selectedFunction);
       const proParam = isProFeature ? '&pro=true' : '';
-      const modeParam = selectedMode !== 'focus' ? `&mode=${selectedMode}` : '';
       
-      navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${proParam}${modeParam}`);
+      navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${proParam}`);
     }
   };
 
@@ -142,39 +161,34 @@ export default function ThreeSelector() {
 
         {/* Button bar - inside the unified container */}
         <div className="flex items-center justify-between px-4 py-1.5">
-          {/* Left side: Function Selector */}
-          <div className="flex items-center gap-4">
-            <FunctionSelector
-              selectedFunction={selectedFunction}
-              onFunctionSelect={handleFunctionSelect}
-              onSignUpRequired={handleSignUpRequired}
-              className="min-w-0" // Allow shrinking
-            />
-          </div>
+          {/* Left side: Function Selector only */}
+          <FunctionSelector
+            selectedFunction={selectedFunction}
+            onFunctionSelect={handleFunctionSelect}
+            onSignUpRequired={handleSignUpRequired}
+            className="min-w-0" // Allow shrinking
+          />
 
-          {/* Right side: Action buttons and Search Button */}
-          <div className="flex items-center gap-3">
+          {/* Right side: Plus, Camera, Mic, and Search Button */}
+          <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
             <ActionButton
-              icon={Focus}
-              label="Focus"
-              tooltip="Set a focus for your sources"
-              onClick={() => setShowFocusModal(true)}
-              mode={selectedMode}
+              icon={Plus}
+              label={t('addFilesAndMore')}
+              tooltip={t('addFilesAndMore')}
+              onClick={() => {}}
             />
             <ActionButton
-              icon={Paperclip}
-              label="Attach"
-              tooltip="Attach files to your search"
-              onClick={() => {
-                if (!session) {
-                  setShowSignUpModal(true);
-                } else {
-                  // Handle file attachment
-                  console.log('File attachment clicked');
-                }
-              }}
+              icon={CameraIcon}
+              label={t('askWithImage')}
+              tooltip={t('askWithImage')}
+              onClick={() => {}}
             />
-
+            <ActionButton
+              icon={MicIcon}
+              label={t('askByVoice')}
+              tooltip={t('askByVoice')}
+              onClick={() => {}}
+            />
             <SearchButton
               onClick={handleSearch}
               isActive={query.trim().length > 0}
@@ -194,13 +208,6 @@ export default function ThreeSelector() {
       )}
 
       {/* Modals */}
-      <FocusModal 
-        isOpen={showFocusModal}
-        onClose={() => setShowFocusModal(false)}
-        selectedMode={selectedMode}
-        onSelectMode={setSelectedMode}
-      />
-
       <ProModal 
         isOpen={showProModal}
         onClose={() => setShowProModal(false)}

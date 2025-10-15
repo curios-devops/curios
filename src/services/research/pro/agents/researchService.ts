@@ -1,12 +1,6 @@
-import { ResearchSwarmController } from './researchSwarmController.ts';
-import { InsightSwarmController } from './regular/agents/insightSwarmController.ts';
-import type { 
-  ResearchRequest, 
-  ResearchResult,
-  InsightRequest, 
-  InsightResult 
-} from '../../commonApp/types/index.ts';
-import { logger } from '../../utils/logger.ts';
+import { ResearchSwarmController, ResearchRequest, ResearchResult } from './researchSwarmController';
+import { InsightSwarmController, InsightRequest, InsightResult } from '../../regular/agents/insightSwarmController';
+import { logger } from '../../../../utils/logger';
 
 export type ResearchProgressCallback = (
   stage: string,
@@ -53,16 +47,14 @@ class ResearchService {
 
   async performResearch(
     query: string,
-    focusMode: string = 'web',
     isPro: boolean = true,
     onProgress?: ResearchProgressCallback
   ): Promise<ResearchResult> {
     try {
-      logger.info('ResearchService: Starting research', { query, focusMode, isPro });
+      logger.info('ResearchService: Starting research', { query, isPro });
 
       const request: ResearchRequest = {
         query: query.trim(),
-        focusMode,
         isPro
       };
 
@@ -87,16 +79,14 @@ class ResearchService {
 
   async performInsightAnalysis(
     query: string,
-    focusMode: string = 'web',
     isPro: boolean = false,
     onProgress?: InsightProgressCallback
   ): Promise<InsightResult> {
     try {
-      logger.info('ResearchService: Starting insight analysis', { query, focusMode, isPro });
+      logger.info('ResearchService: Starting insight analysis', { query, isPro });
 
       const request: InsightRequest = {
         query: query.trim(),
-        focusMode,
         isPro
       };
 
@@ -126,4 +116,4 @@ export const researchService = new ResearchService();
 
 // Export types for external use
 export type { ResearchResult } from './researchSwarmController';
-export type { InsightResult } from './regular/agents/insightSwarmController';
+export type { InsightResult } from '../../regular/agents/insightSwarmController';

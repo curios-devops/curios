@@ -35,7 +35,6 @@ export interface ResearchData {
 
 export interface ResearchRequest {
   query: string;
-  searchType?: 'web' | 'news' | 'academic';
   useProFeatures?: boolean;
   maxResults?: number;
   userId?: string;

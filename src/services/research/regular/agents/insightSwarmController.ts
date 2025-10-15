@@ -1,13 +1,12 @@
 import { InsightAnalyzerAgent, InsightAnalysisRequest as _InsightAnalysisRequest, InsightAnalysisResult } from './insightAnalyzerAgent';
 import { InsightWriterAgent, InsightWriterRequest as _InsightWriterRequest, InsightWriterResult } from './insightWriterAgent';
-import { RetrieverAgent } from '../../../search/regular/agents/searchRetrieverAgent';
+import { SearchRetrieverAgent } from '../../../search/regular/agents/searchRetrieverAgent';
 import { AgentResponse, SearchResult, ImageResult, VideoResult } from '../../../../commonApp/types/index';
 import { logger } from '../../../../utils/logger';
 import { ServiceHealthMonitor } from '../../../../commonService/utils/serviceHealth';
 
 export interface InsightRequest {
   query: string;
-  focusMode?: string;
   isPro?: boolean;
 }
 
@@ -38,13 +37,13 @@ export interface InsightResult {
 
 export class InsightSwarmController {
   private analyzerAgent: InsightAnalyzerAgent;
-  private retrieverAgent: RetrieverAgent;
+  private retrieverAgent: SearchRetrieverAgent;
   private writerAgent: InsightWriterAgent;
   private healthMonitor: ServiceHealthMonitor;
 
   constructor() {
     this.analyzerAgent = new InsightAnalyzerAgent();
-    this.retrieverAgent = new RetrieverAgent();
+    this.retrieverAgent = new SearchRetrieverAgent();
     this.writerAgent = new InsightWriterAgent();
     this.healthMonitor = ServiceHealthMonitor.getInstance();
   }
@@ -64,14 +63,14 @@ export class InsightSwarmController {
     ) => void
   ): Promise<InsightResult> {
     try {
-      const { query, focusMode = 'web', isPro = false } = request;
+      const { query, isPro = false } = request;
 
       // Validate the query
       if (!query?.trim()) {
         throw new Error('Insight query cannot be empty');
       }
 
-      logger.info('Starting insight query processing', { query, focusMode, isPro });
+      logger.info('Starting insight query processing', { query, isPro });
 
       // Step 1: Analysis Phase
       onStatusUpdate?.(
@@ -87,7 +86,7 @@ export class InsightSwarmController {
       );
 
       const analysisResponse = await this.executeWithHealthCheck(
-        () => this.analyzerAgent.execute({ query, focusMode }),
+        () => this.analyzerAgent.execute({ query }),
         'InsightAnalyzerAgent'
       ) as AgentResponse<InsightAnalysisResult>;
 
@@ -120,19 +119,22 @@ export class InsightSwarmController {
 
       for (const searchQuery of searchQueries.slice(0, 3)) {
         try {
+          onStatusUpdate?.(
+            'Searching Insight Sources',
+            'About 1-2 minutes remaining',
+            40 + (searchQueries.indexOf(searchQuery) * 10),
+            `Searching for insights: ${searchQuery}`,
+            searchQueries,
+            [],
+            'RetrieverAgent',
+            `Searching: ${searchQuery}`,
+            'searching'
+          );
+
           const searchResponse = await this.executeWithHealthCheck(
-            () => this.retrieverAgent.execute(searchQuery, [], isPro, 
-              (_status: string) => onStatusUpdate?.(
-                'Searching Insight Sources',
-                'About 1-2 minutes remaining',
-                40 + (searchQueries.indexOf(searchQuery) * 10),
-                `Searching for insights: ${searchQuery}`,
-                searchQueries,
-                [],
-                'RetrieverAgent',
-                `Searching: ${searchQuery}`,
-                'searching'
-              )
+            () => this.retrieverAgent.execute(
+              searchQuery,
+              (status: string) => logger.info('Search status:', status)
             ),
             'RetrieverAgent'
           ) as AgentResponse<{
@@ -178,7 +180,6 @@ export class InsightSwarmController {
       const writerResponse = await this.executeWithHealthCheck(
         () => this.writerAgent.execute({
           query,
-          focusMode,
           insight_areas: insightAreas,
           search_queries: searchQueries,
           results: uniqueResults,
@@ -261,7 +262,7 @@ export class InsightSwarmController {
       });
 
       // Return fallback result
-      return this.getFallbackResult(request.query, request.focusMode || 'web');
+      return this.getFallbackResult(request.query);
     }
   }
 
@@ -332,7 +333,7 @@ export class InsightSwarmController {
     ];
   }
 
-  private getFallbackResult(query: string, focusMode: string): InsightResult {
+  private getFallbackResult(query: string): InsightResult {
     return {
       query,
       headline: `Strategic Insights: ${query}`,
@@ -340,7 +341,7 @@ export class InsightSwarmController {
       short_summary: `Strategic analysis of ${query} with focus on actionable insights and recommendations.`,
       markdown_report: this.generateFallbackReport(query, []),
       follow_up_questions: this.generateFallbackQuestions(query),
-      thinking_process: `Strategic analysis approach for ${query} using ${focusMode} focus mode`,
+      thinking_process: `Strategic analysis approach for ${query}`,
       progress_updates: ['Analysis initiated', 'Data gathered', 'Insights generated'],
       search_queries: [query],
       sources: [],

@@ -51,55 +51,8 @@ function getCurrentYear(): string {
   return new Date().getFullYear().toString();
 }
 
-// Helper function to get focus-specific context
-function getFocusContext(focusMode?: string): { approach: string; searchSuffix: string } {
-  switch (focusMode) {
-    case 'health':
-      return {
-        approach: 'with a focus on health and medical perspectives',
-        searchSuffix: 'health medical wellness'
-      };
-    case 'academic':
-      return {
-        approach: 'with emphasis on academic research and scholarly sources',
-        searchSuffix: 'academic research papers scholarly'
-      };
-    case 'finance':
-      return {
-        approach: 'focusing on financial implications and market analysis',
-        searchSuffix: 'financial market economic business'
-      };
-    case 'travel':
-      return {
-        approach: 'with a travel and local information perspective',
-        searchSuffix: 'travel local destinations tourism'
-      };
-    case 'social':
-      return {
-        approach: 'emphasizing social discussions and community perspectives',
-        searchSuffix: 'social community discussion opinion'
-      };
-    case 'math':
-      return {
-        approach: 'with focus on mathematical and computational aspects',
-        searchSuffix: 'mathematical computational calculation analysis'
-      };
-    case 'video':
-      return {
-        approach: 'prioritizing video content and visual media sources',
-        searchSuffix: 'video visual media content'
-      };
-    case 'web':
-    default:
-      return {
-        approach: 'across comprehensive web sources',
-        searchSuffix: ''
-      };
-  }
-}
-
 // Planner Agent - Creates journalistic research strategy
-async function plannerAgent(query: string, focusMode?: string): Promise<SearchPlan> {
+async function plannerAgent(query: string): Promise<SearchPlan> {
   try {
     const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
       ? import.meta.env.VITE_OPENAI_API_URL
@@ -117,11 +70,11 @@ async function plannerAgent(query: string, focusMode?: string): Promise<SearchPl
           messages: [
             {
               role: 'system',
-              content: `You are an elite investigative journalist with decades of experience. Your expertise encompasses deep investigative research, fact-checking, compelling narrative construction, and balanced perspective presentation.\n\nCURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}\n\n${focusMode ? `FOCUS MODE: You are specifically focusing on \"${focusMode}\" sources and perspectives. Tailor your research strategy accordingly.` : ''}\n\nCreate a journalistic research strategy that focuses on:\n- Authoritative sources and expert opinions\n- Current developments and emerging trends\n- Stakeholder perspectives and balanced viewpoints\n- Factual evidence and statistical data\n- Future implications and predictions\n\nKeep your thinking process concise but strategic - around 2-3 sentences explaining your journalistic approach.\n\nOutput valid JSON with this structure:\n{\n  \"thinking_process\": \"Your concise journalistic strategy for investigating this topic (2-3 sentences max)\",\n  \"key_areas_to_research\": [\"Area 1\", \"Area 2\", \"Area 3\"],\n  \"searches\": [\n    {\"reason\": \"Journalistic rationale\", \"query\": \"Targeted search term\"}\n  ]\n}`
+              content: `You are an elite investigative journalist with decades of experience. Your expertise encompasses deep investigative research, fact-checking, compelling narrative construction, and balanced perspective presentation.\n\nCURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}\n\nCreate a journalistic research strategy that focuses on:\n- Authoritative sources and expert opinions\n- Current developments and emerging trends\n- Stakeholder perspectives and balanced viewpoints\n- Factual evidence and statistical data\n- Future implications and predictions\n\nKeep your thinking process concise but strategic - around 2-3 sentences explaining your journalistic approach.\n\nOutput valid JSON with this structure:\n{\n  \"thinking_process\": \"Your concise journalistic strategy for investigating this topic (2-3 sentences max)\",\n  \"key_areas_to_research\": [\"Area 1\", \"Area 2\", \"Area 3\"],\n  \"searches\": [\n    {\"reason\": \"Journalistic rationale\", \"query\": \"Targeted search term\"}\n  ]\n}`
             },
             {
               role: 'user',
-              content: `Create a journalistic research strategy for: "${query}"${focusMode ? ` (Focus: ${focusMode})` : ''}`
+              content: `Create a journalistic research strategy for: "${query}"`
             }
           ],
           response_format: { type: "json_object" },
@@ -140,14 +93,13 @@ async function plannerAgent(query: string, focusMode?: string): Promise<SearchPl
     logger.warn('Planner agent failed, using fallback:', error);
   }
   // Fallback plan with query-specific thinking
-  const focusContext = getFocusContext(focusMode);
   return {
-    thinking_process: `As an investigative journalist, I'll examine "${query}" ${focusContext.approach} through expert interviews, data analysis, and stakeholder perspectives to deliver balanced, fact-based reporting.`,
+    thinking_process: `As an investigative journalist, I'll examine "${query}" across comprehensive web sources through expert interviews, data analysis, and stakeholder perspectives to deliver balanced, fact-based reporting.`,
     key_areas_to_research: ["Expert analysis", "Current trends", "Impact assessment"],
     searches: [
-      { reason: "Expert insights", query: `${query} expert analysis opinion ${focusContext.searchSuffix}` },
-      { reason: "Latest developments", query: `${query} ${getCurrentYear()} trends news ${focusContext.searchSuffix}` },
-      { reason: "Impact evidence", query: `${query} research data statistics ${focusContext.searchSuffix}` }
+      { reason: "Expert insights", query: `${query} expert analysis opinion` },
+      { reason: "Latest developments", query: `${query} ${getCurrentYear()} trends news` },
+      { reason: "Impact evidence", query: `${query} research data statistics` }
     ]
   };
 }
@@ -202,13 +154,12 @@ async function searchAgent(searchQuery: string): Promise<{ summary: string; sour
 }
 
 // Real web search using OpenAI with web search capabilities
-async function performOpenAIWebSearch(query: string, focusMode?: string): Promise<SourceInfo[]> {
+async function performOpenAIWebSearch(query: string): Promise<SourceInfo[]> {
   try {
     const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
       ? import.meta.env.VITE_OPENAI_API_URL
       : 'VITE_OPENAI_API_URL';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    const focusContext = getFocusSearchContext(focusMode);
     const response = await fetch(supabaseEdgeUrl, {
       method: 'POST',
       headers: {
@@ -220,7 +171,7 @@ async function performOpenAIWebSearch(query: string, focusMode?: string): Promis
           messages: [
             {
               role: 'system',
-              content: `You are an expert web researcher with access to current internet information. Your task is to find and provide real web sources for the given query.\n\n${focusContext ? `FOCUS MODE: ${focusContext}` : ''}\n\nFind 4-6 high-quality, authoritative sources related to the query. Return them as JSON with this exact structure:\n{\n  \"sources\": [\n    {\"title\": \"Actual page title\",\"url\": \"Real URL to the source\",\"snippet\": \"Brief description of the content\",\"domain\": \"Domain name (e.g., wikipedia.org, github.com)\"}\n  ]\n}\n\nFocus on:\n- Authoritative sources (Wikipedia, academic sites, official documentation)\n- Recent articles and news (within the last 2 years when relevant)\n- Technical documentation and guides\n- Research papers and studies\n- Industry reports and analysis\n\nCURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+              content: `You are an expert web researcher with access to current internet information. Your task is to find and provide real web sources for the given query.\n\nFind 4-6 high-quality, authoritative sources related to the query. Return them as JSON with this exact structure:\n{\n  \"sources\": [\n    {\"title\": \"Actual page title\",\"url\": \"Real URL to the source\",\"snippet\": \"Brief description of the content\",\"domain\": \"Domain name (e.g., wikipedia.org, github.com)\"}\n  ]\n}\n\nFocus on:\n- Authoritative sources (Wikipedia, academic sites, official documentation)\n- Recent articles and news (within the last 2 years when relevant)\n- Technical documentation and guides\n- Research papers and studies\n- Industry reports and analysis\n\nCURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
             },
             {
               role: 'user',
@@ -265,23 +216,6 @@ async function performOpenAIWebSearch(query: string, focusMode?: string): Promis
     logger.error('OpenAI web search failed:', error);
     throw error;
   }
-}
-
-// Helper function to get focus search context
-function getFocusSearchContext(focusMode?: string): string | undefined {
-  if (!focusMode || focusMode === 'web') return undefined;
-  
-  const contexts: Record<string, string> = {
-    'health': 'Focus on medical research, clinical studies, health publications, and authoritative medical sources',
-    'academic': 'Prioritize scholarly sources, peer-reviewed papers, university publications, and academic databases',
-    'finance': 'Emphasize financial analysis, market research, economic data, and business publications',
-    'travel': 'Include travel guides, destination information, tourism resources, and local insights',
-    'social': 'Consider social media analysis, community discussions, and public opinion sources',
-    'math': 'Focus on mathematical concepts, computational resources, and technical documentation',
-    'video': 'Prioritize video platforms, multimedia content, and visual learning resources'
-  };
-  
-  return contexts[focusMode];
 }
 
 // Helper function to generate source images
@@ -379,33 +313,9 @@ function generateFallbackSources(query: string): SourceInfo[] {
   return sources.slice(0, 3 + Math.floor(Math.random() * 2));
 }
 
-// Generate focus category based on query and focus mode
-function generateFocusCategory(query: string, focusMode?: string): string {
-  // First, use focus mode if provided and map to appropriate categories
-  if (focusMode) {
-    switch (focusMode) {
-      case 'health':
-        return 'HEALTH';
-      case 'academic':
-        return 'SCIENCE';
-      case 'finance':
-        return 'BUSINESS';
-      case 'travel':
-        return 'TRAVEL';
-      case 'social':
-        return 'SOCIAL';
-      case 'math':
-        return 'MATHEMATICS';
-      case 'video':
-        return 'ENTERTAINMENT';
-      case 'web':
-      default:
-        // Continue with query-based detection for web mode
-        break;
-    }
-  }
-
-  // Query-based focus detection (existing logic)
+// Generate focus category based on query
+function generateFocusCategory(query: string): string {
+  // Query-based focus detection
   const lowerQuery = query.toLowerCase();
   
   if (lowerQuery.includes('ai') || lowerQuery.includes('artificial intelligence') || lowerQuery.includes('machine learning') || lowerQuery.includes('neural') || lowerQuery.includes('deep learning')) {
@@ -438,7 +348,7 @@ function generateFocusCategory(query: string, focusMode?: string): string {
 }
 
 // Writer Agent - Creates NYT-style journalistic articles
-async function writerAgent(query: string, searchSummaries: SearchSummary[], focusMode?: string): Promise<InsightsResult> {
+async function writerAgent(query: string, searchSummaries: SearchSummary[]): Promise<InsightsResult> {
   try {
     const researchContext = searchSummaries
       .map(s => `**${s.reason}** (Query: "${s.query}"):\n${s.summary}`)
@@ -458,11 +368,11 @@ async function writerAgent(query: string, searchSummaries: SearchSummary[], focu
           messages: [
             {
               role: 'system',
-              content: `You are an elite investigative journalist with decades of experience writing for The New York Times. Your expertise includes compelling narrative construction, balanced perspective presentation, and complex topic simplification.\n\nCURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}\n\n${focusMode && focusMode !== 'web' ? `FOCUS MODE: You are writing from a \"${focusMode}\" perspective. Emphasize ${getFocusContext(focusMode).approach.replace('with a focus on ', '').replace('with emphasis on ', '').replace('focusing on ', '').replace('emphasizing ', '').replace('with focus on ', '').replace('prioritizing ', '').replace('across comprehensive ', '')}.` : ''}\n\nWrite a professional journalistic article that:\n- Starts with an attention-grabbing headline (without hashtag symbols)\n- Provides balanced, objective reporting\n- Includes expert insights and relevant data\n- Uses clear, accessible language\n- Maintains narrative flow and readability\n- Focuses on impact and implications\n- Keeps the article concise but comprehensive (Medium-length article style)\n- DO NOT use markdown headers (# ## ###) in the article content\n- DO NOT include a conclusions section or any concluding remarks\n- Format section headers as **Bold Text** instead of markdown headers\n\nOutput valid JSON with this structure:\n{\n  \"focus_category\": \"Topic category in UPPERCASE (e.g., TECHNOLOGY, BUSINESS, SCIENCE, POLITICS, etc.)\",\n  \"headline\": \"Compelling, news-style headline without hashtag symbols\",\n  \"subtitle\": \"Engaging subtitle that provides context and hooks the reader\",\n  \"short_summary\": \"Compelling 2-3 sentence lead that captures the essence and significance\",\n  \"markdown_report\": \"Professional NYT-style article (500-800 words, well-structured with clear sections but NO conclusions section)\",\n  \"follow_up_questions\": [\"Investigative question 1\", \"Investigative question 2\", \"Investigative question 3\"]\n}\n\nFocus on factual reporting, expert perspectives, and real-world implications. Do not include conclusions or wrap-up sections.`
+              content: `You are an elite investigative journalist with decades of experience writing for The New York Times. Your expertise includes compelling narrative construction, balanced perspective presentation, and complex topic simplification.\n\nCURRENT DATE: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}\n\nWrite a professional journalistic article that:\n- Starts with an attention-grabbing headline (without hashtag symbols)\n- Provides balanced, objective reporting\n- Includes expert insights and relevant data\n- Uses clear, accessible language\n- Maintains narrative flow and readability\n- Focuses on impact and implications\n- Keeps the article concise but comprehensive (Medium-length article style)\n- DO NOT use markdown headers (# ## ###) in the article content\n- DO NOT include a conclusions section or any concluding remarks\n- Format section headers as **Bold Text** instead of markdown headers\n\nOutput valid JSON with this structure:\n{\n  \"focus_category\": \"Topic category in UPPERCASE (e.g., TECHNOLOGY, BUSINESS, SCIENCE, POLITICS, etc.)\",\n  \"headline\": \"Compelling, news-style headline without hashtag symbols\",\n  \"subtitle\": \"Engaging subtitle that provides context and hooks the reader\",\n  \"short_summary\": \"Compelling 2-3 sentence lead that captures the essence and significance\",\n  \"markdown_report\": \"Professional NYT-style article (500-800 words, well-structured with clear sections but NO conclusions section)\",\n  \"follow_up_questions\": [\"Investigative question 1\", \"Investigative question 2\", \"Investigative question 3\"]\n}\n\nFocus on factual reporting, expert perspectives, and real-world implications. Do not include conclusions or wrap-up sections.`
             },
             {
               role: 'user',
-              content: `Assignment: Write a professional news article about: ${query}${focusMode && focusMode !== 'web' ? ` (Focus: ${focusMode})` : ''}\n\nResearch Sources:\n${researchContext}\n\nWrite an engaging, well-balanced journalistic piece that informs readers about the current state, key developments, and implications of this topic.`
+              content: `Assignment: Write a professional news article about: ${query}\n\nResearch Sources:\n${researchContext}\n\nWrite an engaging, well-balanced journalistic piece that informs readers about the current state, key developments, and implications of this topic.`
             }
           ],
           response_format: { type: "json_object" },
@@ -481,7 +391,7 @@ async function writerAgent(query: string, searchSummaries: SearchSummary[], focu
     logger.warn('Writer agent failed, using fallback:', error);
   }
   // Fallback result - NYT style
-  const focusCategory = generateFocusCategory(query, focusMode);
+  const focusCategory = generateFocusCategory(query);
   return {
     focus_category: focusCategory,
     headline: `${query}: Breaking Analysis Reveals Evolving Landscape`,
@@ -505,14 +415,13 @@ interface DisplaySource {
 // Main Orchestrator - Coordinates all agents
 export async function runInsightsWorkflow(
   query: string, 
-  onProgress?: (stage: string, timeRemaining: string, progress: number, thinkingStep: string, searchTerms?: string[], sources?: DisplaySource[]) => void,
-  focusMode?: string
+  onProgress?: (stage: string, timeRemaining: string, progress: number, thinkingStep: string, searchTerms?: string[], sources?: DisplaySource[]) => void
 ): Promise<InsightsResult> {
-  try {
-    logger.info(`Starting insights workflow for: ${query} (Focus: ${focusMode || 'web'})`);
+  try{
+    logger.info(`Starting insights workflow for: ${query}`);
     
     // Stage 1: Get actual thinking process from planner agent
-    const searchPlan = await plannerAgent(query, focusMode);
+    const searchPlan = await plannerAgent(query);
     logger.info('Generated search plan:', searchPlan);
     
     // Use the actual thinking process from the planner
@@ -576,7 +485,7 @@ export async function runInsightsWorkflow(
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Generate final report
-    const result = await writerAgent(query, searchSummaries, focusMode);
+    const result = await writerAgent(query, searchSummaries);
     result.thinking_process = searchPlan.thinking_process;
     result.search_queries = searchQueries;
     result.sources = allSources;

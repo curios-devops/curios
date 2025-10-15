@@ -1,26 +1,34 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Focus, Paperclip } from 'lucide-react';
+import { type LucideIcon } from 'lucide-react';
+import React from 'react';
+
+// SVG for mic icon, styled to match lucide-react icons
+const MicIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg ref={ref} width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="9" y="2" width="6" height="12" rx="3" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="22" />
+    <line x1="8" y1="22" x2="16" y2="22" />
+  </svg>
+)) as LucideIcon;
+MicIcon.displayName = 'MicIcon';
 
 import ActionButton from '../SearchInput/ActionButton.tsx';
 import ThreeTabSwitch from '../SearchInput/ThreeTabSwitch.tsx';
 import type { TabType } from '../SearchInput/ThreeTabSwitch.tsx';
 import SearchButton from '../SearchInput/SearchButton.tsx';
 import SearchTextArea from '../SearchInput/SearchTextArea.tsx';
-import FocusModal from './FocusModal.tsx';
 import ProModal from '../subscription/ProModal.tsx';
 import SignUpModal from '../auth/SignUpModal.tsx';
 import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
 import { useSession } from '../../hooks/useSession.ts';
 import { useSubscription } from '../../hooks/useSubscription.ts';
-import type { FocusMode } from './types.ts';
 
 export default function RegularSearch() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('search');
-  const [selectedMode, setSelectedMode] = useState<FocusMode>('focus');
-  const [showFocusModal, setShowFocusModal] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const { decrementSearches, remainingSearches, maxSearches } = useSearchLimit();
@@ -96,7 +104,6 @@ export default function RegularSearch() {
       // Navigate to appropriate page
       const searchParams = new URLSearchParams({
         q: trimmedQuery,
-        mode: selectedMode,
         type: searchType
       });
       
@@ -143,19 +150,12 @@ export default function RegularSearch() {
 
         </div>
         {/* Right side: Action buttons and Search Button */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
           <ActionButton
-            icon={Focus}
-            label="Focus"
-            tooltip="Set a focus for your sources"
-            onClick={() => setShowFocusModal(true)}
-            mode={selectedMode}
-           />
-          <ActionButton
-            icon={Paperclip}
-            label="Attach"
-            tooltip="Attach files to your search"
-            onClick={() => actualUserType === 'guest' && navigate('/settings')}
+            icon={MicIcon}
+            label="Dictation"
+            tooltip="Dictation"
+            onClick={() => {}}
           />
 
           <SearchButton
@@ -166,13 +166,6 @@ export default function RegularSearch() {
         </div>
         </div>
       </div>
-      
-      <FocusModal 
-        isOpen={showFocusModal}
-        onClose={() => setShowFocusModal(false)}
-        selectedMode={selectedMode}
-        onSelectMode={setSelectedMode}
-      />
 
       <ProModal 
         isOpen={showProModal}
@@ -182,7 +175,6 @@ export default function RegularSearch() {
       <SignUpModal
         isOpen={showSignUpModal}
         onClose={() => setShowSignUpModal(false)}
-        context="default"
         currentLanguage={{ code: 'en', name: 'English', flag: '🇺🇸' }}
       />
     </div>

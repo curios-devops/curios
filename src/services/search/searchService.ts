@@ -12,7 +12,6 @@ export class SearchError extends Error {
 }
 
 interface SearchOptions {
-  mode?: string;
   isPro?: boolean;
   onStatusUpdate?: (status: string) => void;
 }
