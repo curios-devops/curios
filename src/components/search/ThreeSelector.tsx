@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { type LucideIcon, Plus } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { type LucideIcon, Plus, Image as ImageIcon, FileText } from 'lucide-react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,23 +14,13 @@ const MicIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((
 )) as LucideIcon;
 MicIcon.displayName = 'MicIcon';
 
-// SVG for camera icon, styled to match lucide-react icons
-const CameraIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((props, ref) => (
-  <svg ref={ref} width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <rect x="3" y="7" width="18" height="13" rx="2" />
-    <circle cx="12" cy="13.5" r="3.5" />
-    <path d="M8.5 7l1-3h5l1 3" />
-  </svg>
-)) as LucideIcon;
-CameraIcon.displayName = 'CameraIcon';
-
 import ActionButton from '../SearchInput/ActionButton.tsx';
 import FunctionSelector from '../SearchInput/FunctionSelector.tsx';
 import type { FunctionType } from '../SearchInput/FunctionSelector.tsx';
 import SearchButton from '../SearchInput/SearchButton.tsx';
 import SearchTextArea from '../SearchInput/SearchTextArea.tsx';
 import ProModal from '../subscription/ProModal.tsx';
-import SignUpModal from '../auth/SignUpModal.tsx';
+import SignInModal from '../auth/SignInModal.tsx';
 import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
 import { useProQuota } from '../../hooks/useProQuota.ts';
 import { useSession } from '../../hooks/useSession.ts';
@@ -42,12 +32,28 @@ export default function ThreeSelector() {
   const [query, setQuery] = useState('');
   const [selectedFunction, setSelectedFunction] = useState<FunctionType>('search');
   const [showProModal, setShowProModal] = useState(false);
-  const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
   const { decrementSearches, remainingSearches, hasSearchesLeft } = useSearchLimit();
   const { decrementProQuota, hasProQuotaLeft, canAccessPro } = useProQuota();
   const { session } = useSession();
   const accentColor = useAccentColor();
   const { t } = useTranslation();
+
+  // Close attach menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(event.target as Node)) {
+        setShowAttachMenu(false);
+      }
+    };
+
+    if (showAttachMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showAttachMenu]);
 
   // Function mapping for navigation
   const getFunctionRoute = (functionType: FunctionType): string => {
@@ -79,7 +85,7 @@ export default function ThreeSelector() {
   };
 
   const handleSignUpRequired = () => {
-    setShowSignUpModal(true);
+    setShowSignInModal(true);
   };
 
   const handleSearch = async () => {
@@ -91,7 +97,7 @@ export default function ThreeSelector() {
     // For Pro features, check Pro quota (Standard users only)
     if (isProFeature) {
       if (!canAccessPro) {
-        setShowSignUpModal(true);
+        setShowSignInModal(true);
         return;
       }
       
@@ -161,7 +167,7 @@ export default function ThreeSelector() {
 
         {/* Button bar - inside the unified container */}
         <div className="flex items-center justify-between px-4 py-1.5">
-          {/* Left side: Function Selector only */}
+          {/* Left side: ThreeSelector (Function Selector) */}
           <FunctionSelector
             selectedFunction={selectedFunction}
             onFunctionSelect={handleFunctionSelect}
@@ -169,20 +175,56 @@ export default function ThreeSelector() {
             className="min-w-0" // Allow shrinking
           />
 
-          {/* Right side: Plus, Camera, Mic, and Search Button */}
+          {/* Right side: Plus, Mic, and Search Button */}
           <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
-            <ActionButton
-              icon={Plus}
-              label={t('addFilesAndMore')}
-              tooltip={t('addFilesAndMore')}
-              onClick={() => {}}
-            />
-            <ActionButton
-              icon={CameraIcon}
-              label={t('askWithImage')}
-              tooltip={t('askWithImage')}
-              onClick={() => {}}
-            />
+            {/* Attach button with dropdown */}
+            <div className="relative" ref={attachMenuRef}>
+              <ActionButton
+                icon={Plus}
+                label={t('addFilesAndMore')}
+                tooltip={t('addFilesAndMore')}
+                onClick={() => setShowAttachMenu(!showAttachMenu)}
+              />
+              
+              {/* Dropdown menu */}
+              {showAttachMenu && (
+                <div className="absolute bottom-full mb-2 left-0 bg-white dark:bg-[#2a2a2a] rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden min-w-[200px] z-50">
+                  {/* Images option */}
+                  <button
+                    onClick={() => {
+                      setShowAttachMenu(false);
+                      // Do nothing for now as requested
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#333333] transition-colors text-left"
+                  >
+                    <ImageIcon size={18} className="text-gray-700 dark:text-gray-300" />
+                    <span className="text-gray-900 dark:text-white font-medium">
+                      {t('images')}
+                    </span>
+                  </button>
+                  
+                  {/* Documents option */}
+                  <button
+                    onClick={() => {
+                      setShowAttachMenu(false);
+                      setShowSignInModal(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#333333] transition-colors text-left border-t border-gray-200 dark:border-gray-700"
+                  >
+                    <FileText size={18} className="text-gray-700 dark:text-gray-300" />
+                    <div className="flex flex-col">
+                      <span className="text-gray-900 dark:text-white font-medium">
+                        {t('documents')}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {t('loginRequired')}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+            
             <ActionButton
               icon={MicIcon}
               label={t('askByVoice')}
@@ -213,9 +255,9 @@ export default function ThreeSelector() {
         onClose={() => setShowProModal(false)}
       />
 
-      <SignUpModal 
-        isOpen={showSignUpModal}
-        onClose={() => setShowSignUpModal(false)}
+      <SignInModal 
+        isOpen={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
         currentLanguage={{ code: 'en', name: 'English', flag: '🇺🇸' }}
       />
     </div>

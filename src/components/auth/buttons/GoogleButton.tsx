@@ -1,14 +1,17 @@
 import { signInWithGoogle } from '../../../commonApp/auth/google';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useTheme } from '../../theme/ThemeContext.tsx';
+import { useAccentColor } from '../../../hooks/useAccentColor.ts';
 
 interface GoogleButtonProps {
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }
 
-export default function GoogleButton({ onSuccess, onError }: GoogleButtonProps) {const { t } = useTranslation();
+export default function GoogleButton({ onSuccess, onError }: GoogleButtonProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
+  const accentColor = useAccentColor();
     const handleClick = async () => {
     try {
       const response = await signInWithGoogle();
@@ -24,13 +27,12 @@ export default function GoogleButton({ onSuccess, onError }: GoogleButtonProps) 
 
   return (
     <button
-      className={`w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-lg transition-colors ${
-        theme === 'dark' ? 'bg-[#222222] text-white border-gray-700 hover:bg-[#2a2a2a]' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-      onClick={handleClick}type="button"// Make text responsive: smaller font on smaller screens
-
-
-      // Make text responsive: smaller font on smaller screens
-      // Consider hiding text on very small screens if needed, e.g., using md:block class and a span
+      className={`w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-lg transition-colors`}
+      onClick={handleClick}
+      type="button"
+      style={{ backgroundColor: accentColor.primary, color: '#fff', border: theme === 'dark' ? '1px solid rgba(255,255,255,0.04)' : undefined }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = accentColor.hover; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = accentColor.primary; }}
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path

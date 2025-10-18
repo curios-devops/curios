@@ -32,6 +32,11 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
 
  const handleCloseSignInModal = () => setShowSignInModal(false);
 
+ // Handle auth required for protected nav items
+ const handleAuthRequired = () => {
+   setShowSignInModal(true);
+ };
+
   return (
     <>
       <aside
@@ -67,6 +72,8 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
               label={t("explore")}
               isActive={location.pathname === "/explore"} // Pass isActive prop
               isCollapsed={isCollapsed}
+              requiresAuth
+              onAuthRequired={handleAuthRequired}
             />
             <NavItem
               to="/spaces"
@@ -74,7 +81,8 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
               label={t("spaces")}
               isActive={location.pathname === "/spaces"} // Pass isActive prop
               requiresAuth
- isCollapsed={isCollapsed}
+              isCollapsed={isCollapsed}
+              onAuthRequired={handleAuthRequired}
             />
             <NavItem
               to="/library"
@@ -82,7 +90,8 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
               label={t("library")}
               isActive={location.pathname === "/library"} // Pass isActive prop
               requiresAuth
- isCollapsed={isCollapsed}
+              isCollapsed={isCollapsed}
+              onAuthRequired={handleAuthRequired}
             />
              {/* Ensure all NavItem instances have isCollapsed and isActive props */}
              {/* Example for an additional NavItem if needed: */}
