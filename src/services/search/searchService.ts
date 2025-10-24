@@ -14,6 +14,7 @@ export class SearchError extends Error {
 interface SearchOptions {
   isPro?: boolean;
   onStatusUpdate?: (status: string) => void;
+  imageUrls?: string[]; // Public URLs of images for reverse image search
 }
 
 // Initialize controllers for different search types
@@ -26,20 +27,26 @@ export async function performSearch(
   options: SearchOptions = {}
 ): Promise<SearchResponse> {
   try {
-    // Validate the query immediately.
-    if (!query.trim()) {
-      throw new SearchError('Search query cannot be empty');
+    const { isPro = false, onStatusUpdate, imageUrls } = options;
+    
+    // Validate: need either query text OR images
+    const hasQuery = query && query.trim().length > 0;
+    const hasImages = imageUrls && imageUrls.length > 0;
+    
+    if (!hasQuery && !hasImages) {
+      throw new SearchError('Search query or images required');
     }
-
-    const { isPro = false, onStatusUpdate } = options;
+    
+    // For image-only searches, pass empty string (writer will detect and handle)
+    const effectiveQuery = hasQuery ? query : '';
 
     // Execute search operation directly (no Supabase wrapper needed)
     if (isPro) {
       // PRO SEARCH: Use SwarmController (includes PerspectiveAgent)
-      logger.info('Using Pro Search flow with SwarmController', { query, isPro });
+      logger.info('Using Pro Search flow with SwarmController', { query: effectiveQuery, isPro, hasImages });
       
       const { research, article, images, videos } = await swarmController.processQuery(
-        query,
+        effectiveQuery,
         onStatusUpdate,
         true // isPro = true
       );
@@ -101,12 +108,16 @@ export async function performSearch(
           
         } else {
           // REGULAR SEARCH: Simplified direct flow
-          console.log('🔍 Starting regular search:', query);
+          console.log('🔍 Starting regular search:', {
+            query: effectiveQuery,
+            hasImages,
+            imageCount: imageUrls?.length || 0
+          });
           
           try {
-            // Step 1: Get search results
+            // Step 1: Get search results (with optional image URLs)
             onStatusUpdate?.('Searching for information...');
-            const searchResponse = await retrieverAgent.execute(query, onStatusUpdate);
+            const searchResponse = await retrieverAgent.execute(effectiveQuery, onStatusUpdate, imageUrls);
             
             if (!searchResponse.success || !searchResponse.data) {
               throw new Error('Search retrieval failed');
@@ -115,12 +126,21 @@ export async function performSearch(
             // Step 2: Generate article
             onStatusUpdate?.('Generating comprehensive answer...');
             const researchData = {
-              query,
+              query: effectiveQuery,
               perspectives: [],
-              results: searchResponse.data.results || []
+              results: searchResponse.data.results || [],
+              images: searchResponse.data.images || [],
+              videos: searchResponse.data.videos || [],
+              isReverseImageSearch: searchResponse.data.isReverseImageSearch || false // Pass flag to Writer
             };
 
-            console.log('🔍 [SEARCH] Calling WriterAgent...');
+            console.log('🔍 [SEARCH] Calling WriterAgent with:', {
+              query: researchData.query,
+              resultsCount: researchData.results.length,
+              imagesCount: researchData.images.length,
+              videosCount: researchData.videos.length,
+              isReverseImageSearch: researchData.isReverseImageSearch
+            });
             const writerResponse = await writerAgent.execute(researchData, onStatusUpdate);
             
             console.log('✅ WriterAgent complete:', {

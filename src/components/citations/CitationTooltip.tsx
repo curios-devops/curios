@@ -46,12 +46,14 @@ export default function CitationTooltip({ citation, children }: CitationTooltipP
       {showTooltip && (
         <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4">
           <div className="flex items-start space-x-3">
-            <img
+                        <img
               src={`https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(citation.url)}&size=16`}
               alt=""
-              className="w-4 h-4 mt-1 flex-shrink-0"
-              loading="lazy"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              className="w-4 h-4 flex-shrink-0"
+              onError={(e) => {
+                // Fallback: hide broken favicon or show placeholder
+                e.currentTarget.style.display = 'none';
+              }}
             />
             <div className="flex-1 min-w-0">
               <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">

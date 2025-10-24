@@ -44,8 +44,8 @@ Deno.serve(async (req: Request) => {
 
     console.log('Calling Brave Web API with query:', query)
     
-    // Call Brave Web Search API following official documentation
-    const braveUrl = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=20&safesearch=moderate&search_lang=en&country=us&spellcheck=1`
+    // Call Brave Web Search API - cap at 10 results to match MAX_RESULTS.WEB
+    const braveUrl = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=10&safesearch=moderate&search_lang=en&country=us&spellcheck=1`
     
     console.log('Brave Web API URL:', braveUrl)
     

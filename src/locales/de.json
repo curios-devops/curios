@@ -91,5 +91,9 @@
   "upgradeToPremium": "Upgrade auf Premium",
   "unlockPremiumFeatures": "Erschließen Sie das volle Potenzial fortschrittlicher KI mit Premium-Funktionen",
   "dailyProQuota": "Tägliches Pro-Kontingent",
-  "proQuotaNote": "Pro-Suche, Forschung und Pro Labs zählen zum Kontingent"
+  "proQuotaNote": "Pro-Suche, Forschung und Pro Labs zählen zum Kontingent",
+  "signInUploadPhotos": "Anmelden, um mehr Fotos hochzuladen",
+  "analyzePhotosFree": "Fotos kostenlos analysieren",
+  "signInUploadFiles": "Anmelden, um Dateien hochzuladen",
+  "analyzeFilesFree": "Dateien kostenlos analysieren"
 }

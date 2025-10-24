@@ -91,5 +91,9 @@
   "upgradeToPremium": "Upgrade to Premium",
   "unlockPremiumFeatures": "Unlock the full potential of advanced AI with Premium features",
   "dailyProQuota": "Daily Pro Quota",
-  "proQuotaNote": "Pro Search, Research & Pro Labs count towards quota"
+  "proQuotaNote": "Pro Search, Research & Pro Labs count towards quota",
+  "signInUploadPhotos": "Sign in to upload more photos",
+  "analyzePhotosFree": "Analyze photos for free",
+  "signInUploadFiles": "Sign in to upload files",
+  "analyzeFilesFree": "Analyze files for free"
 }

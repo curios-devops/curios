@@ -23,6 +23,7 @@ export interface ImageResult {
   image?: string;
   alt: string;
   source_url?: string;
+  resolution?: string; // Original image resolution (e.g., "1920 × 1080")
 }
 
 export interface VideoResult {
@@ -85,6 +86,8 @@ export interface ResearchResult {
   perspectives: Perspective[];
   results: SearchResult[];
   images?: ImageResult[];
+  videos?: VideoResult[];
+  isReverseImageSearch?: boolean; // Flag to indicate if this was a reverse image search workflow
 }
 
 export interface ArticleResult {

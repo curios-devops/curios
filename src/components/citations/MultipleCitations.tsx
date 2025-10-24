@@ -48,12 +48,14 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
                 onClick={() => handleSourceClick(citation.url)}
                 className="flex items-start space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200"
               >
-                <img
+                                <img
                   src={`https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(citation.url)}&size=16`}
                   alt=""
-                  className="w-4 h-4 mt-1 flex-shrink-0"
-                  loading="lazy"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  className="w-4 h-4 flex-shrink-0"
+                  onError={(e) => {
+                    // Fallback: hide broken favicon
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
                 <div className="flex-1 min-w-0">
                   <h5 className="font-medium text-gray-900 dark:text-white text-sm truncate">

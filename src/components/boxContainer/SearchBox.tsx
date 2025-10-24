@@ -13,10 +13,10 @@ const MicIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((
 )) as LucideIcon;
 MicIcon.displayName = 'MicIcon';
 
-import ActionButton from '../SearchInput/ActionButton.tsx';
-import ToggleSwitch from '../SearchInput/ToggleSwitch.tsx';
-import SearchButton from '../SearchInput/SearchButton.tsx';
-import SearchTextArea from '../SearchInput/SearchTextArea.tsx';
+import ActionButton from '../boxContainerInput/ActionButton.tsx';
+import ToggleSwitch from '../boxContainerInput/ToggleSwitch.tsx';
+import SearchButton from '../boxContainerInput/SearchButton.tsx';
+import SearchTextArea from '../boxContainerInput/SearchTextArea.tsx';
 import ProModal from '../subscription/ProModal.tsx';
 import ProTooltip from '../subscription/ProTooltip.tsx';
 import { useSession } from '../../hooks/useSession.ts';

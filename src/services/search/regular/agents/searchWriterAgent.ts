@@ -7,6 +7,7 @@ import { logger } from '../../../../utils/logger.ts';
 
 export class SearchWriterAgent {
   private readonly defaultModel: string = 'gpt-4o';
+  private readonly imageSearchModel: string = 'gpt-4o-mini'; // Simpler model for reverse image searches
 
   constructor() {
     logger.info('SearchWriterAgent: Initialized');
@@ -100,6 +101,14 @@ export class SearchWriterAgent {
           contentLength: data.text.length
         });
 
+        // 🔍 DEBUG: Log what OpenAI returned (first 500 chars)
+        console.log('🔍 [WRITER] OpenAI returned:', {
+          textType: typeof data.text,
+          textLength: typeof data.text === 'string' ? data.text.length : 'N/A',
+          textPreview: typeof data.text === 'string' ? data.text.slice(0, 500) : JSON.stringify(data.text).slice(0, 500),
+          hasOpenAIMetadata: !!data.openai
+        });
+
         // Parse the response
         let articleResult: ArticleResult;
 
@@ -121,6 +130,14 @@ export class SearchWriterAgent {
           logger.warn('Failed to parse OpenAI response as JSON', {
             error: parseError,
             textPreview: String(data.text).slice(0, 200)
+          });
+
+          // 🔍 DEBUG: Show problematic JSON for debugging
+          console.error('❌ [WRITER] JSON parsing failed:', {
+            error: parseError instanceof Error ? parseError.message : String(parseError),
+            rawTextSample: String(data.text).slice(0, 1000),
+            textLength: String(data.text).length,
+            rawTextEnd: String(data.text).slice(-500)
           });
 
           // Fallback: wrap as plain text
@@ -191,15 +208,46 @@ export class SearchWriterAgent {
 
       onStatusUpdate?.('Analyzing search results...');
 
-      if (!research || !research.query) {
-        throw new Error('Invalid research data: missing query');
+      if (!research) {
+        throw new Error('Invalid research data: missing research object');
       }
 
-      const { query, results = [] } = research;
+      // Allow empty query for image-only searches
+      const { query = '', results = [], images = [], videos = [], isReverseImageSearch = false } = research;
 
       logger.info('WriterAgent: Processing research data', {
+        query: query || '(image-only search)',
+        resultsCount: results.length,
+        imagesCount: images.length,
+        videosCount: videos.length,
+        isReverseImageSearch
+      });
+
+      // 🔍 DEBUG: Log payload details for combined text+image searches
+      console.log('🔍 [WRITER] Received research payload:', {
         query,
-        resultsCount: results.length
+        resultsCount: results.length,
+        imagesCount: images.length,
+        videosCount: videos.length,
+        isReverseImageSearch,
+        firstResult: results[0] ? {
+          title: results[0].title,
+          url: results[0].url,
+          contentPreview: (results[0] as any).content?.slice(0, 100) + '...'
+        } : null,
+        firstImage: images[0] ? {
+          url: images[0].url,
+          alt: images[0].alt
+        } : null
+      });
+
+      // Use flag from Retriever Agent to determine search type
+      // For reverse image searches, use simpler/cheaper gpt-4o-mini model
+      const model = isReverseImageSearch ? this.imageSearchModel : this.defaultModel;
+
+      logger.info('WriterAgent: Using model', { 
+        model, 
+        reason: isReverseImageSearch ? 'reverse image search detected' : 'regular text search' 
       });
 
       // Prepare source context from search results
@@ -302,12 +350,19 @@ CITATION REQUIREMENTS:
 - Ensure every major point is properly attributed
 - Provide full citation details in the citations array with url, title, and siteName`;
 
-      const userPrompt = `Query: "${query}"
+      // Handle image-based searches with appropriate prompt
+      const queryContext = isReverseImageSearch
+        ? (query 
+            ? `Image + Text Search: The user uploaded an image and provided the query "${query}". We performed a reverse image search combined with their text query. Based on the search results below, provide a comprehensive analysis.`
+            : `Image-Only Search: The user uploaded an image without any text query. We performed a reverse image search. Based on the search results below, provide a comprehensive analysis of what the image shows, including context, identification, and related information.`)
+        : `Query: "${query}"`;
+
+      const userPrompt = `${queryContext}
 
 Source Material:
 ${sourceContext}
 
-TASK: Create a comprehensive, well-sourced article that directly addresses the query using ONLY the information provided in the sources above.
+TASK: Create a comprehensive, well-sourced ${isReverseImageSearch ? 'image analysis article' : 'article'} that ${isReverseImageSearch ? 'identifies and explains what the image shows' : 'directly addresses the query'} using ONLY the information provided in the sources above.
 
 Requirements:
 - Ground ALL information in the provided sources
@@ -333,10 +388,25 @@ Remember: Base your response entirely on the source material provided. Do not ad
         { role: 'user', content: userPrompt }
       ];
 
-      logger.info('WriterAgent: Calling OpenAI', { model: this.defaultModel });
+      logger.info('WriterAgent: Calling OpenAI', { model });
+
+      // 🔍 DEBUG: Log what we're sending to OpenAI
+      console.log('🔍 [WRITER] Sending to OpenAI:', {
+        model,
+        messagesCount: messages.length,
+        systemPromptLength: systemPrompt.length,
+        userPromptLength: userPrompt.length,
+        userPromptPreview: userPrompt.slice(0, 500) + '...',
+        isReverseImageSearch,
+        queryContext: isReverseImageSearch
+          ? (query 
+              ? `Image + Text Search: "${query}"`
+              : `Image-Only Search`)
+          : `Text Search: "${query}"`
+      });
 
       // Simple call without retries or Promise.race
-      const articleResult = await this.callOpenAI(messages, this.defaultModel);
+      const articleResult = await this.callOpenAI(messages, model);
 
       logger.info('WriterAgent: Successfully generated article', {
         contentLength: articleResult.content.length,

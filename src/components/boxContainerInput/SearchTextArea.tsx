@@ -5,9 +5,10 @@ interface SearchTextAreaProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
+  className?: string;
 }
 
-export default function SearchTextArea({ value, onChange, onKeyDown }: SearchTextAreaProps) {
+export default function SearchTextArea({ value, onChange, onKeyDown, className }: SearchTextAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
 
@@ -68,7 +69,7 @@ export default function SearchTextArea({ value, onChange, onKeyDown }: SearchTex
         outline-none
         border-none
         overflow-hidden
-      `}
+      ${className ? ` ${className}` : ''}`}
       spellCheck={false}
       autoComplete="off"
     />

@@ -122,17 +122,21 @@ export async function braveSearchTool(query: string): Promise<BraveSearchResults
     }));
 
     // Extract image results from images response (direct from Brave Images API)
-    const imageResults: ImageResult[] = (imagesData.results || []).map((item: any) => ({
-      url: item.properties?.url || item.thumbnail?.src || '',
-      alt: item.title || 'Search result image',
-      source_url: item.url || ''
-    })).filter((img: ImageResult) => img.url !== '');
+    // The Edge Function now requests count=10, but cap here as extra safety
+    const imageResults: ImageResult[] = (imagesData.results || [])
+      .slice(0, 10) // Cap at 10 images
+      .map((item: any) => ({
+        url: item.properties?.url || item.thumbnail?.src || '',
+        alt: item.title || 'Search result image',
+        source_url: item.url || ''
+      }))
+      .filter((img: ImageResult) => img.url !== '');
 
     const finalResult = {
-      web: webResults,
+      web: webResults.slice(0, 10), // Cap at 10 web results
       images: imageResults,
-      news: newsResults,
-      videos: videoResults
+      news: newsResults.slice(0, 10), // Cap at 10 news results
+      videos: videoResults.slice(0, 10) // Cap at 10 video results
     };
 
     logger.info('Brave Search Tool: Success', {

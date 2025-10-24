@@ -1,24 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { type LucideIcon, Plus, Image as ImageIcon, FileText } from 'lucide-react';
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// SVG for mic icon, styled to match lucide-react icons
-const MicIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((props, ref) => (
-  <svg ref={ref} width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <rect x="9" y="2" width="6" height="12" rx="3" />
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-    <line x1="12" y1="19" x2="12" y2="22" />
-    <line x1="8" y1="22" x2="16" y2="22" />
-  </svg>
-)) as LucideIcon;
-MicIcon.displayName = 'MicIcon';
-
-import ActionButton from '../SearchInput/ActionButton.tsx';
-import FunctionSelector from '../SearchInput/FunctionSelector.tsx';
-import type { FunctionType } from '../SearchInput/FunctionSelector.tsx';
-import SearchButton from '../SearchInput/SearchButton.tsx';
-import SearchTextArea from '../SearchInput/SearchTextArea.tsx';
+import type { FunctionType } from '../boxContainerInput/FunctionSelector.tsx';
+import SearchTextArea from '../boxContainerInput/SearchTextArea.tsx';
+import ReverseImageSearch, { type ReverseImageSearchHandle, type ReverseImageAttachment } from './ReverseImageSearch.tsx';
+import ButtonBar from './ButtonBar.tsx';
 import ProModal from '../subscription/ProModal.tsx';
 import SignInModal from '../auth/SignInModal.tsx';
 import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
@@ -26,20 +12,25 @@ import { useProQuota } from '../../hooks/useProQuota.ts';
 import { useSession } from '../../hooks/useSession.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTranslation } from '../../hooks/useTranslation.ts';
+import { uploadMultipleImages } from '../../utils/imageUpload.ts';
+import { logger } from '../../utils/logger.ts';
 
-export default function ThreeSelector() {
+export default function QueryBoxContainer() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [selectedFunction, setSelectedFunction] = useState<FunctionType>('search');
   const [showProModal, setShowProModal] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
+  const [signInContext, setSignInContext] = useState<'default' | 'reverse-image' | 'document'>('default');
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [imageAttachments, setImageAttachments] = useState<ReverseImageAttachment[]>([]);
   const attachMenuRef = useRef<HTMLDivElement>(null);
+  const reverseImageRef = useRef<ReverseImageSearchHandle>(null);
   const { decrementSearches, remainingSearches, hasSearchesLeft } = useSearchLimit();
   const { decrementProQuota, hasProQuotaLeft, canAccessPro } = useProQuota();
   const { session } = useSession();
   const accentColor = useAccentColor();
-  const { t } = useTranslation();
 
   // Close attach menu when clicking outside
   useEffect(() => {
@@ -85,12 +76,21 @@ export default function ThreeSelector() {
   };
 
   const handleSignUpRequired = () => {
+    setSignInContext('default');
+    setShowSignInModal(true);
+  };
+
+  const handleDocumentClick = () => {
+    setSignInContext('document');
     setShowSignInModal(true);
   };
 
   const handleSearch = async () => {
     const trimmedQuery = query.trim();
-    if (!trimmedQuery) return;
+    const hasImages = imageAttachments.length > 0;
+    
+    // Validate: need either text or images
+    if (!trimmedQuery && !hasImages) return;
 
     const isProFeature = isProFunction(selectedFunction);
 
@@ -100,7 +100,7 @@ export default function ThreeSelector() {
         setShowSignInModal(true);
         return;
       }
-      
+
       if (!hasProQuotaLeft) {
         setShowProModal(true);
         return;
@@ -111,6 +111,22 @@ export default function ThreeSelector() {
     if (!isProFeature && !hasSearchesLeft) {
       setShowProModal(true);
       return;
+    }
+
+    // Upload images to get public URLs (if any)
+    let imageUrls: string[] = [];
+    if (hasImages) {
+      try {
+        logger.info('Uploading images for reverse search', { count: imageAttachments.length });
+        const files = imageAttachments.map(att => att.file);
+        imageUrls = await uploadMultipleImages(files);
+        logger.info('Images uploaded successfully', { urls: imageUrls });
+      } catch (error) {
+        logger.error('Image upload failed', { error });
+        // TODO: Show error notification to user
+        console.error('Failed to upload images:', error);
+        return; // Don't proceed if image upload fails
+      }
     }
 
     // Decrement appropriate quota
@@ -126,11 +142,12 @@ export default function ThreeSelector() {
       const route = getFunctionRoute(selectedFunction);
       const proParam = isProFeature ? '&pro=true' : '';
       
-      navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${proParam}`);
+      // Pass image URLs as URL parameters (comma-separated)
+      const imageParam = imageUrls.length > 0 ? `&images=${encodeURIComponent(imageUrls.join(','))}` : '';
+      
+      navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${proParam}${imageParam}`);
     }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  };  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSearch();
@@ -139,9 +156,9 @@ export default function ThreeSelector() {
 
   return (
     <div className="w-full max-w-xl mx-auto">
-      {/* Unified container with border encompassing both input and buttons */}
+      {/* Unified container with border encompassing input and button bar */}
       <div 
-        className="relative border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#2a2a2a] transition-colors"
+        className={`relative border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#2a2a2a] transition-colors flex flex-col ${imageAttachments.length > 0 ? '' : 'pt-3'}`}
         style={{
           borderColor: undefined, // default
         }}
@@ -156,88 +173,41 @@ export default function ThreeSelector() {
           }
         }}
       >
+        {/* Reverse image attachments */}
+        <ReverseImageSearch
+          ref={reverseImageRef}
+          onChange={setImageAttachments}
+          session={session}
+          onSignInRequired={() => {
+            setSignInContext('reverse-image');
+            setShowSignInModal(true);
+          }}
+        />
+
         {/* Text input area */}
-        <div className="relative">
+        <div className="relative px-4 pb-3">
           <SearchTextArea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
+            className="px-0"
           />
         </div>
 
-        {/* Button bar - inside the unified container */}
-        <div className="flex items-center justify-between px-4 py-1.5">
-          {/* Left side: ThreeSelector (Function Selector) */}
-          <FunctionSelector
-            selectedFunction={selectedFunction}
-            onFunctionSelect={handleFunctionSelect}
-            onSignUpRequired={handleSignUpRequired}
-            className="min-w-0" // Allow shrinking
-          />
-
-          {/* Right side: Plus, Mic, and Search Button */}
-          <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
-            {/* Attach button with dropdown */}
-            <div className="relative" ref={attachMenuRef}>
-              <ActionButton
-                icon={Plus}
-                label={t('addFilesAndMore')}
-                tooltip={t('addFilesAndMore')}
-                onClick={() => setShowAttachMenu(!showAttachMenu)}
-              />
-              
-              {/* Dropdown menu */}
-              {showAttachMenu && (
-                <div className="absolute bottom-full mb-2 left-0 bg-white dark:bg-[#2a2a2a] rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden min-w-[200px] z-50">
-                  {/* Images option */}
-                  <button
-                    onClick={() => {
-                      setShowAttachMenu(false);
-                      // Do nothing for now as requested
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#333333] transition-colors text-left"
-                  >
-                    <ImageIcon size={18} className="text-gray-700 dark:text-gray-300" />
-                    <span className="text-gray-900 dark:text-white font-medium">
-                      {t('images')}
-                    </span>
-                  </button>
-                  
-                  {/* Documents option */}
-                  <button
-                    onClick={() => {
-                      setShowAttachMenu(false);
-                      setShowSignInModal(true);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#333333] transition-colors text-left border-t border-gray-200 dark:border-gray-700"
-                  >
-                    <FileText size={18} className="text-gray-700 dark:text-gray-300" />
-                    <div className="flex flex-col">
-                      <span className="text-gray-900 dark:text-white font-medium">
-                        {t('documents')}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {t('loginRequired')}
-                      </span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
-            
-            <ActionButton
-              icon={MicIcon}
-              label={t('askByVoice')}
-              tooltip={t('askByVoice')}
-              onClick={() => {}}
-            />
-            <SearchButton
-              onClick={handleSearch}
-              isActive={query.trim().length > 0}
-              disabled={!query.trim() || !hasSearchesLeft}
-            />
-          </div>
-        </div>
+        {/* Button bar with function selector and action buttons */}
+        <ButtonBar
+          selectedFunction={selectedFunction}
+          onFunctionSelect={handleFunctionSelect}
+          onSignUpRequired={handleSignUpRequired}
+          showAttachMenu={showAttachMenu}
+          setShowAttachMenu={setShowAttachMenu}
+          reverseImageRef={reverseImageRef}
+          onDocumentClick={handleDocumentClick}
+          onSearchClick={handleSearch}
+          isSearchDisabled={!query.trim() && imageAttachments.length === 0 || !hasSearchesLeft}
+          isSearchActive={query.trim().length > 0 || imageAttachments.length > 0}
+          attachMenuRef={attachMenuRef}
+        />
       </div>
 
       {/* Remaining searches indicator */}
@@ -257,8 +227,21 @@ export default function ThreeSelector() {
 
       <SignInModal 
         isOpen={showSignInModal}
-        onClose={() => setShowSignInModal(false)}
+        onClose={() => {
+          setShowSignInModal(false);
+          setSignInContext('default');
+        }}
         currentLanguage={{ code: 'en', name: 'English', flag: '🇺🇸' }}
+        title={
+          signInContext === 'reverse-image' ? t('signInUploadPhotos') :
+          signInContext === 'document' ? t('signInUploadFiles') :
+          undefined
+        }
+        subtitle={
+          signInContext === 'reverse-image' ? t('analyzePhotosFree') :
+          signInContext === 'document' ? t('analyzeFilesFree') :
+          undefined
+        }
       />
     </div>
   );

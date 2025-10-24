@@ -1,9 +1,9 @@
-import ThreeSelector from './ThreeSelector.tsx';
+import QueryBoxContainer from './QueryBoxContainer.tsx';
 
 export default function InputContainer() {
   return (
     <div className="relative">
-      <ThreeSelector />
+      <QueryBoxContainer />
     </div>
   );
 }

@@ -3,7 +3,7 @@ export type UserType = 'free' | 'premium' | 'guest';
 import { useState } from 'react';
 import { useSession } from '../hooks/useSession.ts';
 import HelpButton from '../components/HelpButton.tsx';
-import InputContainer from '../components/search/InputContainer.tsx';
+import InputContainer from '../components/boxContainer/InputContainer.tsx';
 import ThemeToggle from '../components/theme/ThemeToggle.tsx';
 import LanguageSelector from '../components/common/LanguageSelector.tsx';
 import CookieConsentModal from '../components/common/CookieConsentModal.tsx';

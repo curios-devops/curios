@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { Check, Sparkles, FlaskConical, BookOpen } from 'lucide-react';
-import { useAccentColor } from '../../hooks/useAccentColor';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 
 interface FunctionTooltipProps {
@@ -102,7 +102,7 @@ export default function FunctionTooltip({
         ref={tooltipRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
+        className="absolute top-full left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
       >
         {/* Header */}
         <div className="text-left mb-2.5">
@@ -152,8 +152,8 @@ export default function FunctionTooltip({
         >
           {t('signInForAccess')}
         </button>
-        {/* Arrow pointer */}
-        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
+        {/* Arrow pointer - aligned differently on mobile vs desktop */}
+        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
       </div>
     );
   }
@@ -165,10 +165,10 @@ export default function FunctionTooltip({
         ref={tooltipRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
+        className="absolute left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
       >
-        {/* Arrow pointing up */}
-        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
+        {/* Arrow pointing up - aligned differently on mobile vs desktop */}
+        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
         
         <div className="relative">
           {/* Header */}
@@ -255,10 +255,10 @@ export default function FunctionTooltip({
         ref={tooltipRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
+        className="absolute left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
       >
-        {/* Arrow pointing up */}
-        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
+        {/* Arrow pointing up - aligned differently on mobile vs desktop */}
+        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
         
         <div className="relative">
           {/* Header */}

@@ -16,9 +16,11 @@ interface SignInModalProps {
   currentLanguage: Language; // Add currentLanguage prop
   onClose: () => void;
   context?: 'default' | 'pro';
+  title?: string;
+  subtitle?: string;
 }
 
-export default function SignInModal({ isOpen, onClose, context = 'default' }: SignInModalProps) {
+export default function SignInModal({ isOpen, onClose, context = 'default', title, subtitle }: SignInModalProps) {
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
   const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
@@ -57,9 +59,9 @@ export default function SignInModal({ isOpen, onClose, context = 'default' }: Si
 
         <div className="text-center mb-8">
           <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-            {t("welcome_back" as TranslationKey)}
+            {title || t("welcome_back" as TranslationKey)}
           </h2>
-          <p className="text-gray-400 text-sm">Log in to your account</p>
+          <p className="text-gray-400 text-sm">{subtitle || "Log in to your account"}</p>
         </div>
 
         <AuthHeader mode="signin" context={context} />

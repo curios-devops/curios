@@ -12,6 +12,8 @@ export default function Results() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
+  const imageUrlsParam = searchParams.get('images') || '';
+  const imageUrls = imageUrlsParam ? imageUrlsParam.split(',').filter(url => url.trim()) : [];
 
   const [searchStartTime] = useState(Date.now());
   const [timeAgo, setTimeAgo] = useState('just now');
@@ -112,11 +114,11 @@ export default function Results() {
     let isCurrentRequest = true;
     
     const fetchResults = async () => {
-      if (!query.trim()) {
+      if (!query.trim() && imageUrls.length === 0) {
         if (isCurrentRequest && isMountedRef.current) {
           setSearchState({
             isLoading: false,
-            error: 'Please enter a search query',
+            error: 'Please enter a search query or upload images',
             data: null
           });
         }
@@ -124,7 +126,7 @@ export default function Results() {
       }
 
       try {
-        logger.info('Starting search', { query });
+        logger.info('Starting search', { query, hasImages: imageUrls.length > 0, imageCount: imageUrls.length });
         
         if (isCurrentRequest && isMountedRef.current) {
           setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -132,6 +134,7 @@ export default function Results() {
         
         const response = await performSearch(query, {
           isPro: false,
+          imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
           onStatusUpdate: (status: string) => {
             if (isCurrentRequest && isMountedRef.current) {
               logger.debug('Search status update', { status });
@@ -206,7 +209,7 @@ export default function Results() {
     return () => {
       isCurrentRequest = false;
     };
-  }, [query]);
+  }, [query, imageUrls.join(',')]); // Re-run when query or images change
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">

@@ -91,5 +91,9 @@
   "upgradeToPremium": "Atualizar para Premium",
   "unlockPremiumFeatures": "Desbloqueie todo o potencial da IA avançada com recursos Premium",
   "dailyProQuota": "Cota Pro diária",
-  "proQuotaNote": "Pesquisa Pro, Pesquisa e Pro Labs contam para a cota"
+  "proQuotaNote": "Pesquisa Pro, Pesquisa e Pro Labs contam para a cota",
+  "signInUploadPhotos": "Faça login para enviar mais fotos",
+  "analyzePhotosFree": "Analise fotos gratuitamente",
+  "signInUploadFiles": "Faça login para enviar arquivos",
+  "analyzeFilesFree": "Analise arquivos gratuitamente"
 }

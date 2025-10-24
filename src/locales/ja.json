@@ -91,5 +91,9 @@
   "upgradeToPremium": "プレミアムにアップグレード",
   "unlockPremiumFeatures": "プレミアム機能で高度なAIの可能性を解禁",
   "dailyProQuota": "1日あたりのProクオータ",
-  "proQuotaNote": "Pro検索、Research、Pro Labsはクオータにカウントされます"
+  "proQuotaNote": "Pro検索、Research、Pro Labsはクオータにカウントされます",
+  "signInUploadPhotos": "サインインしてさらに写真をアップロード",
+  "analyzePhotosFree": "写真を無料で分析",
+  "signInUploadFiles": "サインインしてファイルをアップロード",
+  "analyzeFilesFree": "ファイルを無料で分析"
 }

@@ -44,8 +44,8 @@ Deno.serve(async (req: Request) => {
 
     console.log('Calling Brave Images API with query:', query)
     
-    // Call Brave Images Search API following official documentation
-    const braveUrl = `https://api.search.brave.com/res/v1/images/search?q=${encodeURIComponent(query)}&count=20&safesearch=strict&search_lang=en&country=us&spellcheck=1`
+    // Call Brave Images Search API - cap at 10 results to match MAX_RESULTS.IMAGES
+    const braveUrl = `https://api.search.brave.com/res/v1/images/search?q=${encodeURIComponent(query)}&count=10&safesearch=strict&search_lang=en&country=us&spellcheck=1`
     
     console.log('Brave Images API URL:', braveUrl)
     

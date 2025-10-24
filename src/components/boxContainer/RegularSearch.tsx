@@ -14,11 +14,11 @@ const MicIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((
 )) as LucideIcon;
 MicIcon.displayName = 'MicIcon';
 
-import ActionButton from '../SearchInput/ActionButton.tsx';
-import ThreeTabSwitch from '../SearchInput/ThreeTabSwitch.tsx';
-import type { TabType } from '../SearchInput/ThreeTabSwitch.tsx';
-import SearchButton from '../SearchInput/SearchButton.tsx';
-import SearchTextArea from '../SearchInput/SearchTextArea.tsx';
+import ActionButton from '../boxContainerInput/ActionButton.tsx';
+import ThreeTabSwitch from '../boxContainerInput/ThreeTabSwitch.tsx';
+import type { TabType } from '../boxContainerInput/ThreeTabSwitch.tsx';
+import SearchButton from '../boxContainerInput/SearchButton.tsx';
+import SearchTextArea from '../boxContainerInput/SearchTextArea.tsx';
 import ProModal from '../subscription/ProModal.tsx';
 import SignUpModal from '../auth/SignUpModal.tsx';
 import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
