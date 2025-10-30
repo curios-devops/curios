@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { verifyOtp } from '../../../lib/auth';
 
 interface VerificationCodeInputProps {
@@ -41,14 +41,19 @@ export default function VerificationCodeInput({ email, onSubmit, onClose }: Veri
 
     const response = await verifyOtp(email, code);
     
-    if (response.success) {
-      onSubmit();
+    if (!response.error && (response.user || response.session)) {
+      // Wait a moment for the auth state change to propagate
+      setTimeout(() => {
+        onSubmit();
+      }, 1000);
     } else {
-      setError(response.error || 'Invalid verification code');
+      const errorMessage = response.error && typeof response.error === 'object' && 'message' in response.error
+        ? (response.error as { message: string }).message
+        : 'Invalid verification code';
+      setError(errorMessage);
       setCode(''); // Clear the input on error
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (

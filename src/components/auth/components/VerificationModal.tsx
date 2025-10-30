@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Mail, X } from 'lucide-react';
 import VerificationCodeInput from './VerificationCodeInput';
 
@@ -9,6 +9,12 @@ interface VerificationModalProps {
 
 export default function VerificationModal({ email, onClose }: VerificationModalProps) {
   const [showCodeInput, setShowCodeInput] = useState(false);
+
+  const handleVerificationSuccess = () => {
+    // Close the modal after successful verification
+    // The useSession hook will automatically detect the auth state change
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
@@ -47,7 +53,7 @@ export default function VerificationModal({ email, onClose }: VerificationModalP
           ) : (
             <VerificationCodeInput 
               email={email}
-              onSubmit={() => onClose()}
+              onSubmit={handleVerificationSuccess}
               onClose={() => setShowCodeInput(false)}
             />
           )}

@@ -42,8 +42,10 @@ export class SwarmController {
       onStatusUpdate?.('Searching through reliable sources...');
       logger.info('SwarmController: Starting RetrieverAgent execution');
       
+      // Note: SearchRetrieverAgent.execute signature is: (query, onStatusUpdate, imageUrls)
+      // It does not accept isPro parameter - the agent automatically handles Brave + Apify fallback
       const searchResponse = await this.executeWithHealthCheck(
-        () => this.retrieverAgent.execute(query, onStatusUpdate, [], isPro),
+        () => this.retrieverAgent.execute(query, onStatusUpdate, []),
         'RetrieverAgent'
       ) as AgentResponse<{
         results: SearchResult[];
@@ -75,30 +77,39 @@ export class SwarmController {
       logger.info('SwarmController: Starting WriterAgent execution', {
         query,
         perspectivesCount: perspectives.length,
-        resultsCount: searchResponse.data?.results?.length || 0
+        resultsCount: searchResponse.data?.results?.length || 0,
+        imagesCount: searchResponse.data?.images?.length || 0,
+        videosCount: searchResponse.data?.videos?.length || 0
       });
 
-      // Add explicit timeout for WriterAgent execution
+      // Call WriterAgent DIRECTLY (same as regular search does)
+      // Remove the executeWithHealthCheck wrapper to match regular search pattern
       let writerResponse: AgentResponse<ArticleResult>;
       try {
-        const writerPromise = this.executeWithHealthCheck(
-          () =>
-            this.writerAgent.execute({
-              query,
-              perspectives,
-              results: searchResponse.data?.results || []
-            }, onStatusUpdate),
-          'WriterAgent'
-        ) as Promise<AgentResponse<ArticleResult>>;
+        // 🔍 IMPORTANT: Pass complete research data to WriterAgent
+        // Must match regular search format: query, perspectives, results, images, videos, isReverseImageSearch
+        const researchData = {
+          query,
+          perspectives,
+          results: searchResponse.data?.results || [],
+          images: searchResponse.data?.images || [],
+          videos: searchResponse.data?.videos || [],
+          isReverseImageSearch: false // Pro search doesn't support image upload yet
+        };
 
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => {
-            logger.error('WriterAgent timeout after 45 seconds');
-            reject(new Error('WriterAgent timeout after 45 seconds'));
-          }, 45000) // 45 seconds
-        );
+        console.log('🔍 [SWARM] Calling WriterAgent with research data:', {
+          query: researchData.query,
+          resultsCount: researchData.results.length,
+          imagesCount: researchData.images.length,
+          videosCount: researchData.videos.length,
+          perspectivesCount: researchData.perspectives.length
+        });
 
-        writerResponse = await Promise.race([writerPromise, timeoutPromise]);
+        // DIRECT CALL (no health check wrapper) - same pattern as regular search
+        writerResponse = await this.writerAgent.execute({
+          query,
+          researchResult: researchData
+        });
 
         logger.info('SwarmController: WriterAgent completed successfully', {
           success: writerResponse.success,

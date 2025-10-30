@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { signUpWithEmail, signInWithEmail } from '../../../lib/auth.ts';
+import { signUpWithEmail, signInWithEmail } from '../../../commonApp/auth/authService';
 import { validateEmail } from '../../../utils/validation.ts';
 import EmailInput from './EmailInput.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';

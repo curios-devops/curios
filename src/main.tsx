@@ -11,6 +11,8 @@ import './index.css';
 const SearchResults = lazy(() => import('./services/search/regular/pages/SearchResults.tsx'));
 const DeepResearchResults = lazy(() => import('./services/research/pro/pages/ResearchResults.tsx'));
 const ProSearchResults = lazy(() => import('./services/search/pro/pages/ProSearchResults.tsx'));
+const ProSearchResultsV2 = lazy(() => import('./services/search/pro/pages/ProSearchResultsV2.tsx'));
+const ProSearchTest = lazy(() => import('./services/search/pro/pages/ProSearchTest.tsx'));
 const InsightsResults = lazy(() => import('./services/research/regular/pages/InsightsResults.tsx'));
 const ResearcherResults = lazy(() => import('./services/research/regular/pages/ResearcherResults.tsx'));
 const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx'));
@@ -49,6 +51,8 @@ const router = createBrowserRouter(
         { path: '/', element: <Home /> },
         { path: '/search', element: <LazyPageWrapper><SearchResults /></LazyPageWrapper> },
         { path: '/pro-search', element: <LazyPageWrapper><ProSearchResults /></LazyPageWrapper> },
+  { path: '/pro-search-v2', element: <LazyPageWrapper><ProSearchResultsV2 /></LazyPageWrapper> },
+  { path: '/pro-search-test', element: <LazyPageWrapper><ProSearchTest /></LazyPageWrapper> },
         { path: '/deep-research', element: <LazyPageWrapper><DeepResearchResults /></LazyPageWrapper> },
         { path: '/insights-results', element: <LazyPageWrapper><InsightsResults /></LazyPageWrapper> },
         { path: '/research-results', element: <LazyPageWrapper><ResearcherResults /></LazyPageWrapper> },
@@ -70,6 +74,14 @@ const router = createBrowserRouter(
 
 // Configure error handling for unhandled promises
 globalThis.addEventListener('unhandledrejection', (event) => {
+  // Suppress Supabase "Invalid Refresh Token" errors for guest users
+  const errorMessage = event.reason?.message || String(event.reason);
+  if (errorMessage.includes('Invalid Refresh Token') || errorMessage.includes('Refresh Token Not Found')) {
+    console.warn('Supabase refresh token error suppressed (guest mode)');
+    event.preventDefault();
+    return;
+  }
+  
   logger.error('Unhandled Promise Rejection:', {
     reason: event.reason,
     promise: event.promise,
@@ -80,6 +92,14 @@ globalThis.addEventListener('unhandledrejection', (event) => {
 
 // Configure error handling for uncaught errors
 globalThis.addEventListener('error', (event) => {
+  // Suppress Supabase auth errors
+  const errorMessage = event.message || '';
+  if (errorMessage.includes('Invalid Refresh Token') || errorMessage.includes('Refresh Token Not Found')) {
+    console.warn('Supabase auth error suppressed (guest mode)');
+    event.preventDefault();
+    return;
+  }
+  
   logger.error('Uncaught Error:', {
     message: event.message,
     filename: event.filename,

@@ -8,6 +8,38 @@ if (!env.supabase.url || !env.supabase.anonKey) {
   throw new Error('Please configure Supabase environment variables');
 }
 
+// Clean up stale/invalid auth tokens before initialization
+// This prevents "Invalid Refresh Token" errors for guest users
+if (typeof window !== 'undefined') {
+  try {
+    const authStorageKey = `sb-${env.supabase.url.split('//')[1]?.split('.')[0]}-auth-token`;
+    const storedAuth = localStorage.getItem(authStorageKey);
+    
+    if (storedAuth) {
+      try {
+        const parsed = JSON.parse(storedAuth);
+        // Check if token is expired or invalid
+        if (parsed?.expires_at) {
+          const expiresAt = parsed.expires_at * 1000; // Convert to milliseconds
+          const now = Date.now();
+          
+          // If token expired more than 1 hour ago, clear it
+          if (expiresAt < now - 3600000) {
+            logger.info('Clearing expired auth token from localStorage');
+            localStorage.removeItem(authStorageKey);
+          }
+        }
+      } catch (parseError) {
+        // Invalid JSON, clear it
+        logger.warn('Clearing invalid auth token from localStorage');
+        localStorage.removeItem(authStorageKey);
+      }
+    }
+  } catch (error) {
+    logger.warn('Error checking auth token:', error);
+  }
+}
+
 // Create Supabase client with retries and proper configuration
 export const supabase = createClient(
   env.supabase.url,
@@ -17,7 +49,7 @@ export const supabase = createClient(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'pkce',
+      flowType: 'implicit',
       storage: typeof window !== 'undefined' ? localStorage : undefined,
     },
     db: {

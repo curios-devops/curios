@@ -17,21 +17,12 @@ export default function TabbedContent({
   activeTab
 }: TabbedContentProps) {
 
-  // Debug logging for TabbedContent
-  console.log('TabbedContent render:', {
-    isLoading: searchState.isLoading,
-    hasError: !!searchState.error,
-    hasData: !!searchState.data,
-    statusMessage
-  });
 
   if (searchState.isLoading) {
-    console.log('TabbedContent: Showing loading state with message:', statusMessage);
     return <LoadingState message={statusMessage} />;
   }
 
   if (searchState.error) {
-    console.log('TabbedContent: Showing error state:', searchState.error);
     return (
       <ErrorState 
         message={searchState.error} 
@@ -41,18 +32,9 @@ export default function TabbedContent({
   }
 
   if (!searchState.data) {
-    console.log('TabbedContent: No data available');
     return null;
   }
 
-  console.log('TabbedContent: Rendering main content with data:', {
-    sourcesCount: searchState.data.sources.length,
-    imagesCount: searchState.data.images.length,
-    hasAnswer: !!searchState.data.answer
-  });
-
-  // Add a visual debugging indicator
-  console.log('TabbedContent: About to render main UI with activeTab:', activeTab);
 
   const { data } = searchState;
 
@@ -66,11 +48,6 @@ export default function TabbedContent({
             <div className="space-y-4">
               <div className="grid grid-cols-4 gap-2 mb-6">
                 {data.sources.slice(0, 4).map((source: Source, index: number) => {
-                  console.log('TabbedContent: Processing source', index, {
-                    title: source.title,
-                    url: source.url,
-                    hasSnippet: !!source.snippet
-                  });
                   const domain = new URL(source.url).hostname.replace('www.', '');
                   return (
                     <a
@@ -78,7 +55,7 @@ export default function TabbedContent({
                       href={source.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex flex-col p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 bg-white dark:bg-gray-800 hover:shadow-sm"
+                      className="group flex flex-col p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 bg-white dark:bg-gray-800 hover:shadow-sm cursor-pointer"
                     >
                       {/* Show source image if available, otherwise show favicon */}
                       {source.image ? (
@@ -160,51 +137,13 @@ export default function TabbedContent({
 
             {/* AI Overview Section */}
             <div>
-              {(() => {
-                try {
-                  console.log('TabbedContent: About to render AIOverview with:', {
-                    hasAnswer: !!data.answer,
-                    answerLength: data.answer?.length,
-                    sourcesCount: data.sources?.length,
-                    query: new URLSearchParams(globalThis.location.search).get('q') || ''
-                  });
-                  
-                  // Test with minimal version first
-                  const useMinimalVersion = false; // Set to true to test
-                  
-                  if (useMinimalVersion) {
-                    console.log('TabbedContent: Using minimal AIOverview version');
-                    return (
-                      <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
-                        <h2 className="text-xl font-medium mb-4">AI Overview (Minimal Test)</h2>
-                        <p className="text-gray-700 dark:text-gray-300 mb-4">{data.answer}</p>
-                        <div className="text-sm text-gray-500">
-                          Sources: {data.sources.length} | Query: {new URLSearchParams(globalThis.location.search).get('q') || ''}
-                        </div>
-                      </div>
-                    );
-                  }
-                  
-                  console.log('TabbedContent: Using full AIOverview component');
-                  return (
-                    <AIOverview 
-                      answer={data.answer} 
-                      sources={data.sources} 
-                      query={new URLSearchParams(globalThis.location.search).get('q') || ''} 
-                      followUpQuestions={data.followUpQuestions}
-                      citations={data.citations}
-                    />
-                  );
-                } catch (error) {
-                  console.error('TabbedContent: Error rendering AIOverview:', error);
-                  const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-                  return (
-                    <div className="p-4 border border-red-300 rounded-lg bg-red-50 dark:bg-red-900/20 dark:border-red-700">
-                      <p className="text-red-700 dark:text-red-300">Error rendering AI Overview: {errorMessage}</p>
-                    </div>
-                  );
-                }
-              })()}
+              <AIOverview 
+                answer={data.answer} 
+                sources={data.sources} 
+                query={new URLSearchParams(globalThis.location.search).get('q') || ''} 
+                followUpQuestions={data.followUpQuestions}
+                citations={data.citations}
+              />
             </div>
           </div>
         )}

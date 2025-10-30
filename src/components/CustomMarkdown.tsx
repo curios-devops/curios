@@ -11,8 +11,23 @@ interface CustomMarkdownProps {
 }
 
 export default function CustomMarkdown({ children, className = "", citations = [] }: CustomMarkdownProps) {
+  console.log('🎨 CustomMarkdown: Starting render', {
+    contentLength: children?.length,
+    hasCitations: citations.length > 0,
+    citationsCount: citations.length
+  });
+  
+  // CRITICAL FIX: Memoize the parsing to prevent re-parsing on every render
+  const parsedContent = React.useMemo(() => {
+    console.log('🎨 CustomMarkdown: useMemo - Running parseMarkdown');
+    return parseMarkdown(children);
+  }, [children, citations]); // Re-parse only when content or citations change
+  
+  console.log('🎨 CustomMarkdown: Parsed content ready, elements:', parsedContent.length);
+  
   // Simple markdown parser for basic formatting
-  const parseMarkdown = (text: string): React.ReactElement[] => {
+  function parseMarkdown(text: string): React.ReactElement[] {
+    console.log('🎨 CustomMarkdown: parseMarkdown called', { textLength: text.length });
     const lines = text.split('\n');
     const elements: React.ReactElement[] = [];
     let key = 0;
@@ -79,10 +94,10 @@ export default function CustomMarkdown({ children, className = "", citations = [
     });
 
     return elements;
-  };
+  }
 
   // Parse inline formatting like **bold** and *italic*
-  const parseInlineFormatting = (text: string): React.ReactNode => {
+  function parseInlineFormatting(text: string): React.ReactNode {
     // Citations [Website Name] or [Website Name +X] - Convert to new citation components
     const citationRegex = /(\[[^\]]+\])/g;
     const parts = text.split(citationRegex);
@@ -130,10 +145,10 @@ export default function CustomMarkdown({ children, className = "", citations = [
     });
 
     return result;
-  };
+  }
 
   // Helper function to parse bold, italic, and code formatting
-  const parseOtherFormatting = (text: string, baseIndex: number): React.ReactNode => {
+  function parseOtherFormatting(text: string, baseIndex: number): React.ReactNode {
     // Bold text **text**
     const parts = text.split(/(\*\*[^*]+\*\*)/);
     
@@ -149,10 +164,10 @@ export default function CustomMarkdown({ children, className = "", citations = [
       
       return parseItalicAndCode(part, `${baseIndex}-${index}`);
     });
-  };
+  }
 
   // Helper function to parse italic and code formatting
-  const parseItalicAndCode = (text: string, baseKey: string): React.ReactNode => {
+  function parseItalicAndCode(text: string, baseKey: string): React.ReactNode {
     // Italic text *text*
     const parts = text.split(/(\*[^*]+\*)/);
     
@@ -168,10 +183,10 @@ export default function CustomMarkdown({ children, className = "", citations = [
       
       return parseCode(part, `${baseKey}-${index}`);
     });
-  };
+  }
 
   // Helper function to parse code formatting
-  const parseCode = (text: string, baseKey: string): React.ReactNode => {
+  function parseCode(text: string, baseKey: string): React.ReactNode {
     // Inline code `code`
     const parts = text.split(/(`[^`]+`)/);
     
@@ -186,11 +201,11 @@ export default function CustomMarkdown({ children, className = "", citations = [
       }
       return part;
     });
-  };
+  }
 
   return (
     <div className={className}>
-      {parseMarkdown(children)}
+      {parsedContent}
     </div>
   );
 }

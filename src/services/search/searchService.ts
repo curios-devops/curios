@@ -141,7 +141,11 @@ export async function performSearch(
               videosCount: researchData.videos.length,
               isReverseImageSearch: researchData.isReverseImageSearch
             });
-            const writerResponse = await writerAgent.execute(researchData, onStatusUpdate);
+            const writerResponse = await writerAgent.execute({
+              query: effectiveQuery,
+              researchResult: researchData,
+              isImageSearch: researchData.isReverseImageSearch
+            });
             
             console.log('✅ WriterAgent complete:', {
               success: writerResponse?.success,
@@ -153,7 +157,7 @@ export async function performSearch(
             }
             
             // Step 3: Format & Return
-            console.log('✅ Formatting response...');
+            console.log('✅ [SEARCH] Formatting response...');
             
             // 🔍 DEBUG: Check what images we actually have
             console.log('🔍 [SEARCH] Images investigation:', {
@@ -165,7 +169,7 @@ export async function performSearch(
               imagesArray: searchResponse.data.images
             });
             
-            return {
+            const finalResponse = {
               answer: writerResponse.data.content,
               sources: (searchResponse.data.results || []).map((r: any) => ({
                 title: r.title,
@@ -176,8 +180,20 @@ export async function performSearch(
               videos: searchResponse.data.videos || [],
               provider: 'Standard Search',
               perspectives: undefined,
-              citations: writerResponse.data.citations || []
+              citations: writerResponse.data.citations || [],
+              followUpQuestions: writerResponse.data.followUpQuestions || []
             };
+            
+            console.log('✅✅✅ [SEARCH] SEARCH SERVICE COMPLETE - RETURNING RESPONSE TO UI', {
+              hasAnswer: !!finalResponse.answer,
+              sourcesCount: finalResponse.sources.length,
+              imagesCount: finalResponse.images.length,
+              videosCount: finalResponse.videos.length,
+              citationsCount: finalResponse.citations.length,
+              followUpQuestionsCount: finalResponse.followUpQuestions.length
+            });
+            
+            return finalResponse;
             
           } catch (error) {
             console.error('🔍 [SEARCH] Regular search failed:', {

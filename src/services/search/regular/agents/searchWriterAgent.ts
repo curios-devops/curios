@@ -2,12 +2,12 @@
 // Simplified following Swarm architecture: lightweight, stateless, minimal abstractions
 // Regular search flow: Research data → OpenAI (via Supabase Edge Function) → Article
 
-import { AgentResponse, ResearchResult, ArticleResult, SearchResult } from '../../../../commonApp/types/index';
+import { AgentResponse, ResearchResult, ArticleResult } from '../../../../commonApp/types/index';
 import { logger } from '../../../../utils/logger.ts';
 
 export class SearchWriterAgent {
-  private readonly defaultModel: string = 'gpt-4o';
-  private readonly imageSearchModel: string = 'gpt-4o-mini'; // Simpler model for reverse image searches
+  private readonly defaultModel: string = 'gpt-4o-mini-2024-07-18'; // Latest stable gpt-4o-mini version
+  private readonly imageSearchModel: string = 'gpt-4o-mini-2024-07-18'; // Same model for reverse image searches
 
   constructor() {
     logger.info('SearchWriterAgent: Initialized');
@@ -47,6 +47,12 @@ export class SearchWriterAgent {
       const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+      console.log('[WRITER] Environment check:', {
+        hasUrl: !!supabaseEdgeUrl,
+        hasKey: !!supabaseAnonKey,
+        url: supabaseEdgeUrl
+      });
+
       if (!supabaseEdgeUrl) {
         throw new Error('Supabase Edge Function URL not configured');
       }
@@ -55,42 +61,65 @@ export class SearchWriterAgent {
         throw new Error('Supabase anon key not found');
       }
 
-      // Simple fetch call with timeout (matching test page pattern)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
+      // Use fetch with AbortController for timeout
       try {
+        const payload = {
+          prompt: JSON.stringify({
+            messages,
+            model,
+            response_format: { type: 'json_object' },
+            temperature: 0.7,
+            max_output_tokens: 1200
+          })
+        };
+
+        console.log('[WRITER] Request payload:', {
+          model,
+          messagesCount: messages.length,
+          payloadSize: JSON.stringify(payload).length
+        });
+
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.error('[WRITER] TIMEOUT - Aborting request after 30 seconds');
+          controller.abort();
+        }, 30000);
+
+        console.log('[WRITER] Calling fetch...');
         const response = await fetch(supabaseEdgeUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${supabaseAnonKey}`
           },
-          body: JSON.stringify({
-            prompt: JSON.stringify({
-              messages,
-              model,
-              response_format: { type: 'json_object' },
-              temperature: 0.7,
-              max_output_tokens: 1200
-            })
-          }),
+          body: JSON.stringify(payload),
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
+        console.log('[WRITER] Fetch completed!', {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText
+        });
 
         if (!response.ok) {
           const errorText = await response.text();
           logger.error('OpenAI API error', {
             status: response.status,
             statusText: response.statusText,
-            errorText: errorText.substring(0, 500)
+            errorPreview: errorText.substring(0, 200)
           });
           throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
+        
+        console.log('[WRITER] Response parsed:', {
+          hasText: !!data.text,
+          textLength: data.text?.length || 0
+        });
 
         // The Supabase Edge Function returns { text, openai }
         if (!data.text) {
@@ -99,14 +128,6 @@ export class SearchWriterAgent {
 
         logger.debug('Successfully received content from Supabase Edge Function', {
           contentLength: data.text.length
-        });
-
-        // 🔍 DEBUG: Log what OpenAI returned (first 500 chars)
-        console.log('🔍 [WRITER] OpenAI returned:', {
-          textType: typeof data.text,
-          textLength: typeof data.text === 'string' ? data.text.length : 'N/A',
-          textPreview: typeof data.text === 'string' ? data.text.slice(0, 500) : JSON.stringify(data.text).slice(0, 500),
-          hasOpenAIMetadata: !!data.openai
         });
 
         // Parse the response
@@ -132,12 +153,9 @@ export class SearchWriterAgent {
             textPreview: String(data.text).slice(0, 200)
           });
 
-          // 🔍 DEBUG: Show problematic JSON for debugging
-          console.error('❌ [WRITER] JSON parsing failed:', {
+          console.error('[WRITER] JSON parsing failed:', {
             error: parseError instanceof Error ? parseError.message : String(parseError),
-            rawTextSample: String(data.text).slice(0, 1000),
-            textLength: String(data.text).length,
-            rawTextEnd: String(data.text).slice(-500)
+            rawTextSample: String(data.text).slice(0, 1000)
           });
 
           // Fallback: wrap as plain text
@@ -171,263 +189,130 @@ export class SearchWriterAgent {
         throw new Error('Invalid ArticleResult format');
 
       } catch (error: unknown) {
-        clearTimeout(timeoutId);
-        
         // Handle timeout specifically
         if (error instanceof Error && error.name === 'AbortError') {
           logger.error('OpenAI call timeout after 30 seconds');
+          console.error('[WRITER] Request aborted due to timeout');
           throw new Error('OpenAI request timeout - please try again');
         }
         
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('OpenAI call failed', { error: errorMessage });
+        // Handle network errors
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          logger.error('Network error calling OpenAI', { error: error.message });
+          console.error('[WRITER] Network error:', error);
+          throw new Error('Network error - please check your connection');
+        }
+
+        // Re-throw other errors
+        logger.error('Error in callOpenAI', { error });
         throw error;
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error('OpenAI call failed (outer catch)', { error: errorMessage });
+      logger.error('Error in SearchWriterAgent.callOpenAI', { error });
       throw error;
     }
   }
 
   /**
-   * Executes the article generation process
-   * @param research - The research data gathered by the Retriever agent
-   * @param onStatusUpdate - Optional callback for status updates
-   * @returns An AgentResponse containing the generated article
+   * Transforms research data into an article
    */
-  async execute(
-    research: ResearchResult,
-    onStatusUpdate?: (status: string) => void
-  ): Promise<AgentResponse<ArticleResult>> {
+  async execute(params: {
+    query: string;
+    researchResult: ResearchResult;
+    model?: string;
+    isImageSearch?: boolean;
+  }): Promise<AgentResponse<ArticleResult>> {
+    const { query, researchResult, model, isImageSearch } = params;
+    const modelToUse = model || (isImageSearch ? this.imageSearchModel : this.defaultModel);
+
     try {
-      logger.info('WriterAgent: Starting execution', {
-        query: research?.query,
-        resultsCount: research?.results?.length || 0
-      });
-
-      onStatusUpdate?.('Analyzing search results...');
-
-      if (!research) {
-        throw new Error('Invalid research data: missing research object');
-      }
-
-      // Allow empty query for image-only searches
-      const { query = '', results = [], images = [], videos = [], isReverseImageSearch = false } = research;
-
-      logger.info('WriterAgent: Processing research data', {
-        query: query || '(image-only search)',
-        resultsCount: results.length,
-        imagesCount: images.length,
-        videosCount: videos.length,
-        isReverseImageSearch
-      });
-
-      // 🔍 DEBUG: Log payload details for combined text+image searches
-      console.log('🔍 [WRITER] Received research payload:', {
+      logger.info('SearchWriterAgent: Starting execution', {
         query,
-        resultsCount: results.length,
-        imagesCount: images.length,
-        videosCount: videos.length,
-        isReverseImageSearch,
-        firstResult: results[0] ? {
-          title: results[0].title,
-          url: results[0].url,
-          contentPreview: (results[0] as any).content?.slice(0, 100) + '...'
-        } : null,
-        firstImage: images[0] ? {
-          url: images[0].url,
-          alt: images[0].alt
-        } : null
+        sourceCount: researchResult.results.length,
+        isImageSearch: !!isImageSearch,
+        model: modelToUse
       });
 
-      // Use flag from Retriever Agent to determine search type
-      // For reverse image searches, use simpler/cheaper gpt-4o-mini model
-      const model = isReverseImageSearch ? this.imageSearchModel : this.defaultModel;
+      // Build system prompt
+      const systemPrompt = `You are an expert research writer creating comprehensive, well-structured articles.
 
-      logger.info('WriterAgent: Using model', { 
-        model, 
-        reason: isReverseImageSearch ? 'reverse image search detected' : 'regular text search' 
-      });
+Your task: Write an article based on the provided search results.
 
-      // Prepare source context from search results
-      const maxResults = 8;
-      const maxContentPerResult = 600;
+Response format: JSON with this exact structure:
+{
+  "content": "Your comprehensive article in markdown format...",
+  "followUpQuestions": ["Question 1?", "Question 2?", ...],
+  "citations": []
+}
 
-      // Helper function to extract website name from URL
-      const extractSiteName = (url: string): string => {
-        try {
-          const domain = new URL(url).hostname;
-          return domain.replace('www.', '').split('.')[0];
-        } catch {
-          return 'Unknown Site';
-        }
-      };
+Guidelines for the article:
+- Start directly with the main content (no title, no "# Query" header)
+- Use natural, flowing prose
+- Structure with relevant section headings (##)
+- Include specific facts, data, and details from the sources
+- Use inline citations like [1], [2], etc. to reference sources
+- Make it comprehensive but well-organized
+- Use markdown formatting for readability
 
-      const sourceContext = results
-        .slice(0, maxResults)
-        .map((result: SearchResult, index: number) => {
-          const content = 'content' in result
-            ? (result as { content?: string }).content || ''
-            : 'snippet' in result
-              ? (result as { snippet?: string }).snippet || ''
-              : '';
-          const truncatedContent = content.length > maxContentPerResult
-            ? content.slice(0, maxContentPerResult) + '...'
-            : content;
-          const siteName = extractSiteName(result.url);
+Guidelines for followUpQuestions:
+- Provide 5 related questions that naturally extend the topic
+- Make them specific and actionable
+- Focus on practical applications or deeper understanding
 
-          return `Source ${index + 1} - ${siteName}:
-URL: ${result.url}
-Website: ${siteName}
-Title: ${result.title}
-Content: ${truncatedContent}
----`;
+Leave citations array empty (we handle it separately).
+
+CRITICAL: You must base your content strictly on the provided sources. Do not invent information.`;
+
+      // Build user prompt with sources
+      const sourcesText = researchResult.results
+        .map((source: any, index: number) => {
+          return `[${index + 1}] ${source.title}\nURL: ${source.url}\nContent: ${source.content || 'No content available'}`;
         })
         .join('\n\n');
 
-      logger.info('WriterAgent: Source context prepared', {
-        sourceContextLength: sourceContext.length,
-        maxResults
-      });
+      const userPrompt = `Query: "${query}"
 
-      onStatusUpdate?.('Generating comprehensive answer...');
+Search Results:
+${sourcesText}
 
-      const systemPrompt = `You are an expert research analyst creating comprehensive, well-sourced articles with intelligent follow-up questions.
-
-CRITICAL: You must base your content ONLY on the provided sources. Do not add information not found in the sources.
-
-RESPONSE FORMAT - Return a JSON object with this exact structure:
-{
-  "content": "Your comprehensive answer here...",
-  "followUpQuestions": [
-    "Follow-up question 1",
-    "Follow-up question 2",
-    "Follow-up question 3",
-    "Follow-up question 4",
-    "Follow-up question 5"
-  ],
-  "citations": [
-    {
-      "url": "url1",
-      "title": "Article Title",
-      "siteName": "Website Name"
-    }
-  ]
-}
-
-CONTENT GUIDELINES:
-- Base ALL information directly on the provided sources
-- Use website names for citations: [Website Name] instead of [Source X]
-- When multiple sources from same site, use: [Website Name +2] format
-- Include specific facts, dates, numbers, and quotes from the sources
-- Structure with clear sections using ### headers
-- Use **bold** for key terms and *italic* for emphasis
-- Synthesize information from multiple sources when they discuss the same topic
-- Present different viewpoints when sources conflict
-- Maintain professional, informative tone
-- Focus on the most current and relevant information from sources
-- Do NOT add external knowledge not found in the provided sources
-
-CONCLUSION GUIDELINES:
-- Avoid temptation to create summary that references all sources
-- End naturally with concluding thoughts or key takeaways
-- Keep conclusions focused and concise
-- Don't force citations into the conclusion unless naturally relevant
-
-FOLLOW-UP QUESTIONS GUIDELINES:
-- Generate 5 intelligent follow-up questions that naturally extend the topic
-- Questions should explore deeper aspects, related implications, or practical applications
-- Make questions specific and actionable based on the content discussed
-- Focus on what readers would logically want to explore next
-- Ensure questions build upon the information presented in the article
-
-CITATION REQUIREMENTS:
-- Use [Website Name] format for single sources
-- Use [Website Name +2] format when 3+ sources from same site
-- Cite specific claims, statistics, quotes, and facts
-- Include multiple citations when information comes from different sources
-- Ensure every major point is properly attributed
-- Provide full citation details in the citations array with url, title, and siteName`;
-
-      // Handle image-based searches with appropriate prompt
-      const queryContext = isReverseImageSearch
-        ? (query 
-            ? `Image + Text Search: The user uploaded an image and provided the query "${query}". We performed a reverse image search combined with their text query. Based on the search results below, provide a comprehensive analysis.`
-            : `Image-Only Search: The user uploaded an image without any text query. We performed a reverse image search. Based on the search results below, provide a comprehensive analysis of what the image shows, including context, identification, and related information.`)
-        : `Query: "${query}"`;
-
-      const userPrompt = `${queryContext}
-
-Source Material:
-${sourceContext}
-
-TASK: Create a comprehensive, well-sourced ${isReverseImageSearch ? 'image analysis article' : 'article'} that ${isReverseImageSearch ? 'identifies and explains what the image shows' : 'directly addresses the query'} using ONLY the information provided in the sources above.
-
-Requirements:
-- Ground ALL information in the provided sources
-- Use [Website Name] citations (not [Source X]) for every major claim or fact
-- For multiple sources from same site, use [Website Name +X] format
-- Include specific details, statistics, dates, and quotes from sources
-- Structure with clear sections that organize the information logically
-- Generate 5 thoughtful follow-up questions that extend the topic naturally
-- Focus on the most current and relevant information available in the sources
-- When sources conflict, present different perspectives clearly
-- Synthesize related information from multiple sources when appropriate
-- End with natural concluding thoughts, avoid forced summary citing all sources
-
-CITATION EXAMPLES:
-- Single source: [Wikipedia]
-- Multiple from same site: [Wikipedia +2] (for 3 total sources)
-- Different sites: [Wikipedia] [Reuters] [TechCrunch]
-
-Remember: Base your response entirely on the source material provided. Do not add external information.`;
+Based on these search results, write a comprehensive article addressing the query. Remember to use inline citations like [1], [2], etc.`;
 
       const messages = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ];
 
-      logger.info('WriterAgent: Calling OpenAI', { model });
-
-      // 🔍 DEBUG: Log what we're sending to OpenAI
-      console.log('🔍 [WRITER] Sending to OpenAI:', {
-        model,
-        messagesCount: messages.length,
-        systemPromptLength: systemPrompt.length,
-        userPromptLength: userPrompt.length,
-        userPromptPreview: userPrompt.slice(0, 500) + '...',
-        isReverseImageSearch,
-        queryContext: isReverseImageSearch
-          ? (query 
-              ? `Image + Text Search: "${query}"`
-              : `Image-Only Search`)
-          : `Text Search: "${query}"`
+      logger.debug('Calling OpenAI to generate article', {
+        promptLength: systemPrompt.length + userPrompt.length,
+        sourceCount: researchResult.results.length
       });
 
-      // Simple call without retries or Promise.race
-      const articleResult = await this.callOpenAI(messages, model);
+      // Call OpenAI
+      const articleResult = await this.callOpenAI(messages, modelToUse);
 
-      logger.info('WriterAgent: Successfully generated article', {
+      logger.info('SearchWriterAgent: Successfully generated article', {
         contentLength: articleResult.content.length,
-        followUpQuestionsCount: articleResult.followUpQuestions.length,
-        citationsCount: articleResult.citations.length
+        followUpQuestionsCount: articleResult.followUpQuestions.length
       });
-
-      onStatusUpdate?.('Article generation completed!');
 
       return {
         success: true,
         data: articleResult
       };
 
-    } catch (error) {
-      logger.error('WriterAgent execution failed:', error);
-      onStatusUpdate?.('Article generation completed with fallback content');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      logger.error('SearchWriterAgent: Execution failed', {
+        query,
+        error: errorMessage
+      });
 
+      // Return fallback data
       return {
-        success: true,
-        data: this.getFallbackData(research?.query || '')
+        success: false,
+        error: errorMessage,
+        data: this.getFallbackData(query)
       };
     }
   }

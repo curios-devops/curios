@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase.ts';
 import { Loader2 } from 'lucide-react';
-import { SupabaseClient } from '@supabase/supabase-js';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -11,8 +10,12 @@ export default function AuthCallback() {
     const handleAuthCallback = async () => {
       try {
         const { error } = await supabase.auth.getSession();
-        if ((supabase.auth as SupabaseClient).getSession) { const { error } = await (supabase.auth as SupabaseClient).getSession(); if (error) throw error; } else { /* Handle the case where getSession is not available if necessary */ } if (error) throw error;
-        navigate('/');
+        if (error) throw error;
+        
+        // Small delay to ensure session is properly set
+        setTimeout(() => {
+          navigate('/');
+        }, 500);
       } catch (error) {
         console.error('Auth callback error:', error);
         navigate('/');

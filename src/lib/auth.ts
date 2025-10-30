@@ -15,8 +15,8 @@ export async function signInWithEmail(email: string): Promise<Partial<AuthRespon
     });
     if (error) throw error;
     return {
-      user: data.user,
-      session: data.session,
+      user: data.user || undefined,
+      session: data.session || undefined,
     };
   } catch (error) {
     console.error('Sign in error:', error);
@@ -56,11 +56,21 @@ export const signUpWithEmail = signInWithEmail;
 
 export async function signOut(): Promise<Partial<AuthResponse>> {
   try {
-    const { error, data } = await supabase.auth.signOut();
-    if (error) throw error;
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      // Log the full error object for debugging
+      console.error('Supabase signOut error:', error);
+      if (error.status) {
+        console.error('Supabase signOut error status:', error.status);
+      }
+      if (error.message) {
+        console.error('Supabase signOut error message:', error.message);
+      }
+      throw error;
+    }
     return {
-      user: data.user,
-      session: data.session,
+      user: undefined,
+      session: undefined,
     };
   } catch (error) {
     console.error('Sign out error:', error);
@@ -72,7 +82,7 @@ export async function signOut(): Promise<Partial<AuthResponse>> {
               message: error.message,
             }
           : {
-              message: 'Failed to sign out',
+              message: error && typeof error === 'object' && 'message' in error ? error.message : 'Failed to sign out',
             },
     };
   }
@@ -87,8 +97,8 @@ export async function verifyOtp(email: string, token: string): Promise<Partial<A
     });
     if (error) throw error;
     return {
-      user: data.user,
-      session: data.session,
+      user: data.user || undefined,
+      session: data.session || undefined,
     };
   } catch (error) {
     console.error('OTP verification error:', error);

@@ -46,17 +46,17 @@ export function useProQuota() {
         async () => {
           const { data, error } = await supabase
             .from('profiles')
-            .select('remaining_pro_quota, pro_quota_reset_at')
+            .select('remaining_searches, searches_reset_at')
             .eq('id', session.user.id)
             .single();
           if (error) throw error;
           return data;
         },
-        { remaining_pro_quota: 5, pro_quota_reset_at: new Date().toISOString() }
+        { remaining_searches: 5, searches_reset_at: new Date().toISOString() }
       );
 
-      if ('remaining_pro_quota' in result && 'pro_quota_reset_at' in result) {
-        const quotaResetAt = result.pro_quota_reset_at;
+      if ('remaining_searches' in result && 'searches_reset_at' in result) {
+        const quotaResetAt = result.searches_reset_at;
         const resetAt = typeof quotaResetAt === 'string' ? new Date(quotaResetAt) : new Date();
         const now = new Date();
 
@@ -68,16 +68,16 @@ export function useProQuota() {
               await supabase
                 .from('profiles')
                 .update({
-                  remaining_pro_quota: newQuota,
-                  pro_quota_reset_at: now.toISOString(),
+                  remaining_searches: newQuota,
+                  searches_reset_at: now.toISOString(),
                 })
                 .eq('id', session.user.id);
             },
             null
           );
           setRemainingQuota(newQuota);
-        } else if (typeof result.remaining_pro_quota === 'number') {
-          setRemainingQuota(result.remaining_pro_quota);
+        } else if (typeof result.remaining_searches === 'number') {
+          setRemainingQuota(result.remaining_searches);
         }
       } else {
         // Fallback case - set default quota
@@ -118,19 +118,19 @@ export function useProQuota() {
           const { data, error } = await supabase
             .from('profiles')
             .update({
-              remaining_pro_quota: remainingQuota - 1,
+              remaining_searches: remainingQuota - 1,
             })
             .eq('id', session.user.id)
-            .select('remaining_pro_quota')
+            .select('remaining_searches')
             .single();
           if (error) throw error;
           return data;
         },
-        { remaining_pro_quota: remainingQuota }
+        { remaining_searches: remainingQuota }
       );
 
-      if ('remaining_pro_quota' in result) {
-        setRemainingQuota(result.remaining_pro_quota as number);
+      if ('remaining_searches' in result) {
+        setRemainingQuota(result.remaining_searches as number);
         return true;
       } else {
         setError('Failed to update Pro quota');

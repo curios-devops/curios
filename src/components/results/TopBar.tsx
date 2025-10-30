@@ -25,27 +25,6 @@ export default function TopBar({
 }: TopBarProps) {
   const navigate = useNavigate();
   
-  // Debug TopBar props
-  console.log('🏁 TopBar component rendered with props:', {
-    query,
-    timeAgo,
-    activeTab,
-    shareUrl,
-    shareTitle,
-    shareText,
-    images,
-    timestamp: new Date().toISOString()
-  });
-  
-  // Debug TopBar props
-  console.log('TopBar component rendered with props:', {
-    query,
-    shareUrl,
-    shareTitle,
-    shareText,
-    images
-  });
-  
   const tabs = [
     { id: 'answer', label: 'Overview', icon: Search },
     { id: 'images', label: 'Images', icon: Image },
@@ -61,7 +40,7 @@ export default function TopBar({
           <div className="flex items-center gap-4">
             <button 
               onClick={() => navigate('/')}
-              className="text-[#0095FF] hover:text-[#0080FF] transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="text-[#0095FF] hover:text-[#0080FF] transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
             >
               <ArrowLeft size={20} />
             </button>
@@ -71,16 +50,6 @@ export default function TopBar({
               <span className="text-xs">{timeAgo}</span>
             </div>
           </div>
-          {(() => {
-            console.log('🎯 About to render ShareMenu with props:', {
-              url: shareUrl,
-              title: shareTitle,
-              text: shareText,
-              query: query,
-              images: images
-            });
-            return null;
-          })()}
           <ShareMenu
             url={shareUrl}
             title={shareTitle}
@@ -104,7 +73,7 @@ export default function TopBar({
                   <button
                     key={tab.id}
                     onClick={() => onTabChange(tab.id)}
-                    className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors cursor-pointer ${
                       isActive
                         ? 'border-[#0095FF] text-[#0095FF]'
                         : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'

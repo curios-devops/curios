@@ -93,7 +93,7 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
                 type="button"
                 onClick={handleShare}
                 title="Copy link to clipboard"
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
               >
                 <Share size={16} />
                 Share
@@ -101,7 +101,7 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
               <button 
                 type="button"
                 onClick={handleExport}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
               >
                 <Download size={16} />
                 Export
@@ -109,7 +109,7 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
               <button 
                 type="button"
                 onClick={handleRewrite}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
               >
                 <RotateCcw size={16} />
                 Rewrite
@@ -148,7 +148,7 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
                 <div key={index}>
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between py-2.5 px-0 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
+                    className="w-full flex items-center justify-between py-2.5 px-0 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group cursor-pointer"
                     onClick={() => handleRelatedQuestionClick(question)}
                   >
                     <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-[#0095FF] transition-colors leading-relaxed">

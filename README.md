@@ -1,59 +1,8 @@
 ## CuriosAI
-An AI-powered search engine building using Bolt tech stack, designed to provide comprehensive answers by utilizing advanced machine learning algorithms. It’s been mainly writing itself, with with a light touch of human guidance.
+CuriosAI is an AI-powered multiagent web searching tool. Inspired by Perplexity, but focusing in the usuer looking for trust answer to evryday questions. 
+Using search engines like Brave, SERPAPI, Tavily and SearXNG to stay current, CuriosAI ensures you always get the most up-to-date information.
 
-
-## APP DESCRIPTION
-CuriosAI is an AI-powered searching tool or an multiagent AI-powered search engine that goes deep into the internet to find answers. Inspired by Perplexity AI, it's an option that not just searches the web but understands your questions. It uses advanced machine learning algorithms to refine results and provides clear answers with sources cited.
-
-Using SearxNG to stay current and fully open source, CuriosAI ensures you always get the most up-to-date information without compromising your privacy. Also backed by Tavily, GoDaddy and Wiki, to ensure user always get answered.
-
-
-
-**Focus Modes:**  (Available for all users.)
-
-**Web:**
-Purpose: Broad search across the internet.
-Justification: Foundational and universal; expected in any search application.
-
-**Video:**
-Purpose: Discover and watch video content.
-Justification: Video is a dominant content type, catering to both entertainment and educational purposes.
-
-**Social:**
-Purpose: Search discussions and opinions on social platforms.
-Justification: Social insights are essential for users exploring trends or public sentiment.
-
-**Writing:**
-Purpose: Generate creative or professional text without conducting a web search.
-Justification: Supports diverse use cases, from brainstorming to professional content creation.
-
-**Early Adopter Modes (2 Modes)**
-Free at launch to attract niche users and generate engagement.
-
-**Travel & Local (Early Adopters):**
-Purpose: Discover local recommendations, travel itineraries, and tips.
-Justification: Appeals to travelers and locals seeking tailored, actionable insights. It can help grow a loyal user base quickly by addressing practical needs.
-
-**Health & Fitness (Early Adopters):**
-Purpose: Search for fitness plans, health tips, and reliable medical information.
-Justification: Health and wellness are universally popular topics. Offering this mode for free initially can help attract a wide range of users.
-
-**Pro Modes (2 Modes)**
-Exclusive to paying users due to their higher perceived value.
-
-**Research (Pro):**
-Purpose: Access a wider range of academic papers, advanced case studies, and sophisticated research tools.
-Justification: Researchers, students, and professionals are likely to pay for premium tools that streamline access to high-quality, credible information.
-
-**Finance (Pro):**
-Purpose: Explore market trends, investment insights, and advanced financial analyses.
-Justification: Finance-focused users (e.g., investors, professionals) are willing to pay for accurate and detailed information, making this a highly monetizable mode.
-
-
-
-## Agents in ProSearch
-
-### Origins and Influences
+## Agents Origins and Influences
 
 1. **Swarm (Multi-Agent Coordination)**  
    - Swarm-like architectures inspire the idea of multiple independent agents working in parallel, each focusing on a specific piece of the query.
@@ -66,33 +15,6 @@ Justification: Finance-focused users (e.g., investors, professionals) are willin
 
 ---
 
-ProSearch typically features **five operational agents** plus a user-facing interface:
-
-1. **UI Agent**  
-   - *Role*: Maintains a seamless interaction with the user.  
-   - *Key Function*: Receives the user’s query, displays results, and shows progress or partial findings along the way.
-
-2. **Orchestrator Agent**  
-   - *Role*: The “conductor” of all other agents.  
-   - *Key Function*: Receives the user’s request from the UI Agent, breaks it into subtasks (possibly via question generation), and delegates work to the other specialized agents.
-
-3. **Perspective Generator**  
-   - *Role*: Brainstorms angles, questions, and viewpoints about the user’s query.  
-   - *Key Function*: Ensures a broad and deep coverage of the topic, taking inspiration from Storm’s prewriting approach.
-
-4. **Information Retriever**  
-   - *Role*: Gathers raw data from the web or any configured search API (e.g., SearXNG).  
-   - *Key Function*: Executes optimized search queries, collects relevant links and snippets, and feeds them back for refinement.
-
-5. **Research Analyst** (Optional in simpler flows)  
-   - *Role*: Analyzes and summarizes the collected data.  
-   - *Key Function*: Filters duplicates, flags conflicting info, and organizes findings into short bullet points or structured reference lists.
-
-6. **Article Writer**  
-   - *Role*: Produces a final written response or article.  
-   - *Key Function*: Takes the refined data from the Research Analyst and composes a coherent, citation-backed write-up or summary.
-
----
 
 ## Typical Search Flow
 
@@ -107,11 +29,7 @@ ProSearch typically features **five operational agents** plus a user-facing inte
    - The Information Retriever fetches data for each subtopic in parallel.  
    - This approach, inspired by multi-agent orchestration (from Swarm and MindSearch), speeds up the discovery of relevant sources.
 
-4. **Refinement & Summarization**  
-   - The Research Analyst checks for consistency, removes duplicates, and creates a concise overview.  
-   - If more details are needed, it can ask the Orchestrator to trigger additional searches or deeper exploration.
-
-5. **Final Write-Up**  
+4. **Final Write-Up**  
    - The Article Writer turns the refined data into a cohesive, easy-to-read response (including citations).  
    - The result is sent to the UI Agent, which displays it in the user’s familiar interface.
 
@@ -123,19 +41,38 @@ User Query
     v
 UI Agent  <---->  Orchestrator Agent
     |
-    +--> Information Retriever --> Research Analyst --> Article Writer
+    +--> Information Retriever --> Article Writer
     ^
     | (direct  response)
     |
 Final Answer to User
 
-**Pro Search**
+
+**ProSearch** typically features four operational agents:
+
+1. **UI Agent/Orchestrator Agent/Swarm Controller**  
+   - *Role*: The “conductor” of all other agents.  
+   - *Key Function*: Receives the user’s request from the UI Agent, breaks it into subtasks (possibly via question generation), and delegates work to the other specialized agents.
+
+2. **Perspective Generator**  
+   - *Role*: Brainstorms angles, questions, and viewpoints about the user’s query.  
+   - *Key Function*: Ensures a broad and deep coverage of the topic, taking inspiration from Storm’s prewriting approach.
+
+3. **Information Retriever**  
+   - *Role*: Gathers raw data from the web or any configured search API (e.g., SearXNG).  
+   - *Key Function*: Executes optimized search queries, collects relevant links and snippets, and feeds them back for refinement.
+
+4. **Article Writer**  
+   - *Role*: Produces a final written response or article.  
+   - *Key Function*: Takes the refined data from the Research Analyst and composes a coherent, citation-backed write-up or summary.
+
+**Pro Search Flow**
 User Query
     |
     v
-UI Agent  <---->  Orchestrator Agent
+UI Agent  <---->  Orchestrator Agent / Swarm contrller 
     |
-    +--> Perspective Generator --> Information Retriever --> Research Analyst --> Article Writer
+    +--> Perspective Generator --> RetrieverAgent  --> AgentWriter
     ^
     | (response with perspectives)
     |
@@ -177,10 +114,6 @@ Free Tier – Available for Standard users.
 Paid Tier (or “Pro Tier” to keep some “Pro” branding) – For Premium users.
 You can call your paid tier “Premium” —just make sure it aligns with your user naming. For instance, Premium user on the Premium (Paid) tier.
 
-3. Search Levels
-Basic Search – Included for Guest or Standard users.
-Advanced Pro Search – An Advanced or “Pro” search for Premium users 
---
 
 ## THREE SELECTOR
 Run inside the input container in home page and has three options

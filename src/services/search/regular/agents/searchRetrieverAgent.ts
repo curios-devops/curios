@@ -184,7 +184,19 @@ export class SearchRetrieverAgent extends BaseAgent {
         query: query || 'none'
       });
       
-      const reverseResults = await bingReverseImageSearchTool(firstImageUrl, query);
+      // Add timeout wrapper to prevent hanging on image search
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => {
+          logger.error('Image search timeout after 25 seconds');
+          reject(new Error('Image search timeout'));
+        }, 25000) // 25 seconds timeout
+      );
+      
+      // Race between image search and timeout
+      const reverseResults = await Promise.race([
+        bingReverseImageSearchTool(firstImageUrl, query),
+        timeoutPromise
+      ]);
 
       console.log('🔍 [RETRIEVER] Bing reverse image search completed', {
         webCount: reverseResults.web.length,
@@ -233,8 +245,19 @@ export class SearchRetrieverAgent extends BaseAgent {
     logger.info('Text-only search initiated', { query });
 
     try {
-      // Simple tool call - no complex logic
-      const braveResults = await braveSearchTool(query);
+      // Add timeout wrapper to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => {
+          logger.error('Brave search timeout after 20 seconds');
+          reject(new Error('Brave search timeout'));
+        }, 20000) // 20 seconds timeout
+      );
+      
+      // Race between Brave call and timeout
+      const braveResults = await Promise.race([
+        braveSearchTool(query),
+        timeoutPromise
+      ]);
       
       // 🐛 DEBUG: Log what we got from Brave tool
       console.log('🔍 [RETRIEVER] Brave tool returned:', {

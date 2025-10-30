@@ -53,11 +53,6 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
             }
           }
           
-          // Debug logging
-          console.log('🔥 LinkedIn Share:');
-          console.log('- Query:', shareQuery);
-          console.log('- Snippet length:', shareSnippet.length);
-          console.log('- Snippet:', shareSnippet);
           
           // Get first search result image
           const shareImage = images && images.length > 0 ? images[0].url : '';
@@ -68,10 +63,6 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           // LinkedIn sharing URL - use the actual query as title for post text area
           const postTitle = shareQuery; // This will appear in the post composition box
           const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(postTitle)}&text=${encodeURIComponent(postTitle)}&summary=${encodeURIComponent(shareSnippet)}&source=${encodeURIComponent('CuriosAI')}`;
-          
-          console.log('🔗 Share URL:', shareUrl);
-          console.log('🔗 LinkedIn URL:', linkedInUrl);
-          console.log('🔗 Post title:', postTitle);
           
           // Open LinkedIn sharing dialog
           window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
@@ -109,10 +100,7 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
   return (
     <div className="relative">
       <button
-        onClick={() => {
-          console.log('📤 Share button clicked, current isOpen:', isOpen);
-          setIsOpen(!isOpen);
-        }}
+        onClick={() => setIsOpen(!isOpen)}
         className="bg-[#007BFF] hover:bg-[#0056b3] text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm"
         aria-label="Share menu"
 
@@ -152,11 +140,7 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           <div className="grid grid-cols-2 gap-2">
             {/* LinkedIn Button */}
             <button
-              onClick={() => {
-                console.log('🔥 LinkedIn button clicked at:', new Date().toISOString());
-                console.log('🔥 Event triggered, calling handleShare');
-                handleShare('linkedin');
-              }}
+              onClick={() => handleShare('linkedin')}
               className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-[#222222] hover:bg-gray-200 dark:hover:bg-[#2a2a2a] rounded-lg transition-colors text-left"
             >
               <svg className="w-5 h-5 text-gray-900 dark:text-white" viewBox="0 0 24 24" fill="currentColor">

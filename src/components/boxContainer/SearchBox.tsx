@@ -46,7 +46,9 @@ export default function SearchBox() {
 
     const success = await decrementSearches();
     if (success) {
-      navigate(`/search?q=${encodeURIComponent(trimmedQuery)}`);
+      // Navigate to pro-search if Pro mode is enabled, otherwise regular search
+      const searchPath = isPro ? '/pro-search' : '/search';
+      navigate(`${searchPath}?q=${encodeURIComponent(trimmedQuery)}`);
     }
   };
 

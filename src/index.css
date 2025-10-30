@@ -4,6 +4,14 @@
 @tailwind utilities;
 
 @layer base {
+  /* Ensure all interactive elements have pointer cursor */
+  button,
+  a,
+  [role="button"],
+  [onclick] {
+    cursor: pointer;
+  }
+
   :root {
 
     color-scheme: light dark;
@@ -78,13 +86,6 @@
 
 .animate-fade-in {
   animation: fade-in 0.2s ease-out forwards;
-}
-
-/* Add loading state styles */
-.loading {
-  opacity: 0.7;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
 }
 
 /* Custom scale transform */
