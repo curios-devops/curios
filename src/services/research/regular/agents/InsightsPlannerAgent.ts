@@ -1,6 +1,6 @@
 import { BaseAgent } from '../../../../common/agents/baseAgent';
-import { AgentResponse } from '../../../../common/types';
-import { WebSearchPlan } from '../types';
+import { AgentResponse } from '../../../../commonApp/types';
+import { WebSearchPlan } from '../../types';
 import { logger } from '../../../../utils/logger';
 
 export class PlannerAgent extends BaseAgent {
@@ -23,7 +23,7 @@ Output a JSON object with an array of 'searches', each containing:
       const result = await super.safeOpenAICall(
         input,
         {
-          model: 'gpt-4o-mini',
+          model: 'gpt-4.1-mini-2025-04-14',
           temperature: 0.3,
           max_completion_tokens: 1200,
           response_format: { type: 'json_object' },

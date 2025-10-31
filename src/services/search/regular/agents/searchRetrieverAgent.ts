@@ -1,10 +1,9 @@
-// src/services/agents/retrieverAgent.ts
-// Simplified following Swarm architecture: lightweight, stateless, minimal abstractions
-// Regular search flow: Query → Brave Search Tool → Results (with Apify fallback if needed)
-// Enhanced: Supports reverse image search + combined text/image searches
+// SearchRetrieverAgent - Regular Search ONLY
+// Ultra-simplified: NO BaseAgent, NO Swarm, NO Pro features
+// Direct flow: Query → Brave (Apify fallback) → Results
+// Supports reverse image search for combined queries
 
 import { MAX_RESULTS } from '../../../../commonService/utils/constants.ts';
-import { BaseAgent } from '../../../../commonService/agents/baseAgent.ts';
 import { AgentResponse, SearchResult } from '../../../../commonApp/types/index.ts';
 import { ImageResult, VideoResult } from '../../../../commonApp/types/index.ts';
 import { braveSearchTool } from '../../../../commonService/searchTools/braveSearchTool.ts';
@@ -13,12 +12,9 @@ import { bingReverseImageSearchTool } from '../../../../commonService/searchTool
 import { deleteImageFromStorage } from '../../../../utils/imageUpload.ts';
 import { logger } from '../../../../utils/logger.ts';
 
-export class SearchRetrieverAgent extends BaseAgent {
+export class SearchRetrieverAgent {
   constructor() {
-    super(
-      'Retriever Agent',
-      'Collects search results using Brave Search API and reverse image search'
-    );
+    logger.info('SearchRetrieverAgent initialized (Regular Search)');
   }
 
   async execute(
@@ -154,13 +150,22 @@ export class SearchRetrieverAgent extends BaseAgent {
         query,
         hasImages: imageUrls && imageUrls.length > 0
       });
-      return this.handleError(error, 'execute') as AgentResponse<{
-        query: string;
-        results: SearchResult[];
-        images: ImageResult[];
-        videos: VideoResult[];
-        isReverseImageSearch?: boolean;
-      }>;
+      // Return fallback on error
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        data: {
+          query: '',
+          results: [{
+            title: 'Search Unavailable',
+            url: '#',
+            content: 'We could not complete your search at this time. Please try again later.'
+          }],
+          images: [],
+          videos: [],
+          isReverseImageSearch: false
+        }
+      };
     }
   }
 
@@ -185,18 +190,25 @@ export class SearchRetrieverAgent extends BaseAgent {
       });
       
       // Add timeout wrapper to prevent hanging on image search
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => {
+      let imageSearchTimeoutId: ReturnType<typeof setTimeout> | null = null;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        imageSearchTimeoutId = setTimeout(() => {
           logger.error('Image search timeout after 25 seconds');
           reject(new Error('Image search timeout'));
-        }, 25000) // 25 seconds timeout
-      );
+        }, 25000); // 25 seconds timeout
+      });
       
       // Race between image search and timeout
       const reverseResults = await Promise.race([
         bingReverseImageSearchTool(firstImageUrl, query),
         timeoutPromise
       ]);
+      
+      // Clear the timeout if the search completed before timeout
+      if (imageSearchTimeoutId) {
+        clearTimeout(imageSearchTimeoutId);
+        imageSearchTimeoutId = null;
+      }
 
       console.log('🔍 [RETRIEVER] Bing reverse image search completed', {
         webCount: reverseResults.web.length,
@@ -246,18 +258,25 @@ export class SearchRetrieverAgent extends BaseAgent {
 
     try {
       // Add timeout wrapper to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => {
+      let braveSearchTimeoutId: ReturnType<typeof setTimeout> | null = null;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        braveSearchTimeoutId = setTimeout(() => {
           logger.error('Brave search timeout after 20 seconds');
           reject(new Error('Brave search timeout'));
-        }, 20000) // 20 seconds timeout
-      );
+        }, 20000); // 20 seconds timeout
+      });
       
       // Race between Brave call and timeout
       const braveResults = await Promise.race([
         braveSearchTool(query),
         timeoutPromise
       ]);
+      
+      // Clear the timeout if Brave completed before timeout
+      if (braveSearchTimeoutId) {
+        clearTimeout(braveSearchTimeoutId);
+        braveSearchTimeoutId = null;
+      }
       
       // 🐛 DEBUG: Log what we got from Brave tool
       console.log('🔍 [RETRIEVER] Brave tool returned:', {
@@ -415,26 +434,4 @@ export class SearchRetrieverAgent extends BaseAgent {
     });
   }
 
-  // Returns fallback data in case retrieval fails
-  protected override getFallbackData(): {
-    query: string;
-    results: SearchResult[];
-    images: ImageResult[];
-    videos: VideoResult[];
-    isReverseImageSearch?: boolean;
-  } {
-    return {
-      query: '',
-      results: [
-        {
-          title: 'Search Unavailable',
-          url: '#',
-          content: 'We could not complete your search at this time. Please try again later.'
-        }
-      ],
-      images: [],
-      videos: [],
-      isReverseImageSearch: false
-    };
-  }
 }

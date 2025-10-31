@@ -1,22 +1,22 @@
-import { SearchRetrieverAgent } from '../../regular/agents/searchRetrieverAgent.ts';
-import { SearchWriterAgent } from '../../regular/agents/searchWriterAgent.ts';
 import { ResearchResult, ArticleResult, AgentResponse, SearchResult, Perspective } from '../../../../commonApp/types/index.ts';
 import { logger } from '../../../../utils/logger.ts';
 import { ServiceHealthMonitor } from '../../../../commonService/utils/serviceHealth.ts';
 import type { ImageResult, VideoResult } from '../../../../commonApp/types/index.ts';
 import { PerspectiveAgent } from './perspectiveAgent.ts';
+import { retrieverAgent, writerAgent } from '../../shared/searchAgents.ts';
 
 // Environment variables are loaded by the parent process
 
 export class SwarmController {
-  private writerAgent: SearchWriterAgent;
-  private retrieverAgent: SearchRetrieverAgent;
+  private writerAgent: typeof writerAgent;
+  private retrieverAgent: typeof retrieverAgent;
   private perspectiveAgent: PerspectiveAgent;
   private healthMonitor: ServiceHealthMonitor;
 
   constructor() {
-    this.writerAgent = new SearchWriterAgent();
-    this.retrieverAgent = new SearchRetrieverAgent();
+    // Use shared instances to prevent circular dependencies
+    this.writerAgent = writerAgent;
+    this.retrieverAgent = retrieverAgent;
     this.perspectiveAgent = new PerspectiveAgent();
     this.healthMonitor = ServiceHealthMonitor.getInstance();
   }
@@ -144,19 +144,7 @@ export class SwarmController {
         };
       }
 
-      logger.info('Query processing completed', {
-        hasResults: (searchResponse.data?.results?.length || 0) > 0,
-        hasPerspectives: perspectives.length > 0,
-        hasImages: (searchResponse.data?.images?.length || 0) > 0,
-        hasVideos: (searchResponse.data?.videos?.length || 0) > 0
-      });
-
-      // Critical: Signal completion to frontend with explicit completion status
-      onStatusUpdate?.('Search completed successfully!');
-      
-      // Add small delay to ensure status update is processed by the frontend
-      await new Promise(resolve => setTimeout(resolve, 150));
-
+      // Build result immediately
       const result = {
         research: {
           query,
@@ -172,6 +160,16 @@ export class SwarmController {
         images: searchResponse.data?.images || [],
         videos: searchResponse.data?.videos || []
       };
+
+      logger.info('Query processing completed', {
+        hasResults: result.research.results.length > 0,
+        hasPerspectives: result.research.perspectives.length > 0,
+        hasImages: result.images.length > 0,
+        hasVideos: result.videos.length > 0
+      });
+
+      // Signal completion AFTER building result - no delays!
+      onStatusUpdate?.('Complete');
       
       return result;
     } catch (error) {
@@ -180,10 +178,8 @@ export class SwarmController {
         query
       });
       
-      // Ensure completion status is sent even on error
-      onStatusUpdate?.('Search completed with errors - showing available results');
-      
-      return {
+      // Build error result immediately
+      const errorResult = {
         research: {
           query,
           perspectives: [],
@@ -198,6 +194,11 @@ export class SwarmController {
         images: [],
         videos: []
       };
+      
+      // Signal completion - no delays!
+      onStatusUpdate?.('Complete');
+      
+      return errorResult;
     }
   }
 

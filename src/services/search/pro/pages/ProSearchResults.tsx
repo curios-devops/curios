@@ -17,7 +17,7 @@ interface ProSearchData extends SearchResponse {
 
 type TabType = 'all' | 'news' | 'videos' | 'images' | 'sources';
 
-export default function ProSearchResultsV2() {
+export default function ProSearchResults() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
@@ -69,33 +69,31 @@ export default function ProSearchResultsV2() {
         );
         const { research, article, images, videos } = response;
         
-        // Format the data for the UI
+        // Format the data for the UI - do this once
+        const formattedSources = (research.results || []).map(r => ({
+          title: r.title || '',
+          url: r.url || '',
+          snippet: r.content || '',
+          source: 'web'
+        }));
+        
         const formattedData: ProSearchData = {
           answer: article.content,
-          sources: (research.results || []).map(r => ({
-            title: r.title || '',
-            url: r.url || '',
-            snippet: r.content || '',
-            source: 'web'
-          })),
+          sources: formattedSources,
           images: images || [],
           videos: videos || [],
           perspectives: research.perspectives || [],
           followUpQuestions: article.followUpQuestions || []
         };
         
+        // Update both states together to avoid race conditions
         setProData(formattedData);
         updateSearchState({
           isLoading: false,
           error: null,
           data: {
             answer: article.content,
-            sources: research.results.map((r) => ({
-              title: r.title || '',
-              url: r.url || '',
-              snippet: r.content || '',
-              source: 'web'
-            })),
+            sources: formattedSources,
             images: images || [],
             videos: videos || []
           }
@@ -125,7 +123,7 @@ export default function ProSearchResultsV2() {
     };
 
     executeSearch();
-  }, [query, updateSearchState]);
+  }, [query]); // Only re-run when query changes
 
   const renderTabContent = () => {
     if (searchState.isLoading) {

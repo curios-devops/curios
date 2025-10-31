@@ -100,7 +100,7 @@ Format as a well-structured markdown report. Include proper citations where appr
 
     try {
       const response = await chatCompletion({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-mini-2025-04-14',
         messages: [
           { role: 'system', content: 'You are an expert research synthesizer. Create comprehensive, well-structured research reports with proper analysis and citations.' },
           { role: 'user', content: synthesisPrompt }

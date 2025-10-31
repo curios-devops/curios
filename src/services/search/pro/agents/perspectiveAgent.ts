@@ -133,7 +133,7 @@ export class PerspectiveAgent {
   ): Promise<Perspective[]> {
     try {
       logger.debug('Calling OpenAI API via Supabase Edge Function for perspectives', {
-        model: 'gpt-4o-mini-2024-07-18',
+        model: 'gpt-4.1-mini-2025-04-14',
         query,
         resultsCount: searchResults.length
       });
@@ -204,7 +204,7 @@ Generate 5 diverse perspective questions that explore different angles of this t
         const payload = {
           prompt: JSON.stringify({
             messages,
-            model: 'gpt-4o-mini-2024-07-18', // Latest stable gpt-4o-mini version
+            model: 'gpt-4.1-mini-2025-04-14', // GPT-4.1 mini model
             response_format: { type: 'json_object' },
             temperature: 0.8, // Higher temperature for creative perspectives
             max_output_tokens: 800
@@ -215,7 +215,7 @@ Generate 5 diverse perspective questions that explore different angles of this t
           url: supabaseEdgeUrl,
           hasAuth: !!supabaseAnonKey,
           timeout: '30s',
-          model: 'gpt-4o-mini-2024-07-18',
+          model: 'gpt-4.1-mini-2025-04-14',
           messagesCount: messages.length,
           payloadSize: JSON.stringify(payload).length
         });

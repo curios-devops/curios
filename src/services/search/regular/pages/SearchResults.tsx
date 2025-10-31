@@ -39,6 +39,7 @@ export default function Results() {
 
   useEffect(() => {
     let isCurrentRequest = true;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     
     const fetchResults = async () => {
       if (!query.trim() && imageUrls.length === 0) {
@@ -53,26 +54,61 @@ export default function Results() {
       }
 
       try {
+        console.log('🔍 [SearchResults] Starting search request:', {
+          query,
+          hasImages: imageUrls.length > 0,
+          imageCount: imageUrls.length,
+          timestamp: new Date().toISOString()
+        });
+        
         logger.info('Starting search', { query, hasImages: imageUrls.length > 0, imageCount: imageUrls.length });
         
+        // Set loading state
         if (isCurrentRequest) {
           setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
+          setStatusMessage('Initializing search...');
         }
         
-        const response = await performSearch(query, {
-          isPro: false,
+        // Call performSearch with timeout protection
+        const searchPromise = performSearch(query, {
           imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
           onStatusUpdate: (status: string) => {
             if (isCurrentRequest) {
+              console.log('🔍 [SearchResults] Status update:', status);
               setStatusMessage(status);
             }
           }
         });
+        
+        // Add timeout to prevent infinite waiting
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            console.error('❌ [SearchResults] Search timeout after 60s');
+            reject(new Error('Search timeout - please try again'));
+          }, 60000); // 60 second timeout
+        });
+        
+        const response = await Promise.race([searchPromise, timeoutPromise]) as any;
+        
+        // Clear timeout on success
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
 
         // Only update state if this is still the current request
         if (!isCurrentRequest) {
+          console.log('⚠️ [SearchResults] Request cancelled, not updating state');
           return;
         }
+
+        console.log('✅ [SearchResults] Search completed, updating state:', {
+          hasResults: !!response.sources?.length,
+          imageCount: response.images?.length || 0,
+          videoCount: response.videos?.length || 0,
+          hasAnswer: !!response.answer,
+          timestamp: new Date().toISOString()
+        });
 
         logger.info('Search completed successfully', {
           hasResults: !!response.sources.length,
@@ -81,17 +117,34 @@ export default function Results() {
           hasAnswer: !!response.answer
         });
 
+        // Update state synchronously
         setSearchState({
           isLoading: false,
           error: null,
           data: response
         });
+        
+        console.log('✅✅✅ [SearchResults] State updated, UI should be interactive now');
+        
       } catch (error) {
+        // Clear timeout on error
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        
         if (isCurrentRequest) {
+          console.error('❌ [SearchResults] Search failed:', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            query,
+            timestamp: new Date().toISOString()
+          });
+          
           logger.error('Search failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
             query
           });
+          
           setSearchState({
             isLoading: false,
             error: error instanceof Error ? error.message : 'Search services are currently unavailable',
@@ -105,7 +158,11 @@ export default function Results() {
     
     // Cleanup function to cancel the request
     return () => {
+      console.log('🧹 [SearchResults] Cleaning up request');
       isCurrentRequest = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [query, imageUrls.join(',')]); // Re-run when query or images change
 

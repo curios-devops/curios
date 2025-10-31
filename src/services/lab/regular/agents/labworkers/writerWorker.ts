@@ -20,7 +20,7 @@ async function chatCompletion({ prompt, research, title }: { prompt: string; res
       },
       body: JSON.stringify({
         prompt: JSON.stringify({
-          model: 'gpt-4.1',
+          model: 'gpt-4.1-mini-2025-04-14',
           messages,
           temperature: 0.7,
           max_output_tokens: 1200,

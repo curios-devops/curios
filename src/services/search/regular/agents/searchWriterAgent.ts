@@ -6,8 +6,8 @@ import { AgentResponse, ResearchResult, ArticleResult } from '../../../../common
 import { logger } from '../../../../utils/logger.ts';
 
 export class SearchWriterAgent {
-  private readonly defaultModel: string = 'gpt-4o-mini-2024-07-18'; // Latest stable gpt-4o-mini version
-  private readonly imageSearchModel: string = 'gpt-4o-mini-2024-07-18'; // Same model for reverse image searches
+  private readonly defaultModel: string = 'gpt-4.1-mini-2025-04-14'; // GPT-4.1 mini model
+  private readonly imageSearchModel: string = 'gpt-4.1-mini-2025-04-14'; // Same model for reverse image searches
 
   constructor() {
     logger.info('SearchWriterAgent: Initialized');
@@ -31,184 +31,93 @@ export class SearchWriterAgent {
   }
 
   /**
-   * Calls OpenAI API via Supabase Edge Function (simplified - no retries)
+   * Calls OpenAI API via Supabase Edge Function (simplified)
    */
   private async callOpenAI(
     messages: Array<{ role: string; content: string }>,
     model: string = this.defaultModel
   ): Promise<ArticleResult> {
-    try {
-      logger.debug('Calling OpenAI API via Supabase Edge Function', {
+    // Get environment variables
+    const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseEdgeUrl) {
+      throw new Error('Supabase Edge Function URL not configured');
+    }
+    if (!supabaseAnonKey) {
+      throw new Error('Supabase anon key not found');
+    }
+
+    logger.debug('Calling OpenAI via Supabase', { model, messageCount: messages.length });
+
+    // Prepare payload
+    const payload = {
+      prompt: JSON.stringify({
+        messages,
         model,
-        messageCount: messages.length
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+        max_output_tokens: 1200
+      })
+    };
+
+    // Simple timeout with AbortController
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      const response = await fetch(supabaseEdgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
 
-      // Get environment variables
-      const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      clearTimeout(timeoutId);
 
-      console.log('[WRITER] Environment check:', {
-        hasUrl: !!supabaseEdgeUrl,
-        hasKey: !!supabaseAnonKey,
-        url: supabaseEdgeUrl
-      });
-
-      if (!supabaseEdgeUrl) {
-        throw new Error('Supabase Edge Function URL not configured');
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('OpenAI API error', { status: response.status, error: errorText.substring(0, 200) });
+        throw new Error(`API error: ${response.status}`);
       }
 
-      if (!supabaseAnonKey) {
-        throw new Error('Supabase anon key not found');
+      const data = await response.json();
+      if (!data.text) {
+        throw new Error('No content in response');
       }
 
-      // Use fetch with AbortController for timeout
-      try {
-        const payload = {
-          prompt: JSON.stringify({
-            messages,
-            model,
-            response_format: { type: 'json_object' },
-            temperature: 0.7,
-            max_output_tokens: 1200
-          })
-        };
-
-        console.log('[WRITER] Request payload:', {
-          model,
-          messagesCount: messages.length,
-          payloadSize: JSON.stringify(payload).length
-        });
-
-        // Create AbortController for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.error('[WRITER] TIMEOUT - Aborting request after 30 seconds');
-          controller.abort();
-        }, 30000);
-
-        console.log('[WRITER] Calling fetch...');
-        const response = await fetch(supabaseEdgeUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseAnonKey}`
-          },
-          body: JSON.stringify(payload),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-        console.log('[WRITER] Fetch completed!', {
-          ok: response.ok,
-          status: response.status,
-          statusText: response.statusText
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          logger.error('OpenAI API error', {
-            status: response.status,
-            statusText: response.statusText,
-            errorPreview: errorText.substring(0, 200)
-          });
-          throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
-        }
-
-        const data = await response.json();
-        
-        console.log('[WRITER] Response parsed:', {
-          hasText: !!data.text,
-          textLength: data.text?.length || 0
-        });
-
-        // The Supabase Edge Function returns { text, openai }
-        if (!data.text) {
-          throw new Error('No content in Supabase Edge Function response');
-        }
-
-        logger.debug('Successfully received content from Supabase Edge Function', {
-          contentLength: data.text.length
-        });
-
-        // Parse the response
-        let articleResult: ArticleResult;
-
-        try {
-          // Accept either a direct object or a stringified JSON
-          if (typeof data.text === 'object') {
-            articleResult = data.text;
-          } else if (typeof data.text === 'string') {
-            // Remove Markdown code block markers if present
-            let cleanText = data.text.trim();
-            cleanText = cleanText.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '');
-            articleResult = JSON.parse(cleanText);
-          } else {
-            throw new Error('Unexpected data.text type');
-          }
-
-          logger.debug('Parsed ArticleResult from data.text', { articleResult });
-        } catch (parseError) {
-          logger.warn('Failed to parse OpenAI response as JSON', {
-            error: parseError,
-            textPreview: String(data.text).slice(0, 200)
-          });
-
-          console.error('[WRITER] JSON parsing failed:', {
-            error: parseError instanceof Error ? parseError.message : String(parseError),
-            rawTextSample: String(data.text).slice(0, 1000)
-          });
-
-          // Fallback: wrap as plain text
-          if (typeof data.text === 'string') {
-            return {
-              content: data.text,
-              followUpQuestions: [],
-              citations: []
-            };
-          }
-
-          throw new Error('Failed to parse OpenAI response');
-        }
-
-        // Validate the result
-        if (
-          articleResult &&
-          typeof articleResult.content === 'string' &&
-          Array.isArray(articleResult.followUpQuestions) &&
-          Array.isArray(articleResult.citations)
-        ) {
-          logger.debug('ArticleResult is valid, returning', {
-            contentLength: articleResult.content.length,
-            followUpQuestionsCount: articleResult.followUpQuestions.length,
-            citationsCount: articleResult.citations.length
-          });
-          return articleResult;
-        }
-
-        logger.warn('OpenAI response did not match ArticleResult format');
-        throw new Error('Invalid ArticleResult format');
-
-      } catch (error: unknown) {
-        // Handle timeout specifically
-        if (error instanceof Error && error.name === 'AbortError') {
-          logger.error('OpenAI call timeout after 30 seconds');
-          console.error('[WRITER] Request aborted due to timeout');
-          throw new Error('OpenAI request timeout - please try again');
-        }
-        
-        // Handle network errors
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          logger.error('Network error calling OpenAI', { error: error.message });
-          console.error('[WRITER] Network error:', error);
-          throw new Error('Network error - please check your connection');
-        }
-
-        // Re-throw other errors
-        logger.error('Error in callOpenAI', { error });
-        throw error;
+      // Parse response
+      let articleResult: ArticleResult;
+      if (typeof data.text === 'object') {
+        articleResult = data.text;
+      } else if (typeof data.text === 'string') {
+        const cleanText = data.text.trim().replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '');
+        articleResult = JSON.parse(cleanText);
+      } else {
+        throw new Error('Unexpected response format');
       }
-    } catch (error: unknown) {
-      logger.error('Error in SearchWriterAgent.callOpenAI', { error });
+
+      // Validate
+      if (!articleResult?.content || !Array.isArray(articleResult.followUpQuestions)) {
+        throw new Error('Invalid article format');
+      }
+
+      logger.debug('Article generated successfully', { contentLength: articleResult.content.length });
+      return articleResult;
+
+    } catch (error) {
+      clearTimeout(timeoutId);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          logger.error('Request timeout after 30s');
+          throw new Error('Request timeout - please try again');
+        }
+        logger.error('OpenAI call failed', { error: error.message });
+      }
       throw error;
     }
   }

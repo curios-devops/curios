@@ -25,7 +25,7 @@ Using search engines like Brave, SERPAPI, Tavily and SearXNG to stay current, Cu
 2. **Multi-Perspective Generation (only in proSearch )**  
    - The Perspective Generator proposes different ways to explore the query (for example, brainstorming subtopics or specific angles).
 
-3. **Parallel Information Retrieval**  
+3. **Information Retrieval**  
    - The Information Retriever fetches data for each subtopic in parallel.  
    - This approach, inspired by multi-agent orchestration (from Swarm and MindSearch), speeds up the discovery of relevant sources.
 
@@ -34,6 +34,27 @@ Using search engines like Brave, SERPAPI, Tavily and SearXNG to stay current, Cu
    - The result is sent to the UI Agent, which displays it in the user’s familiar interface.
 
 **High-Level Flow for Search and Pro Search **
+
+**SEARCH ARCHITECTURE SEPARATION**
+
+The search services are now **completely separated** to prevent cross-contamination:
+
+**Regular Search Service** (`src/services/search/regular/regularSearchService.ts`)
+- Uses: `SearchRetrieverAgent` + `SearchWriterAgent`
+- Flow: User Query → Retriever → Writer → Final Answer
+- NO Pro features, NO SwarmController, NO Perspectives
+
+**Pro Search Service** (`src/services/search/pro/proSearchService.ts`)
+- Uses: `SwarmController` (includes `PerspectiveAgent`)
+- Flow: User Query → SwarmController → Perspective Generator → Retriever → Writer → Final Answer
+- Includes Pro features like perspectives
+
+**Unified Router** (`src/services/search/searchService.ts`)
+- Routes to appropriate service based on `isPro` flag
+- Maintains backwards compatibility
+- Ensures complete separation between flows
+
+---
 
 **Search**
 User Query

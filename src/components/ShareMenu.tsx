@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Share2, Link2, Check } from 'lucide-react';
 import Notification from './Notification';
 
@@ -16,6 +16,24 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
   const [isOpen, setIsOpen] = useState(false);
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   const handleShare = async (platform: SharePlatform) => {
     try {
@@ -98,12 +116,11 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="bg-[#007BFF] hover:bg-[#0056b3] text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm"
         aria-label="Share menu"
-
       >
         <Share2 size={16} />
         <span>Share</span>
