@@ -80,48 +80,48 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
       <>
         <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 transition-colors duration-200">
           {/* Header with Overview title and action buttons */}
-          <div className="flex items-center justify-between p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#0095FF] rounded-lg flex items-center justify-center">
-                <FileText className="text-white" size={18} />
+          <div className="flex items-center justify-between p-4 sm:p-6 gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#0095FF] rounded-lg flex items-center justify-center">
+                <FileText className="text-white" size={16} />
               </div>
-              <h2 className="text-xl font-medium text-gray-900 dark:text-white">Overview</h2>
+              <h2 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white">Overview</h2>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <button 
                 type="button"
                 onClick={handleShare}
                 title="Copy link to clipboard"
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
               >
-                <Share size={16} />
-                Share
+                <Share size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Share</span>
               </button>
               <button 
                 type="button"
                 onClick={handleExport}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
               >
-                <Download size={16} />
-                Export
+                <Download size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Export</span>
               </button>
               <button 
                 type="button"
                 onClick={handleRewrite}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
               >
-                <RotateCcw size={16} />
-                Rewrite
+                <RotateCcw size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Rewrite</span>
               </button>
             </div>
           </div>
 
           {/* Overview Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="prose dark:prose-invert max-w-none">
               <CustomMarkdown 
-                className="text-gray-700 dark:text-gray-300 leading-relaxed text-base mb-6"
+                className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm sm:text-base mb-6"
                 citations={citations}
               >
                 {answer}
@@ -130,7 +130,7 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
           </div>
 
           {/* Related Section */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-5 h-5 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
                 <div className="w-2.5 h-2.5 grid grid-cols-2 gap-0.5">

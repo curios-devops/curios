@@ -127,8 +127,8 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-1.5 bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-200 dark:border-gray-800 shadow-xl p-4 w-[320px] animate-fade-in transition-colors duration-200">
-          <h2 className="text-base font-medium text-gray-900 dark:text-white mb-3 transition-colors duration-200">Share</h2>
+        <div className="absolute top-full right-0 mt-1.5 bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-200 dark:border-gray-800 shadow-xl p-3 sm:p-4 w-[280px] sm:w-[320px] animate-fade-in transition-colors duration-200">
+          <h2 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-3 transition-colors duration-200">Share</h2>
           
           {/* Development notice for localhost URLs */}
           {url.includes('localhost') && (

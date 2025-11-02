@@ -167,7 +167,7 @@ export default function Results() {
   }, [query, imageUrls.join(',')]); // Re-run when query or images change
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">
+    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200 overflow-x-hidden">
       <TopBar 
         query={query} 
         timeAgo={timeAgo} 
