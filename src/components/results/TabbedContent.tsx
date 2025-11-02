@@ -46,7 +46,7 @@ export default function TabbedContent({
           <div className="space-y-6">
             {/* Perplexity-style Sources Grid at Top */}
             <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-2 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
                 {data.sources.slice(0, 4).map((source: Source, index: number) => {
                   const domain = new URL(source.url).hostname.replace('www.', '');
                   return (
@@ -116,7 +116,7 @@ export default function TabbedContent({
 
               {/* Images Grid - Show first 4 images */}
               {data.images && data.images.length > 0 && (
-                <div className="grid grid-cols-4 gap-3 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                   {data.images.slice(0, 4).map((image: ImageResult, index: number) => (
                     <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group">
                       <img

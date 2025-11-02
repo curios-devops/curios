@@ -237,8 +237,9 @@ Generate 5 diverse perspective questions that explore different angles of this t
         console.log('🔍 [PERSPECTIVE] Calling fetch NOW...');
         
         // Use Promise.race to enforce timeout
+        let fetchTimeoutId: ReturnType<typeof setTimeout> | null = null;
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
+          fetchTimeoutId = setTimeout(() => {
             logger.error('OpenAI fetch timeout triggered after 30 seconds');
             console.error('❌ [PERSPECTIVE] Fetch timeout - aborting request');
             controller.abort();
@@ -257,6 +258,12 @@ Generate 5 diverse perspective questions that explore different angles of this t
         });
         
         const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+        
+        // Clear the timeout if fetch completed before timeout
+        if (fetchTimeoutId) {
+          clearTimeout(fetchTimeoutId);
+          fetchTimeoutId = null;
+        }
         
         console.log('🔍 [PERSPECTIVE] Fetch call RETURNED, response received!');
         
