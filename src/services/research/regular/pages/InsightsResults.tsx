@@ -1,9 +1,9 @@
 // Insights Results page with multi-agent workflow integration
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, BookOpen, TrendingUp, BarChart3, Target } from 'lucide-react';
-import { researchService } from '../../researchService.ts';
-import { InsightProgressCallback, SearchResult } from '../../types.ts';
+import { ArrowLeft, Lightbulb, Search, Brain, Sparkles, CheckCircle2 } from 'lucide-react';
+import { insightsService, InsightProgressCallback } from '../agents/insightsService';
+import { SearchResult } from '../../types.ts';
 import ResearchProgress from '../../../../components/ResearchProgress';
 import TabSystem from '../../../../components/TabSystem';
 
@@ -41,13 +41,13 @@ export default function InsightsResults() {
     insightPhase: 'analyzing'
   });
 
-  const handleProgress: InsightProgressCallback = (
+  const handleProgress = ((
     stage: string, 
     timeRemaining: string, 
     progress: number, 
     thinkingStep: string,
     searchTerms: string[] = [],
-    sources: SearchResult[] = [],
+    sources: any[] = [],
     currentAgent?: string,
     agentAction?: string,
     insightPhase?: 'analyzing' | 'searching' | 'synthesizing' | 'finalizing'
@@ -63,7 +63,7 @@ export default function InsightsResults() {
       agentActions: agentAction ? [...(prev.agentActions || []), agentAction] : prev.agentActions || [],
       insightPhase: insightPhase || prev.insightPhase
     }));
-  };
+  }) as InsightProgressCallback;
 
   useEffect(() => {
     if (!query || workflowStarted) return;
@@ -84,24 +84,27 @@ export default function InsightsResults() {
       insightPhase: 'analyzing'
     });
 
-    researchService.performInsightAnalysis(query, false, handleProgress)
+    // Simple promise handling - no complex cancellation logic
+    insightsService.performInsightAnalysis(query, handleProgress)
       .then((insightResult) => {
+        console.log('✅ Insights completed', { resultKeys: Object.keys(insightResult) });
         setResult(insightResult);
         setLoading(false);
       })
       .catch((err: Error) => {
-        setError('Failed to perform insight analysis: ' + (err?.message || 'Unknown error'));
+        console.error('❌ Insights failed', { error: err.message });
+        setError(err.message || 'Failed to generate insights. Please try again.');
         setLoading(false);
       });
-  }, [query, workflowStarted]);
+  }, [query, workflowStarted, handleProgress]);
 
   const getPhaseIcon = (phase?: string) => {
     switch (phase) {
-      case 'analyzing': return <Target className="text-blue-500" size={14} />;
-      case 'searching': return <BookOpen className="text-green-500" size={14} />;
-      case 'synthesizing': return <TrendingUp className="text-purple-500" size={14} />;
-      case 'finalizing': return <BarChart3 className="text-orange-500" size={14} />;
-      default: return <Target className="text-blue-500" size={14} />;
+      case 'analyzing': return <Brain className="text-blue-500" size={14} />;
+      case 'searching': return <Search className="text-green-500" size={14} />;
+      case 'synthesizing': return <Sparkles className="text-purple-500" size={14} />;
+      case 'finalizing': return <CheckCircle2 className="text-orange-500" size={14} />;
+      default: return <Brain className="text-blue-500" size={14} />;
     }
   };
 
@@ -119,7 +122,7 @@ export default function InsightsResults() {
           <h1 className="text-2xl font-medium">{query}</h1>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 bg-blue-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
-              <BookOpen className="text-[#0095FF]" size={14} />
+                <Lightbulb className="text-[#0095FF]" size={14} />
               <span className="text-[#0095FF] text-sm font-medium">Insights</span>
             </div>
             {/* Insight Phase Indicator */}
@@ -134,7 +137,7 @@ export default function InsightsResults() {
       </header>
       <main className="max-w-4xl mx-auto px-6 py-6">
         {loading && (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <ResearchProgress
               stage={progressState.stage}
               timeRemaining={progressState.timeRemaining}

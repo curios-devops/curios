@@ -1,7 +1,8 @@
-import { SearchRetrieverAgent } from '../../../search/regular/agents/searchRetrieverAgent';
+import { ResearchRetrieverAgent } from './researchRetrieverAgent';
 import { ResearchPlannerAgent } from './researchPlannerAgent';
 import { ResearchWriterAgent } from './researchWriterAgent';
-import { AgentResponse, SearchResult } from '../../../../commonApp/types/index';
+import { AgentResponse } from '../../../../commonApp/types/index';
+import type { SearchResult } from '../../types';
 import { logger } from '../../../../utils/logger';
 import { ServiceHealthMonitor } from '../../../../commonService/utils/serviceHealth';
 import type { ImageResult, VideoResult } from '../../../../commonApp/types/index';
@@ -36,13 +37,13 @@ export interface ResearchResult {
 
 export class ResearchSwarmController {
   private plannerAgent: ResearchPlannerAgent;
-  private retrieverAgent: SearchRetrieverAgent;
+  private searchAgent: ResearchRetrieverAgent;
   private writerAgent: ResearchWriterAgent;
   private healthMonitor: ServiceHealthMonitor;
 
   constructor() {
     this.plannerAgent = new ResearchPlannerAgent();
-    this.retrieverAgent = new SearchRetrieverAgent();
+    this.searchAgent = new ResearchRetrieverAgent();
     this.writerAgent = new ResearchWriterAgent();
     this.healthMonitor = ServiceHealthMonitor.getInstance();
   }
@@ -115,42 +116,41 @@ export class ResearchSwarmController {
         'searching'
       );
 
-      // Execute searches for all planned queries
+      // Execute searches for all planned queries using ResearchSearchAgent
       const allResults: SearchResult[] = [];
       const allImages: ImageResult[] = [];
       const allVideos: VideoResult[] = [];
 
-      for (const searchQuery of searchQueries.slice(0, 3)) { // Limit to 3 queries
-        try {
-          const searchResponse = await this.executeWithHealthCheck(
-            () => this.retrieverAgent.execute(searchQuery, 
-              () => onStatusUpdate?.(
-                'Searching Sources',
-                'About 2-3 minutes remaining',
-                40 + (searchQueries.indexOf(searchQuery) * 10),
-                `Searching for: ${searchQuery}`,
-                searchQueries,
-                [],
-                'SearchRetrieverAgent',
-                `Searching: ${searchQuery}`,
-                'searching'
-              )
-            ),
-            'SearchRetrieverAgent'
-          ) as AgentResponse<{
-            results: SearchResult[];
-            images: ImageResult[];
-            videos: VideoResult[];
-          }>;
+      // Convert search queries to WebSearchItem format
+      const searchItems = searchQueries.slice(0, 3).map((q, index) => ({ 
+        query: q, 
+        reason: `Research query ${index + 1}` 
+      }));
 
-          if (searchResponse.data) {
-            allResults.push(...(searchResponse.data.results || []));
-            allImages.push(...(searchResponse.data.images || []));
-            allVideos.push(...(searchResponse.data.videos || []));
-          }
-        } catch (error) {
-          logger.warn(`Search failed for query: ${searchQuery}`, error);
+      try {
+        onStatusUpdate?.(
+          'Searching Sources',
+          'About 2-3 minutes remaining',
+          40,
+          `Executing ${searchItems.length} targeted searches`,
+          searchQueries,
+          [],
+          'ResearchSearchAgent',
+          `Searching across multiple sources`,
+          'searching'
+        );
+
+        const searchResponse = await this.executeWithHealthCheck(
+          () => this.searchAgent.search(searchItems, false), // Use regular search (not WebSearchTool)
+          'ResearchSearchAgent'
+        ) as AgentResponse<SearchResult[]>;
+
+        if (searchResponse.data) {
+          allResults.push(...searchResponse.data);
+          // Note: ResearchSearchAgent doesn't return images/videos, only text results
         }
+      } catch (error) {
+        logger.warn(`Search failed for queries: ${searchQueries.join(', ')}`, error);
       }
 
       // Remove duplicates and limit results
@@ -218,10 +218,10 @@ export class ResearchSwarmController {
         progress_updates: [],
         search_queries: searchQueries,
         sources: uniqueResults.map(r => ({
-          title: r.title,
-          url: r.url,
-          snippet: r.content,
-          image: r.image
+          title: r.title || 'Unknown Source',
+          url: r.url || '',
+          snippet: r.content || r.snippet || '',
+          image: typeof r.image === 'string' ? r.image : undefined
         })),
         agent_contributions: {
           planner: planResponse.data || {},
@@ -278,8 +278,8 @@ export class ResearchSwarmController {
   private deduplicateResults(results: SearchResult[]): SearchResult[] {
     const seen = new Set<string>();
     return results.filter(result => {
-      const key = result.url.toLowerCase();
-      if (seen.has(key)) {
+      const key = (result.url || '').toLowerCase();
+      if (!key || seen.has(key)) {
         return false;
       }
       seen.add(key);

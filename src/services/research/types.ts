@@ -9,12 +9,14 @@ export interface WebSearchPlan {
 }
 
 export interface SearchResult {
-  title: string;
-  url: string;
-  content: string;
+  title?: string;
+  url?: string;
+  content?: string;
+  snippet?: string;
   score?: number;
   source?: string;
   publishedDate?: string;
+  [key: string]: unknown;
 }
 
 export interface ResearchData {

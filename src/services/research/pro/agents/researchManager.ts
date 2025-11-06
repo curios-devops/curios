@@ -1,17 +1,17 @@
 import { ResearchPlannerAgent } from './researchPlannerAgent.ts';
-import { ResearchSearchAgent } from '../../regular/agents/ResearchSearchAgent.ts';
+import { ResearchRetrieverAgent } from './researchRetrieverAgent.ts';
 import { ResearchWriterAgent } from './researchWriterAgent.ts';
 import type { ResearchData } from '../../types.ts';
 import { logger } from '../../../../utils/logger.ts';
 
 export class ResearchManager {
   private plannerAgent: ResearchPlannerAgent;
-  private searchAgent: ResearchSearchAgent;
+  private searchAgent: ResearchRetrieverAgent;
   private writerAgent: ResearchWriterAgent;
 
   constructor() {
     this.plannerAgent = new ResearchPlannerAgent();
-    this.searchAgent = new ResearchSearchAgent();
+    this.searchAgent = new ResearchRetrieverAgent();
     this.writerAgent = new ResearchWriterAgent();
   }
 
@@ -23,8 +23,7 @@ export class ResearchManager {
       // 1. Planning Phase
       onProgress('Planner', 'Planning research approach...', 0);
       const planResponse = await this.plannerAgent.execute({
-        query,
-        focusMode: 'web' // Default focus mode, can be made configurable
+        query
       });
       if (!planResponse.success || !planResponse.data) {
         throw new Error(planResponse.error || 'Planning failed');
@@ -32,7 +31,10 @@ export class ResearchManager {
 
       // 2. Search Phase
       onProgress('Search', 'Gathering information from multiple sources...', 33);
-      const searchResponse = await this.searchAgent.search(planResponse.data.searches, true);
+      const searchResponse = await this.searchAgent.search(
+        planResponse.data.search_queries.map(q => ({ query: q, reason: 'Research strategy' })),
+        true
+      );
       if (!searchResponse.success || !searchResponse.data) {
         throw new Error(searchResponse.error || 'Search failed');
       }
@@ -41,7 +43,6 @@ export class ResearchManager {
       onProgress('Writer', 'Synthesizing research findings...', 66);
       const writeResponse = await this.writerAgent.execute({
         query,
-        focusMode: 'web', // Default focus mode, can be made configurable
         search_queries: planResponse.data.search_queries,
         results: searchResponse.data,
         thinking_process: planResponse.data.thinking_process
@@ -56,11 +57,14 @@ export class ResearchManager {
         query,
         headline: writerData.headline,
         markdown_report: writerData.markdown_report,
-        sources: writerData.citations.map((c: { source?: { title?: string; url: string }; text: string }) => ({
-          title: c.source?.title || 'Source',
-          url: c.source?.url || '',
-          content: c.text
-        })),
+        sources: writerData.citations.map((c: any) => {
+          const source = c.source || {};
+          return {
+            title: source.title || 'Source',
+            url: source.url || '',
+            content: c.text
+          };
+        }),
         images: [], // Will be populated by the writer if needed
         outline: writerData.markdown_report
           .split('\n## ')

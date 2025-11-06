@@ -1,4 +1,5 @@
-import { AgentResponse, SearchResult } from '../../../../commonApp/types/index';
+import { AgentResponse } from '../../../../commonApp/types/index';
+import type { SearchResult } from '../../types';
 
 import { logger } from '../../../../utils/logger';
 
@@ -92,10 +93,13 @@ export class ResearchWriterAgent {
 
     // Ensure citations
     if (!result.citations || result.citations.length === 0) {
-      result.citations = results.slice(0, 5).map((result) => ({
-        text: `${result.title} - ${result.content.slice(0, 100)}...`,
-        source: result
-      }));
+      result.citations = results.slice(0, 5).map((result) => {
+        const textContent = result.content || result.snippet || result.title || 'No description';
+        return {
+          text: `${result.title} - ${textContent.slice(0, 100)}...`,
+          source: result
+        };
+      });
     }
 
     return result;
@@ -104,7 +108,10 @@ export class ResearchWriterAgent {
   private generateBasicReport(query: string, results: SearchResult[]): string {
     const sections = [
       `## Overview\n\nThis research report examines ${query} based on comprehensive analysis of current information and reliable sources.`,
-      `## Key Findings\n\n${results.slice(0, 3).map((r, i) => `### ${i + 1}. ${r.title}\n\n${r.content.slice(0, 200)}...\n\n**Source**: [${r.title}](${r.url})`).join('\n\n')}`,
+      `## Key Findings\n\n${results.slice(0, 3).map((r, i) => {
+        const content = r.content || r.snippet || 'No description available';
+        return `### ${i + 1}. ${r.title}\n\n${content.slice(0, 200)}...\n\n**Source**: [${r.title}](${r.url})`;
+      }).join('\n\n')}`,
       `## Analysis\n\nBased on the research findings, ${query} represents a significant area of interest with multiple dimensions worth exploring. The available information suggests various perspectives and approaches to understanding this topic.`,
       `## Implications\n\nThe research reveals important implications for understanding ${query}. Further investigation may be warranted to explore specific aspects in greater detail.`,
       `## Conclusion\n\nThis analysis provides a foundational understanding of ${query} based on current available information. The topic warrants continued monitoring and research as new developments emerge.`
@@ -126,10 +133,13 @@ export class ResearchWriterAgent {
         `What future trends are predicted for ${query}?`,
         `How can one learn more about ${query}?`
       ],
-      citations: results.slice(0, 5).map((result) => ({
-        text: `${result.title} - ${result.content.slice(0, 100)}...`,
-        source: result
-      }))
+      citations: results.slice(0, 5).map((result) => {
+        const textContent = result.content || result.snippet || result.title || 'No description';
+        return {
+          text: `${result.title} - ${textContent.slice(0, 100)}...`,
+          source: result
+        };
+      })
     };
   }
 }

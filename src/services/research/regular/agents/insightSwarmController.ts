@@ -1,6 +1,6 @@
 import { InsightAnalyzerAgent, InsightAnalysisRequest as _InsightAnalysisRequest, InsightAnalysisResult } from './insightAnalyzerAgent';
 import { InsightWriterAgent, InsightWriterRequest as _InsightWriterRequest, InsightWriterResult } from './insightWriterAgent';
-import { SearchRetrieverAgent } from '../../../search/regular/agents/searchRetrieverAgent';
+import { InsightsRetrieverAgent } from './InsightsRetrieverAgent';
 import { AgentResponse, SearchResult, ImageResult, VideoResult } from '../../../../commonApp/types/index';
 import { logger } from '../../../../utils/logger';
 import { ServiceHealthMonitor } from '../../../../commonService/utils/serviceHealth';
@@ -37,13 +37,13 @@ export interface InsightResult {
 
 export class InsightSwarmController {
   private analyzerAgent: InsightAnalyzerAgent;
-  private retrieverAgent: SearchRetrieverAgent;
+  private retrieverAgent: InsightsRetrieverAgent;
   private writerAgent: InsightWriterAgent;
   private healthMonitor: ServiceHealthMonitor;
 
   constructor() {
     this.analyzerAgent = new InsightAnalyzerAgent();
-    this.retrieverAgent = new SearchRetrieverAgent();
+    this.retrieverAgent = new InsightsRetrieverAgent();
     this.writerAgent = new InsightWriterAgent();
     this.healthMonitor = ServiceHealthMonitor.getInstance();
   }
@@ -99,69 +99,53 @@ export class InsightSwarmController {
         insightAreasCount: insightAreas.length
       });
 
-      // Step 2: Search Phase
-      onStatusUpdate?.(
-        'Conducting Targeted Research for Insights',
-        'About 1-2 minutes remaining',
-        30,
-        'Retriever Agent searching for trend data and analytical sources',
-        searchQueries,
-        [],
-        'RetrieverAgent',
-        'Executing targeted search for insight-rich sources',
-        'searching'
-      );
-
-      // Execute searches for all planned queries
+      // Step 2: Search Phase - Simple single search
       const allResults: SearchResult[] = [];
-      const allImages: ImageResult[] = [];
-      const allVideos: VideoResult[] = [];
+      
+      try {
+        onStatusUpdate?.(
+          'Searching for Insights',
+          'About 30 seconds remaining',
+          40,
+          `Tavily search with ${searchQueries.length} combined queries`,
+          searchQueries,
+          [],
+          'RetrieverAgent',
+          `Single Tavily call (Brave fallback)`,
+          'searching'
+        );
 
-      for (const searchQuery of searchQueries.slice(0, 3)) {
-        try {
-          onStatusUpdate?.(
-            'Searching Insight Sources',
-            'About 1-2 minutes remaining',
-            40 + (searchQueries.indexOf(searchQuery) * 10),
-            `Searching for insights: ${searchQuery}`,
-            searchQueries,
-            [],
-            'RetrieverAgent',
-            `Searching: ${searchQuery}`,
-            'searching'
-          );
+        const searchResponse = await this.executeWithHealthCheck(
+          () => this.retrieverAgent.execute(searchQueries),
+          'RetrieverAgent'
+        ) as AgentResponse<SearchResult[]>;
 
-          const searchResponse = await this.executeWithHealthCheck(
-            () => this.retrieverAgent.execute(
-              searchQuery,
-              (status: string) => logger.info('Search status:', status)
-            ),
-            'RetrieverAgent'
-          ) as AgentResponse<{
-            results: SearchResult[];
-            images: ImageResult[];
-            videos: VideoResult[];
-          }>;
-
-          if (searchResponse.data) {
-            allResults.push(...(searchResponse.data.results || []));
-            allImages.push(...(searchResponse.data.images || []));
-            allVideos.push(...(searchResponse.data.videos || []));
-          }
-        } catch (error) {
-          logger.warn(`Search failed for query: ${searchQuery}`, error);
+        if (searchResponse.data) {
+          logger.info('InsightSwarmController: Single search completed', {
+            resultsCount: searchResponse.data.length,
+            queriesCount: searchQueries.length
+          });
+          allResults.push(...searchResponse.data);
         }
+        
+      } catch (error) {
+        logger.error('Search failed', { 
+          error: error instanceof Error ? error.message : error
+        });
       }
-
-      // Remove duplicates and limit results
-      const uniqueResults = this.deduplicateResults(allResults).slice(0, 12);
-      const uniqueImages = this.deduplicateImages(allImages).slice(0, 8);
-      const uniqueVideos = this.deduplicateVideos(allVideos).slice(0, 3);
-
+      
       logger.info('InsightSwarmController: Search phase completed', {
-        totalResults: uniqueResults.length,
-        totalImages: uniqueImages.length,
-        totalVideos: uniqueVideos.length
+        totalAPICalls: 1,
+        resultsCount: allResults.length,
+        targetCount: 10
+      });
+
+      // Use results directly (already filtered to top 10)
+      const uniqueResults = allResults;
+
+      logger.info('InsightSwarmController: Final results prepared', {
+        resultsCount: uniqueResults.length,
+        targetCount: 10
       });
 
       // Step 3: Synthesis & Insight Generation Phase
@@ -177,30 +161,57 @@ export class InsightSwarmController {
         'synthesizing'
       );
 
-      const writerResponse = await this.executeWithHealthCheck(
-        () => this.writerAgent.execute({
+      // Call WriterAgent DIRECTLY (same as Pro Search pattern) - NO health check wrapper
+      let writerResponse: AgentResponse<InsightWriterResult>;
+      try {
+        logger.info('🔍 [SWARM] Calling InsightWriterAgent', {
+          query,
+          resultsCount: uniqueResults.length,
+          insightAreasCount: insightAreas.length
+        });
+
+        // DIRECT CALL (no health check wrapper) - same pattern as Pro Search
+        writerResponse = await this.writerAgent.execute({
           query,
           insight_areas: insightAreas,
           search_queries: searchQueries,
           results: uniqueResults,
           analysis_strategy: analysisStrategy
-        }),
-        'InsightWriterAgent'
-      ) as AgentResponse<InsightWriterResult>;
+        });
 
-      // Step 4: Final Assembly
-      onStatusUpdate?.(
-        'Finalizing Insight Report',
-        'Complete',
-        90,
-        'Assembling final insight report with confidence assessment',
-        searchQueries,
-        uniqueResults.slice(0, 5),
-        'InsightSwarmController',
-        'Finalizing actionable insights and recommendations',
-        'finalizing'
-      );
+        logger.info('🟢 [SWARM] InsightWriterAgent completed successfully', {
+          success: writerResponse.success,
+          hasData: !!writerResponse.data,
+          reportLength: writerResponse.data?.markdown_report?.length || 0
+        });
+      } catch (error) {
+        logger.error('🔴 [SWARM] InsightWriterAgent failed, using fallback', { 
+          error: error instanceof Error ? error.message : error,
+          query
+        });
+        // Provide fallback response when WriterAgent fails (same as Pro Search)
+        writerResponse = {
+          success: true,
+          data: {
+            headline: `Strategic Insights: ${query}`,
+            subtitle: 'Market Analysis and Strategic Recommendations',
+            short_summary: `Strategic analysis of ${query} based on comprehensive research.`,
+            markdown_report: this.generateFallbackReport(query, uniqueResults),
+            follow_up_questions: this.generateFallbackQuestions(query),
+            citations: uniqueResults.slice(0, 5).map((result) => ({
+              text: `${result.title} - ${result.content.slice(0, 100)}...`,
+              source: {
+                title: result.title,
+                url: result.url,
+                snippet: result.content.slice(0, 200)
+              }
+            })),
+            confidence_level: uniqueResults.length >= 6 ? 75 : 65
+          }
+        };
+      }
 
+      // Build result immediately (same as Pro Search - no delays!)
       const result: InsightResult = {
         query,
         headline: writerResponse.data?.headline || `Strategic Insights: ${query}`,
@@ -229,40 +240,56 @@ export class InsightSwarmController {
           InsightWriter: { insights_generated: writerResponse.data?.follow_up_questions?.length || 0 }
         },
         citations: writerResponse.data?.citations || [],
-        images: uniqueImages,
-        videos: uniqueVideos,
+        images: [],
+        videos: [],
         insight_areas: insightAreas,
         confidence_level: writerResponse.data?.confidence_level || 75
       };
 
-      onStatusUpdate?.(
-        'Insight Analysis Complete',
-        'Ready to explore',
-        100,
-        'Strategic insights successfully generated with actionable recommendations',
-        searchQueries,
-        uniqueResults.slice(0, 5),
-        'Complete',
-        'Insight report ready for review',
-        'finalizing'
-      );
-
-      logger.info('InsightSwarmController: Processing completed successfully', {
+      logger.info('🟢 [SWARM] Insight processing completed', {
         reportLength: result.markdown_report.length,
         sourcesCount: result.sources.length,
         insightAreasCount: result.insight_areas.length
       });
 
+      // Signal completion AFTER building result - no delays! (same as Pro Search)
+      onStatusUpdate?.(
+        'Complete',
+        'Complete',
+        100,
+        'Insight generation complete',
+        searchQueries,
+        uniqueResults.slice(0, 5),
+        'Complete',
+        'Ready',
+        'finalizing'
+      );
+
       return result;
 
     } catch (error) {
-      logger.error('InsightSwarmController: Processing failed', {
+      logger.error('🔴 [SWARM] Insight processing failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
         query: request.query
       });
 
-      // Return fallback result
-      return this.getFallbackResult(request.query);
+      // Build error result immediately (same as Pro Search)
+      const errorResult = this.getFallbackResult(request.query);
+      
+      // Signal completion - no delays! (same as Pro Search)
+      onStatusUpdate?.(
+        'Complete',
+        'Complete',
+        100,
+        'Error occurred',
+        [],
+        [],
+        'Complete',
+        'Error',
+        'finalizing'
+      );
+      
+      return errorResult;
     }
   }
 
@@ -281,34 +308,6 @@ export class InsightSwarmController {
       this.healthMonitor.reportFailure(serviceName);
       throw error;
     }
-  }
-
-  private deduplicateResults(results: SearchResult[]): SearchResult[] {
-    const seen = new Set<string>();
-    return results.filter(result => {
-      const key = `${result.title}-${result.url}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }
-
-  private deduplicateImages(images: ImageResult[]): ImageResult[] {
-    const seen = new Set<string>();
-    return images.filter(image => {
-      if (seen.has(image.url)) return false;
-      seen.add(image.url);
-      return true;
-    });
-  }
-
-  private deduplicateVideos(videos: VideoResult[]): VideoResult[] {
-    const seen = new Set<string>();
-    return videos.filter(video => {
-      if (seen.has(video.url)) return false;
-      seen.add(video.url);
-      return true;
-    });
   }
 
   private generateFallbackReport(query: string, results: SearchResult[]): string {

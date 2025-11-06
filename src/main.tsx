@@ -13,7 +13,7 @@ const DeepResearchResults = lazy(() => import('./services/research/pro/pages/Res
 const ProSearchResults = lazy(() => import('./services/search/pro/pages/ProSearchResults.tsx'));
 const ProSearchTest = lazy(() => import('./services/search/pro/pages/ProSearchTest.tsx'));
 const InsightsResults = lazy(() => import('./services/research/regular/pages/InsightsResults.tsx'));
-const ResearcherResults = lazy(() => import('./services/research/regular/pages/ResearcherResults.tsx'));
+const ResearcherResults = lazy(() => import('./services/research/pro/pages/ResearcherResults.tsx'));
 const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx'));
 const Settings = lazy(() => import('./mainPages/Settings.tsx'));
 const TestPage = lazy(() => import('./pages/test.tsx'));

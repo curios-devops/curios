@@ -3,7 +3,7 @@ import { AgentResponse, SearchResult, WebSearchItem } from '../../types';
 import { performSearch } from '../../../search/searchService';
 import { logger } from '../../../../utils/logger';
 // TODO: Refactor to use Supabase Edge Function for OpenAI chat completions
-export class ResearchSearchAgent {
+export class ResearchRetrieverAgent {
   constructor() {}
 
   async search(searches: WebSearchItem[], useWebSearchTool = false): Promise<AgentResponse<SearchResult[]>> {

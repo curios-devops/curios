@@ -1,7 +1,6 @@
 import { SearchResult, ImageResult } from '../utils/types';
-import { API_TIMEOUTS, MAX_RESULTS, RETRY_OPTIONS } from '../utils/config';
-import { sanitizeResponse, withRetry } from '../utils/utils';
-import { rateLimitQueue } from '../utils/rateLimit';
+import { API_TIMEOUTS } from '../utils/config';
+import { sanitizeResponse } from '../utils/utils';
 
 interface TavilyImage {
   url: string;
@@ -46,46 +45,41 @@ export async function searchWithTavily(
         throw new TavilyError('Search query is required');
       }
 
-      // Add request to rate limit queue
-      const response = await rateLimitQueue.add(async () => {
-        try {
-          const res = await fetch('https://api.tavily.com/search', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_TAVILY_API_KEY}`,
-            },
-            body: JSON.stringify({
-              query: query.trim(),
-              search_depth: 'advanced',
-              max_results: MAX_RESULTS,
-              include_images: true,
-              include_answer: false,
-            }),
-            signal: controller.signal,
-          });
-
-          // Handle rate limit response
-          if (res.status === 429) {
-            throw new TavilyError('Rate limit exceeded', true);
-          }
-
-          if (!res.ok) {
-            throw new TavilyError(`Tavily API error: ${res.status}`);
-          }
-
-          return res;
-        } catch (error) {
-          if (error instanceof Error && error.name === 'AbortError') {
-            throw new TavilyError('Request timeout');
-          }
-          throw error;
-        }
+      // Tavily API call - does NOT use rate limit queue (independent from Brave)
+      const res = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          api_key: import.meta.env.VITE_TAVILY_API_KEY,
+          query: query.trim(),
+          search_depth: 'basic', // 'basic' or 'advanced' (advanced costs more)
+          max_results: 10, // Tavily max is 10
+          include_images: false, // Set to false for free tier
+          include_answer: false,
+        }),
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
-      const data = await response.json();
+      // Handle rate limit response
+      if (res.status === 429) {
+        throw new TavilyError('Rate limit exceeded', true);
+      }
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Tavily API error:', {
+          status: res.status,
+          statusText: res.statusText,
+          body: errorText.substring(0, 200)
+        });
+        throw new TavilyError(`Tavily API error: ${res.status} - ${errorText.substring(0, 100)}`);
+      }
+
+      const data = await res.json();
       const sanitizedData = sanitizeResponse(data) as TavilyResponse;
 
       // Process results with validation
@@ -107,7 +101,7 @@ export async function searchWithTavily(
           url: result.url.trim(),
           content: result.content.trim(),
         }))
-        .slice(0, MAX_RESULTS);
+        .slice(0, 10); // Cap at 10 results
 
       // Process images with validation
       const images = (sanitizedData.images || [])
@@ -132,13 +126,8 @@ export async function searchWithTavily(
   };
 
   try {
-    // Use withRetry with modified options for rate limits
-    return await withRetry(searchTavily, {
-      ...RETRY_OPTIONS,
-      maxRetries: 1, // Limit retries to 1 for rate limits
-      delayMs: 5000, // Increased delay for rate limits
-      exponentialBackoff: true
-    });
+    // Call searchTavily directly (no retry wrapper to avoid conflicts with rate limit queue)
+    return await searchTavily();
   } catch (error) {
     // Handle rate limit errors quietly
     if (error instanceof TavilyError && error.isRateLimit) {

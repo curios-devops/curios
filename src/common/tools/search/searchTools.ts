@@ -35,7 +35,7 @@ interface SearchResponseData {
 }
 
 import { searchWithTavily } from '../../../commonService/searchTools/tavilyService.ts';
-import { performRapidAPISearch } from '../../../commonService/searchTools/searxService.ts';
+import { braveSearchTool } from '../../../commonService/searchTools/braveSearchTool.ts';
 import { logger } from '../../../utils/logger.ts';
 
 export interface SearchQuery {
@@ -66,9 +66,7 @@ export interface SearchResponse {
 class SearchTools {
   private static instance: SearchTools;
   private searchHistory: SearchResponse[] = [];
-  private rateLimitDelay = 1000;
-  private results: SearchResult[] = [];
-  private images: ImageResult[] = []; // 1 second between searches
+  private rateLimitDelay = 1000; // 1 second between searches
 
   static getInstance(): SearchTools {
     if (!SearchTools.instance) {
@@ -94,19 +92,19 @@ class SearchTools {
         return response;
       }
     } catch (error) {
-      logger.warn('Tavily search failed, trying RapidAPI:', error);
+      logger.warn('Tavily search failed, trying Brave:', error);
     }
 
     try {
-      // Fallback to RapidAPI
-      const rapidAPIResults = await this.searchWithRapidAPI(query);
-      if (rapidAPIResults.results.length > 0) {
-        const response = this.formatSearchResponse(query, rapidAPIResults, 'rapidapi');
+      // Fallback to Brave
+      const braveResults = await this.searchWithBrave(query);
+      if (braveResults.results.length > 0) {
+        const response = this.formatSearchResponse(query, braveResults, 'rapidapi');
         this.addToHistory(response);
         return response;
       }
     } catch (error) {
-      logger.warn('RapidAPI search failed:', error);
+      logger.warn('Brave search failed:', error);
     }
 
     // Ultimate fallback - mock results for development
@@ -167,26 +165,28 @@ class SearchTools {
     }
   }
 
-  private async searchWithRapidAPI(query: string): Promise<SearchResponseData> {
+  private async searchWithBrave(query: string): Promise<SearchResponseData> {
     try {
-      const rapidAPIResponse = await performRapidAPISearch(query) as SearchServiceResponse;
+      const braveResponse = await braveSearchTool(query);
       
-      const results: SearchResult[] = rapidAPIResponse.results.map(result => {
+      // Combine web and news results
+      const allWebResults = [...braveResponse.web, ...(braveResponse.news || [])];
+      
+      const results: SearchResult[] = allWebResults.map(result => {
         const url = result.url || '';
         return {
           title: result.title || 'Untitled',
           url,
           snippet: result.content || '',
           content: result.content,
-          relevance_score: 0.7, // Default score for RapidAPI
-          domain: this.extractDomain(url),
-          image: result.image_url || undefined
+          relevance_score: 0.7, // Default score for Brave
+          domain: this.extractDomain(url)
         };
       });
 
-      return { results, images: rapidAPIResponse.images || [] };
+      return { results, images: braveResponse.images || [] };
     } catch (error) {
-      logger.error('RapidAPI search error:', error);
+      logger.error('Brave search error:', error);
       throw error;
     }
   }

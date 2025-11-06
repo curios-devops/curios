@@ -71,10 +71,10 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
               './src/services/search/regular/agents/searchWriterAgent.ts'
             ],
             'services-research': [
-              './src/services/research/pro/agents/researcherWorkflow.ts',
-              './src/services/research/regular/agents/insightsWorkflow.ts',
-              './src/services/research/searchAgent.ts',
-              './src/services/research/plannerAgent.ts'
+              './src/services/research/pro/agents/researchSwarmController.ts',
+              './src/services/research/pro/agents/researchPlannerAgent.ts',
+              './src/services/research/pro/agents/researchWriterAgent.ts',
+              './src/services/research/regular/agents/insightSwarmController.ts'
             ],
             'services-lab': [
               './src/services/lab/regular/agents/orchestrator.ts'

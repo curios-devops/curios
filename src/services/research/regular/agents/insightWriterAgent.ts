@@ -22,7 +22,7 @@ export interface InsightWriterResult {
 export class InsightWriterAgent {
   async execute(request: InsightWriterRequest): Promise<AgentResponse<InsightWriterResult>> {
     try {
-      const { query, insight_areas, search_queries, results, analysis_strategy } = request;
+      const { query, insight_areas, results } = request;
       
       logger.info('InsightWriterAgent: Starting insight generation', { 
         query, 
@@ -34,62 +34,38 @@ export class InsightWriterAgent {
         throw new Error('No search results provided for insight generation');
       }
 
-      const systemPrompt = `You are an Insight Writer Agent specialized in generating actionable business and strategic insights.
+      // Optimized prompts - reduce total payload size
+      const systemPrompt = `Expert strategic analyst. Generate insights from search results.
 
-Your task is to synthesize search results into comprehensive insights with the following structure:
-
-REQUIREMENTS:
-1. **Headline**: Clear, compelling insight title (8-15 words)
-2. **Subtitle**: Descriptive subtitle providing strategic context (15-25 words)
-3. **Short Summary**: Executive summary highlighting key insights (100-150 words)
-4. **Markdown Report**: Comprehensive insight analysis (800-1200 words) with:
-   - Strategic overview and context
-   - Key insights and findings with evidence
-   - Trend analysis and patterns
-   - Market dynamics and competitive insights
-   - Opportunities and strategic implications
-   - Actionable recommendations
-   - Risk assessment and considerations
-   - Well-structured markdown formatting
-5. **Follow-up Questions**: 4-5 strategic questions for deeper investigation
-6. **Citations**: Properly formatted citations with inline references
-
-INSIGHT AREAS TO ADDRESS:
-${insight_areas.map(area => `- ${area}`).join('\n')}
-
-FORMATTING GUIDELINES:
-- Use proper markdown headers (##, ###)
-- Include bullet points for key insights
-- Use **bold** for emphasis on critical findings
-- Include inline citations using [^1] format
-- Structure content with strategic flow
-- Focus on actionable intelligence and forward-looking insights
-
-Response must be valid JSON with this exact structure:
+JSON OUTPUT:
 {
-  "headline": "...",
-  "subtitle": "...", 
-  "short_summary": "...",
-  "markdown_report": "...",
-  "follow_up_questions": ["...", "...", "...", "...", "..."],
-  "citations": [{"text": "citation text", "source": {"title": "...", "url": "...", "snippet": "..."}}],
+  "headline": "8-15 words",
+  "subtitle": "15-25 words", 
+  "short_summary": "100-150 words",
+  "markdown_report": "800-1200 words with ## headers, bullets, **bold**",
+  "follow_up_questions": ["Q1", "Q2", "Q3"],
+  "citations": [{"text": "...", "source": {"title": "...", "url": "...", "snippet": "..."}}],
   "confidence_level": 85
-}`;
+}
+
+FOCUS: ${insight_areas.join(', ')}`;
 
       const resultsContext = this.formatResultsForContext(results);
       
-      const userPrompt = `Generate comprehensive strategic insights for:
+      const userPrompt = `Query: "${query}"
 
-Query: "${query}"
-Target Insight Areas: ${insight_areas.join(', ')}
-Search Strategy: ${search_queries.join(', ')}
-Analysis Approach: ${analysis_strategy}
-
-SEARCH RESULTS FOR ANALYSIS:
 ${resultsContext}
 
-Create actionable insights that identify trends, patterns, opportunities, and strategic implications. Focus on providing strategic value through data-driven analysis and forward-looking perspectives.`;
+Generate strategic insights with actionable intelligence.`;
 
+      // Log payload sizes before API call
+      logger.info('🔵 [INSIGHT-WRITER] Payload breakdown', {
+        systemPromptChars: systemPrompt.length,
+        userPromptChars: userPrompt.length,
+        resultsContextChars: resultsContext.length,
+        totalChars: systemPrompt.length + userPrompt.length,
+        resultsCount: results.length
+      });
 
       // Use Supabase Edge Function for OpenAI chat completions
       const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
@@ -154,16 +130,17 @@ Create actionable insights that identify trends, patterns, opportunities, and st
   }
 
   private formatResultsForContext(results: SearchResult[]): string {
+    // Compact formatting: 10 results × 200 chars = ~2000 chars max
     return results
-      .slice(0, 8) // Limit to top 8 results for insight generation
+      .slice(0, 10)
       .map((result, index) => {
-        return `[${index + 1}] **${result.title}**
-URL: ${result.url}
-Content: ${result.content.slice(0, 400)}${result.content.length > 400 ? '...' : ''}
-
----`;
+        const title = result.title.slice(0, 80);
+        const content = result.content.slice(0, 200);
+        return `[${index + 1}] ${title}
+${content}...
+`;
       })
-      .join('\n');
+      .join('');
   }
 
   private validateWriterResult(result: InsightWriterResult, query: string, results: SearchResult[]): InsightWriterResult {

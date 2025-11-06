@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ArrowLeft, Brain, Search as SearchIcon, FileText, Sparkles } from 'lucide-react';
-import { researchService } from '../../researchService';
-import { ResearchResult, ResearchProgressCallback, SearchResult } from '../../types';
+import { researchService, ResearchProgressCallback, ResearchResult as ProResearchResult } from '../../pro/agents/researchService.ts';
+import { SearchResult } from '../../types';
 import ResearcherProgress from '../../../../components/ResearcherProgress.tsx';
 import TabSystem from '../../../../components/TabSystem.tsx';
 
@@ -25,7 +25,7 @@ export default function ResearcherResults() {
   const query = searchParams.get('q') || '';
 
   const [loading, setLoading] = useState(true);
-  const [result, setResult] = useState<ResearchResult | null>(null);
+  const [result, setResult] = useState<ProResearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [workflowStarted, setWorkflowStarted] = useState(false);
   const [progressState, setProgressState] = useState<ProgressState>({
@@ -40,13 +40,13 @@ export default function ResearcherResults() {
     researchPhase: 'planning'
   });
 
-  const handleProgress: ResearchProgressCallback = (
+  const handleProgress = ((
     stage: string, 
     timeRemaining: string, 
     progress: number, 
     thinkingStep: string,
     searchTerms: string[] = [],
-    sources: SearchResult[] = [],
+    sources: any[] = [],
     currentAgent?: string,
     agentAction?: string,
     researchPhase?: 'planning' | 'searching' | 'analyzing' | 'synthesizing' | 'citing'
@@ -62,10 +62,12 @@ export default function ResearcherResults() {
       agentActions: agentAction ? [...(prev.agentActions || []), agentAction] : prev.agentActions || [],
       researchPhase: researchPhase || prev.researchPhase
     }));
-  };
+  }) as ResearchProgressCallback;
 
   useEffect(() => {
     if (!query || workflowStarted) return;
+    
+    let isCurrentRequest = true;
     
     setWorkflowStarted(true);
     setLoading(true);
@@ -84,14 +86,23 @@ export default function ResearcherResults() {
     });
 
     researchService.performResearch(query, true, handleProgress)
-      .then((researchResult: ResearchResult) => {
-        setResult(researchResult);
-        setLoading(false);
+      .then((researchResult: ProResearchResult) => {
+        if (isCurrentRequest) {
+          setResult(researchResult);
+          setLoading(false);
+        }
       })
       .catch((err: Error) => {
-        setError('Failed to perform research: ' + (err?.message || 'Unknown error'));
-        setLoading(false);
+        if (isCurrentRequest) {
+          setError('Failed to perform research: ' + (err?.message || 'Unknown error'));
+          setLoading(false);
+        }
       });
+    
+    // Cleanup function
+    return () => {
+      isCurrentRequest = false;
+    };
   }, [query, workflowStarted]);
 
   const getPhaseIcon = (phase?: string) => {

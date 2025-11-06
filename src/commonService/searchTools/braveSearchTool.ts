@@ -3,6 +3,7 @@
 // Returns: { web, images, news, videos }
 
 import { logger } from '../../utils/logger';
+import { rateLimitQueue } from '../utils/rateLimit';
 import type { SearxResult, ImageResult, VideoResult } from '../../types';
 
 const SUPABASE_URL = 'https://gpfccicfqynahflehpqo.supabase.co';
@@ -29,32 +30,36 @@ export async function braveSearchTool(query: string): Promise<BraveSearchResults
   }
 
   try {
-    // Call both web and images endpoints with rate limiting
+    // Call both web and images endpoints with rate limiting queue
+    // This ensures 1 second minimum between ALL Brave API calls across entire app
     console.log('🔍 [BRAVE TOOL] Starting search for:', query);
     
-    // Call web search first
-    const webResponse = await fetch(`${SUPABASE_URL}/functions/v1/brave-web-search`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ query }),
-      signal: AbortSignal.timeout(SEARCH_TIMEOUT)
+    // Call web search first through rate limit queue
+    const webResponse = await rateLimitQueue.add(async () => {
+      console.log('🔍 [BRAVE TOOL] Executing web search API call');
+      return fetch(`${SUPABASE_URL}/functions/v1/brave-web-search`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query }),
+        signal: AbortSignal.timeout(SEARCH_TIMEOUT)
+      });
     });
 
-    // Wait 1 second to respect Brave API rate limits
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Call images search after delay
-    const imagesResponse = await fetch(`${SUPABASE_URL}/functions/v1/brave-images-search`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ query }),
-      signal: AbortSignal.timeout(SEARCH_TIMEOUT)
+    // Call images search through rate limit queue (ensures 1s gap after web search)
+    const imagesResponse = await rateLimitQueue.add(async () => {
+      console.log('🔍 [BRAVE TOOL] Executing images search API call');
+      return fetch(`${SUPABASE_URL}/functions/v1/brave-images-search`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query }),
+        signal: AbortSignal.timeout(SEARCH_TIMEOUT)
+      });
     });
 
     // Check web response

@@ -1,12 +1,11 @@
-// Core research agents
-export { ResearchPlannerAgent } from './agents/ResearchPlannerAgent.ts';
-export { ResearchSearchAgent } from './agents/ResearchSearchAgent.ts';
-export { ResearchWriterAgent } from './agents/ResearchWriterAgent.ts';
+// Insights service (Free-tier workflow)
+export { insightsService } from './agents/insightsService';
 
 // Insight agents
 export { InsightSwarmController } from './agents/insightSwarmController.ts';
 export { InsightAnalyzerAgent } from './agents/insightAnalyzerAgent.ts';
 export { InsightWriterAgent } from './agents/insightWriterAgent.ts';
+export { InsightsRetrieverAgent } from './agents/InsightsRetrieverAgent';
 
 // Type exports
 export type { 
@@ -15,7 +14,7 @@ export type {
   WebSearchItem, 
   ResearchData,
   WebSearchPlan
-} from '../../../../commonApp/types/index.ts';
+} from '../types.ts';
 
 export type { 
   InsightResult, 
