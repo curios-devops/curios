@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Compass, Image, List, Globe } from 'lucide-react';
+import { useAccentColor } from '../hooks/useAccentColor';
 
 // Helper function to calculate reading and listening time
 const calculateReadingTime = (text: string) => {
@@ -86,7 +88,8 @@ const SourceItem: React.FC<SourceItemProps> = ({ source, index }) => (
 );
 
 export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loading }) => {
-  const [activeTab, setActiveTab] = useState<'curios' | 'steps' | 'sources'>('curios');
+  const [activeTab, setActiveTab] = useState<'curios' | 'steps' | 'sources' | 'images'>('curios');
+  const accent = useAccentColor();
 
   // Handle follow-up question clicks
   const handleFollowUpClick = (question: string) => {
@@ -100,22 +103,29 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
   const tabs = [
     { 
       id: 'curios', 
-      label: 'Curios AI', 
-      icon: (
-        <img 
-          src="/compass.svg" 
-          alt="Compass" 
-          className="w-4 h-4"
-        />
-      ),
+      label: 'Curios AI',
+      icon: <Compass size={16} />,
       customLabel: (
         <span>
-          Curios<span className="text-[#0095FF]">AI</span>
+          Curios<span style={{ color: accent.primary }}>AI</span>
         </span>
       )
     },
-    { id: 'steps', label: 'Steps', icon: '📋' },
-    { id: 'sources', label: `Sources${result?.sources ? ` · ${result.sources.length}` : ''}`, icon: '🔍' }
+    { 
+      id: 'images', 
+      label: `Images${result?.images ? ` · ${result.images.length}` : ''}`,
+      icon: <Image size={16} />
+    },
+    { 
+      id: 'steps', 
+      label: 'Steps',
+      icon: <List size={16} />
+    },
+    { 
+      id: 'sources', 
+      label: `Sources${result?.sources ? ` · ${result.sources.length}` : ''}`,
+      icon: <Globe size={16} />
+    }
   ];
 
   return (
@@ -129,12 +139,16 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-4 sm:px-6 py-4 text-sm font-medium transition-colors relative whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'text-[#0095FF] bg-blue-50 dark:bg-blue-900/20'
+                  ? 'bg-blue-50 dark:bg-blue-900/20'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
+              style={activeTab === tab.id ? { color: accent.primary } : {}}
             >
-              <span className="text-base flex items-center">
-                {typeof tab.icon === 'string' ? tab.icon : tab.icon}
+              <span 
+                className="text-base flex items-center"
+                style={activeTab === tab.id ? { color: accent.primary } : {}}
+              >
+                {tab.icon}
               </span>
               <span className="hidden sm:inline">
                 {tab.customLabel || tab.label}
@@ -142,14 +156,17 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
               <span className="sm:hidden">
                 {tab.customLabel ? (
                   <span>
-                    Curios<span className="text-[#0095FF]">AI</span>
+                    Curios<span style={{ color: accent.primary }}>AI</span>
                   </span>
                 ) : (
                   tab.label.split(' ')[0]
                 )}
               </span>
               {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0095FF]"></div>
+                <div 
+                  className="absolute bottom-0 left-0 right-0 h-0.5"
+                  style={{ backgroundColor: accent.primary }}
+                ></div>
               )}
             </button>
           ))}
@@ -186,6 +203,23 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                     <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
                       {result.subtitle}
                     </p>
+                  )}
+
+                  {/* Featured Image - First image from results */}
+                  {result.images && result.images.length > 0 && result.images[0]?.url && (
+                    <div className="my-6">
+                      <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                        <img
+                          src={result.images[0].url}
+                          alt={result.images[0].alt || result.headline || 'Featured image'}
+                          className="w-full h-auto max-h-[500px] object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    </div>
                   )}
 
                   {/* Listen section */}
@@ -331,6 +365,37 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
               <div className="text-center py-8">
                 <div className="text-gray-500 dark:text-gray-400">
                   {loading ? 'Gathering sources...' : 'No sources available'}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'images' && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Images</h2>
+            
+            {result?.images && result.images.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {result.images.map((image: any, index: number) => (
+                  <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group">
+                    <img
+                      src={image.url}
+                      alt={image.alt || ''}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
+                      onClick={() => window.open(image.url, '_blank')}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M0M2MS44OTU0IDc0IDYxIDc0Ljg5NTQgNjEgNzZWMTI0QzYxIDEyNS4xMDUgNjEuODk1NCAxMjYgNjMgMTI2SDEzN0MxMzguMTA1IDEyNiAxMzkgMTI1LjEwNSAxMzkgMTI0Vjc2QzEzOSA3NC44OTU0IDEzOC4xMDUgNzQgMTM3IDc0SDExM00xMTMgNzRWNzBDMTEzIDY4Ljg5NTQgMTEyLjEwNSA2OCAxMTEgNjhIODlDODcuODk1NCA2OCA4NyA2OC44OTU0IDg3IDcwVjc0TTExMyA3NEg4N00xMDAgOTBWMTA2TTkzIDk4TDEwNyA5OCIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-500 dark:text-gray-400">
+                  {loading ? 'Loading images...' : 'No images found for this search.'}
                 </div>
               </div>
             )}

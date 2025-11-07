@@ -6,6 +6,7 @@ import { insightsService, InsightProgressCallback } from '../agents/insightsServ
 import { SearchResult } from '../../types.ts';
 import ResearchProgress from '../../../../components/ResearchProgress';
 import TabSystem from '../../../../components/TabSystem';
+import { useAccentColor } from '../../../../hooks/useAccentColor';
 
 interface ProgressState {
   stage: string;
@@ -22,6 +23,7 @@ interface ProgressState {
 export default function InsightsResults() {
   const location = useLocation();
   const navigate = useNavigate();
+  const accent = useAccentColor();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
 
@@ -29,6 +31,7 @@ export default function InsightsResults() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [workflowStarted, setWorkflowStarted] = useState(false);
+  const [showPhaseIndicator, setShowPhaseIndicator] = useState(true);
   const [progressState, setProgressState] = useState<ProgressState>({
     stage: 'Initializing Insight Analysis',
     timeRemaining: 'About 2-3 minutes remaining',
@@ -98,12 +101,23 @@ export default function InsightsResults() {
       });
   }, [query, workflowStarted, handleProgress]);
 
+  // Hide phase indicator after loading completes
+  useEffect(() => {
+    if (!loading && result && progressState.insightPhase === 'finalizing') {
+      // Wait 1 second then fade out
+      const timer = setTimeout(() => {
+        setShowPhaseIndicator(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, result, progressState.insightPhase]);
+
   const getPhaseIcon = (phase?: string) => {
     switch (phase) {
       case 'analyzing': return <Brain className="text-blue-500" size={14} />;
       case 'searching': return <Search className="text-green-500" size={14} />;
       case 'synthesizing': return <Sparkles className="text-purple-500" size={14} />;
-      case 'finalizing': return <CheckCircle2 className="text-orange-500" size={14} />;
+      case 'finalizing': return <CheckCircle2 className="text-green-500" size={14} />;
       default: return <Brain className="text-blue-500" size={14} />;
     }
   };
@@ -113,21 +127,31 @@ export default function InsightsResults() {
       <header className="flex items-center gap-4 px-6 py-6">
         <button 
           type="button"
-          onClick={() => navigate('/')} 
-          className="text-[#0095FF] hover:text-[#0080FF] transition-colors"
+          onClick={() => navigate('/')}
+          style={{ color: accent.primary }}
+          className="hover:opacity-80 transition-opacity"
         >
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-medium">{query}</h1>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-blue-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
-                <Lightbulb className="text-[#0095FF]" size={14} />
-              <span className="text-[#0095FF] text-sm font-medium">Insights</span>
+            <div 
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+              style={{ 
+                backgroundColor: `${accent.primary}15`,
+                border: `1px solid ${accent.primary}30`
+              }}
+            >
+              <Lightbulb size={14} style={{ color: accent.primary }} />
+              <span style={{ color: accent.primary }} className="text-sm font-medium">Insights</span>
             </div>
             {/* Insight Phase Indicator */}
-            {progressState.insightPhase && (
-              <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+            {progressState.insightPhase && showPhaseIndicator && (
+              <div 
+                className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full transition-opacity duration-1000"
+                style={{ opacity: !loading && result ? 0 : 1 }}
+              >
                 {getPhaseIcon(progressState.insightPhase)}
                 <span className="text-xs font-medium capitalize">{progressState.insightPhase}</span>
               </div>
@@ -152,9 +176,17 @@ export default function InsightsResults() {
               <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                    <div 
+                      className="w-2 h-2 rounded-full animate-pulse"
+                      style={{ backgroundColor: accent.primary }}
+                    ></div>
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Agent:</span>
-                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{progressState.currentAgent}</span>
+                    <span 
+                      className="text-sm font-semibold"
+                      style={{ color: accent.primary }}
+                    >
+                      {progressState.currentAgent}
+                    </span>
                   </div>
                 </div>
                 {progressState.agentActions && progressState.agentActions.length > 0 && (

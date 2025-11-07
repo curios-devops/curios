@@ -1,18 +1,23 @@
 // InsightsRetrieverAgent - Free Tier Insights
 // Simple single search: Tavily (fallback to Brave)
-// Takes combined query, returns 10 results
+// Takes combined query, returns 10 results + images
 
-import { AgentResponse, SearchResult } from '../../../../commonApp/types/index';
+import { AgentResponse, SearchResult, ImageResult } from '../../../../commonApp/types/index';
 import { braveSearchTool } from '../../../../commonService/searchTools/braveSearchTool';
 import { searchWithTavily } from '../../../../commonService/searchTools/tavilyService';
 import { logger } from '../../../../utils/logger';
+
+export interface InsightsRetrieverResult {
+  results: SearchResult[];
+  images: ImageResult[];
+}
 
 export class InsightsRetrieverAgent {
   constructor() {
     logger.info('InsightsRetrieverAgent initialized (Free-tier: Tavily with Brave fallback)');
   }
 
-  async execute(queries: string[]): Promise<AgentResponse<SearchResult[]>> {
+  async execute(queries: string[]): Promise<AgentResponse<InsightsRetrieverResult>> {
     try {
       // Join all queries into a single search
       const combinedQuery = queries.join(' ').trim();
@@ -30,16 +35,19 @@ export class InsightsRetrieverAgent {
       });
 
       let searchResults: SearchResult[] = [];
+      let searchImages: ImageResult[] = [];
 
       // Try Tavily first (main engine for free tier)
       try {
         logger.info('🔍 Calling Tavily with combined query...');
         const tavilyResponse = await searchWithTavily(combinedQuery);
         searchResults = tavilyResponse.results || [];
+        searchImages = tavilyResponse.images || [];
         
         if (searchResults.length > 0) {
           logger.info('✅ Tavily search successful', { 
-            resultsCount: searchResults.length 
+            resultsCount: searchResults.length,
+            imagesCount: searchImages.length
           });
         } else {
           throw new Error('Tavily returned no results');
@@ -73,12 +81,16 @@ export class InsightsRetrieverAgent {
 
       logger.info('InsightsRetrieverAgent completed', {
         finalResultsCount: top10Results.length,
-        targetCount: 10
+        targetCount: 10,
+        imagesCount: searchImages.length
       });
 
       return {
         success: true,
-        data: top10Results
+        data: {
+          results: top10Results,
+          images: searchImages
+        }
       };
       
     } catch (error) {
@@ -89,7 +101,10 @@ export class InsightsRetrieverAgent {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        data: []
+        data: {
+          results: [],
+          images: []
+        }
       };
     }
   }

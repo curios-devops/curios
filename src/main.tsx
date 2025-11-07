@@ -13,6 +13,7 @@ const DeepResearchResults = lazy(() => import('./services/research/pro/pages/Res
 const ProSearchResults = lazy(() => import('./services/search/pro/pages/ProSearchResults.tsx'));
 const ProSearchTest = lazy(() => import('./services/search/pro/pages/ProSearchTest.tsx'));
 const InsightsResults = lazy(() => import('./services/research/regular/pages/InsightsResults.tsx'));
+const TavilySearchTest = lazy(() => import('./services/research/regular/pages/TavilySearchTest.tsx'));
 const ResearcherResults = lazy(() => import('./services/research/pro/pages/ResearcherResults.tsx'));
 const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx'));
 const Settings = lazy(() => import('./mainPages/Settings.tsx'));
@@ -53,6 +54,7 @@ const router = createBrowserRouter(
         { path: '/pro-search-test', element: <LazyPageWrapper><ProSearchTest /></LazyPageWrapper> },
         { path: '/deep-research', element: <LazyPageWrapper><DeepResearchResults /></LazyPageWrapper> },
         { path: '/insights-results', element: <LazyPageWrapper><InsightsResults /></LazyPageWrapper> },
+        { path: '/tavily-search', element: <LazyPageWrapper><TavilySearchTest /></LazyPageWrapper> },
         { path: '/research-results', element: <LazyPageWrapper><ResearcherResults /></LazyPageWrapper> },
         { path: '/researcher-results', element: <LazyPageWrapper><ResearcherResults /></LazyPageWrapper> },
         { path: '/labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },

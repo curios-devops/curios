@@ -35,20 +35,23 @@ export class InsightWriterAgent {
       }
 
       // Optimized prompts - reduce total payload size
-      const systemPrompt = `Expert strategic analyst. Generate insights from search results.
+      const systemPrompt = `Expert strategic analyst. Generate CONCISE insights from search results.
+
+CRITICAL: Keep responses SHORT to prevent truncation errors.
 
 JSON OUTPUT:
 {
-  "headline": "8-15 words",
-  "subtitle": "15-25 words", 
-  "short_summary": "100-150 words",
-  "markdown_report": "800-1200 words with ## headers, bullets, **bold**",
-  "follow_up_questions": ["Q1", "Q2", "Q3"],
-  "citations": [{"text": "...", "source": {"title": "...", "url": "...", "snippet": "..."}}],
+  "headline": "8-12 words max",
+  "subtitle": "12-20 words max", 
+  "short_summary": "80-120 words - CONCISE overview only",
+  "markdown_report": "600-900 words MAXIMUM with ## headers, bullets, **bold**. Be BRIEF and FOCUSED.",
+  "follow_up_questions": ["Q1 (10 words max)", "Q2 (10 words max)", "Q3 (10 words max)"],
+  "citations": [{"text": "Brief quote (50 chars max)", "source": {"title": "...", "url": "...", "snippet": "100 chars max"}}],
   "confidence_level": 85
 }
 
-FOCUS: ${insight_areas.join(', ')}`;
+FOCUS: ${insight_areas.join(', ')}
+STYLE: Brief, actionable, no fluff. Prioritize clarity over detail.`;
 
       const resultsContext = this.formatResultsForContext(results);
       
@@ -130,12 +133,12 @@ Generate strategic insights with actionable intelligence.`;
   }
 
   private formatResultsForContext(results: SearchResult[]): string {
-    // Compact formatting: 10 results × 200 chars = ~2000 chars max
+    // Ultra-compact formatting: 10 results × 150 chars = ~1500 chars max (reduced from 200)
     return results
       .slice(0, 10)
       .map((result, index) => {
-        const title = result.title.slice(0, 80);
-        const content = result.content.slice(0, 200);
+        const title = result.title.slice(0, 60); // Reduced from 80
+        const content = result.content.slice(0, 150); // Reduced from 200
         return `[${index + 1}] ${title}
 ${content}...
 `;
@@ -187,19 +190,15 @@ ${content}...
 
   private generateBasicInsightReport(query: string, results: SearchResult[]): string {
     const sections = [
-      `## Strategic Overview\n\nThis insight analysis examines ${query} through a strategic lens, identifying key trends, market dynamics, and actionable opportunities based on comprehensive research and data analysis.`,
+      `## Strategic Overview\n\nAnalysis of ${query} reveals key trends and opportunities based on current market data.`,
       
-      `## Key Strategic Insights\n\n${results.slice(0, 3).map((r, i) => `### ${i + 1}. ${r.title}\n\n${r.content.slice(0, 200)}...\n\n**Strategic Implication**: This finding suggests important market dynamics that could influence strategic positioning and competitive advantage.\n\n**Source**: [${r.title}](${r.url})`).join('\n\n')}`,
+      `## Key Insights\n\n${results.slice(0, 3).map((r, i) => `### ${i + 1}. ${r.title}\n\n${r.content.slice(0, 150)}...\n\n**Source**: [${r.title}](${r.url})`).join('\n\n')}`,
       
-      `## Market Dynamics and Trends\n\nThe research reveals several important patterns and trends shaping the ${query} landscape:\n\n- **Market Evolution**: Current data indicates significant changes in market structure and competitive dynamics\n- **Technology Impact**: Digital transformation is creating new opportunities and disrupting traditional approaches\n- **Consumer Behavior**: Shifting preferences and expectations are driving demand for innovation\n- **Competitive Landscape**: New entrants and changing strategies are reshaping competitive dynamics`,
+      `## Market Dynamics\n\n- Market evolution showing significant structural changes\n- Technology impact creating new opportunities\n- Consumer behavior shifts driving innovation demand\n- Competitive landscape reshaping rapidly`,
       
-      `## Strategic Opportunities\n\nBased on the analysis, several strategic opportunities emerge:\n\n- **Innovation Leadership**: First-mover advantages in emerging technology applications\n- **Market Expansion**: Untapped segments and geographic markets showing growth potential\n- **Partnership Synergies**: Strategic alliances could accelerate market penetration\n- **Operational Excellence**: Process improvements could drive competitive advantage`,
+      `## Strategic Opportunities\n\n- Innovation leadership in emerging technologies\n- Market expansion in untapped segments\n- Partnership synergies for accelerated growth\n- Operational excellence driving competitive edge`,
       
-      `## Risk Assessment\n\nKey risks and challenges to monitor:\n\n- **Market Volatility**: Rapid changes could impact strategic planning assumptions\n- **Competitive Response**: Established players may respond aggressively to new entrants\n- **Technology Disruption**: Emerging technologies could obsolete current approaches\n- **Regulatory Changes**: Policy shifts could affect market dynamics`,
-      
-      `## Strategic Recommendations\n\n1. **Invest in Innovation**: Develop capabilities in emerging technologies and approaches\n2. **Monitor Competitors**: Maintain active intelligence on competitive moves and strategies\n3. **Build Partnerships**: Establish strategic alliances to accelerate growth and market access\n4. **Customer Focus**: Invest in understanding and meeting evolving customer needs\n5. **Operational Agility**: Build capabilities to respond quickly to market changes`,
-      
-      `## Conclusion\n\nThe analysis of ${query} reveals a dynamic landscape with significant opportunities for organizations that can navigate complexity and execute strategic initiatives effectively. Success will require balancing innovation with operational excellence while maintaining customer focus and competitive awareness.`
+      `## Recommendations\n\n1. Invest in innovation and emerging technologies\n2. Monitor competitive moves and market shifts\n3. Build strategic partnerships for market access\n4. Maintain customer focus and operational agility`
     ];
 
     return sections.join('\n\n');
@@ -209,21 +208,21 @@ ${content}...
     return {
       headline: `Strategic Insights: ${query}`,
       subtitle: 'Market Analysis and Strategic Recommendations',
-      short_summary: `This insight analysis examines ${query} based on comprehensive research and strategic analysis. The findings reveal important market trends, competitive dynamics, and strategic opportunities for stakeholder consideration.`,
+      short_summary: `Analysis of ${query} based on research and strategic assessment. Key trends, competitive dynamics, and opportunities identified for stakeholder consideration.`,
       markdown_report: this.generateBasicInsightReport(query, results),
       follow_up_questions: [
-        `What are the key competitive advantages available in the ${query} market?`,
-        `How should organizations prioritize investment in ${query}-related capabilities?`,
-        `What partnerships would provide the most strategic value?`,
-        `How can market positioning be optimized for long-term success?`,
-        `What early indicators should be monitored for strategic planning?`
+        `Key competitive advantages in ${query}?`,
+        `Investment priorities for ${query} capabilities?`,
+        `Strategic partnerships for optimal value?`,
+        `Market positioning for long-term success?`,
+        `Early indicators to monitor?`
       ],
       citations: results.slice(0, 5).map((result) => ({
-        text: `${result.title} - Strategic insights and market analysis`,
+        text: result.title.slice(0, 50),
         source: {
           title: result.title,
           url: result.url,
-          snippet: result.content.slice(0, 200)
+          snippet: result.content.slice(0, 100)
         }
       })),
       confidence_level: results.length >= 6 ? 75 : 65

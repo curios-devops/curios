@@ -55,9 +55,11 @@ export async function searchWithTavily(
           api_key: import.meta.env.VITE_TAVILY_API_KEY,
           query: query.trim(),
           search_depth: 'basic', // 'basic' or 'advanced' (advanced costs more)
-          max_results: 10, // Tavily max is 10
-          include_images: false, // Set to false for free tier
+          max_results: 10, // Testing if more results = more images
+          include_images: true, // Set to true to test image results
+          include_image_descriptions: true, // Include descriptions for images
           include_answer: false,
+          chunks_per_source: 1, // Reduce to 1 chunk per source to minimize payload size
         }),
         signal: controller.signal,
       });
@@ -80,6 +82,15 @@ export async function searchWithTavily(
       }
 
       const data = await res.json();
+      
+      // DEBUG: Log raw Tavily response
+      console.log('🔍 [TAVILY DEBUG] Raw API Response:', {
+        hasImages: 'images' in data,
+        imagesCount: data.images?.length || 0,
+        imagesArray: data.images,
+        resultsCount: data.results?.length || 0
+      });
+      
       const sanitizedData = sanitizeResponse(data) as TavilyResponse;
 
       // Process results with validation
@@ -117,6 +128,13 @@ export async function searchWithTavily(
           alt: image.description?.trim() || query,
           source_url: image.url.trim(),
         }));
+
+      // DEBUG: Log processed results
+      console.log('🔍 [TAVILY DEBUG] Processed Results:', {
+        resultsCount: results.length,
+        imagesCount: images.length,
+        firstImage: images[0] || 'No images'
+      });
 
       return { results, images };
     } catch (error) {

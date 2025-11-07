@@ -1,6 +1,6 @@
 import { InsightAnalyzerAgent, InsightAnalysisRequest as _InsightAnalysisRequest, InsightAnalysisResult } from './insightAnalyzerAgent';
 import { InsightWriterAgent, InsightWriterRequest as _InsightWriterRequest, InsightWriterResult } from './insightWriterAgent';
-import { InsightsRetrieverAgent } from './InsightsRetrieverAgent';
+import { InsightsRetrieverAgent, InsightsRetrieverResult } from './InsightsRetrieverAgent';
 import { AgentResponse, SearchResult, ImageResult, VideoResult } from '../../../../commonApp/types/index';
 import { logger } from '../../../../utils/logger';
 import { ServiceHealthMonitor } from '../../../../commonService/utils/serviceHealth';
@@ -101,6 +101,7 @@ export class InsightSwarmController {
 
       // Step 2: Search Phase - Simple single search
       const allResults: SearchResult[] = [];
+      const allImages: ImageResult[] = [];
       
       try {
         onStatusUpdate?.(
@@ -118,14 +119,16 @@ export class InsightSwarmController {
         const searchResponse = await this.executeWithHealthCheck(
           () => this.retrieverAgent.execute(searchQueries),
           'RetrieverAgent'
-        ) as AgentResponse<SearchResult[]>;
+        ) as AgentResponse<InsightsRetrieverResult>;
 
         if (searchResponse.data) {
           logger.info('InsightSwarmController: Single search completed', {
-            resultsCount: searchResponse.data.length,
+            resultsCount: searchResponse.data.results.length,
+            imagesCount: searchResponse.data.images.length,
             queriesCount: searchQueries.length
           });
-          allResults.push(...searchResponse.data);
+          allResults.push(...searchResponse.data.results);
+          allImages.push(...searchResponse.data.images);
         }
         
       } catch (error) {
@@ -240,7 +243,7 @@ export class InsightSwarmController {
           InsightWriter: { insights_generated: writerResponse.data?.follow_up_questions?.length || 0 }
         },
         citations: writerResponse.data?.citations || [],
-        images: [],
+        images: allImages,
         videos: [],
         insight_areas: insightAreas,
         confidence_level: writerResponse.data?.confidence_level || 75
@@ -312,11 +315,11 @@ export class InsightSwarmController {
 
   private generateFallbackReport(query: string, results: SearchResult[]): string {
     const sections = [
-      `## Strategic Overview\n\nThis insight analysis examines ${query} to identify actionable opportunities and strategic implications.`,
-      `## Key Insights\n\n${results.slice(0, 3).map((r, i) => `### ${i + 1}. ${r.title}\n\n${r.content.slice(0, 150)}...\n\n**Source**: [${r.title}](${r.url})`).join('\n\n')}`,
-      `## Strategic Implications\n\nBased on the analysis, ${query} presents several strategic opportunities worth exploring further.`,
-      `## Recommendations\n\n- Monitor emerging trends in ${query}\n- Evaluate competitive positioning\n- Consider strategic partnerships\n- Assess market opportunities`,
-      `## Next Steps\n\nContinue monitoring developments and consider deeper analysis of specific opportunity areas.`
+      `## Strategic Overview\n\nAnalysis of ${query} identifies actionable opportunities and strategic implications.`,
+      `## Key Insights\n\n${results.slice(0, 3).map((r, i) => `### ${i + 1}. ${r.title}\n\n${r.content.slice(0, 120)}...\n\n**Source**: [${r.title}](${r.url})`).join('\n\n')}`,
+      `## Strategic Implications\n\n${query} presents several strategic opportunities worth exploring further.`,
+      `## Recommendations\n\n- Monitor emerging trends\n- Evaluate competitive positioning\n- Consider strategic partnerships\n- Assess market opportunities`,
+      `## Next Steps\n\nContinue monitoring developments and deeper analysis of specific opportunity areas.`
     ];
 
     return sections.join('\n\n');
@@ -324,11 +327,11 @@ export class InsightSwarmController {
 
   private generateFallbackQuestions(query: string): string[] {
     return [
-      `What emerging trends are shaping ${query}?`,
-      `How can organizations capitalize on ${query} opportunities?`,
-      `What competitive advantages exist in ${query}?`,
-      `What are the strategic risks associated with ${query}?`,
-      `How should businesses prepare for ${query} developments?`
+      `Emerging trends shaping ${query}?`,
+      `How to capitalize on ${query} opportunities?`,
+      `Competitive advantages in ${query}?`,
+      `Strategic risks with ${query}?`,
+      `Preparation for ${query} developments?`
     ];
   }
 

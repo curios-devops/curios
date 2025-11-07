@@ -1,0 +1,48 @@
+const { tavily } = require("@tavily/core");
+
+const tvly = tavily({ apiKey: "tvly-YOUR_API_KEY" });
+const response = await tvly.search("Who is Leo Messi?");
+
+console.log(response);
+{
+  "query": "Who is Leo Messi?",
+  "answer": "Lionel Messi, born in 1987, is an Argentine footballer widely regarded as one of the greatest players of his generation. He spent the majority of his career playing for FC Barcelona, where he won numerous domestic league titles and UEFA Champions League titles. Messi is known for his exceptional dribbling skills, vision, and goal-scoring ability. He has won multiple FIFA Ballon d'Or awards, numerous La Liga titles with Barcelona, and holds the record for most goals scored in a calendar year. In 2014, he led Argentina to the World Cup final, and in 2015, he helped Barcelona capture another treble. Despite turning 36 in June, Messi remains highly influential in the sport.",
+  "images": [],
+  "results": [
+    {
+      "title": "Lionel Messi Facts | Britannica",
+      "url": "https://www.britannica.com/facts/Lionel-Messi",
+      "content": "Lionel Messi, an Argentine footballer, is widely regarded as one of the greatest football players of his generation. Born in 1987, Messi spent the majority of his career playing for Barcelona, where he won numerous domestic league titles and UEFA Champions League titles. Messi is known for his exceptional dribbling skills, vision, and goal",
+      "score": 0.81025416,
+      "raw_content": null,
+      "favicon": "https://britannica.com/favicon.png"
+    }
+  ],
+  "auto_parameters": {
+    "topic": "general",
+    "search_depth": "basic"
+  },
+  "response_time": "1.67",
+  "request_id": "123e4567-e89b-12d3-a456-426614174111"
+}
+​chunks_per_source
+integerdefault:3
+Chunks are short content snippets (maximum 500 characters each) pulled directly from the source. Use chunks_per_source to define the maximum number of relevant chunks returned per source and to control the content length. Chunks will appear in the content field as: <chunk 1> [...] <chunk 2> [...] <chunk 3>. Available only when search_depth is advanced.
+
+Required range: 1 <= x <= 3
+​
+max_results
+integerdefault:5
+The maximum number of search results to return.
+
+Required range: 0 <= x <= 20
+Example:
+1
+
+images
+object[]required
+List of query-related images. If include_image_descriptions is true, each item will have url and description.
+
+Show child attributes
+
+Example:
