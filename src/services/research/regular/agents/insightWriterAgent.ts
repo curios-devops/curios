@@ -10,6 +10,7 @@ export interface InsightWriterRequest {
 }
 
 export interface InsightWriterResult {
+  focus_category: string;
   headline: string;
   subtitle: string;
   short_summary: string;
@@ -34,24 +35,40 @@ export class InsightWriterAgent {
         throw new Error('No search results provided for insight generation');
       }
 
-      // Optimized prompts - reduce total payload size
-      const systemPrompt = `Expert strategic analyst. Generate CONCISE insights from search results.
+      // NY Times journalistic style prompt
+      const systemPrompt = `You are an experienced journalist writing for The New York Times. Your mission is to produce clear, factual, and engaging reporting that informs readers about complex topics.
 
-CRITICAL: Keep responses SHORT to prevent truncation errors.
+CRITICAL: Keep responses CONCISE (500-800 words) to prevent truncation errors.
 
-JSON OUTPUT:
+JSON OUTPUT FORMAT:
 {
-  "headline": "8-12 words max",
-  "subtitle": "12-20 words max", 
-  "short_summary": "80-120 words - CONCISE overview only",
-  "markdown_report": "600-900 words MAXIMUM with ## headers, bullets, **bold**. Be BRIEF and FOCUSED.",
-  "follow_up_questions": ["Q1 (10 words max)", "Q2 (10 words max)", "Q3 (10 words max)"],
-  "citations": [{"text": "Brief quote (50 chars max)", "source": {"title": "...", "url": "...", "snippet": "100 chars max"}}],
+  "focus_category": "CATEGORY NAME IN UPPERCASE (e.g., TECHNOLOGY, BUSINESS, HEALTH)",
+  "headline": "Compelling NYT-style headline (8-12 words)",
+  "subtitle": "Descriptive subheading (12-20 words)", 
+  "short_summary": "News-style summary (2-3 sentences, 60-100 words)",
+  "markdown_report": "500-800 words with **Bold Section Headers** (not markdown #). Start with strong lede, use plain but sophisticated language.",
+  "follow_up_questions": ["Clear question 1", "Clear question 2", "Clear question 3"],
+  "citations": [{"text": "Brief quote", "source": {"title": "...", "url": "...", "snippet": "..."}}],
   "confidence_level": 85
 }
 
-FOCUS: ${insight_areas.join(', ')}
-STYLE: Brief, actionable, no fluff. Prioritize clarity over detail.`;
+WRITING STYLE:
+- Objective, factual reporting - no personal opinions
+- Strong news-style lede that hooks readers
+- Plain but sophisticated language
+- Use **Bold** for section headers (Background, Key Findings, Expert Perspectives, Industry Impact, Next Steps)
+- NO emojis, hashtags, or marketing language
+- Flow: lead → context → findings → impact
+
+STRUCTURE:
+1. **Background**: Set the scene, explain why this matters
+2. **Key Findings**: Present the facts and evidence
+3. **Expert Perspectives**: Include quotes and analysis
+4. **Industry Impact**: Broader implications
+5. **Next Steps**: What to watch for
+
+FOCUS AREAS: ${insight_areas.join(', ')}
+TONE: NYT journalism - clear, authoritative, accessible.`;
 
       const resultsContext = this.formatResultsForContext(results);
       
@@ -59,7 +76,7 @@ STYLE: Brief, actionable, no fluff. Prioritize clarity over detail.`;
 
 ${resultsContext}
 
-Generate strategic insights with actionable intelligence.`;
+Write a compelling NYT-style article that explains what's happening, why it matters, and what comes next. Use facts and quotes from the sources.`;
 
       // Log payload sizes before API call
       logger.info('🔵 [INSIGHT-WRITER] Payload breakdown', {
@@ -148,23 +165,22 @@ ${content}...
 
   private validateWriterResult(result: InsightWriterResult, query: string, results: SearchResult[]): InsightWriterResult {
     // Ensure required fields are present and valid
-    result.headline = result.headline || `Strategic Insights: ${query}`;
-    result.subtitle = result.subtitle || 'Actionable Intelligence and Strategic Recommendations';
-    result.short_summary = result.short_summary || `This insight analysis examines ${query} to identify key trends, opportunities, and strategic implications based on current market data and industry analysis.`;
+    result.focus_category = result.focus_category || this.determineFocusCategory(query);
+    result.headline = result.headline || `Understanding ${query}`;
+    result.subtitle = result.subtitle || 'What You Need to Know About This Emerging Development';
+    result.short_summary = result.short_summary || `Recent developments in ${query} are reshaping the landscape. Here's what experts say about the implications and what to watch for next.`;
     
     // Ensure markdown report is substantial
     if (!result.markdown_report || result.markdown_report.length < 300) {
-      result.markdown_report = this.generateBasicInsightReport(query, results);
+      result.markdown_report = this.generateNYTimesReport(query, results);
     }
 
     // Ensure follow-up questions
     if (!result.follow_up_questions || result.follow_up_questions.length === 0) {
       result.follow_up_questions = [
-        `What are the emerging opportunities in the ${query} space?`,
-        `How can organizations best position themselves for competitive advantage?`,
-        `What technologies and innovations will drive future growth?`,
-        `What are the key risks and challenges to monitor?`,
-        `How should strategic priorities be adjusted based on these insights?`
+        `What are the most significant changes happening in ${query}?`,
+        `How are experts responding to these developments?`,
+        `What should people watch for in the coming months?`
       ];
     }
 
@@ -188,17 +204,33 @@ ${content}...
     return result;
   }
 
-  private generateBasicInsightReport(query: string, results: SearchResult[]): string {
+  private determineFocusCategory(query: string): string {
+    const queryLower = query.toLowerCase();
+    
+    if (queryLower.match(/tech|ai|software|digital|computer|cyber/)) return 'TECHNOLOGY';
+    if (queryLower.match(/health|medical|drug|disease|patient|doctor/)) return 'HEALTH';
+    if (queryLower.match(/business|market|economy|company|corporate|finance/)) return 'BUSINESS';
+    if (queryLower.match(/climate|environment|energy|green|sustainable/)) return 'CLIMATE';
+    if (queryLower.match(/science|research|study|discovery/)) return 'SCIENCE';
+    if (queryLower.match(/politics|government|policy|election/)) return 'POLITICS';
+    if (queryLower.match(/education|school|university|learning/)) return 'EDUCATION';
+    
+    return 'GENERAL';
+  }
+
+  private generateNYTimesReport(query: string, results: SearchResult[]): string {
     const sections = [
-      `## Strategic Overview\n\nAnalysis of ${query} reveals key trends and opportunities based on current market data.`,
+      `Recent developments in ${query} are capturing attention as experts and industry observers track significant changes unfolding across the sector.\n\n${results.length > 0 ? results[0].content.slice(0, 200) + '...' : 'Multiple sources indicate growing interest and activity in this area.'}`,
       
-      `## Key Insights\n\n${results.slice(0, 3).map((r, i) => `### ${i + 1}. ${r.title}\n\n${r.content.slice(0, 150)}...\n\n**Source**: [${r.title}](${r.url})`).join('\n\n')}`,
+      `**Background**\n\nThe current situation emerged from a combination of technological advances, market shifts, and changing user needs. Industry analysts point to several factors driving the transformation, including competitive pressures and evolving consumer expectations.`,
       
-      `## Market Dynamics\n\n- Market evolution showing significant structural changes\n- Technology impact creating new opportunities\n- Consumer behavior shifts driving innovation demand\n- Competitive landscape reshaping rapidly`,
+      `**Key Findings**\n\n${results.slice(0, 2).map((r) => `According to ${r.title}, ${r.content.slice(0, 150)}...`).join('\n\n')}`,
       
-      `## Strategic Opportunities\n\n- Innovation leadership in emerging technologies\n- Market expansion in untapped segments\n- Partnership synergies for accelerated growth\n- Operational excellence driving competitive edge`,
+      `**Expert Perspectives**\n\nIndustry observers note that these developments reflect broader trends reshaping the landscape. "The implications extend beyond immediate participants," according to recent analysis, "potentially affecting how the entire sector operates."`,
       
-      `## Recommendations\n\n1. Invest in innovation and emerging technologies\n2. Monitor competitive moves and market shifts\n3. Build strategic partnerships for market access\n4. Maintain customer focus and operational agility`
+      `**Industry Impact**\n\nThe changes are prompting organizations to reassess their approaches and strategies. Early adopters are already adjusting their operations, while others are monitoring the situation closely to determine appropriate responses.`,
+      
+      `**Next Steps**\n\nExperts recommend watching for continued evolution in the coming months. Key indicators include market adoption rates, regulatory responses, and competitive positioning as the situation develops.`
     ];
 
     return sections.join('\n\n');
@@ -206,16 +238,15 @@ ${content}...
 
   private getFallbackInsights(query: string, results: SearchResult[]): InsightWriterResult {
     return {
-      headline: `Strategic Insights: ${query}`,
-      subtitle: 'Market Analysis and Strategic Recommendations',
-      short_summary: `Analysis of ${query} based on research and strategic assessment. Key trends, competitive dynamics, and opportunities identified for stakeholder consideration.`,
-      markdown_report: this.generateBasicInsightReport(query, results),
+      focus_category: this.determineFocusCategory(query),
+      headline: `Understanding ${query}`,
+      subtitle: 'A Look at Recent Developments and What They Mean',
+      short_summary: `Analysis of ${query} reveals emerging trends and significant changes. Experts are monitoring the situation as developments unfold and implications become clearer.`,
+      markdown_report: this.generateNYTimesReport(query, results),
       follow_up_questions: [
-        `Key competitive advantages in ${query}?`,
-        `Investment priorities for ${query} capabilities?`,
-        `Strategic partnerships for optimal value?`,
-        `Market positioning for long-term success?`,
-        `Early indicators to monitor?`
+        `What are the key factors driving changes in ${query}?`,
+        `How are industry leaders responding to these developments?`,
+        `What should observers watch for in the near future?`
       ],
       citations: results.slice(0, 5).map((result) => ({
         text: result.title.slice(0, 50),
