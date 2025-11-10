@@ -32,14 +32,16 @@ class InsightsService {
 
   async performInsightAnalysis(
     query: string,
-    onProgress?: InsightProgressCallback
+    onProgress?: InsightProgressCallback,
+    focusCategory?: string
   ): Promise<InsightResult> {
     try {
-      logger.info('InsightsService: Starting insight analysis', { query });
+      logger.info('InsightsService: Starting insight analysis', { query, focusCategory });
 
       const request: InsightRequest = {
         query: query.trim(),
-        isPro: false // Always false for insights service
+        isPro: false, // Always false for insights service
+        focusCategory: focusCategory || 'ANALYSIS'
       };
 
       const result = await this.insightSwarmController.processInsightQuery(request, onProgress);

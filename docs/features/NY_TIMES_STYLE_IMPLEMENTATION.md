@@ -1,8 +1,8 @@
 # NY Times Style Guide Implementation
 
-**Date**: 2025-01-XX  
+**Date**: 2025-11-08  
 **Status**: ✅ Completed  
-**Impact**: Insights Writer Agent
+**Impact**: Insights Writer Agent, Focus Category Selector
 
 ## Overview
 
@@ -13,9 +13,12 @@ Refactored the InsightWriterAgent to follow NY Times journalistic style instead 
 ### 1. Updated Interface: `InsightWriterResult`
 
 **Added:**
-- `focus_category: string` - UPPERCASE category label (e.g., TECHNOLOGY, BUSINESS, HEALTH)
+- `focus_category: string` - UPPERCASE category label (e.g., TECHNOLOGY, BUSINESS, HEALTH, ANALYSIS, ARTS, SCIENCES & TECH, HEALTH & SPORT)
 
-**Purpose:** Category badges displayed above headlines, matching NYT article style
+**Purpose:** 
+- Category badges displayed above headlines, matching NYT article style
+- Interactive dropdown allows users to change focus and regenerate article
+- GPT writes with selected focus perspective in mind
 
 ### 2. Refactored System Prompt
 
@@ -94,19 +97,75 @@ After: "Write a compelling NYT-style article that explains what's happening,
 
 ## UI Integration
 
-The `TabSystem.tsx` component already displays the `focus_category` as a black badge with white text above the headline:
+### Focus Category Selector (Interactive)
+
+The focus category appears as an **interactive dropdown button** in `InsightsResults.tsx` (independent section above TabSystem):
 
 ```tsx
-<span className="bg-black text-white px-3 py-1 text-sm font-medium uppercase tracking-wider">
-  {result.focus_category || 'ANALYSIS'}
-</span>
+{/* Focus Category Selector - Independent Section */}
+<div className="mb-6 relative" ref={dropdownRef}>
+  <button
+    onClick={() => setShowFocusDropdown(!showFocusDropdown)}
+    className="bg-black text-white px-3 py-1 text-sm font-medium uppercase tracking-wider hover:bg-gray-800 transition-colors flex items-center gap-2"
+  >
+    {result.focus_category || 'ANALYSIS'}
+    <ChevronDown className="w-4 h-4" />
+  </button>
+  
+  {/* Dropdown Menu */}
+  {showFocusDropdown && (
+    <div className="dropdown-menu">
+      {focusCategories.map((category) => (
+        <button onClick={() => handleFocusChange(category.id)}>
+          {category.label}
+        </button>
+      ))}
+    </div>
+  )}
+</div>
 ```
+
+### Available Focus Categories
+
+Users can select from 5 focus perspectives:
+1. **ANALYSIS** (default) - General analytical approach
+2. **ARTS** - Cultural and artistic perspective
+3. **BUSINESS** - Market and economic angle
+4. **HEALTH & SPORT** - Medical and wellness focus
+5. **SCIENCES & TECH** - Scientific and technology focus
+
+### User Flow
+
+1. Article displays with automatically detected focus (or ANALYSIS default)
+2. User clicks the focus button to see dropdown
+3. User selects a different focus (e.g., "BUSINESS")
+4. Page reloads with `?focus=BUSINESS` parameter
+5. GPT regenerates article with selected focus perspective
+6. New focus badge displays the selected category
+
+### Focus Parameter Integration
+
+- **URL Format**: `/insights-results?q={query}&focus={category}`
+- **Backend Flow**: InsightsResults → insightsService → insightSwarmController → insightWriterAgent
+- **GPT Instruction**: When user selects specific focus, GPT receives:
+  ```
+  IMPORTANT: Write this article with a BUSINESS focus. 
+  The focus_category MUST be "BUSINESS".
+  ```
 
 **Example Display:**
 ```
-━━━━━━━━━━━━━━━━━
- TECHNOLOGY 
-━━━━━━━━━━━━━━━━━
+┌─────────────────┐
+│   BUSINESS    ▼ │  ← Clickable dropdown button
+└─────────────────┘
+                    ┌──────────────────┐
+                    │ ANALYSIS         │
+                    │ ARTS             │
+                    │ BUSINESS      ✓  │
+                    │ HEALTH & SPORT   │
+                    │ SCIENCES & TECH  │
+                    └──────────────────┘
+
 How AI Is Reshaping...
 Subtitle goes here
 ━━━━━━━━━━━━━━━━━
@@ -120,6 +179,8 @@ Subtitle goes here
 4. **Category Context**: Focus categories help readers understand topic domain
 5. **Optimized Length**: 500-800 words fits free tier limits better than 600-900
 6. **Consistent Tone**: Objective, factual, accessible language throughout
+7. **User Control**: Interactive focus selector lets users regenerate with different perspectives
+8. **Flexible Angles**: Same query can be viewed through business, tech, health, arts, or analytical lens
 
 ## Testing Recommendations
 
@@ -128,35 +189,91 @@ Subtitle goes here
 3. Check that bold headers (`**Header**`) render correctly instead of markdown `##`
 4. Confirm news-style lede appears in generated content
 5. Validate no marketing language or emojis appear in output
+6. **Test focus selector dropdown opens and closes correctly**
+7. **Test changing focus regenerates article with new perspective**
+8. **Verify URL parameter (`?focus=BUSINESS`) is preserved and passed through**
+9. **Test all 5 focus categories produce appropriate content**
+10. **Verify auto-detection defaults to ANALYSIS when uncertain**
 
 ## Technical Details
 
 **Files Modified:**
-- `/src/services/research/regular/agents/insightWriterAgent.ts`
+- `/src/services/research/regular/agents/insightWriterAgent.ts` - Added focus parameter and instructions
+- `/src/services/research/regular/agents/insightSwarmController.ts` - Updated InsightRequest interface
+- `/src/services/research/regular/agents/insightsService.ts` - Added focusCategory parameter
+- `/src/services/research/regular/pages/InsightsResults.tsx` - Added focus category selector UI
+- `/src/components/TabSystem.tsx` - Simplified by removing focus logic (moved to parent)
 
 **No Breaking Changes:**
 - Existing JSON structure maintained
 - All components handle new `focus_category` field gracefully
 - Fallback to 'ANALYSIS' if category not provided
+- Focus parameter is optional throughout the pipeline
 
 **TypeScript:**
 - ✅ No compilation errors
 - ✅ All types properly updated
 - ✅ Interface changes backward-compatible
 
+**Architecture Improvements:**
+- Focus selector is independent section (not nested in TabSystem)
+- Clean separation: InsightsResults handles orchestration, TabSystem handles content display
+- Simplified TabSystem by 40+ lines of code
+
 ## Examples
 
 ### Query: "AI in healthcare"
-**focus_category**: `HEALTH`  
+**focus_category**: `HEALTH` (auto-detected)  
 **Headline**: "Artificial Intelligence Transforms Medical Diagnosis and Treatment"  
 **Subtitle**: "New Technologies Promise Earlier Detection and More Personalized Care"
 
+**User switches to SCIENCES & TECH focus:**
+- URL becomes: `/insights-results?q=AI+in+healthcare&focus=SCIENCES+%26+TECH`
+- Article regenerates with technical/scientific angle
+- More emphasis on algorithms, research breakthroughs, technical capabilities
+
 ### Query: "electric vehicle market trends"
-**focus_category**: `BUSINESS`  
+**focus_category**: `BUSINESS` (auto-detected)  
 **Headline**: "Electric Vehicle Sales Surge as Automakers Race to Meet Demand"  
 **Subtitle**: "Industry Shift Accelerates Despite Supply Chain Challenges"
+
+**User switches to ANALYSIS focus:**
+- URL becomes: `/insights-results?q=electric+vehicle+market+trends&focus=ANALYSIS`
+- Article regenerates with balanced analytical perspective
+- Considers multiple angles: market, technology, policy, consumer behavior
+
+### Query: "new streaming series popularity"
+**focus_category**: `ARTS` (auto-detected)
+**Headline**: "New Streaming Series Captures Cultural Zeitgeist"
+**Subtitle**: "Critics and Audiences Alike Embrace Bold Storytelling Approach"
+
+**User switches to BUSINESS focus:**
+- URL becomes: `/insights-results?q=new+streaming+series+popularity&focus=BUSINESS`
+- Article regenerates with industry/market angle
+- More emphasis on viewership numbers, competitive landscape, revenue impact
 
 ## Related Documentation
 
 - See `/NY_STYLE_GUIDE.md` for complete style guide specifications
 - See `/docs/architecture/PAYLOAD_SIZE_OPTIMIZATION.md` for payload reduction strategies
+- See `/docs/features/FOCUS_CATEGORY_SELECTOR.md` for detailed implementation of interactive focus selector
+
+## Implementation Timeline
+
+**Phase 1 (Completed)**: NY Times journalistic style
+- Refactored writer agent prompts
+- Added focus_category field
+- Implemented auto-detection logic
+- Updated validation and fallback functions
+
+**Phase 2 (Completed)**: Interactive focus selector
+- Added dropdown UI in InsightsResults.tsx
+- Simplified TabSystem.tsx architecture
+- Integrated focus parameter through entire pipeline
+- Added GPT instructions for focus-aware writing
+
+**Phase 3 (Future)**: Enhanced focus features
+- Focus presets and user preferences
+- Focus descriptions on hover
+- Improved auto-detection algorithms
+- Multi-perspective analysis options

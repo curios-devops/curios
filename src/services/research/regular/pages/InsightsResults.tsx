@@ -1,11 +1,12 @@
 // Insights Results page with multi-agent workflow integration
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Lightbulb, Search, Brain, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Search, Brain, Sparkles, CheckCircle2 } from 'lucide-react';
 import { insightsService, InsightProgressCallback } from '../agents/insightsService';
 import { SearchResult } from '../../types.ts';
 import ResearchProgress from '../../../../components/ResearchProgress';
 import TabSystem from '../../../../components/TabSystem';
+import ShareMenu from '../../../../components/ShareMenu';
 import { useAccentColor } from '../../../../hooks/useAccentColor';
 
 interface ProgressState {
@@ -26,12 +27,21 @@ export default function InsightsResults() {
   const accent = useAccentColor();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
+  const focusCategory = searchParams.get('focus') || 'ANALYSIS';
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [workflowStarted, setWorkflowStarted] = useState(false);
   const [showPhaseIndicator, setShowPhaseIndicator] = useState(true);
+  
+  // Handle focus category change
+  const handleFocusChange = (newFocus: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('focus', newFocus);
+    window.location.href = `/insights-results?${params.toString()}`;
+  };
+
   const [progressState, setProgressState] = useState<ProgressState>({
     stage: 'Initializing Insight Analysis',
     timeRemaining: 'About 2-3 minutes remaining',
@@ -88,7 +98,7 @@ export default function InsightsResults() {
     });
 
     // Simple promise handling - no complex cancellation logic
-    insightsService.performInsightAnalysis(query, handleProgress)
+    insightsService.performInsightAnalysis(query, handleProgress, focusCategory)
       .then((insightResult) => {
         console.log('✅ Insights completed', { resultKeys: Object.keys(insightResult) });
         setResult(insightResult);
@@ -133,19 +143,9 @@ export default function InsightsResults() {
         >
           <ArrowLeft size={20} />
         </button>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-1">
           <h1 className="text-2xl font-medium">{query}</h1>
           <div className="flex items-center gap-2">
-            <div 
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-              style={{ 
-                backgroundColor: `${accent.primary}15`,
-                border: `1px solid ${accent.primary}30`
-              }}
-            >
-              <Lightbulb size={14} style={{ color: accent.primary }} />
-              <span style={{ color: accent.primary }} className="text-sm font-medium">Insights</span>
-            </div>
             {/* Insight Phase Indicator */}
             {progressState.insightPhase && showPhaseIndicator && (
               <div 
@@ -158,6 +158,16 @@ export default function InsightsResults() {
             )}
           </div>
         </div>
+        {/* Share Menu */}
+        {!loading && result && (
+          <ShareMenu
+            url={globalThis.location.href}
+            title={result.headline || `Insights: ${query}`}
+            text={result.subtitle || result.markdown_report?.slice(0, 150) + '...' || ''}
+            query={query}
+            images={result.images || []}
+          />
+        )}
       </header>
       <main className="max-w-4xl mx-auto px-6 py-6">
         {loading && (
@@ -222,6 +232,8 @@ export default function InsightsResults() {
             result={result}
             progressState={progressState}
             loading={loading}
+            focusCategory={focusCategory}
+            onFocusChange={handleFocusChange}
           />
         )}
       </main>

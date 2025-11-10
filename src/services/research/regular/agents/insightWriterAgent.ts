@@ -7,6 +7,7 @@ export interface InsightWriterRequest {
   search_queries: string[];
   results: SearchResult[];
   analysis_strategy: string;
+  focusCategory?: string;
 }
 
 export interface InsightWriterResult {
@@ -23,17 +24,23 @@ export interface InsightWriterResult {
 export class InsightWriterAgent {
   async execute(request: InsightWriterRequest): Promise<AgentResponse<InsightWriterResult>> {
     try {
-      const { query, insight_areas, results } = request;
+      const { query, insight_areas, results, focusCategory } = request;
       
       logger.info('InsightWriterAgent: Starting insight generation', { 
         query, 
         resultsCount: results.length,
-        insightAreasCount: insight_areas.length
+        insightAreasCount: insight_areas.length,
+        focusCategory
       });
 
       if (!results || results.length === 0) {
         throw new Error('No search results provided for insight generation');
       }
+
+      // Determine the focus instruction based on category
+      const focusInstruction = focusCategory && focusCategory !== 'ANALYSIS' 
+        ? `\n\nIMPORTANT: Write this article with a ${focusCategory} focus. The focus_category MUST be "${focusCategory}".`
+        : '\n\nIMPORTANT: If unsure about the category, use "ANALYSIS" as the focus_category.';
 
       // NY Times journalistic style prompt
       const systemPrompt = `You are an experienced journalist writing for The New York Times. Your mission is to produce clear, factual, and engaging reporting that informs readers about complex topics.
@@ -42,7 +49,7 @@ CRITICAL: Keep responses CONCISE (500-800 words) to prevent truncation errors.
 
 JSON OUTPUT FORMAT:
 {
-  "focus_category": "CATEGORY NAME IN UPPERCASE (e.g., TECHNOLOGY, BUSINESS, HEALTH)",
+  "focus_category": "CATEGORY NAME IN UPPERCASE: ANALYSIS, ARTS, BUSINESS, HEALTH & SPORT, or SCIENCES & TECH",
   "headline": "Compelling NYT-style headline (8-12 words)",
   "subtitle": "Descriptive subheading (12-20 words)", 
   "short_summary": "News-style summary (2-3 sentences, 60-100 words)",
@@ -68,7 +75,7 @@ STRUCTURE:
 5. **Next Steps**: What to watch for
 
 FOCUS AREAS: ${insight_areas.join(', ')}
-TONE: NYT journalism - clear, authoritative, accessible.`;
+TONE: NYT journalism - clear, authoritative, accessible.${focusInstruction}`;
 
       const resultsContext = this.formatResultsForContext(results);
       
@@ -122,7 +129,7 @@ Write a compelling NYT-style article that explains what's happening, why it matt
       }
 
       // Validate and enhance the result
-      writerResult = this.validateWriterResult(writerResult, query, results);
+      writerResult = this.validateWriterResult(writerResult, query, results, focusCategory);
 
       logger.info('InsightWriterAgent: Insight generation completed', {
         reportLength: writerResult.markdown_report.length,
@@ -144,7 +151,7 @@ Write a compelling NYT-style article that explains what's happening, why it matt
       // Return fallback insights
       return {
         success: true,
-        data: this.getFallbackInsights(request.query, request.results)
+        data: this.getFallbackInsights(request.query, request.results, request.focusCategory)
       };
     }
   }
@@ -163,9 +170,9 @@ ${content}...
       .join('');
   }
 
-  private validateWriterResult(result: InsightWriterResult, query: string, results: SearchResult[]): InsightWriterResult {
+  private validateWriterResult(result: InsightWriterResult, query: string, results: SearchResult[], focusCategory?: string): InsightWriterResult {
     // Ensure required fields are present and valid
-    result.focus_category = result.focus_category || this.determineFocusCategory(query);
+    result.focus_category = result.focus_category || focusCategory || this.determineFocusCategory(query);
     result.headline = result.headline || `Understanding ${query}`;
     result.subtitle = result.subtitle || 'What You Need to Know About This Emerging Development';
     result.short_summary = result.short_summary || `Recent developments in ${query} are reshaping the landscape. Here's what experts say about the implications and what to watch for next.`;
@@ -207,15 +214,13 @@ ${content}...
   private determineFocusCategory(query: string): string {
     const queryLower = query.toLowerCase();
     
-    if (queryLower.match(/tech|ai|software|digital|computer|cyber/)) return 'TECHNOLOGY';
-    if (queryLower.match(/health|medical|drug|disease|patient|doctor/)) return 'HEALTH';
-    if (queryLower.match(/business|market|economy|company|corporate|finance/)) return 'BUSINESS';
-    if (queryLower.match(/climate|environment|energy|green|sustainable/)) return 'CLIMATE';
-    if (queryLower.match(/science|research|study|discovery/)) return 'SCIENCE';
-    if (queryLower.match(/politics|government|policy|election/)) return 'POLITICS';
-    if (queryLower.match(/education|school|university|learning/)) return 'EDUCATION';
+    // Map to the 5 available focus categories
+    if (queryLower.match(/tech|ai|software|digital|computer|cyber|science|research|study|discovery|innovation/)) return 'SCIENCES & TECH';
+    if (queryLower.match(/health|medical|drug|disease|patient|doctor|sport|fitness|athletic|wellness/)) return 'HEALTH & SPORT';
+    if (queryLower.match(/business|market|economy|company|corporate|finance|industry|trade/)) return 'BUSINESS';
+    if (queryLower.match(/art|music|film|culture|entertainment|theater|gallery|museum|creative/)) return 'ARTS';
     
-    return 'GENERAL';
+    return 'ANALYSIS';
   }
 
   private generateNYTimesReport(query: string, results: SearchResult[]): string {
@@ -236,9 +241,9 @@ ${content}...
     return sections.join('\n\n');
   }
 
-  private getFallbackInsights(query: string, results: SearchResult[]): InsightWriterResult {
+  private getFallbackInsights(query: string, results: SearchResult[], focusCategory?: string): InsightWriterResult {
     return {
-      focus_category: this.determineFocusCategory(query),
+      focus_category: focusCategory || this.determineFocusCategory(query),
       headline: `Understanding ${query}`,
       subtitle: 'A Look at Recent Developments and What They Mean',
       short_summary: `Analysis of ${query} reveals emerging trends and significant changes. Experts are monitoring the situation as developments unfold and implications become clearer.`,

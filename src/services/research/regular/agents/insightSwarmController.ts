@@ -8,6 +8,7 @@ import { ServiceHealthMonitor } from '../../../../commonService/utils/serviceHea
 export interface InsightRequest {
   query: string;
   isPro?: boolean;
+  focusCategory?: string;
 }
 
 export interface InsightResult {
@@ -179,7 +180,8 @@ export class InsightSwarmController {
           insight_areas: insightAreas,
           search_queries: searchQueries,
           results: uniqueResults,
-          analysis_strategy: analysisStrategy
+          analysis_strategy: analysisStrategy,
+          focusCategory: request.focusCategory
         });
 
         logger.info('🟢 [SWARM] InsightWriterAgent completed successfully', {
@@ -196,6 +198,7 @@ export class InsightSwarmController {
         writerResponse = {
           success: true,
           data: {
+            focus_category: request.focusCategory || 'ANALYSIS',
             headline: `Strategic Insights: ${query}`,
             subtitle: 'Market Analysis and Strategic Recommendations',
             short_summary: `Strategic analysis of ${query} based on comprehensive research.`,

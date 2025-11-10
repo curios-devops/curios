@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Compass, Image, List, Globe } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Compass, Image, List, Globe, ChevronDown, Sparkles } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor';
 
 // Helper function to calculate reading and listening time
@@ -46,6 +46,8 @@ interface TabSystemProps {
   result: any;
   progressState: any;
   loading: boolean;
+  focusCategory?: string;
+  onFocusChange?: (newFocus: string) => void;
 }
 
 interface SourceItemProps {
@@ -87,9 +89,35 @@ const SourceItem: React.FC<SourceItemProps> = ({ source, index }) => (
   </div>
 );
 
-export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loading }) => {
+export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loading, focusCategory, onFocusChange }) => {
   const [activeTab, setActiveTab] = useState<'curios' | 'steps' | 'sources' | 'images'>('curios');
+  const [showFocusDropdown, setShowFocusDropdown] = useState(false);
+  const [featuredImageIndex, setFeaturedImageIndex] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const accent = useAccentColor();
+
+  // Focus category options
+  const focusCategories = [
+    { id: 'ANALYSIS', label: 'ANALYSIS' },
+    { id: 'ARTS', label: 'ARTS' },
+    { id: 'BUSINESS', label: 'BUSINESS' },
+    { id: 'HEALTH & SPORT', label: 'HEALTH & SPORT' },
+    { id: 'SCIENCES & TECH', label: 'SCIENCES & TECH' }
+  ];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowFocusDropdown(false);
+      }
+    };
+
+    if (showFocusDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showFocusDropdown]);
 
   // Handle follow-up question clicks
   const handleFollowUpClick = (question: string) => {
@@ -177,15 +205,53 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
       <div className="p-6">
         {activeTab === 'curios' && (
           <div className="space-y-6">
+            {/* Focus Category Selector - Part of Curios Tab */}
+            <div className="-mx-6 px-6 -mt-6 mb-6 pt-6">
+              <div className="flex items-center gap-3 relative" ref={dropdownRef}>
+                <div className="group relative">
+                  <Sparkles 
+                    className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help transition-colors" 
+                  />
+                  <div className="absolute left-0 top-full mt-1 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50">
+                    Explore Topics
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowFocusDropdown(!showFocusDropdown)}
+                  className="bg-black text-white px-3 py-1 text-sm font-medium uppercase tracking-wider hover:bg-gray-800 transition-colors flex items-center gap-2 rounded"
+                >
+                  {focusCategory || result?.focus_category || 'ANALYSIS'}
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                
+                {/* Dropdown Menu */}
+                {showFocusDropdown && (
+                  <div className="absolute top-full left-[65px] mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg z-10 min-w-[200px] rounded-md overflow-hidden">
+                    {focusCategories.map((category) => (
+                      <button
+                        key={category.id}
+                        onClick={() => {
+                          setShowFocusDropdown(false);
+                          if (category.id !== (focusCategory || result?.focus_category || 'ANALYSIS')) {
+                            onFocusChange?.(category.id);
+                          }
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm font-medium uppercase tracking-wider hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                          category.id === (focusCategory || result?.focus_category || 'ANALYSIS')
+                            ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white'
+                            : 'text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        {category.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {!loading && result ? (
               <>
-                {/* Focus Category */}
-                <div className="mb-4">
-                  <span className="bg-black text-white px-3 py-1 text-sm font-medium uppercase tracking-wider">
-                    {result.focus_category || 'ANALYSIS'}
-                  </span>
-                </div>
-
                 {/* News Article Header */}
                 <div className="space-y-4">
                   {/* Date and Time */}
@@ -205,17 +271,31 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                     </p>
                   )}
 
-                  {/* Featured Image - First image from results */}
-                  {result.images && result.images.length > 0 && result.images[0]?.url && (
+                  {/* Featured Image - First image from results with fallback */}
+                  {result.images && result.images.length > 0 && featuredImageIndex < result.images.length && result.images[featuredImageIndex]?.url && (
                     <div className="my-6">
                       <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
                         <img
-                          src={result.images[0].url}
-                          alt={result.images[0].alt || result.headline || 'Featured image'}
+                          src={result.images[featuredImageIndex].url}
+                          alt={result.images[featuredImageIndex].alt || result.headline || 'Featured image'}
                           className="w-full h-auto max-h-[500px] object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
+                            // Try next image as fallback
+                            if (featuredImageIndex + 1 < result.images.length) {
+                              console.log(`Image ${featuredImageIndex} failed, trying image ${featuredImageIndex + 1}`);
+                              setFeaturedImageIndex(featuredImageIndex + 1);
+                            } else {
+                              // No more images to try, hide the container
+                              console.log('All images failed to load');
+                              const parent = target.parentElement?.parentElement;
+                              if (parent) {
+                                parent.style.display = 'none';
+                              }
+                            }
+                          }}
+                          onLoad={() => {
+                            console.log(`Successfully loaded image ${featuredImageIndex}:`, result.images[featuredImageIndex].url);
                           }}
                         />
                       </div>
