@@ -27,7 +27,8 @@ export default function InsightsResults() {
   const accent = useAccentColor();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
-  const focusCategory = searchParams.get('focus') || 'ANALYSIS';
+  // Only use focus category if explicitly provided in URL, otherwise let auto-detection work
+  const focusCategory = searchParams.get('focus') || undefined;
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<any>(null);
@@ -133,7 +134,7 @@ export default function InsightsResults() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e0e7ef] dark:from-[#111111] dark:to-black text-gray-900 dark:text-white transition-colors duration-200">
+    <div className="insights-result-page min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e0e7ef] dark:from-[#111111] dark:to-black text-gray-900 dark:text-white transition-colors duration-200">
       <header className="flex items-center gap-4 px-6 py-6">
         <button 
           type="button"
@@ -199,6 +200,19 @@ export default function InsightsResults() {
                     </span>
                   </div>
                 </div>
+                
+                {/* Topic Detection Info - shown when InsightWriter is active and we have result */}
+                {result?.focus_category && result?.style_source && progressState.currentAgent === 'InsightWriter' && (
+                  <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="font-medium">Topic "{result.focus_category}"</span> auto-selected.{' '}
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Style inspired by: <em>{result.style_source}</em>
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
                 {progressState.agentActions && progressState.agentActions.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">Recent Actions:</h4>
@@ -239,4 +253,4 @@ export default function InsightsResults() {
       </main>
     </div>
   );
-} 
+}

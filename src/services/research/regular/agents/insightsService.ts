@@ -41,7 +41,7 @@ class InsightsService {
       const request: InsightRequest = {
         query: query.trim(),
         isPro: false, // Always false for insights service
-        focusCategory: focusCategory || 'ANALYSIS'
+        focusCategory: focusCategory // No default - let auto-detection work
       };
 
       const result = await this.insightSwarmController.processInsightQuery(request, onProgress);

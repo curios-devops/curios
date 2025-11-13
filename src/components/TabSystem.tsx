@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Compass, Image, List, Globe, ChevronDown, Sparkles } from 'lucide-react';
+import { Compass, Image, List, Globe, ChevronDown, Wand2, Loader2 } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor';
+import { useSession } from '../hooks/useSession';
+import { useSubscription } from '../hooks/useSubscription';
+import { useProQuota } from '../hooks/useProQuota';
+import { generateArticleImage, extractArticleSummary } from '../services/research/regular/agents/imageGenerationService';
+import ImageGenerationModal from './common/ImageGenerationModal';
+import SignInModal from './auth/SignInModal';
+import ProModal from './subscription/ProModal';
 
 // Helper function to calculate reading and listening time
 const calculateReadingTime = (text: string) => {
@@ -93,14 +100,32 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
   const [activeTab, setActiveTab] = useState<'curios' | 'steps' | 'sources' | 'images'>('curios');
   const [showFocusDropdown, setShowFocusDropdown] = useState(false);
   const [featuredImageIndex, setFeaturedImageIndex] = useState(0);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [isHDEnabled, setIsHDEnabled] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const imageModalTimeoutRef = useRef<number | null>(null);
   const accent = useAccentColor();
+  const { session } = useSession();
+  const { subscription } = useSubscription();
+  const { remainingQuota, decrementProQuota } = useProQuota();
+
+  // Determine user type
+  const getUserType = (): 'guest' | 'free' | 'premium' => {
+    if (!session) return 'guest';
+    return subscription?.isActive ? 'premium' : 'free';
+  };
+
+  const userType = getUserType();
 
   // Focus category options
   const focusCategories = [
     { id: 'ANALYSIS', label: 'ANALYSIS' },
-    { id: 'ARTS', label: 'ARTS' },
-    { id: 'BUSINESS', label: 'BUSINESS' },
+    { id: 'ARTS', label: 'ARTS & ENTERTAINMENT' },
+    { id: 'BUSINESS', label: 'BUSINESS & INNOVATION' },
     { id: 'HEALTH & SPORT', label: 'HEALTH & SPORT' },
     { id: 'SCIENCES & TECH', label: 'SCIENCES & TECH' }
   ];
@@ -127,6 +152,142 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
     // Force page reload to trigger new insights workflow
     window.location.href = `/insights-results?${searchParams.toString()}`;
   };
+
+  // Handle image generation modal on hover
+  const handleImageButtonMouseEnter = () => {
+    // Clear any existing timeout
+    if (imageModalTimeoutRef.current) {
+      clearTimeout(imageModalTimeoutRef.current);
+      imageModalTimeoutRef.current = null;
+    }
+    setShowImageModal(true);
+  };
+
+  const handleImageButtonMouseLeave = () => {
+    // Don't close immediately - wait to see if user moves to modal
+    imageModalTimeoutRef.current = window.setTimeout(() => {
+      setShowImageModal(false);
+    }, 300);
+  };
+
+  const handleImageModalMouseEnter = () => {
+    // Clear any pending close timeout when entering modal
+    if (imageModalTimeoutRef.current) {
+      clearTimeout(imageModalTimeoutRef.current);
+      imageModalTimeoutRef.current = null;
+    }
+  };
+
+  const handleImageModalMouseLeave = () => {
+    // Close modal after a delay when leaving modal area
+    imageModalTimeoutRef.current = window.setTimeout(() => {
+      setShowImageModal(false);
+    }, 300);
+  };
+
+  const handleImageModalClose = () => {
+    // Clear any timeouts and close immediately
+    if (imageModalTimeoutRef.current) {
+      clearTimeout(imageModalTimeoutRef.current);
+      imageModalTimeoutRef.current = null;
+    }
+    setShowImageModal(false);
+  };
+
+  // Handle HD toggle - only for signed-in users
+  const handleHDToggle = () => {
+    // Guests need to sign in
+    if (userType === 'guest') {
+      setShowImageModal(false);
+      setShowSignInModal(true);
+      return;
+    }
+    
+    // Free users: check quota before enabling HD
+    if (userType === 'free' && !isHDEnabled) {
+      if (remainingQuota === 0) {
+        setShowImageModal(false);
+        setShowProModal(true);
+        return;
+      }
+    }
+    
+    // Toggle HD state
+    setIsHDEnabled(!isHDEnabled);
+  };
+
+  // Handle image generation - FREE for everyone, HD uses quota for free users
+  const handleGenerateImage = async (useHD: boolean) => {
+    console.log('🎨 [Image Generation] Generate clicked', { useHD, userType });
+    
+    if (!result) {
+      console.error('❌ [Image Generation] No result available');
+      return;
+    }
+    
+    if (isGeneratingImage) {
+      console.warn('⚠️ [Image Generation] Already generating, skipping');
+      return;
+    }
+
+    // Only decrement quota if using HD and user is free tier
+    if (userType === 'free' && useHD) {
+      if (remainingQuota === 0) {
+        setShowImageModal(false);
+        setShowProModal(true);
+        return;
+      }
+      // Decrement quota
+      await decrementProQuota();
+    }
+
+    console.log('📊 [Image Generation] Starting generation with data:', {
+      headline: result.headline,
+      focus: focusCategory || result.focus_category,
+      hasMarkdown: !!result.markdown_report,
+      useHD,
+      quality: useHD ? 'hd' : 'standard'
+    });
+
+    try {
+      setIsGeneratingImage(true);
+      setShowImageModal(false); // Close modal when generating
+      console.log('⏳ [Image Generation] Loading state set to true');
+      
+      const summary = extractArticleSummary(result.markdown_report || '');
+      console.log('📝 [Image Generation] Extracted summary:', summary.substring(0, 100) + '...');
+      
+      console.log('🚀 [Image Generation] Calling generateArticleImage...');
+      const imageResult = await generateArticleImage({
+        articleTitle: result.headline,
+        articleSummary: summary,
+        focusCategory: (focusCategory || result.focus_category) as any
+      });
+
+      console.log('✅ [Image Generation] Image generated successfully:', imageResult.url);
+      setGeneratedImageUrl(imageResult.url);
+      console.log('💾 [Image Generation] Image URL saved to state');
+    } catch (error) {
+      console.error('❌ [Image Generation] Failed:', error);
+      if (error instanceof Error) {
+        console.error('❌ [Image Generation] Error message:', error.message);
+        console.error('❌ [Image Generation] Error stack:', error.stack);
+      }
+      alert(`Failed to generate image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingImage(false);
+      console.log('✅ [Image Generation] Loading state set to false');
+    }
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (imageModalTimeoutRef.current) {
+        clearTimeout(imageModalTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const tabs = [
     { 
@@ -208,17 +369,17 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
             {/* Focus Category Selector - Part of Curios Tab */}
             <div className="-mx-6 px-6 -mt-6 mb-6 pt-6">
               <div className="flex items-center gap-3 relative" ref={dropdownRef}>
-                <div className="group relative">
-                  <Sparkles 
-                    className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help transition-colors" 
-                  />
-                  <div className="absolute left-0 top-full mt-1 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50">
-                    Explore Topics
-                  </div>
-                </div>
                 <button
-                  onClick={() => setShowFocusDropdown(!showFocusDropdown)}
-                  className="bg-black text-white px-3 py-1 text-sm font-medium uppercase tracking-wider hover:bg-gray-800 transition-colors flex items-center gap-2 rounded"
+                  onClick={() => {
+                    console.log('🎯 [FOCUS-BUTTON] Button state:', {
+                      focusCategory,
+                      resultFocusCategory: result?.focus_category,
+                      displayed: focusCategory || result?.focus_category || 'ANALYSIS'
+                    });
+                    setShowFocusDropdown(!showFocusDropdown);
+                  }}
+                  title="Select topic category"
+                  className="px-3 py-1 text-sm font-medium uppercase tracking-wider transition-colors flex items-center gap-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600"
                 >
                   {focusCategory || result?.focus_category || 'ANALYSIS'}
                   <ChevronDown className="w-4 h-4" />
@@ -226,7 +387,7 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                 
                 {/* Dropdown Menu */}
                 {showFocusDropdown && (
-                  <div className="absolute top-full left-[65px] mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg z-10 min-w-[200px] rounded-md overflow-hidden">
+                  <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg z-10 min-w-[200px] rounded-md overflow-hidden">
                     {focusCategories.map((category) => (
                       <button
                         key={category.id}
@@ -260,7 +421,7 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                   </div>
                   
                   {/* Headline */}
-                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-tight">
+                  <h1 className="text-xl font-semibold text-gray-900 dark:text-white leading-tight">
                     {result.headline || 'Breaking Analysis'}
                   </h1>
                   
@@ -271,52 +432,113 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                     </p>
                   )}
 
-                  {/* Featured Image - First image from results with fallback */}
-                  {result.images && result.images.length > 0 && featuredImageIndex < result.images.length && result.images[featuredImageIndex]?.url && (
-                    <div className="my-6">
-                      <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                        <img
-                          src={result.images[featuredImageIndex].url}
-                          alt={result.images[featuredImageIndex].alt || result.headline || 'Featured image'}
-                          className="w-full h-auto max-h-[500px] object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            // Try next image as fallback
-                            if (featuredImageIndex + 1 < result.images.length) {
-                              console.log(`Image ${featuredImageIndex} failed, trying image ${featuredImageIndex + 1}`);
-                              setFeaturedImageIndex(featuredImageIndex + 1);
-                            } else {
-                              // No more images to try, hide the container
-                              console.log('All images failed to load');
-                              const parent = target.parentElement?.parentElement;
-                              if (parent) {
-                                parent.style.display = 'none';
+                  {/* Featured Image - First image from results with fallback, or generated image */}
+                  {result && (
+                    <div className="my-6 relative group">
+                      {/* Only show image container if we have an image to display */}
+                      {((result.images && result.images.length > 0 && featuredImageIndex < result.images.length && result.images[featuredImageIndex]?.url) || generatedImageUrl) && (
+                        <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 relative mb-3">
+
+                          {/* Image */}
+                          <img
+                            src={generatedImageUrl || result.images[featuredImageIndex].url}
+                            alt={result.images[featuredImageIndex]?.alt || result.headline || 'Featured image'}
+                            className="w-full h-auto max-h-[500px] object-cover"
+                            onError={(e) => {
+                              if (generatedImageUrl) {
+                                // Generated image failed, clear it
+                                setGeneratedImageUrl(null);
+                                return;
                               }
-                            }
-                          }}
-                          onLoad={() => {
-                            console.log(`Successfully loaded image ${featuredImageIndex}:`, result.images[featuredImageIndex].url);
-                          }}
-                        />
+                              const target = e.target as HTMLImageElement;
+                              // Try next image as fallback
+                              if (featuredImageIndex + 1 < result.images.length) {
+                                console.log(`Image ${featuredImageIndex} failed, trying image ${featuredImageIndex + 1}`);
+                                setFeaturedImageIndex(featuredImageIndex + 1);
+                              } else {
+                                // No more images to try, hide the container
+                                console.log('All images failed to load');
+                                const parent = target.parentElement?.parentElement;
+                                if (parent) {
+                                  parent.style.display = 'none';
+                                }
+                              }
+                            }}
+                            onLoad={() => {
+                              if (generatedImageUrl) {
+                                console.log(`Successfully loaded generated image:`, generatedImageUrl);
+                              } else {
+                                console.log(`Successfully loaded image ${featuredImageIndex}:`, result.images[featuredImageIndex].url);
+                              }
+                            }}
+                          />
+
+                          {/* Loading Overlay */}
+                          {isGeneratingImage && (
+                            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                              <Loader2 size={48} className="animate-spin text-white mb-4" />
+                              <p className="text-white text-center px-4 text-sm md:text-base">
+                                Generating image for your article...<br />
+                                <span className="text-white/70">This could take some seconds...</span>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Image generation controls and Listen - always show when there's a result */}
+                      <div className="flex justify-between items-center mt-3">
+                        {/* Listen to article section - left side */}
+                        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                          {(() => {
+                            const { listeningTime } = calculateReadingTime(result.markdown_report || '');
+                            return (
+                              <div className="flex items-center gap-2">
+                                <span>🎧</span>
+                                <span>Listen to this article · {listeningTime} min</span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Generate Image button - right side */}
+                        <div className="relative">
+                          <button
+                            data-image-gen-button
+                            onMouseEnter={handleImageButtonMouseEnter}
+                            onMouseLeave={handleImageButtonMouseLeave}
+                            disabled={isGeneratingImage}
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                          >
+                            <Wand2 size={18} style={{ color: accent.primary }} />
+                          </button>
+
+                          {/* Image Generation Modal */}
+                          {showImageModal && (
+                            <ImageGenerationModal
+                              userType={userType}
+                              remainingQuota={remainingQuota}
+                              isHDEnabled={isHDEnabled}
+                              onHDToggle={handleHDToggle}
+                              onGenerate={handleGenerateImage}
+                              onUpgrade={() => {
+                                setShowImageModal(false);
+                                setShowProModal(true);
+                              }}
+                              onSignIn={() => {
+                                setShowImageModal(false);
+                                setShowSignInModal(true);
+                              }}
+                              onClose={handleImageModalClose}
+                              onMouseEnter={handleImageModalMouseEnter}
+                              onMouseLeave={handleImageModalMouseLeave}
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Listen section */}
-                  <div className="py-3">
-                    {/* Listen to article section */}
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                      {(() => {
-                        const { listeningTime } = calculateReadingTime(result.markdown_report || '');
-                        return (
-                          <div className="flex items-center gap-2">
-                            <span>🎧</span>
-                            <span>Listen to this article · {listeningTime} min</span>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Article Body */}
@@ -482,6 +704,20 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <SignInModal 
+        isOpen={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+        currentLanguage={{ code: 'en', name: 'English', flag: '🇺🇸' }}
+        title="Sign In to Generate Images"
+        subtitle="Create custom AI-generated images for your articles"
+      />
+
+      <ProModal 
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+      />
     </div>
   );
 };

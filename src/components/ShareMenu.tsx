@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Share2, Link2, Check } from 'lucide-react';
 import Notification from './Notification';
+import { useAccentColor } from '../hooks/useAccentColor';
 
 interface ShareMenuProps {
   url: string;
@@ -17,6 +18,7 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const accent = useAccentColor();
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -119,7 +121,8 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-[#007BFF] hover:bg-[#0056b3] text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm"
+        className="text-white px-3 py-1.5 rounded-lg transition-all hover:opacity-90 flex items-center gap-2 text-sm font-medium"
+        style={{ backgroundColor: accent.primary }}
         aria-label="Share menu"
       >
         <Share2 size={16} />

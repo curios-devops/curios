@@ -13,6 +13,8 @@ export interface InsightRequest {
 
 export interface InsightResult {
   query: string;
+  focus_category?: string;  // Added - topic category detected or provided
+  style_source?: string;    // Added - editorial style source
   headline: string;
   subtitle: string;
   short_summary: string;
@@ -109,11 +111,11 @@ export class InsightSwarmController {
           'Searching for Insights',
           'About 30 seconds remaining',
           40,
-          `Tavily search with ${searchQueries.length} combined queries`,
+          `Searching for relevant sources and information`,
           searchQueries,
           [],
           'RetrieverAgent',
-          `Single Tavily call (Brave fallback)`,
+          `Searching for sources across the web`,
           'searching'
         );
 
@@ -199,6 +201,7 @@ export class InsightSwarmController {
           success: true,
           data: {
             focus_category: request.focusCategory || 'ANALYSIS',
+            style_source: 'New York Times',
             headline: `Strategic Insights: ${query}`,
             subtitle: 'Market Analysis and Strategic Recommendations',
             short_summary: `Strategic analysis of ${query} based on comprehensive research.`,
@@ -220,6 +223,8 @@ export class InsightSwarmController {
       // Build result immediately (same as Pro Search - no delays!)
       const result: InsightResult = {
         query,
+        focus_category: writerResponse.data?.focus_category,  // Pass through from writer
+        style_source: writerResponse.data?.style_source,      // Pass through from writer
         headline: writerResponse.data?.headline || `Strategic Insights: ${query}`,
         subtitle: writerResponse.data?.subtitle || 'Actionable Intelligence and Recommendations',
         short_summary: writerResponse.data?.short_summary || `Strategic analysis of ${query} with actionable recommendations.`,
@@ -255,7 +260,9 @@ export class InsightSwarmController {
       logger.info('🟢 [SWARM] Insight processing completed', {
         reportLength: result.markdown_report.length,
         sourcesCount: result.sources.length,
-        insightAreasCount: result.insight_areas.length
+        insightAreasCount: result.insight_areas.length,
+        focusCategory: result.focus_category,
+        styleSource: result.style_source
       });
 
       // Signal completion AFTER building result - no delays! (same as Pro Search)
@@ -341,6 +348,8 @@ export class InsightSwarmController {
   private getFallbackResult(query: string): InsightResult {
     return {
       query,
+      focus_category: 'ANALYSIS',
+      style_source: 'New York Times',
       headline: `Strategic Insights: ${query}`,
       subtitle: 'Analysis Based on Available Information',
       short_summary: `Strategic analysis of ${query} with focus on actionable insights and recommendations.`,
