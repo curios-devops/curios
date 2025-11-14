@@ -118,7 +118,7 @@ Deno.serve(async (req: Request) => {
       model: parsedPrompt.model || DEFAULT_MODEL,
       messages: parsedPrompt.messages || [{ role: "user", content: String(prompt) }],
       temperature: parsedPrompt.temperature || 0.7,
-      max_tokens: parsedPrompt.max_output_tokens || 1200,
+      max_tokens: parsedPrompt.max_output_tokens || 2000, // Increased for longer essays (~1500 words max)
       response_format: parsedPrompt.response_format || { type: 'json_object' }
     };
 
@@ -147,8 +147,16 @@ Deno.serve(async (req: Request) => {
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('OpenAI API error:', { status: response.status, error });
-      return new Response(JSON.stringify({ error: `OpenAI error: ${response.status}` }), {
+      console.error('OpenAI API error:', { status: response.status, error, payload });
+      return new Response(JSON.stringify({ 
+        error: `OpenAI error: ${response.status}`,
+        details: error,
+        payload_info: {
+          model: payload.model,
+          max_tokens: payload.max_tokens,
+          messages_count: payload.messages.length
+        }
+      }), {
         status: response.status,
         headers: corsHeaders
       });

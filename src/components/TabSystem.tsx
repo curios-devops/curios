@@ -100,6 +100,8 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
   const [activeTab, setActiveTab] = useState<'curios' | 'steps' | 'sources' | 'images'>('curios');
   const [showFocusDropdown, setShowFocusDropdown] = useState(false);
   const [featuredImageIndex, setFeaturedImageIndex] = useState(0);
+  const [validImageIndices, setValidImageIndices] = useState<number[]>([]); // Track which images successfully load
+  const [isValidatingImages, setIsValidatingImages] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -143,6 +145,55 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showFocusDropdown]);
+
+  // Validate images on load - only show images that successfully load
+  useEffect(() => {
+    if (!result?.images || result.images.length === 0) {
+      setValidImageIndices([]);
+      setFeaturedImageIndex(0);
+      return;
+    }
+
+    setIsValidatingImages(true);
+    console.log(`🖼️ [IMAGE-VALIDATION] Validating ${result.images.length} images...`);
+
+    // Test each image URL
+    const validateImage = (url: string, index: number): Promise<number | null> => {
+      return new Promise((resolve) => {
+        const img = document.createElement('img') as HTMLImageElement;
+        img.onload = () => {
+          console.log(`✅ [IMAGE-VALIDATION] Image ${index} loaded successfully:`, url);
+          resolve(index);
+        };
+        img.onerror = () => {
+          console.warn(`❌ [IMAGE-VALIDATION] Image ${index} failed to load:`, url);
+          resolve(null);
+        };
+        // Set timeout to avoid hanging on slow images
+        setTimeout(() => {
+          console.warn(`⏱️ [IMAGE-VALIDATION] Image ${index} timed out:`, url);
+          resolve(null);
+        }, 5000);
+        img.src = url;
+      });
+    };
+
+    // Validate all images in parallel
+    Promise.all(
+      result.images.map((img: any, index: number) => validateImage(img.url, index))
+    ).then((results) => {
+      const validIndices = results.filter((idx): idx is number => idx !== null);
+      console.log(`🖼️ [IMAGE-VALIDATION] ${validIndices.length}/${result.images.length} images are valid`);
+      setValidImageIndices(validIndices);
+      
+      // Set featured image to first valid image
+      if (validIndices.length > 0) {
+        setFeaturedImageIndex(validIndices[0]);
+      }
+      
+      setIsValidatingImages(false);
+    });
+  }, [result?.images]);
 
   // Handle follow-up question clicks
   const handleFollowUpClick = (question: string) => {
@@ -300,11 +351,12 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
         </span>
       )
     },
-    { 
+    // Only show images tab if we have valid images
+    ...(validImageIndices.length > 0 ? [{
       id: 'images', 
-      label: `Images${result?.images ? ` · ${result.images.length}` : ''}`,
+      label: `Images · ${validImageIndices.length}`,
       icon: <Image size={16} />
-    },
+    }] : []),
     { 
       id: 'steps', 
       label: 'Steps',
@@ -436,7 +488,8 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                   {result && (
                     <div className="my-6 relative group">
                       {/* Only show image container if we have an image to display */}
-                      {((result.images && result.images.length > 0 && featuredImageIndex < result.images.length && result.images[featuredImageIndex]?.url) || generatedImageUrl) && (
+                      {/* Image Container - Only show if we have a valid image or generated image */}
+                      {(generatedImageUrl || (validImageIndices.length > 0 && !isValidatingImages)) && (
                         <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 relative mb-3">
 
                           {/* Image */}
@@ -444,31 +497,34 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                             src={generatedImageUrl || result.images[featuredImageIndex].url}
                             alt={result.images[featuredImageIndex]?.alt || result.headline || 'Featured image'}
                             className="w-full h-auto max-h-[500px] object-cover"
-                            onError={(e) => {
+                            onError={() => {
+                              console.warn('🖼️ [IMAGE-ERROR] Image failed to load:', generatedImageUrl || result.images[featuredImageIndex]?.url);
+                              
                               if (generatedImageUrl) {
                                 // Generated image failed, clear it
+                                console.log('🖼️ [IMAGE-ERROR] Clearing failed generated image');
                                 setGeneratedImageUrl(null);
                                 return;
                               }
-                              const target = e.target as HTMLImageElement;
-                              // Try next image as fallback
-                              if (featuredImageIndex + 1 < result.images.length) {
-                                console.log(`Image ${featuredImageIndex} failed, trying image ${featuredImageIndex + 1}`);
-                                setFeaturedImageIndex(featuredImageIndex + 1);
+                              
+                              // Try next valid image
+                              const currentIndexInValid = validImageIndices.indexOf(featuredImageIndex);
+                              const nextValidIndex = validImageIndices[currentIndexInValid + 1];
+                              
+                              if (nextValidIndex !== undefined) {
+                                console.log(`🖼️ [IMAGE-ERROR] Switching to next valid image: index ${nextValidIndex}`);
+                                setFeaturedImageIndex(nextValidIndex);
                               } else {
-                                // No more images to try, hide the container
-                                console.log('All images failed to load');
-                                const parent = target.parentElement?.parentElement;
-                                if (parent) {
-                                  parent.style.display = 'none';
-                                }
+                                console.log('🖼️ [IMAGE-ERROR] No more valid images available');
+                                // Remove this image from valid indices
+                                setValidImageIndices(validImageIndices.filter(idx => idx !== featuredImageIndex));
                               }
                             }}
                             onLoad={() => {
                               if (generatedImageUrl) {
-                                console.log(`Successfully loaded generated image:`, generatedImageUrl);
+                                console.log(`✅ [IMAGE-LOAD] Generated image loaded successfully`);
                               } else {
-                                console.log(`Successfully loaded image ${featuredImageIndex}:`, result.images[featuredImageIndex].url);
+                                console.log(`✅ [IMAGE-LOAD] Search image ${featuredImageIndex} loaded successfully`);
                               }
                             }}
                           />
@@ -675,29 +731,42 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
 
         {activeTab === 'images' && (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Images</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+              Images ({validImageIndices.length})
+            </h2>
             
-            {result?.images && result.images.length > 0 ? (
+            {validImageIndices.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {result.images.map((image: any, index: number) => (
-                  <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group">
-                    <img
-                      src={image.url}
-                      alt={image.alt || ''}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
-                      onClick={() => window.open(image.url, '_blank')}
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M0M2MS44OTU0IDc0IDYxIDc0Ljg5NTQgNjEgNzZWMTI0QzYxIDEyNS4xMDUgNjEuODk1NCAxMjYgNjMgMTI2SDEzN0MxMzguMTA1IDEyNiAxMzkgMTI1LjEwNSAxMzkgMTI0Vjc2QzEzOSA3NC44OTU0IDEzOC4xMDUgNzQgMTM3IDc0SDExM00xMTMgNzRWNzBDMTEzIDY4Ljg5NTQgMTEyLjEwNSA2OCAxMTEgNjhIODlDODcuODk1NCA2OCA4NyA2OC44OTU0IDg3IDcwVjc0TTExMyA3NEg4N00xMDAgOTBWMTA2TTkzIDk4TDEwNyA5OCIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K';
-                      }}
-                    />
-                  </div>
-                ))}
+                {validImageIndices.map((imageIndex: number) => {
+                  const image = result.images[imageIndex];
+                  return (
+                    <div key={imageIndex} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group relative">
+                      <img
+                        src={image.url}
+                        alt={image.alt || `Image ${imageIndex + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
+                        onClick={() => window.open(image.url, '_blank')}
+                        onError={() => {
+                          console.warn(`🖼️ [IMAGES-TAB] Image ${imageIndex} failed at runtime, removing from valid list`);
+                          // Remove from valid images if it fails at runtime
+                          setValidImageIndices(prev => prev.filter(idx => idx !== imageIndex));
+                        }}
+                        onLoad={() => {
+                          console.log(`✅ [IMAGES-TAB] Image ${imageIndex} loaded in gallery`);
+                        }}
+                      />
+                      {/* Image number badge */}
+                      <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                        {imageIndex + 1}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
                 <div className="text-gray-500 dark:text-gray-400">
-                  {loading ? 'Loading images...' : 'No images found for this search.'}
+                  {isValidatingImages ? 'Validating images...' : 'No valid images found for this search.'}
                 </div>
               </div>
             )}

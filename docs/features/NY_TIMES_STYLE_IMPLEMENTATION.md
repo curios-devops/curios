@@ -13,7 +13,7 @@ Refactored the InsightWriterAgent to follow NY Times journalistic style instead 
 ### 1. Updated Interface: `InsightWriterResult`
 
 **Added:**
-- `focus_category: string` - UPPERCASE category label (e.g., TECHNOLOGY, BUSINESS, HEALTH, ANALYSIS, ARTS, SCIENCES & TECH, HEALTH & SPORT)
+- `focus_category: string` - UPPERCASE category label (e.g., BUSINESS, HEALTH & WELLNESS, ANALYSIS, ARTS & ENTERTAIMENT, SCIENCES & TECH, HEALTH & SPORT)
 
 **Purpose:** 
 - Category badges displayed above headlines, matching NYT article style

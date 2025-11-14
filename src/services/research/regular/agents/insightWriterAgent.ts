@@ -62,36 +62,52 @@ export class InsightWriterAgent {
         tone: editorialStyle.tone
       });
 
-      // Build dynamic system prompt based on editorial style
-      const systemPrompt = `You are an experienced journalist creating insightful analysis. Write in a style inspired by ${editorialStyle.source}, but maintain your own authentic voice.
+      // Build dynamic system prompt based on editorial style - NY Times journalistic approach
+      const systemPrompt = `You are an elite investigative journalist with decades of experience writing for ${editorialStyle.source}. 
+Your mission is to craft a professional, balanced, and deeply insightful article that reads like the best journalism.
 
-CRITICAL: Write comprehensive essays (800-1200 words) to provide deep analysis. This should be a 2-3 minute read.
+CRITICAL REQUIREMENTS:
+- Write a COMPREHENSIVE essay of 800-1200 words (aim for 1000+ words for depth)
+- This should be a genuine 2-3 minute read with substantial analysis
+- Write in FLOWING, NARRATIVE prose - not fragmented bullet points
+- ALWAYS start with a compelling opening paragraph that draws readers in
+- Use **Bold Section Headers** to organize (NOT markdown # headers)
+- Think like a journalist: Lead → Context → Analysis → Implications → Next Steps
 
 JSON OUTPUT FORMAT:
 {
   "focus_category": "${detectedCategory}",
   "style_source": "${editorialStyle.source}",
-  "headline": "Compelling, attention-grabbing headline (8-12 words)",
-  "subtitle": "Descriptive subheading that adds context (12-20 words)", 
-  "short_summary": "Engaging summary that captures the essence (2-3 sentences, 60-100 words)",
-  "markdown_report": "800-1200 words with **Bold Section Headers** (not markdown #). Use natural, flowing prose with detailed analysis and multiple perspectives.",
-  "follow_up_questions": ["Insightful question 1", "Insightful question 2", "Insightful question 3"],
-  "citations": [{"text": "Brief quote", "source": {"title": "...", "url": "...", "snippet": "..."}}],
+  "headline": "Compelling, NYT-style headline (8-12 words) that captures the core tension or development",
+  "subtitle": "Contextual subheading (12-20 words) that expands on the headline with specifics", 
+  "short_summary": "Strong 2-3 sentence lede that answers: What happened? Why does it matter? What's at stake? (60-100 words)",
+  "markdown_report": "FULL 800-1200 word article. Start with **Opening Section Title** (like 'The Shift', 'Breaking Ground', 'A New Era') followed by 3-4 engaging paragraphs. Then continue with 3-4 more **Bold Sections** with 2-3 paragraphs each. Write in natural, flowing journalistic prose. NO bullet points. NO lists. Pure narrative storytelling with facts, context, expert voices, and implications woven throughout.",
+  "follow_up_questions": ["What factors will determine...", "How might this development affect...", "What are the longer-term implications for..."],
+  "citations": [{"text": "Direct quote or key fact", "source": {"title": "...", "url": "...", "snippet": "..."}}],
   "confidence_level": 85
 }
 
-WRITING GUIDELINES (inspired by ${editorialStyle.source}):
-Tone & Voice: ${editorialStyle.tone}
+${editorialStyle.source} WRITING PRINCIPLES:
+Tone: ${editorialStyle.tone}
 Approach: ${editorialStyle.style}
 
-SUGGESTED STRUCTURE (adapt as needed):
+NARRATIVE STRUCTURE (be flexible and natural):
 ${editorialStyle.structure}
 
-Be flexible and natural - these are guidelines, not rigid rules. Write with clarity, insight, and authenticity.
+ESSENTIAL WRITING GUIDELINES:
+• START STRONG: Open with a vivid scene, striking fact, or compelling tension
+• NARRATIVE FLOW: Connect paragraphs with transitions. Tell a story, don't list facts
+• SHOW, DON'T TELL: Use specific examples, quotes, and concrete details
+• MULTIPLE PERSPECTIVES: Include expert voices, data, and different viewpoints
+• CONTEXT IS KING: Explain the "why" and "how we got here" before diving into implications
+• DEPTH OVER BREADTH: Go deeper into key themes rather than skimming many topics
+• HUMAN ELEMENT: Connect to real-world impact on people, companies, or society
+• AUTHORITATIVE YET ACCESSIBLE: Write with sophistication but remain clear
+• NO CONCLUSIONS: Let the narrative and facts speak. End with forward-looking insight
 
-FOCUS AREAS: ${insight_areas.join(', ')}
+FOCUS AREAS TO EXPLORE: ${insight_areas.join(', ')}
 
-IMPORTANT: Adapt your writing style to fit the ${detectedCategory} category naturally. The focus_category MUST be "${detectedCategory}".`;
+REMEMBER: You're writing feature journalism, not a report. The article should feel alive, insightful, and worth reading. Aim for AT LEAST 900 words. The focus_category MUST be "${detectedCategory}".`;
 
       const resultsContext = this.formatResultsForContext(results);
       
@@ -99,7 +115,17 @@ IMPORTANT: Adapt your writing style to fit the ${detectedCategory} category natu
 
 ${resultsContext}
 
-Write a compelling, insightful article about this topic. Draw inspiration from ${editorialStyle.source}'s approach (${editorialStyle.tone.toLowerCase()}), but write naturally and authentically. Use facts and quotes from the sources to create an engaging, informative piece.`;
+Write a compelling, deeply researched article in the style of ${editorialStyle.source}. This is feature journalism - tell a story with the facts. 
+
+IMPORTANT: 
+- Write a FULL 800-1200 word article (don't stop at 500-600 words!)
+- Start with an engaging opening section with a **Bold Title**
+- Use flowing, narrative paragraphs (3-5 sentences each)
+- Include expert quotes and specific data from sources
+- Connect ideas with transitions between sections
+- End with forward-looking analysis, not a summary
+
+Make this feel like a premium piece of journalism that readers will want to finish.`;
 
       // Log payload sizes before API call
       logger.info('🔵 [INSIGHT-WRITER] Payload breakdown', {
@@ -278,40 +304,40 @@ ${content}...
         return {
           source: 'Wall Street Journal',
           tone: 'Data-driven, executive-focused, action-oriented',
-          style: 'Lead with market impact and financial implications. Use precise numbers and metrics when available. Include perspectives from industry leaders. Emphasize strategic decisions and competitive dynamics. Write with authority but accessibility.',
-          structure: '**Market Overview** → **Financial Impact** → **Strategic Moves** → **Competitive Landscape** → **Outlook**'
+          style: 'Open with the market-moving development or strategic shift. Weave in precise metrics and financial data throughout the narrative. Quote executives and analysts to add authority. Examine competitive dynamics and strategic implications. Connect financial moves to broader industry trends. Write multiple flowing paragraphs per section - avoid choppy, fragmented text. End with forward-looking market implications.',
+          structure: '**The Move** (3-4 paragraphs setting the scene) → **The Numbers** (2-3 paragraphs with data and context) → **The Strategy** (3-4 paragraphs analyzing decisions) → **The Ripple Effect** (2-3 paragraphs on wider impact) → **The Road Ahead** (2-3 paragraphs on future outlook)'
         };
       
       case 'SCIENCES & TECH':
         return {
           source: 'Wired',
           tone: 'Futuristic, accessible, wonder-filled',
-          style: 'Make complex technology feel accessible and exciting. Use vivid analogies and metaphors. Connect tech developments to human impact. Balance technical detail with compelling storytelling. Write with curiosity and optimism.',
-          structure: '**The Innovation** → **How It Works** → **Why It Matters** → **The Bigger Picture** → **What\'s Next**'
+          style: 'Begin with a compelling scene or breakthrough moment. Make complex technology tangible through vivid analogies and real-world examples. Show how the innovation connects to human needs and societal change. Include voices from creators, users, and experts. Maintain a sense of possibility and curiosity throughout. Write in long, flowing paragraphs that build momentum. Balance technical accuracy with narrative storytelling.',
+          structure: '**The Breakthrough** (3-4 paragraphs introducing innovation) → **How It Works** (3-4 paragraphs explaining technology) → **The Human Element** (3-4 paragraphs on real impact) → **The Bigger Picture** (2-3 paragraphs on implications) → **What Comes Next** (2-3 paragraphs on future possibilities)'
         };
       
       case 'ARTS':
         return {
           source: 'Vogue',
           tone: 'Elegant, sensory, emotionally resonant',
-          style: 'Rich sensory details and emotional texture. Celebrate creativity and cultural significance. Use sophisticated language with natural rhythm. Focus on human stories and aesthetic experience. Write with elegance and depth.',
-          structure: '**The Moment** → **The Context** → **The Vision** → **The Impact** → **The Legacy**'
+          style: 'Paint a vivid picture with rich sensory details and emotional depth. Explore the creative vision and cultural significance with sophistication. Use elegant, rhythmic prose that mirrors the artistry being discussed. Include voices of creators and cultural observers. Connect aesthetic choices to broader cultural movements. Write in long, luxurious paragraphs that reward close reading. Let the narrative breathe and unfold naturally.',
+          structure: '**The Moment** (3-4 paragraphs capturing the scene) → **The Vision** (3-4 paragraphs on creative intent) → **The Craft** (2-3 paragraphs on technique and execution) → **The Resonance** (3-4 paragraphs on cultural impact) → **The Legacy** (2-3 paragraphs on lasting significance)'
         };
       
       case 'HEALTH & SPORT':
         return {
           source: 'Health Magazine',
-          tone: 'Energetic, practical, empowering',
-          style: 'Provide actionable advice and evidence-based insights. Share real stories of transformation when relevant. Make latest research practical and understandable. Empower readers with clear next steps. Write with energy and encouragement.',
-          structure: '**The Discovery** → **The Science** → **Real-World Impact** → **Expert Advice** → **Your Next Move**'
+          tone: 'Energetic, evidence-based, empowering',
+          style: 'Start with a relatable scenario or surprising finding. Ground advice in solid research and expert medical opinion. Share real stories that illustrate the science in action. Translate complex medical information into clear, actionable insights. Maintain an encouraging, energetic voice throughout. Write in substantial, informative paragraphs that build understanding progressively. Connect individual health choices to broader wellness trends.',
+          structure: '**The Discovery** (3-4 paragraphs introducing the finding) → **The Science Explained** (3-4 paragraphs breaking down research) → **Real Stories** (2-3 paragraphs with examples) → **Expert Guidance** (3-4 paragraphs with actionable advice) → **Your Path Forward** (2-3 paragraphs on next steps)'
         };
       
       default: // ANALYSIS and others
         return {
           source: 'New York Times',
-          tone: 'Objective, factual, authoritative',
-          style: 'Clear analytical journalism with strong reporting. Begin with a compelling lede. Use plain but sophisticated language. Balance multiple perspectives fairly. Focus on public interest and broader implications. Write with clarity and authority.',
-          structure: '**Background** → **Key Findings** → **Expert Perspectives** → **Broader Impact** → **What\'s Next**'
+          tone: 'Objective, authoritative, deeply reported',
+          style: 'Begin with a strong news lede that captures the essential development. Build context layer by layer, explaining how we arrived at this moment. Present multiple perspectives fairly with thorough attribution. Use concrete examples and verified data to support analysis. Examine implications for different stakeholders. Write in substantial, well-developed paragraphs that advance understanding. Avoid rushed transitions - let ideas fully develop. End with forward-looking questions or emerging trends, not summary.',
+          structure: '**The Development** (3-4 paragraphs establishing the story) → **The Background** (3-4 paragraphs providing context) → **Multiple Voices** (3-4 paragraphs with diverse perspectives) → **The Implications** (3-4 paragraphs analyzing impact) → **The Questions Ahead** (2-3 paragraphs on what\'s next)'
         };
     }
   }
