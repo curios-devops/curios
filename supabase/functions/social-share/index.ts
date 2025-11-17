@@ -89,15 +89,21 @@ serve(async (req) => {
 
     const safeDescription = escapeHtml(desc);
 
-    // Use the actual Supabase project URL for consistent sharing
-    const supabaseUrl = 'https://gpfccicfqynahflehpqo.supabase.co';
+    // Use curiosai.com for all URLs (LinkedIn trusts this domain)
+    const baseUrl = 'https://curiosai.com';
 
-    // LinkedIn doesn't support SVG, use provided image or fallback JPG/PNG
-    // Using a temporary fallback - create a proper 1200x627 social-card.png later
-    const ogImage = image || 'https://curiosai.com/iphone17.jpg';
+    // LinkedIn requires PNG/JPG images, not SVG
+    // If image is provided from search results, use it; otherwise use fallback
+    // Ensure image URLs are absolute and accessible
+    let ogImage = 'https://curiosai.com/compass.svg'; // Default fallback
+    
+    if (image) {
+      // Use provided image if it's a valid URL
+      ogImage = image;
+    }
 
-    // Generate share URL (canonical for crawlers)
-    const shareUrl = `${supabaseUrl}/functions/v1/social-share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
+    // Generate share URL (canonical for crawlers) - use curiosai.com domain
+    const shareUrl = `${baseUrl}/functions/v1/social-share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -111,11 +117,14 @@ serve(async (req) => {
   <!-- Combined name+property tags as per LinkedIn Inspector guidance -->
   <meta name="title" property="og:title" content="${safeTitle}" />
   <meta name="description" property="og:description" content="${safeDescription}" />
+  <meta name="image" property="og:image" content="${ogImage}" />
 
   <!-- Open Graph Meta Tags -->
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDescription}" />
   <meta property="og:image" content="${ogImage}" />
+  <meta property="og:image:secure_url" content="${ogImage}" />
+  <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:alt" content="CuriosAI preview image for: ${safeTitle}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="627" />
