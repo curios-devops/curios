@@ -94,17 +94,17 @@ serve(async (req) => {
     // Use curiosai.com for all URLs (LinkedIn trusts this domain)
     const baseUrl = 'https://curiosai.com';
 
-    // LinkedIn requires PNG/JPG images with correct dimensions
-    // If image is provided from search results, use it; otherwise use fallback
-    let ogImage = 'https://curiosai.com/iphone17.jpg';
-    let imageWidth = '620';
-    let imageHeight = '680';
+    // LinkedIn requires PNG/JPG images with exact 1200x627 dimensions (1.91:1 ratio)
+    // Use proper fallback image that meets LinkedIn specifications
+    let ogImage = 'https://curiosai.com/curiosai-og-image-1200x627.jpg';
+    let imageWidth = '1200';
+    let imageHeight = '627';
     
-    if (image && image !== 'https://curiosai.com/iphone17.jpg') {
-      // Use provided image only if it's NOT the fallback image
+    if (image && image.startsWith('http')) {
+      // Use provided image from search results
       ogImage = image;
-      // For user-provided images, assume standard LinkedIn dimensions
-      // (In production, you'd want to fetch actual dimensions)
+      // Assume user images also meet LinkedIn specs
+      // (In production, you'd want to fetch actual dimensions or resize)
       imageWidth = '1200';
       imageHeight = '627';
     }
