@@ -22,8 +22,10 @@ serve(async (req) => {
     const acceptHeader = req.headers.get('accept') || '';
     
     // More comprehensive bot detection
-    const isBot = /linkedinbot|linkedin|facebookexternalhit|facebookbot|twitterbot|twitter|whatsapp|whatsappbot|slackbot|telegrambot|bot|crawler|spider|LinkedInBot|Facebot/i.test(userAgent) ||
-                  userAgent === ''; // Empty user agent (some crawlers)
+    // If user agent contains bot/crawler keywords OR doesn't look like a browser, treat as bot
+    const isBot = /linkedinbot|linkedin|facebookexternalhit|facebookbot|twitterbot|twitter|whatsapp|whatsappbot|slackbot|telegrambot|bot|crawler|spider|LinkedInBot|Facebot|postman|insomnia|curl|wget/i.test(userAgent) ||
+                  userAgent === '' || // Empty user agent (some crawlers)
+                  !acceptHeader.includes('text/html'); // Doesn't accept HTML (likely a crawler)
 
     console.log('🔍 Share Function Debug:');
     console.log('- Bot detected:', isBot);
@@ -33,10 +35,10 @@ serve(async (req) => {
     console.log('- Snippet length:', snippet.length);
     console.log('- Image provided:', !!image);
 
-    // For human users, redirect to actual search results
-    // Bots get the HTML with meta tags for previews
-    if (!isBot) {
-      console.log('- Redirecting human to search page');
+    // For human users with real browsers, redirect to actual search results
+    // Bots and tools get the HTML with meta tags for previews
+    if (!isBot && userAgent.includes('Mozilla') && acceptHeader.includes('text/html')) {
+      console.log('- Redirecting human browser to search page');
       return new Response(null, {
         status: 302,
         headers: {
@@ -46,7 +48,7 @@ serve(async (req) => {
       });
     }
     
-    console.log('- Serving HTML with meta tags to bot');
+    console.log('- Serving HTML with meta tags to bot/crawler');
 
     // Simple HTML sanitization
     const escapeHtml = (text: string) =>
