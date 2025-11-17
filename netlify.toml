@@ -3,5 +3,11 @@
   publish = "dist"
   command = "npm run build"
 
+# Ensure LinkedIn sees correct HTML content type for proxied Supabase function
+[[headers]]
+  for = "/functions/v1/social-share"
+  [headers.values]
+    Content-Type = "text/html; charset=utf-8"
+
 # Note: Redirects are handled in public/_redirects file
 # This is more reliable for proxying external services
