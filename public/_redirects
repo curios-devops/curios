@@ -1,5 +1,6 @@
 # Proxy Supabase Edge Functions - must be first for priority
 /functions/v1/* https://gpfccicfqynahflehpqo.supabase.co/functions/v1/:splat 200
+	Content-Type: text/html; charset=utf-8
 
 # SPA fallback - must be last
 /* /index.html 200
