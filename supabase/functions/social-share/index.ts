@@ -89,16 +89,16 @@ serve(async (req) => {
 
     const safeDescription = escapeHtml(desc);
 
-    // Build absolute base URL from the incoming request
-    const proto = req.headers.get('x-forwarded-proto') || 'https';
-    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'curiosai.com';
-    const base = `${proto}://${host}`;
+    // Use the actual Supabase project URL for consistent sharing
+    const supabaseUrl = 'https://gpfccicfqynahflehpqo.supabase.co';
 
-    // Use provided image or generate dynamic SVG image with Supabase Edge Function
-    const ogImage = image || `${base}/functions/v1/social-og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
+    // LinkedIn doesn't support SVG, so use provided image or a static fallback
+    // If no image provided, use a static PNG (you should upload one to your public folder)
+    const ogImage = image || 'https://curiosai.com/compass.svg'; // Temporary: use your logo
+    // TODO: Create a proper 1200x627 PNG image for default sharing
 
     // Generate share URL (canonical for crawlers)
-    const shareUrl = `${base}/functions/v1/social-share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
+    const shareUrl = `${supabaseUrl}/functions/v1/social-share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
