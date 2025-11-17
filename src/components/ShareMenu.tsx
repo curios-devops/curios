@@ -77,9 +77,9 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           // Get first search result image
           const shareImage = images && images.length > 0 ? images[0].url : '';
           
-          // Use direct Supabase URL for sharing (Netlify proxy has issues)
-          const supabaseUrl = 'https://gpfccicfqynahflehpqo.supabase.co';
-          const shareUrl = `${supabaseUrl}/functions/v1/social-share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
+          // Use curiosai.com domain for better LinkedIn compatibility
+          // LinkedIn Post Inspector has issues with *.supabase.co domains
+          const shareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
           
           // LinkedIn sharing URL - use the actual query as title for post text area
           const postTitle = shareQuery; // This will appear in the post composition box
