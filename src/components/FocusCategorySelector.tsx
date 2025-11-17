@@ -15,7 +15,7 @@ export const FocusCategorySelector: React.FC<FocusCategorySelectorProps> = ({
 
   const focusCategories = [
     { id: 'ANALYSIS', label: 'ANALYSIS' },
-    { id: 'ARTS', label: 'ARTS' },
+    { id: 'ARTS & ENTERTAIMENT', label: 'ARTS & ENTERTAIMENT' },
     { id: 'BUSINESS', label: 'BUSINESS' },
     { id: 'HEALTH & SPORT', label: 'HEALTH & SPORT' },
     { id: 'SCIENCES & TECH', label: 'SCIENCES & TECH' }

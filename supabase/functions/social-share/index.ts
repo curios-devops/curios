@@ -17,19 +17,26 @@ serve(async (req) => {
     const snippet = url.searchParams.get('snippet') || 'Get comprehensive AI-powered search results with insights, analysis, and curated information from multiple sources.';
     const image = url.searchParams.get('image') || '';
 
-    // Simple bot detection
+    // Enhanced bot detection - LinkedIn, Twitter, Facebook, WhatsApp crawlers
     const userAgent = req.headers.get('user-agent') || '';
-    const isBot = /linkedinbot|facebookexternalhit|twitterbot|whatsapp|bot|crawler|spider|LinkedInBot/i.test(userAgent);
+    const acceptHeader = req.headers.get('accept') || '';
+    
+    // More comprehensive bot detection
+    const isBot = /linkedinbot|linkedin|facebookexternalhit|facebookbot|twitterbot|twitter|whatsapp|whatsappbot|slackbot|telegrambot|bot|crawler|spider|LinkedInBot|Facebot/i.test(userAgent) ||
+                  userAgent === ''; // Empty user agent (some crawlers)
 
     console.log('🔍 Share Function Debug:');
     console.log('- Bot detected:', isBot);
-    console.log('- User Agent:', userAgent);
+    console.log('- User Agent:', userAgent.substring(0, 100));
+    console.log('- Accept Header:', acceptHeader);
     console.log('- Query:', query);
     console.log('- Snippet length:', snippet.length);
-    console.log('- Snippet preview:', snippet.substring(0, 140) + (snippet.length > 140 ? '…' : ''));
+    console.log('- Image provided:', !!image);
 
-    // Redirect humans to search page
+    // For human users, redirect to actual search results
+    // Bots get the HTML with meta tags for previews
     if (!isBot) {
+      console.log('- Redirecting human to search page');
       return new Response(null, {
         status: 302,
         headers: {
@@ -38,6 +45,8 @@ serve(async (req) => {
         }
       });
     }
+    
+    console.log('- Serving HTML with meta tags to bot');
 
     // Simple HTML sanitization
     const escapeHtml = (text: string) =>
