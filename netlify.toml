@@ -3,16 +3,5 @@
   publish = "dist"
   command = "npm run build"
 
-# Proxy Supabase Edge Functions - MUST come before SPA fallback
-# Using 200! forces the proxy even if a file exists
-[[redirects]]
-  from = "/functions/v1/*"
-  to = "https://gpfccicfqynahflehpqo.supabase.co/functions/v1/:splat"
-  status = 200!
-  force = true
-
-# SPA fallback - must be last and use 404 handling
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Note: Redirects are handled in public/_redirects file
+# This is more reliable for proxying external services
