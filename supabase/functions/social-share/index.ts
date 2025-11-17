@@ -96,7 +96,7 @@ serve(async (req) => {
 
     // LinkedIn requires PNG/JPG images with exact 1200x627 dimensions (1.91:1 ratio)
     // Use proper fallback image that meets LinkedIn specifications
-    let ogImage = 'https://curiosai.com/curiosai-og-image-1200x627.jpg';
+    let ogImage = 'https://curiosai.com/curiosai-og-image-1200x627.png';
     let imageWidth = '1200';
     let imageHeight = '627';
     
@@ -131,7 +131,7 @@ serve(async (req) => {
   <meta property="og:description" content="${safeDescription}" />
   <meta property="og:image" content="${ogImage}" />
   <meta property="og:image:secure_url" content="${ogImage}" />
-  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:type" content="image/png" />
   <meta property="og:image:alt" content="CuriosAI preview image for: ${safeTitle}" />
   <meta property="og:image:width" content="${imageWidth}" />
   <meta property="og:image:height" content="${imageHeight}" />
