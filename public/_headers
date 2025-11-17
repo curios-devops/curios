@@ -1,0 +1,4 @@
+/functions/v1/social-share
+  Content-Type: text/html; charset=utf-8
+/functions/v1/social-share/*
+  Content-Type: text/html; charset=utf-8
