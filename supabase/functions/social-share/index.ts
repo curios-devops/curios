@@ -94,14 +94,19 @@ serve(async (req) => {
     // Use curiosai.com for all URLs (LinkedIn trusts this domain)
     const baseUrl = 'https://curiosai.com';
 
-    // LinkedIn requires PNG/JPG images, not SVG
+    // LinkedIn requires PNG/JPG images with correct dimensions
     // If image is provided from search results, use it; otherwise use fallback
-    // Ensure image URLs are absolute and accessible
-    let ogImage = 'https://curiosai.com/compass.svg'; // Default fallback
+    let ogImage = 'https://curiosai.com/iphone17.jpg';
+    let imageWidth = '620';
+    let imageHeight = '680';
     
-    if (image) {
-      // Use provided image if it's a valid URL
+    if (image && image !== 'https://curiosai.com/iphone17.jpg') {
+      // Use provided image only if it's NOT the fallback image
       ogImage = image;
+      // For user-provided images, assume standard LinkedIn dimensions
+      // (In production, you'd want to fetch actual dimensions)
+      imageWidth = '1200';
+      imageHeight = '627';
     }
 
     // Generate share URL (canonical for crawlers) - use curiosai.com domain
@@ -128,8 +133,8 @@ serve(async (req) => {
   <meta property="og:image:secure_url" content="${ogImage}" />
   <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:alt" content="CuriosAI preview image for: ${safeTitle}" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="627" />
+  <meta property="og:image:width" content="${imageWidth}" />
+  <meta property="og:image:height" content="${imageHeight}" />
   <meta property="og:url" content="${shareUrl}" />
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="CuriosAI" />
