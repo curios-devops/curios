@@ -92,10 +92,9 @@ serve(async (req) => {
     // Use the actual Supabase project URL for consistent sharing
     const supabaseUrl = 'https://gpfccicfqynahflehpqo.supabase.co';
 
-    // LinkedIn doesn't support SVG, so use provided image or a static fallback
-    // If no image provided, use a static PNG (you should upload one to your public folder)
-    const ogImage = image || 'https://curiosai.com/compass.svg'; // Temporary: use your logo
-    // TODO: Create a proper 1200x627 PNG image for default sharing
+    // LinkedIn doesn't support SVG, use provided image or fallback JPG/PNG
+    // Using a temporary fallback - create a proper 1200x627 social-card.png later
+    const ogImage = image || 'https://curiosai.com/iphone17.jpg';
 
     // Generate share URL (canonical for crawlers)
     const shareUrl = `${supabaseUrl}/functions/v1/social-share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
