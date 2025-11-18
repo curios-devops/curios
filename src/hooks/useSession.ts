@@ -27,15 +27,33 @@ export function useSession() {
         // If there's an auth error (like invalid refresh token), clear the session
         if (error) {
           console.warn('Auth error during session fetch, clearing session:', error.message);
-          // Sign out to clear invalid tokens
+          // Sign out to clear invalid tokens - force clear storage
           await supabase.auth.signOut({ scope: 'local' });
           setSession(null);
+        } else if (session) {
+          // Validate the session by checking if token is still valid
+          try {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) {
+              console.warn('Session token invalid, clearing:', userError?.message);
+              await supabase.auth.signOut({ scope: 'local' });
+              setSession(null);
+            } else {
+              await ensureProfileAndSetSession(session);
+            }
+          } catch (e) {
+            console.error('Error validating session:', e);
+            await supabase.auth.signOut({ scope: 'local' });
+            setSession(null);
+          }
         } else {
-          await ensureProfileAndSetSession(session);
+          // No session
+          setSession(null);
         }
       } catch (error) {
         console.error("Error fetching session:", error);
         // Clear any stale session on error
+        await supabase.auth.signOut({ scope: 'local' });
         setSession(null);
       } finally {
         setIsLoading(false);
@@ -48,13 +66,28 @@ export function useSession() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session ? 'User signed in' : 'User signed out');
       
-      // Handle token refresh errors
+      // Handle various auth error events
       if (event === 'TOKEN_REFRESHED' && !session) {
         console.warn('Token refresh failed, signing out locally');
         await supabase.auth.signOut({ scope: 'local' });
+        setSession(null);
+        setIsLoading(false);
+        return;
       }
       
-      await ensureProfileAndSetSession(session);
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      // For signed in or token refreshed with valid session
+      if (session) {
+        await ensureProfileAndSetSession(session);
+      } else {
+        setSession(null);
+      }
+      
       setIsLoading(false);
     });
 

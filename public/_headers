@@ -1,3 +1,18 @@
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Cache JavaScript and CSS for 1 hour (helps with development)
+/*.js
+  Cache-Control: public, max-age=3600
+/*.css
+  Cache-Control: public, max-age=3600
+
+# Don't cache HTML (always get fresh content)
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
 /functions/v1/social-share
   Content-Type: text/html; charset=utf-8
 /functions/v1/social-share/*
