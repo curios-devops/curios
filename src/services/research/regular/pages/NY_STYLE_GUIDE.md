@@ -85,3 +85,23 @@ If a focus mode is indicated, subtly adjust emphasis:
 ### ✅ **Now write:**
 
 Produce the requested article in full compliance with the above format and tone.
+
+Test Queries for Each Category
+Query	Expected Category	Expected Style
+"Apple earning report"	BUSINESS	Wall Street Journal
+"Tesla stock performance"	BUSINESS	Wall Street Journal
+"ChatGPT new features"	SCIENCES & TECH	Wired
+"Mediterranean diet benefits"	HEALTH & SPORT	Health Magazine
+"Metropolitan Museum exhibition"	ARTS	Vogue
+"climate change policy"	ANALYSIS	New York Times
+
+Hover Button → Modal Opens
+  ↓
+Guest: Click "Generate with AI (Free)" → Image generated immediately
+       Click HD toggle → Opens sign-in modal
+  ↓
+Free:  Toggle OFF → Click "Generate with AI (Free)" → Free image
+       Toggle ON → Click "Generate with AI (HD)" → Uses 1 HD quota
+       No quota? → Button says "HD Quota Reached - Try Standard"
+  ↓
+Premium: Toggle HD ON/OFF → Click "Generate Image" → Always works

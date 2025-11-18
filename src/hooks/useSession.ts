@@ -1,12 +1,24 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.ts";
 import { Session } from "@supabase/supabase-js";
+import { ensureProfileExists } from "../lib/ensureProfile.ts";
 
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const ensureProfileAndSetSession = async (nextSession: Session | null) => {
+      if (nextSession?.user) {
+        try {
+          await ensureProfileExists(nextSession.user);
+        } catch (error) {
+          console.warn('Failed to ensure profile exists:', error);
+        }
+      }
+      setSession(nextSession);
+    };
+
     // Fetch initial session
     const fetchSession = async () => {
       try {
@@ -19,7 +31,7 @@ export function useSession() {
           await supabase.auth.signOut({ scope: 'local' });
           setSession(null);
         } else {
-          setSession(session);
+          await ensureProfileAndSetSession(session);
         }
       } catch (error) {
         console.error("Error fetching session:", error);
@@ -42,7 +54,7 @@ export function useSession() {
         await supabase.auth.signOut({ scope: 'local' });
       }
       
-      setSession(session);
+      await ensureProfileAndSetSession(session);
       setIsLoading(false);
     });
 

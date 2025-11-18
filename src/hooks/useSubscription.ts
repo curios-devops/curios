@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.ts';
+import { ensureProfileExists } from '../lib/ensureProfile.ts';
 import { useSession } from './useSession.ts';
 
 export interface Subscription {
@@ -24,6 +25,7 @@ export function useSubscription() {
 
     const fetchSubscription = async () => {
       try {
+        await ensureProfileExists(session.user);
         const { data, error: supabaseError } = await supabase
           .from('profiles')
           .select('subscription_status, subscription_period_end')
