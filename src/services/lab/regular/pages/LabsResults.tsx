@@ -91,15 +91,15 @@ export default function LabsResults() {
   return (
     <div className="min-h-screen bg-black text-white transition-colors duration-200">
       {/* Query as Title with Back and Share */}
-      <header className="px-12 pt-8 pb-2 flex items-center justify-between">
-        <button type="button" onClick={handleBack} className="text-blue-400 hover:text-blue-300 transition-colors mr-4">
+      <header className="px-12 pt-8 pb-2 flex items-center justify-between overflow-x-auto scrollbar-hide">
+        <button type="button" onClick={handleBack} className="text-blue-400 hover:text-blue-300 transition-colors mr-4 flex-shrink-0">
           <ArrowLeft className="w-7 h-7" />
         </button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold mb-2 text-left">{searchParams.get('q') || 'Labs'}</h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold mb-2 text-left whitespace-nowrap">{searchParams.get('q') || 'Labs'}</h1>
           <hr className="border-gray-700 mb-2" />
         </div>
-        <div className="ml-4">
+        <div className="ml-4 flex-shrink-0">
           <ShareMenu
             url={globalThis.location.href}
             title={`CuriosAI Labs: ${searchParams.get('q') || ''}`}

@@ -37,14 +37,14 @@ export default function TopBar({
       {/* Top row with back arrow, query title and time */}
       <div className="px-4 sm:px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 mr-2">
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 mr-2 overflow-x-auto scrollbar-hide">
             <button 
               onClick={() => navigate('/')}
               className="text-[#0095FF] hover:text-[#0080FF] transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex-shrink-0"
             >
               <ArrowLeft size={20} />
             </button>
-            <h1 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white truncate">{query}</h1>
+            <h1 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white whitespace-nowrap">{query}</h1>
             <div className="hidden sm:flex items-center gap-1.5 text-gray-500 dark:text-gray-400 flex-shrink-0">
               <Clock size={14} />
               <span className="text-xs">{timeAgo}</span>

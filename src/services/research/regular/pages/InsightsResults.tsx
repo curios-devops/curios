@@ -135,18 +135,18 @@ export default function InsightsResults() {
 
   return (
     <div className="insights-result-page min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e0e7ef] dark:from-[#111111] dark:to-black text-gray-900 dark:text-white transition-colors duration-200">
-      <header className="flex items-center gap-4 px-6 py-6">
+      <header className="flex items-center gap-4 px-6 py-6 overflow-x-auto scrollbar-hide">
         <button 
           type="button"
           onClick={() => navigate('/')}
           style={{ color: accent.primary }}
-          className="hover:opacity-80 transition-opacity"
+          className="hover:opacity-80 transition-opacity flex-shrink-0"
         >
           <ArrowLeft size={20} />
         </button>
-        <div className="flex items-center gap-4 flex-1">
-          <h1 className="text-2xl font-medium">{query}</h1>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <h1 className="text-2xl font-medium whitespace-nowrap">{query}</h1>
+          <div className="flex items-center gap-2 flex-shrink-0">
             {/* Insight Phase Indicator */}
             {progressState.insightPhase && showPhaseIndicator && (
               <div 

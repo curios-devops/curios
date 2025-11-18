@@ -118,17 +118,17 @@ export default function ResearcherResults() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e0e7ef] dark:from-[#111111] dark:to-black text-gray-900 dark:text-white transition-colors duration-200">
-      <header className="flex items-center gap-4 px-6 py-6">
+      <header className="flex items-center gap-4 px-6 py-6 overflow-x-auto scrollbar-hide">
         <button 
           type="button"
           onClick={() => navigate('/')} 
-          className="text-[#0095FF] hover:text-[#0080FF] transition-colors"
+          className="text-[#0095FF] hover:text-[#0080FF] transition-colors flex-shrink-0"
         >
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-medium">{query}</h1>
-          <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-medium whitespace-nowrap">{query}</h1>
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-[#1a1a1a] dark:to-[#1a1a1a] px-2 py-0.5 rounded-full">
               <Brain className="text-[#0095FF]" size={14} />
               <span className="text-[#0095FF] text-sm font-medium">Researcher</span>

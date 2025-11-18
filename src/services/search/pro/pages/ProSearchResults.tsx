@@ -348,15 +348,15 @@ export default function ProSearchResults() {
         {/* Top row with back arrow, query title and time */}
         <div className="px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-1 min-w-0 mr-2 overflow-x-auto scrollbar-hide">
               <button 
                 onClick={() => globalThis.window?.history.back()}
-                className="text-[#0095FF] hover:text-[#0080FF] transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="text-[#0095FF] hover:text-[#0080FF] transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex-shrink-0"
               >
                 <ArrowLeft size={20} />
               </button>
-              <h1 className="text-xl font-medium text-gray-900 dark:text-white">{query}</h1>
-              <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+              <h1 className="text-xl font-medium text-gray-900 dark:text-white whitespace-nowrap">{query}</h1>
+              <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 flex-shrink-0">
                 <Clock size={14} />
                 <span className="text-xs">{timeAgo}</span>
               </div>
