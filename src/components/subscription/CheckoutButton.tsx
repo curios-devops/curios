@@ -21,14 +21,19 @@ export default function CheckoutButton({
   className = '',
   children
 }: CheckoutButtonProps) {
-  const { session } = useSession();
+  const { session, error: sessionError, resetSession, isResetting } = useSession();
   const [internalLoading, setInternalLoading] = useState(false);
-  const loading = externalLoading || internalLoading;
+  const loading = externalLoading || internalLoading || isResetting;
 
   const handleClick = async () => {
     try {
       setInternalLoading(true);
       
+      if (sessionError) {
+        await resetSession();
+        throw new Error('Refreshing your session. Please try again.');
+      }
+
       if (!session?.user) {
         throw new Error('You must be logged in to subscribe');
       }
@@ -63,7 +68,7 @@ export default function CheckoutButton({
   return (
     <button
       onClick={handleClick}
-      disabled={disabled || loading}
+  disabled={disabled || loading || isResetting}
       className={`
         w-full py-3 rounded-lg transition-colors flex items-center justify-center gap-2
         ${loading 
