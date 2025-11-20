@@ -91,11 +91,48 @@ export function ensureProfileExists(user: User | null | undefined): Promise<void
 
   const ensurePromise = (async () => {
     try {
+      // Try to select with new columns, but gracefully handle if they don't exist yet
       const { data, error } = await supabase
         .from('profiles')
         .select('id, email, display_name, avatar_url, auth_provider, last_sign_in_provider')
         .eq('id', user.id)
         .maybeSingle();
+
+      // If column doesn't exist (42703), fall back to basic profile check
+      if (error && error.code === '42703') {
+        logger.warn('Profile columns not yet migrated, using basic profile check');
+        const { data: basicData, error: basicError } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (basicError && basicError.code !== 'PGRST116') {
+          throw basicError;
+        }
+
+        // If no profile exists, create basic one
+        if (!basicData) {
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: extractEmail(user),
+              subscription_status: 'inactive',
+              remaining_searches: 5,
+              searches_reset_at: new Date().toISOString(),
+              language: 'en',
+              accent_color: 'blue',
+            })
+            .select('id')
+            .single();
+
+          if (insertError && insertError.code !== '23505') {
+            throw insertError;
+          }
+        }
+        return; // Exit early, migration needed
+      }
 
       if (error && error.code !== 'PGRST116') {
         throw error;
