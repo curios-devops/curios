@@ -349,12 +349,6 @@ export default function FunctionTooltip({
             </p>
           </div>
 
-          {/* Upgrade CTA */}
-          <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-            <h4 className="text-sm font-medium text-orange-600 mb-1">🚀 {t('upgradeToPremium')}</h4>
-            <p className="text-xs text-gray-600 dark:text-gray-400">{t('unlockPremiumFeatures')}</p>
-          </div>
-
           {/* Action Button */}
           <button
             onClick={onUpgrade}

@@ -127,7 +127,13 @@ export default function SearchBox() {
                   setShowProTooltip(false);
                   setShowProModal(true);
                 }}
+                onSignIn={() => {
+                  setShowProTooltip(false);
+                  setShowProModal(true);
+                }}
                 onClose={() => setShowProTooltip(false)}
+                isLoggedIn={!!session}
+                subscription={subscription}
               />
             )}
           </div>
