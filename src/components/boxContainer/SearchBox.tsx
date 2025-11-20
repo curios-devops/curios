@@ -35,6 +35,14 @@ export default function SearchBox() {
   const { subscription } = useSubscription();
   const { remainingSearches, hasSearchesLeft, decrementSearches } = useSearchLimit();
 
+  // Debug session state
+  console.log('SearchBox - session:', session ? 'LOGGED IN' : 'NOT LOGGED IN', {
+    hasSession: !!session,
+    userId: session?.user?.id,
+    email: session?.user?.email,
+    subscription: subscription,
+  });
+
   const handleSearch = async () => {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) return;
@@ -124,10 +132,12 @@ export default function SearchBox() {
                 remainingSearches={remainingSearches}
                 maxSearches={subscription?.isPro ? 500 : 5}
                 onUpgrade={() => {
+                  console.log('ProTooltip onUpgrade clicked - opening ProModal');
                   setShowProTooltip(false);
                   setShowProModal(true);
                 }}
                 onSignIn={() => {
+                  console.log('ProTooltip onSignIn clicked - opening ProModal');
                   setShowProTooltip(false);
                   setShowProModal(true);
                 }}

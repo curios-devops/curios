@@ -331,20 +331,20 @@ export default function FunctionTooltip({
           </div>
 
           {/* Usage Stats - Free users have 5 daily Pro uses */}
-          <div className="mb-4 p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
-              <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('dailyProQuota')}</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
+          <div className="mb-3 p-2.5 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
+              <div className="flex justify-between items-center mb-1.5">
+              <span className="text-xs text-gray-600 dark:text-gray-400">{t('dailyProQuota')}</span>
+              <span className="text-xs font-medium text-gray-900 dark:text-white">
                 {remainingQuota}/5
               </span>
             </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
               <div
-                className="h-2 rounded-full transition-all duration-300"
+                className="h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${(remainingQuota / 5) * 100}%`, backgroundColor: accentColor.primary }}
               />
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+            <p className="text-[10px] leading-tight text-gray-500 dark:text-gray-500 mt-1.5">
               {t('proQuotaNote')}
             </p>
           </div>

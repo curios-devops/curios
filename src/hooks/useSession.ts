@@ -55,12 +55,28 @@ export function useSession() {
           // Validate the session by checking if token is still valid
           try {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
-            if (userError || !user) {
+            
+            // Ignore time skew warnings - these are client-side clock issues, not auth failures
+            const isTimeSkewError = userError?.message?.includes('issued in the future') || 
+                                   userError?.message?.includes('Check the device clock');
+            
+            if (userError && !isTimeSkewError) {
               console.warn('Session token invalid, clearing:', userError?.message);
               await clearLocalSession('We could not refresh your session. Please sign in again.');
               return;
             }
-            await ensureProfileAndSetSession(session);
+            
+            if (isTimeSkewError) {
+              console.warn('Time skew detected but continuing with session:', userError?.message);
+            }
+            
+            // If we have a user (even with time skew warning), the session is valid
+            if (user || isTimeSkewError) {
+              await ensureProfileAndSetSession(session);
+            } else {
+              console.warn('No user returned from getUser, clearing session');
+              await clearLocalSession('We could not refresh your session. Please sign in again.');
+            }
           } catch (validationError) {
             console.error('Error validating session:', validationError);
             await clearLocalSession('Session validation failed. Please sign in again.');
