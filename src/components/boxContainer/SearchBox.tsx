@@ -133,7 +133,7 @@ export default function SearchBox() {
                 }}
                 onClose={() => setShowProTooltip(false)}
                 isLoggedIn={!!session}
-                subscription={subscription}
+                subscription={subscription ?? undefined}
               />
             )}
           </div>
