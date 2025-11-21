@@ -56,6 +56,14 @@ export function useSubscription() {
           isActive,
           isPro: isActive,
         });
+
+        // Debug: Log subscription state
+        console.log('useSubscription - fetched:', {
+          userId: session?.user?.id,
+          status: data.subscription_status,
+          isActive,
+          isPro: isActive,
+        });
       } catch (error) {
         console.error('Error fetching subscription:', error);
         setError(error instanceof Error ? error.message : 'Failed to fetch subscription');

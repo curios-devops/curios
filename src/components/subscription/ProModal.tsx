@@ -15,6 +15,14 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
   const [selectedInterval, setSelectedInterval] = useState<'month' | 'year'>('month');
   const [error, setError] = useState<string | null>(null);
 
+  // Debug: Log modal state
+  console.log('ProModal state:', {
+    isOpen,
+    hasSession: !!session,
+    userId: session?.user?.id,
+    email: session?.user?.email,
+  });
+
   if (!isOpen) return null;
 
   return (

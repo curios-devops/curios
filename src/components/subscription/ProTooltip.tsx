@@ -27,6 +27,14 @@ export default function ProTooltip({
   const safeRemainingSearches = remainingSearches ?? 0;
   const percentage = (safeRemainingSearches / maxSearches) * 100;
 
+  // Debug: Log which view will be rendered
+  console.log('ProTooltip rendering:', {
+    isLoggedIn,
+    hasSubscription: !!subscription,
+    isActive: subscription?.isActive,
+    viewType: !isLoggedIn ? 'GUEST' : subscription?.isActive ? 'PREMIUM' : 'STANDARD (FREE TIER)'
+  });
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
