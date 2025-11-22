@@ -9,7 +9,6 @@ interface ProTooltipProps {
   onClose?: () => void;
   isLoggedIn?: boolean;
   subscription?: { isActive: boolean };
-  _alwaysShowUpgrade?: boolean; // Add _alwaysShowUpgrade property (prefixed to indicate unused)
 }
 // Remove the duplicate export interface line
 
@@ -21,7 +20,6 @@ export default function ProTooltip({
   onClose,
   isLoggedIn = false,
   subscription,
-  _alwaysShowUpgrade = false
 }: ProTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const safeRemainingSearches = remainingSearches ?? 0;

@@ -265,26 +265,26 @@ export default function FunctionTooltip({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <config.icon size={18} style={{ color: accentColor.primary }} />
-              <h3 className="text-gray-900 dark:text-white font-medium">{title}</h3>
+              <h3 className="text-gray-900 dark:text-white font-medium text-sm">{title}</h3>
               {config.badge && (
                 <span className="text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-medium">
                   {config.badge}
                 </span>
               )}
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg">
               ×
             </button>
           </div>
 
           {/* Description */}
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{description}</p>
+          <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-3">{description}</p>
 
           {/* Pro Toggle */}
-          <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
+          <div className="flex items-center justify-between mb-3 p-2.5 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
             <div className="flex items-center gap-2">
-              <Sparkles size={16} style={{ color: accentColor.primary }} />
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{t('proMode')}</span>
+              <Sparkles size={14} style={{ color: accentColor.primary }} />
+              <span className="text-[10px] font-medium text-gray-900 dark:text-white">{t('proMode')}</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -293,36 +293,36 @@ export default function FunctionTooltip({
                 checked={isProEnabled}
                 onChange={handleProToggle}
               />
-              <div className={`w-11 h-6 rounded-full transition-colors ${
+              <div className={`w-8 h-4 rounded-full transition-colors ${
                 isProEnabled ? '' : 'bg-gray-200 dark:bg-gray-600'
               }`} style={isProEnabled ? { backgroundColor: accentColor.primary } : undefined}>
-                <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
-                  isProEnabled ? 'translate-x-5' : 'translate-x-0'
+                <div className={`w-3 h-3 bg-white rounded-full shadow transform transition-transform ${
+                  isProEnabled ? 'translate-x-4' : 'translate-x-0'
                 } mt-0.5 ml-0.5`}></div>
               </div>
             </label>
           </div>
 
           {/* Features */}
-          <div className="mb-4">
+          <div className="mb-2.5">
             {isProEnabled ? (
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h4 className="text-sm font-medium mb-2" style={{ color: accentColor.primary }}>{proTitle}</h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">{proDescription}</p>
+              <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h4 className="text-[10px] font-medium mb-1.5" style={{ color: accentColor.primary }}>{proTitle}</h4>
+                <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-2">{proDescription}</p>
                 <ul className="space-y-1">
                   {proFeatures.map((feature, index) => (
-                    <li key={index} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                      <Check size={12} style={{ color: accentColor.primary }} />
+                    <li key={index} className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-400">
+                      <Check size={10} style={{ color: accentColor.primary }} />
                       <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-1.5">
                 {features.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <Check size={14} className="text-green-500" />
+                  <li key={index} className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-400">
+                    <Check size={10} className="text-green-500" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -352,7 +352,7 @@ export default function FunctionTooltip({
           {/* Action Button */}
           <button
             onClick={onUpgrade}
-            className="w-full text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium"
+            className="w-full text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
             style={{ backgroundColor: accentColor.primary }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accentColor.hover}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor.primary}
