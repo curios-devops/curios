@@ -72,25 +72,6 @@ export default function FunctionSelector({
   const { remainingQuota } = useProQuota();
   const accentColor = useAccentColor();
 
-  // Determine user type
-  const getUserType = (): UserType => {
-    if (!session) return 'guest';
-    return subscription?.isActive ? 'premium' : 'free';
-  };
-
-  const activeTab = getTabFromFunction(selectedFunction);
-  const userType = getUserType();
-
-  // Enhanced debug logging
-  console.log('FunctionSelector - User State:', {
-    sessionLoading,
-    subscriptionLoading,
-    hasSession: !!session,
-    userType,
-    showTooltip,
-    hoveredTab
-  });
-
   // Convert FunctionType to TabType
   const getTabFromFunction = (functionType: FunctionType): TabType => {
     switch (functionType) {
@@ -123,6 +104,28 @@ export default function FunctionSelector({
       return tab;
     }
   };
+
+  // Determine user type from current session/subscription state
+  const getUserType = (): UserType => {
+    if (!session) return 'guest';
+    return subscription?.isActive ? 'premium' : 'free';
+  };
+
+  // Compute derived values (safe after hooks are called)
+  const activeTab = getTabFromFunction(selectedFunction);
+  const userType = getUserType();
+
+  // Enhanced debug logging
+  useEffect(() => {
+    console.log('FunctionSelector - User State:', {
+      sessionLoading,
+      subscriptionLoading,
+      hasSession: !!session,
+      userType,
+      showTooltip,
+      hoveredTab
+    });
+  }, [sessionLoading, subscriptionLoading, session, userType, showTooltip, hoveredTab]);
 
   // Determine if pro is enabled based on selected function
   useEffect(() => {
