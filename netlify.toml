@@ -1,4 +1,4 @@
-# Netlify Configuration
+# Netlify Configuration - Force Deploy v2
 [build]
   publish = "dist"
   command = "npm run build"
