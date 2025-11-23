@@ -193,6 +193,10 @@ export default function ThreeSelector() {
               console.log('ThreeSelector - Opening ProModal from FunctionSelector upgrade');
               setShowProModal(true);
             }}
+            onProModalOpen={() => {
+              console.log('ThreeSelector - onProModalOpen direct callback');
+              setShowProModal(true);
+            }}
             className="min-w-0" // Allow shrinking
           />
 

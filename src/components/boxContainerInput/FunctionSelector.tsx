@@ -48,7 +48,8 @@ interface FunctionSelectorProps {
   selectedFunction: FunctionType;
   onFunctionSelect: (functionType: FunctionType) => void;
   onSignUpRequired: () => void;
-  onUpgrade?: () => void; // Added: callback to open ProModal from parent
+  onUpgrade?: () => void; // Callback to open ProModal from parent
+  onProModalOpen?: () => void; // Alternative direct callback (NEW)
   className?: string;
 }
 
@@ -57,6 +58,7 @@ export default function FunctionSelector({
   onFunctionSelect,
   onSignUpRequired,
   onUpgrade,
+  onProModalOpen, // NEW alternative prop
   className = ''
 }: FunctionSelectorProps) {
   const { t } = useTranslation();
@@ -296,12 +298,18 @@ export default function FunctionSelector({
             onUpgrade={() => {
               console.log('FunctionTooltip onUpgrade clicked - calling parent handler');
               console.log('onUpgrade prop exists?', typeof onUpgrade, onUpgrade);
+              console.log('onProModalOpen prop exists?', typeof onProModalOpen, onProModalOpen);
               handleTooltipClose();
+              
+              // Try both callback methods
               if (onUpgrade) {
                 console.log('Calling onUpgrade...');
                 onUpgrade();
+              } else if (onProModalOpen) {
+                console.log('Calling onProModalOpen...');
+                onProModalOpen();
               } else {
-                console.error('ERROR: onUpgrade is undefined! Not passed from ThreeSelector');
+                console.error('ERROR: No upgrade callback provided!');
               }
             }}
             onSignIn={onSignUpRequired}
