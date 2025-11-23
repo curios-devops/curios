@@ -189,6 +189,10 @@ export default function ThreeSelector() {
             selectedFunction={selectedFunction}
             onFunctionSelect={handleFunctionSelect}
             onSignUpRequired={handleSignUpRequired}
+            onUpgrade={() => {
+              console.log('ThreeSelector - Opening ProModal from FunctionSelector upgrade');
+              setShowProModal(true);
+            }}
             className="min-w-0" // Allow shrinking
           />
 

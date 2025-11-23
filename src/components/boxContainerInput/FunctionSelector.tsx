@@ -48,6 +48,7 @@ interface FunctionSelectorProps {
   selectedFunction: FunctionType;
   onFunctionSelect: (functionType: FunctionType) => void;
   onSignUpRequired: () => void;
+  onUpgrade?: () => void; // Added: callback to open ProModal from parent
   className?: string;
 }
 
@@ -55,6 +56,7 @@ export default function FunctionSelector({
   selectedFunction,
   onFunctionSelect,
   onSignUpRequired,
+  onUpgrade,
   className = ''
 }: FunctionSelectorProps) {
   const { t } = useTranslation();
@@ -65,8 +67,8 @@ export default function FunctionSelector({
   const [isTooltipHovered, setIsTooltipHovered] = useState(false);
   const [hoveredTabIndex, setHoveredTabIndex] = useState<number>(0);
 
-  const { session } = useSession();
-  const { subscription } = useSubscription();
+  const { session, isLoading: sessionLoading } = useSession();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const { remainingQuota } = useProQuota();
   const accentColor = useAccentColor();
 
@@ -75,6 +77,19 @@ export default function FunctionSelector({
     if (!session) return 'guest';
     return subscription?.isActive ? 'premium' : 'free';
   };
+
+  const activeTab = getTabFromFunction(selectedFunction);
+  const userType = getUserType();
+
+  // Enhanced debug logging
+  console.log('FunctionSelector - User State:', {
+    sessionLoading,
+    subscriptionLoading,
+    hasSession: !!session,
+    userType,
+    showTooltip,
+    hoveredTab
+  });
 
   // Convert FunctionType to TabType
   const getTabFromFunction = (functionType: FunctionType): TabType => {
@@ -108,9 +123,6 @@ export default function FunctionSelector({
       return tab;
     }
   };
-
-  const activeTab = getTabFromFunction(selectedFunction);
-  const userType = getUserType();
 
   // Determine if pro is enabled based on selected function
   useEffect(() => {
@@ -262,8 +274,8 @@ export default function FunctionSelector({
         })}
       </div>
 
-      {/* Tooltip for guest and standard users */}
-      {showTooltip && hoveredTab && userType !== 'premium' && (
+      {/* Tooltip for guest and standard users - only show when data is loaded */}
+      {showTooltip && hoveredTab && userType !== 'premium' && !sessionLoading && !subscriptionLoading && (
         <div 
           className="absolute z-50"
           style={{
@@ -279,8 +291,9 @@ export default function FunctionSelector({
             userType={userType}
             remainingQuota={remainingQuota}
             onUpgrade={() => {
+              console.log('FunctionTooltip onUpgrade clicked - calling parent handler');
               handleTooltipClose();
-              // This will be handled by parent component
+              onUpgrade?.(); // Call parent's ProModal opener
             }}
             onSignIn={onSignUpRequired}
             onClose={handleTooltipClose}
