@@ -344,9 +344,6 @@ export default function FunctionTooltip({
                 style={{ width: `${(remainingQuota / 5) * 100}%`, backgroundColor: accentColor.primary }}
               />
             </div>
-            <p className="text-[10px] leading-tight text-gray-500 dark:text-gray-500 mt-1.5">
-              {t('proQuotaNote')}
-            </p>
           </div>
 
           {/* Action Button */}
