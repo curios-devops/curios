@@ -249,114 +249,77 @@ export default function FunctionTooltip({
   }
 
   if (userType === 'free') {
-    // Free user UI - with Pro quota and upgrade prompts
+    // Free user UI - MATCHES Guest design but with quota bar and upgrade button
     return (
       <div
         ref={tooltipRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="absolute left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
+        className="absolute top-full left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
       >
-        {/* Arrow pointing up - aligned differently on mobile vs desktop */}
-        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
-        
-        <div className="relative">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <config.icon size={18} style={{ color: accentColor.primary }} />
-              <h3 className="text-gray-900 dark:text-white font-medium text-sm">{title}</h3>
-              {config.badge && (
-                <span className="text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-medium">
-                  {config.badge}
-                </span>
-              )}
-            </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg">
-              ×
-            </button>
-          </div>
-
-          {/* Description */}
-          <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-3">{description}</p>
-
-          {/* Pro Toggle */}
-          <div className="flex items-center justify-between mb-3 p-2.5 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
-            <div className="flex items-center gap-2">
-              <Sparkles size={14} style={{ color: accentColor.primary }} />
-              <span className="text-[10px] font-medium text-gray-900 dark:text-white">{t('proMode')}</span>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only"
-                checked={isProEnabled}
-                onChange={handleProToggle}
-              />
-              <div className={`w-8 h-4 rounded-full transition-colors ${
-                isProEnabled ? '' : 'bg-gray-200 dark:bg-gray-600'
-              }`} style={isProEnabled ? { backgroundColor: accentColor.primary } : undefined}>
-                <div className={`w-3 h-3 bg-white rounded-full shadow transform transition-transform ${
-                  isProEnabled ? 'translate-x-4' : 'translate-x-0'
-                } mt-0.5 ml-0.5`}></div>
-              </div>
-            </label>
-          </div>
-
-          {/* Features */}
-          <div className="mb-2.5">
-            {isProEnabled ? (
-              <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h4 className="text-[10px] font-medium mb-1.5" style={{ color: accentColor.primary }}>{proTitle}</h4>
-                <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-2">{proDescription}</p>
-                <ul className="space-y-1">
-                  {proFeatures.map((feature, index) => (
-                    <li key={index} className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-400">
-                      <Check size={10} style={{ color: accentColor.primary }} />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <ul className="space-y-1.5">
-                {features.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-400">
-                    <Check size={10} className="text-green-500" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
+        {/* Header */}
+        <div className="text-left mb-2.5">
+            <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-xs font-medium text-gray-900 dark:text-white">{title}</h3>
+            {config.badge && (
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
+                {config.badge}
+              </span>
             )}
           </div>
-
-          {/* Usage Stats - Free users have 5 daily Pro uses */}
-          <div className="mb-3 p-2.5 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
-              <div className="flex justify-between items-center mb-1.5">
-              <span className="text-xs text-gray-600 dark:text-gray-400">{t('dailyProQuota')}</span>
-              <span className="text-xs font-medium text-gray-900 dark:text-white">
-                {remainingQuota}/5
+          <p className="text-gray-600 dark:text-gray-400 text-[10px]">{description}</p>
+        </div>
+        
+        {/* Divider */}
+        <div className="border-t border-gray-200 dark:border-gray-700 my-2.5"></div>
+        
+        {/* Pro Toggle Section */}
+        <div className="mb-2.5">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-2">
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
+                {t('pro')}
               </span>
+              <span className="text-[10px] font-bold" style={{ color: accentColor.primary }}>{proTitle}</span>
             </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-              <div
-                className="h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${(remainingQuota / 5) * 100}%`, backgroundColor: accentColor.primary }}
-              />
+            {/* Non-interactive Toggle Switch for Free users (just visual) */}
+            <div className="relative w-8 h-4 rounded-full bg-gray-300 dark:bg-gray-600">
+              <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full"></div>
             </div>
           </div>
-
-          {/* Action Button */}
-          <button
-            onClick={onUpgrade}
-            className="w-full text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
-            style={{ backgroundColor: accentColor.primary }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accentColor.hover}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor.primary}
-          >
-            {t('upgradeToPremium')}
-          </button>
+          <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">{proDescription}</p>
         </div>
+
+        {/* Daily Pro Quota - NEW for free users */}
+        <div className="mb-2.5 p-2 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[10px] text-gray-600 dark:text-gray-400">{t('dailyProQuota')}</span>
+            <span className="text-[10px] font-medium text-gray-900 dark:text-white">
+              {remainingQuota}/5
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+            <div
+              className="h-1 rounded-full transition-all duration-300"
+              style={{ width: `${(remainingQuota / 5) * 100}%`, backgroundColor: accentColor.primary }}
+            />
+          </div>
+        </div>
+
+        {/* Upgrade Button - replaces Sign In button */}
+        <button
+          type="button"
+          onClick={onUpgrade}
+          className="w-full text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
+          style={{ backgroundColor: accentColor.primary }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accentColor.hover}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor.primary}
+        >
+          {t('upgradeToPremium')}
+        </button>
+        
+        {/* Arrow pointer - aligned differently on mobile vs desktop */}
+        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
       </div>
     );
   }
