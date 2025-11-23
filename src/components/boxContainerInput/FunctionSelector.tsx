@@ -295,8 +295,14 @@ export default function FunctionSelector({
             remainingQuota={remainingQuota}
             onUpgrade={() => {
               console.log('FunctionTooltip onUpgrade clicked - calling parent handler');
+              console.log('onUpgrade prop exists?', typeof onUpgrade, onUpgrade);
               handleTooltipClose();
-              onUpgrade?.(); // Call parent's ProModal opener
+              if (onUpgrade) {
+                console.log('Calling onUpgrade...');
+                onUpgrade();
+              } else {
+                console.error('ERROR: onUpgrade is undefined! Not passed from ThreeSelector');
+              }
             }}
             onSignIn={onSignUpRequired}
             onClose={handleTooltipClose}
