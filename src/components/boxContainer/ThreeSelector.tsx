@@ -184,25 +184,9 @@ export default function ThreeSelector() {
 
         {/* Button bar - inside the unified container */}
         <div className="flex items-center justify-between px-4 py-1.5">
-          {/* Left side: ThreeSelector (Function Selector) - FORCE REBUILD */}
-          <FunctionSelector
-            selectedFunction={selectedFunction}
-            onFunctionSelect={handleFunctionSelect}
-            onSignUpRequired={handleSignUpRequired}
-            onUpgrade={() => {
-              console.log('ThreeSelector - Opening ProModal from FunctionSelector upgrade');
-              setShowProModal(true);
-            }}
-            onProModalOpen={() => {
-              console.log('ThreeSelector - onProModalOpen direct callback');
-              setShowProModal(true);
-            }}
-            className="min-w-0" // Allow shrinking
-          />
-
-          {/* Right side: Plus, Mic, and Search Button */}
-          <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
-            {/* Attach button with dropdown */}
+          {/* Left side: Plus button THEN ThreeSelector */}
+          <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3 min-w-0">
+            {/* Attach button with dropdown - MOVED TO LEFT */}
             <div className="relative" ref={attachMenuRef}>
               <ActionButton
                 icon={Plus}
@@ -250,7 +234,26 @@ export default function ThreeSelector() {
                 </div>
               )}
             </div>
-            
+
+            {/* Function Selector (Three Selector) */}
+            <FunctionSelector
+              selectedFunction={selectedFunction}
+              onFunctionSelect={handleFunctionSelect}
+              onSignUpRequired={handleSignUpRequired}
+              onUpgrade={() => {
+                console.log('ThreeSelector - Opening ProModal from FunctionSelector upgrade');
+                setShowProModal(true);
+              }}
+              onProModalOpen={() => {
+                console.log('ThreeSelector - onProModalOpen direct callback');
+                setShowProModal(true);
+              }}
+              className="min-w-0" // Allow shrinking
+            />
+          </div>
+
+          {/* Right side: Mic and Search Button */}
+          <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
             <ActionButton
               icon={MicIcon}
               label={t('askByVoice')}
