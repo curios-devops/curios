@@ -184,7 +184,7 @@ export default function ThreeSelector() {
 
         {/* Button bar - inside the unified container */}
         <div className="flex items-center justify-between px-4 py-1.5">
-          {/* Left side: ThreeSelector (Function Selector) */}
+          {/* Left side: ThreeSelector (Function Selector) - FORCE REBUILD */}
           <FunctionSelector
             selectedFunction={selectedFunction}
             onFunctionSelect={handleFunctionSelect}
