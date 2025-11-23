@@ -31,16 +31,24 @@ export default function SearchBox() {
   const [showProTooltip, setShowProTooltip] = useState(false);
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | number>();
   
-  const { session } = useSession();
-  const { subscription } = useSubscription();
+  const { session, isLoading: sessionLoading } = useSession();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const { remainingSearches, hasSearchesLeft, decrementSearches } = useSearchLimit();
 
+  // Determine user type using same pattern as Home.tsx
+  const isGuest = !session;
+  const isFree = session && !subscription?.isActive;
+  const isPremium = session && subscription?.isActive;
+
   // Debug session state
-  console.log('SearchBox - session:', session ? 'LOGGED IN' : 'NOT LOGGED IN', {
+  console.log('SearchBox - User State:', {
+    sessionLoading,
+    subscriptionLoading,
     hasSession: !!session,
     userId: session?.user?.id,
     email: session?.user?.email,
     subscription: subscription,
+    userType: isGuest ? 'GUEST' : isFree ? 'FREE TIER' : isPremium ? 'PREMIUM' : 'UNKNOWN',
   });
 
   const handleSearch = async () => {
@@ -127,7 +135,7 @@ export default function SearchBox() {
               onToggle={handleProToggle}
               disabled={!hasSearchesLeft}
             />
-            {showProTooltip && (
+            {showProTooltip && !sessionLoading && !subscriptionLoading && (
               <ProTooltip 
                 remainingSearches={remainingSearches}
                 maxSearches={subscription?.isPro ? 500 : 5}
