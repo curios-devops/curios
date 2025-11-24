@@ -1,5 +1,6 @@
 import { useState, ReactNode } from 'react';
 import { useSession } from '../../hooks/useSession';
+import { useAccentColor } from '../../hooks/useAccentColor';
 import { createCheckoutSession } from '../../commonApp/stripe/api';
 
 interface CheckoutButtonProps {
@@ -23,6 +24,8 @@ export default function CheckoutButton({
 }: CheckoutButtonProps) {
   const { session, error: sessionError, resetSession, isResetting } = useSession();
   const [internalLoading, setInternalLoading] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const accentColor = useAccentColor();
   const loading = externalLoading || internalLoading || isResetting;
 
   const handleClick = async () => {
@@ -68,14 +71,18 @@ export default function CheckoutButton({
   return (
     <button
       onClick={handleClick}
-  disabled={disabled || loading || isResetting}
+      disabled={disabled || loading || isResetting}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        backgroundColor: loading || disabled 
+          ? `${accentColor.primary}80` // 50% opacity
+          : isHovered ? accentColor.hover : accentColor.primary
+      }}
       className={`
         w-full py-3 rounded-lg transition-colors flex items-center justify-center gap-2
-        ${loading 
-          ? 'bg-[#007BFF]/50 cursor-not-allowed' 
-          : 'bg-[#007BFF] hover:bg-[#0056b3]'
-        }
         text-white
+        ${loading ? 'cursor-not-allowed' : ''}
         ${className}
       `}
     >

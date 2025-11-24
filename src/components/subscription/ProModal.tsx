@@ -2,6 +2,7 @@ import { X, Check } from 'lucide-react';
 import { useState } from 'react';
 import { useSession } from '../../hooks/useSession';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useAccentColor } from '../../hooks/useAccentColor';
 import CheckoutButton from './CheckoutButton';
 
 interface ProModalProps {
@@ -12,6 +13,7 @@ interface ProModalProps {
 export default function ProModal({ isOpen, onClose }: ProModalProps) {
   const { session } = useSession();
   const { t } = useTranslation();
+  const accentColor = useAccentColor();
   const [selectedInterval, setSelectedInterval] = useState<'month' | 'year'>('month');
   const [error, setError] = useState<string | null>(null);
 
@@ -43,13 +45,15 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
           <div className="flex justify-center items-center mt-4">
             <button
               onClick={() => setSelectedInterval('month')}
-              className={`px-4 py-2 rounded-l-lg text-sm font-medium ${selectedInterval === 'month' ? 'bg-[#007BFF] text-white' : 'bg-[#333333] text-gray-400'}`}
+              className={`px-4 py-2 rounded-l-lg text-sm font-medium ${selectedInterval === 'month' ? 'text-white' : 'bg-[#333333] text-gray-400'}`}
+              style={selectedInterval === 'month' ? { backgroundColor: accentColor.primary } : {}}
             >
               {t('monthly')}
             </button>
             <button
               onClick={() => setSelectedInterval('year')}
-              className={`px-4 py-2 rounded-r-lg text-sm font-medium ${selectedInterval === 'year' ? 'bg-[#007BFF] text-white' : 'bg-[#333333] text-gray-400'}`}
+              className={`px-4 py-2 rounded-r-lg text-sm font-medium ${selectedInterval === 'year' ? 'text-white' : 'bg-[#333333] text-gray-400'}`}
+              style={selectedInterval === 'year' ? { backgroundColor: accentColor.primary } : {}}
             >
               {t('yearly')}
             </button>
@@ -98,7 +102,7 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
                 </div>
                 <div className="mt-2 h-6">
                   {selectedInterval === 'year' && (
-                    <span className="text-[#00B4D8] text-sm">{t('save60')}</span>
+                    <span className="text-sm" style={{ color: accentColor.primary }}>{t('save60')}</span>
                   )}
                 </div>
               </div>
@@ -135,9 +139,10 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
 }
 
 function Feature({ text }: { text: string }) {
+  const accentColor = useAccentColor();
   return (
     <li className="flex items-center gap-2 text-gray-300">
-      <Check size={16} className="text-[#00B4D8]" />
+      <Check size={16} style={{ color: accentColor.primary }} />
       <span>{text}</span>
     </li>
   );

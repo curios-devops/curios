@@ -97,9 +97,9 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      locale: 'en', // Force English to avoid localization errors
+      locale: 'en-US', // Force English (US) to avoid localization errors
       success_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/subscription/cancel`,
+      cancel_url: `${origin}/`,
       allow_promotion_codes: true,
       billing_address_collection: 'required',
       metadata: {
