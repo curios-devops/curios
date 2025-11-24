@@ -28,7 +28,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchLanguage = async () => {
       setLanguageLoading(true);
-      let langCode = null;
+      const storedLanguage = typeof window !== 'undefined'
+        ? window.localStorage.getItem('preferredLanguage')
+        : null;
+      let langCode = storedLanguage;
+      let profileLanguage: string | null = null;
+      let loadedFromSupabase = false;
+
       if (session?.user) {
         // Try to get language from user profile (skip if column doesn't exist)
         try {
@@ -39,27 +45,39 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
             .single();
 
           if (!error && data?.language) {
-            langCode = data.language;
-            setJustLoadedFromSupabase(true);
+            profileLanguage = data.language;
           }
         } catch (error) {
           // Silently ignore if language column doesn't exist
           console.debug('Language column not available in profiles table');
         }
-      }
 
-      if (!langCode) {
-        // Fallback to localStorage
-        langCode = localStorage.getItem('preferredLanguage');
+        if (!langCode && profileLanguage) {
+          langCode = profileLanguage;
+          loadedFromSupabase = true;
+        }
+
+        // If user had a preferred language before signing in, sync it to Supabase
+        if (langCode && profileLanguage && langCode !== profileLanguage) {
+          try {
+            await supabase
+              .from('profiles')
+              .update({ language: langCode })
+              .eq('id', session.user.id);
+          } catch (error) {
+            console.debug('Failed to sync preferred language to database:', error);
+          }
+        }
       }
 
       if (!langCode) {
         // Fallback to browser language
-        langCode = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : undefined;
+        langCode = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : null;
       }
 
       const foundLang = languages.find((l: Language) => l.code === langCode);
       setCurrentLanguage(foundLang || languages[0]); // Set language, default to first if not found
+      setJustLoadedFromSupabase(loadedFromSupabase);
       setLanguageLoading(false);
     };
 
@@ -70,10 +88,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Only update localStorage if not just loaded from Supabase (prevents race)
-    if (!languageLoading && !justLoadedFromSupabase) {
-      localStorage.setItem('preferredLanguage', currentLanguage.code);
+    if (!languageLoading) {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('preferredLanguage', currentLanguage.code);
+      }
+      if (typeof document !== 'undefined') {
+        document.documentElement.lang = currentLanguage.code;
+      }
     }
-    document.documentElement.lang = currentLanguage.code;
 
     // Save language to database if user is signed in and not just loaded from Supabase
     if (session?.user && !justLoadedFromSupabase) {
