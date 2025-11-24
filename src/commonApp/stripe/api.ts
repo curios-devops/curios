@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import { STRIPE_CONFIG } from './config';
 import type { CheckoutSession } from './types';
+import type { FunctionsHttpError } from '@supabase/supabase-js';
 
 export async function createCheckoutSession(
   userId: string,
@@ -46,8 +47,25 @@ export async function createCheckoutSession(
     });
 
     if (error) {
-      console.error('Supabase function error:', error);
-      throw new Error(error.message || 'Failed to create checkout session');
+      const httpError = error as FunctionsHttpError;
+      const serverError = (
+        (httpError.context as Record<string, any>)?.response?.error ||
+        (httpError.context as Record<string, any>)?.response?.code ||
+        (httpError.context as Record<string, any>)?.error ||
+        (data as { error?: string; code?: string } | null | undefined)?.error
+      );
+
+      console.error('Supabase function error:', {
+        error,
+        serverError,
+        status: httpError.context?.response?.status,
+      });
+
+      throw new Error(
+        (typeof serverError === 'string' && serverError.trim().length > 0)
+          ? serverError
+          : httpError.message || 'Failed to create checkout session'
+      );
     }
 
     if (!data?.url || !data?.sessionId) {

@@ -8,6 +8,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function classifyError(error: unknown) {
+  const message = error instanceof Error ? error.message : 'Failed to create checkout session';
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('already subscribed')) {
+    return { status: 409, code: 'ALREADY_SUBSCRIBED', message };
+  }
+
+  if (normalized.includes('invalid subscription interval')) {
+    return { status: 400, code: 'INVALID_INTERVAL', message };
+  }
+
+  if (normalized.includes('user id is required') || normalized.includes('email is required')) {
+    return { status: 400, code: 'MISSING_FIELDS', message };
+  }
+
+  if (normalized.includes('invalid price configuration')) {
+    return { status: 500, code: 'INVALID_PRICE_CONFIG', message };
+  }
+
+  if (normalized.includes('already has an active subscription')) {
+    return { status: 409, code: 'ACTIVE_SUBSCRIPTION', message };
+  }
+
+  return { status: 500, code: 'INTERNAL_SERVER_ERROR', message };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -124,19 +151,23 @@ serve(async (req) => {
       }
     );
   } catch (error) {
+    const { status, code, message } = classifyError(error);
+
     console.error('Error creating checkout session:', {
       error,
-      message: error instanceof Error ? error.message : 'Unknown error',
+      code,
+      message,
       stack: error instanceof Error ? error.stack : undefined
     });
 
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Failed to create checkout session' 
+        error: message,
+        code,
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
+        status,
       }
     );
   }
