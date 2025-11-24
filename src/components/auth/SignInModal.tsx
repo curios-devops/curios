@@ -63,7 +63,7 @@ export default function SignInModal({ isOpen, onClose, context = 'default', titl
           <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
             {title || t("welcome_back" as TranslationKey)}
           </h2>
-          <p className="text-gray-400 text-sm">{subtitle || "Log in to your account"}</p>
+          <p className="text-gray-400 text-sm">{subtitle || t("logInToYourAccount" as TranslationKey)}</p>
         </div>
 
         <AuthHeader mode="signin" context={context} />
@@ -85,14 +85,14 @@ export default function SignInModal({ isOpen, onClose, context = 'default', titl
             onSubmit={handleEmailSubmit} 
           />
           <div className="pt-4 text-center text-xs text-gray-500">
-            Don’t have an account?
+            {t("dontHaveAccount" as TranslationKey)}
             <button
               type="button"
               className="ml-1 font-semibold hover:underline inline-flex items-center gap-1"
               style={{ color: accentColor.primary }}
               onClick={() => setShowSignUp(true)}
             >
-              Sign up for free <span className="ml-0.5" style={{ color: accentColor.primary, fontWeight: 700 }}>&rarr;</span>
+              {t("signUpForFree" as TranslationKey)} <span className="ml-0.5" style={{ color: accentColor.primary, fontWeight: 700 }}>&rarr;</span>
             </button>
           </div>
         </div>

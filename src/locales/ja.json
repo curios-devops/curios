@@ -95,5 +95,8 @@
   "signInUploadPhotos": "サインインしてさらに写真をアップロード",
   "analyzePhotosFree": "写真を無料で分析",
   "signInUploadFiles": "サインインしてファイルをアップロード",
-  "analyzeFilesFree": "ファイルを無料で分析"
+  "analyzeFilesFree": "ファイルを無料で分析",
+  "logInToYourAccount": "アカウントにログイン",
+  "dontHaveAccount": "アカウントをお持ちでないですか？",
+  "signUpForFree": "無料で登録"
 }

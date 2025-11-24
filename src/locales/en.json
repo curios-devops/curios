@@ -95,5 +95,8 @@
   "signInUploadPhotos": "Sign in to upload more photos",
   "analyzePhotosFree": "Analyze photos for free",
   "signInUploadFiles": "Sign in to upload files",
-  "analyzeFilesFree": "Analyze files for free"
+  "analyzeFilesFree": "Analyze files for free",
+  "logInToYourAccount": "Log in to your account",
+  "dontHaveAccount": "Don’t have an account?",
+  "signUpForFree": "Sign up for free"
 }

@@ -95,5 +95,8 @@
   "signInUploadPhotos": "Anmelden, um mehr Fotos hochzuladen",
   "analyzePhotosFree": "Fotos kostenlos analysieren",
   "signInUploadFiles": "Anmelden, um Dateien hochzuladen",
-  "analyzeFilesFree": "Dateien kostenlos analysieren"
+  "analyzeFilesFree": "Dateien kostenlos analysieren",
+  "logInToYourAccount": "Melden Sie sich bei Ihrem Konto an",
+  "dontHaveAccount": "Haben Sie noch kein Konto?",
+  "signUpForFree": "Kostenlos registrieren"
 }

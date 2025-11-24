@@ -95,5 +95,8 @@
   "signInUploadPhotos": "Inicia sesión para subir más fotos",
   "analyzePhotosFree": "Analiza fotos gratis",
   "signInUploadFiles": "Inicia sesión para subir archivos",
-  "analyzeFilesFree": "Analiza archivos gratis"
+  "analyzeFilesFree": "Analiza archivos gratis",
+  "logInToYourAccount": "Inicia sesión en tu cuenta",
+  "dontHaveAccount": "¿No tienes una cuenta?",
+  "signUpForFree": "Regístrate gratis"
 }

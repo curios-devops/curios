@@ -113,6 +113,7 @@ export function ensureProfileExists(user: User | null | undefined): Promise<void
 
         // If no profile exists, create basic one
         if (!basicData) {
+          const preferredLanguage = typeof localStorage !== 'undefined' ? localStorage.getItem('preferredLanguage') : 'en';
           const { error: insertError } = await supabase
             .from('profiles')
             .insert({
@@ -121,7 +122,7 @@ export function ensureProfileExists(user: User | null | undefined): Promise<void
               subscription_status: 'inactive',
               remaining_searches: 5,
               searches_reset_at: new Date().toISOString(),
-              language: 'en',
+              language: preferredLanguage || 'en',
               accent_color: 'blue',
             })
             .select('id')
@@ -149,6 +150,7 @@ export function ensureProfileExists(user: User | null | undefined): Promise<void
       };
 
       if (!data) {
+        const preferredLanguage = typeof localStorage !== 'undefined' ? localStorage.getItem('preferredLanguage') : 'en';
         const { error: insertError } = await supabase
           .from('profiles')
           .insert({
@@ -157,7 +159,7 @@ export function ensureProfileExists(user: User | null | undefined): Promise<void
             subscription_status: 'inactive',
             remaining_searches: 5,
             searches_reset_at: new Date().toISOString(),
-            language: 'en',
+            language: preferredLanguage || 'en',
             accent_color: 'blue',
           })
           .select('id')
