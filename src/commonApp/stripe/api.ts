@@ -40,7 +40,8 @@ export async function createCheckoutSession(
       body: {
         userId,
         email,
-        interval
+        interval,
+        locale: navigator.language || 'en' // Send browser locale
       }
     });
 

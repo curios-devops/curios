@@ -28,7 +28,7 @@ serve(async (req) => {
     );
 
     // Get request data
-    const { userId, email, interval } = await req.json();
+    const { userId, email, interval, locale } = await req.json();
 
     // Validate required fields
     if (!userId?.trim()) {
@@ -81,7 +81,8 @@ serve(async (req) => {
       email,
       interval,
       priceId,
-      customerId
+      customerId,
+      locale: locale || 'en'
     });
 
     // Create checkout session
@@ -97,7 +98,7 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      // locale: 'en-US', // Removed to avoid Deno module resolution issues
+      locale: locale || 'en', // Use provided locale or default to 'en'
       success_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/`,
       allow_promotion_codes: true,

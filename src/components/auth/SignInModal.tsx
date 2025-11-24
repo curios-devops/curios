@@ -8,6 +8,7 @@ import VerificationModal from './components/VerificationModal.tsx';
 import { Language } from '../../types/language.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import { useTranslation, TranslationKey } from '../../hooks/useTranslation.ts';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import SignUpModal from './SignUpModal.tsx';
 
 
@@ -25,6 +26,7 @@ export default function SignInModal({ isOpen, onClose, context = 'default', titl
   const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
+  const accentColor = useAccentColor();
   const [showSignUp, setShowSignUp] = useState(false);
 
   if (!isOpen) return null;
@@ -86,10 +88,11 @@ export default function SignInModal({ isOpen, onClose, context = 'default', titl
             Don’t have an account?
             <button
               type="button"
-              className="ml-1 font-semibold text-[#007BFF] hover:underline inline-flex items-center gap-1"
+              className="ml-1 font-semibold hover:underline inline-flex items-center gap-1"
+              style={{ color: accentColor.primary }}
               onClick={() => setShowSignUp(true)}
             >
-              Sign up for free <span className="ml-0.5" style={{ color: '#007BFF', fontWeight: 700 }}>&rarr;</span>
+              Sign up for free <span className="ml-0.5" style={{ color: accentColor.primary, fontWeight: 700 }}>&rarr;</span>
             </button>
           </div>
         </div>
