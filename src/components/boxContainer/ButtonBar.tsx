@@ -23,6 +23,7 @@ interface ButtonBarProps {
   selectedFunction: FunctionType;
   onFunctionSelect: (functionType: FunctionType) => void;
   onSignUpRequired: () => void;
+  onUpgrade?: () => void;
   
   // Right side - Action buttons
   showAttachMenu: boolean;
@@ -39,6 +40,7 @@ export default function ButtonBar({
   selectedFunction,
   onFunctionSelect,
   onSignUpRequired,
+  onUpgrade,
   showAttachMenu,
   setShowAttachMenu,
   reverseImageRef,
@@ -52,17 +54,9 @@ export default function ButtonBar({
 
   return (
     <div className="flex items-center justify-between px-4 py-1.5">
-      {/* Left side: Function Selector */}
-      <FunctionSelector
-        selectedFunction={selectedFunction}
-        onFunctionSelect={onFunctionSelect}
-        onSignUpRequired={onSignUpRequired}
-        className="min-w-0" // Allow shrinking
-      />
-
-      {/* Right side: Plus, Mic, and Search Button */}
-      <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
-        {/* Attach button with dropdown */}
+      {/* Left side: Plus button THEN Function Selector */}
+      <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3 min-w-0">
+        {/* Attach button with dropdown - MOVED TO LEFT */}
         <div className="relative" ref={attachMenuRef}>
           <ActionButton
             icon={Plus}
@@ -109,7 +103,19 @@ export default function ButtonBar({
             </div>
           )}
         </div>
-        
+
+        {/* Function Selector */}
+        <FunctionSelector
+          selectedFunction={selectedFunction}
+          onFunctionSelect={onFunctionSelect}
+          onSignUpRequired={onSignUpRequired}
+          onUpgrade={onUpgrade}
+          className="min-w-0" // Allow shrinking
+        />
+      </div>
+
+      {/* Right side: Mic and Search Button */}
+      <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
         <ActionButton
           icon={MicIcon}
           label={t('askByVoice')}

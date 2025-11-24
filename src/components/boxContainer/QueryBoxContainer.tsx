@@ -199,6 +199,7 @@ export default function QueryBoxContainer() {
           selectedFunction={selectedFunction}
           onFunctionSelect={handleFunctionSelect}
           onSignUpRequired={handleSignUpRequired}
+          onUpgrade={() => setShowProModal(true)}
           showAttachMenu={showAttachMenu}
           setShowAttachMenu={setShowAttachMenu}
           reverseImageRef={reverseImageRef}
