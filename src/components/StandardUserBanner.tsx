@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
+import { useAccentColor } from '../hooks/useAccentColor';
 
 // Lazy load ProModal to avoid loading Stripe unnecessarily
 const ProModal = lazy(() => import('./subscription/ProModal.tsx'));
@@ -6,6 +7,7 @@ const ProModal = lazy(() => import('./subscription/ProModal.tsx'));
 export default function StandardUserBanner() {
   const [isVisible, setIsVisible] = useState(true);
   const [showProModal, setShowProModal] = useState(false);
+  const accentColor = useAccentColor();
 
   const handleDismiss = () => {
     setIsVisible(false);
@@ -30,7 +32,7 @@ export default function StandardUserBanner() {
           {/* Content - styled like home page text */}
           <div className="text-left">
             <p className="text-gray-400 text-[10px] mb-1.5 leading-tight">
-              <span className="text-white font-medium">You are missing out</span>
+              <span className="text-gray-900 dark:text-white font-medium">You are missing out</span>
               <br />
               Upgrade to Pro for unlimited searches and advanced features.
             </p>
@@ -40,7 +42,8 @@ export default function StandardUserBanner() {
               <button
                 type="button"
                 onClick={handleUpgrade}
-                className="bg-[#007BFF] hover:bg-[#0056b3] text-white px-2 py-1 rounded text-[10px] font-medium transition-colors"
+                style={{ backgroundColor: accentColor.primary }}
+                className="text-white px-2 py-1 rounded text-[10px] font-medium transition-colors hover:opacity-90"
               >
                 Upgrade
               </button>

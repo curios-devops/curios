@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import SignUpModal from './auth/SignUpModal.tsx';
 import { languages } from '../types/language.ts';
+import { useAccentColor } from '../hooks/useAccentColor';
 
 interface GuestSignUpBannerProps {
   isEnabled?: boolean; // Add prop to control if banner is enabled
@@ -9,6 +10,7 @@ interface GuestSignUpBannerProps {
 export default function GuestSignUpBanner({ isEnabled = false }: GuestSignUpBannerProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const accentColor = useAccentColor();
 
   // Check if cookies have been accepted to enable the banner
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function GuestSignUpBanner({ isEnabled = false }: GuestSignUpBann
           {/* Content - styled like home page text */}
           <div className="text-left">
             <p className="text-gray-400 text-[10px] mb-1.5 leading-tight">
-              <span className="text-white font-medium">You are missing out</span>
+              <span className="text-gray-900 dark:text-white font-medium">You are missing out</span>
               <br />
               Create an account to get detailed answers.
             </p>
@@ -58,7 +60,8 @@ export default function GuestSignUpBanner({ isEnabled = false }: GuestSignUpBann
               <button
                 type="button"
                 onClick={handleSignUp}
-                className="bg-[#007BFF] hover:bg-[#0056b3] text-white px-2 py-1 rounded text-[10px] font-medium transition-colors"
+                style={{ backgroundColor: accentColor.primary }}
+                className="text-white px-2 py-1 rounded text-[10px] font-medium transition-colors hover:opacity-90"
               >
                 Sign Up
               </button>
@@ -79,7 +82,6 @@ export default function GuestSignUpBanner({ isEnabled = false }: GuestSignUpBann
         <SignUpModal
           isOpen={showSignUpModal}
           onClose={() => setShowSignUpModal(false)}
-          context="default"
           currentLanguage={languages[0]} // English
         />
       )}
