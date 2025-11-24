@@ -27,7 +27,7 @@ export default function QueryBoxContainer() {
   const [imageAttachments, setImageAttachments] = useState<ReverseImageAttachment[]>([]);
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const reverseImageRef = useRef<ReverseImageSearchHandle>(null);
-  const { decrementSearches, remainingSearches, hasSearchesLeft } = useSearchLimit();
+  const { decrementSearches, hasSearchesLeft } = useSearchLimit();
   const { decrementProQuota, hasProQuotaLeft, canAccessPro } = useProQuota();
   const { session } = useSession();
   const accentColor = useAccentColor();
@@ -211,14 +211,14 @@ export default function QueryBoxContainer() {
         />
       </div>
 
-      {/* Remaining searches indicator */}
-      {session && (
+      {/* Remaining searches indicator - REMOVED as requested */}
+      {/* {session && (
         <div className="mt-2 text-center">
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {remainingSearches} searches remaining today
           </span>
         </div>
-      )}
+      )} */}
 
       {/* Modals */}
       <ProModal 

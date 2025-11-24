@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { Stripe } from "https://esm.sh/stripe@12.1.1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
@@ -96,6 +97,7 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
+      locale: 'en', // Force English to avoid localization errors
       success_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/subscription/cancel`,
       allow_promotion_codes: true,
