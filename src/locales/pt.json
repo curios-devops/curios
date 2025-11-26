@@ -98,5 +98,11 @@
   "analyzeFilesFree": "Analise arquivos gratuitamente",
   "logInToYourAccount": "Entre na sua conta",
   "dontHaveAccount": "Não tem uma conta?",
-  "signUpForFree": "Cadastre-se grátis"
+  "signUpForFree": "Cadastre-se grátis",
+  "completingSignIn": "Concluindo login...",
+  "verifyingCredentials": "Por favor aguarde enquanto verificamos suas credenciais.",
+  "missingOut": "Você está perdendo",
+  "upgradeToProMessage": "Atualize para Pro para buscas ilimitadas e recursos avançados.",
+  "upgrade": "Atualizar",
+  "dismiss": "Dispensar"
 }

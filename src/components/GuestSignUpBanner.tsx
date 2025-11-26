@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import SignUpModal from './auth/SignUpModal.tsx';
 import { languages } from '../types/language.ts';
 import { useAccentColor } from '../hooks/useAccentColor';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface GuestSignUpBannerProps {
   isEnabled?: boolean; // Add prop to control if banner is enabled
@@ -11,6 +12,7 @@ export default function GuestSignUpBanner({ isEnabled = false }: GuestSignUpBann
   const [isVisible, setIsVisible] = useState(true);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const accentColor = useAccentColor();
+  const { t } = useTranslation();
 
   // Check if cookies have been accepted to enable the banner
   useEffect(() => {
@@ -50,7 +52,7 @@ export default function GuestSignUpBanner({ isEnabled = false }: GuestSignUpBann
           {/* Content - styled like home page text */}
           <div className="text-left">
             <p className="text-gray-400 text-[10px] mb-1.5 leading-tight">
-              <span className="text-gray-900 dark:text-white font-medium">You are missing out</span>
+              <span className="text-gray-900 dark:text-white font-medium">{t('missingOut')}</span>
               <br />
               Create an account to get detailed answers.
             </p>
@@ -63,14 +65,14 @@ export default function GuestSignUpBanner({ isEnabled = false }: GuestSignUpBann
                 style={{ backgroundColor: accentColor.primary }}
                 className="text-white px-2 py-1 rounded text-[10px] font-medium transition-colors hover:opacity-90"
               >
-                Sign Up
+                {t('signUp')}
               </button>
               <button
                 type="button"
                 onClick={handleDismiss}
                 className="text-gray-500 hover:text-gray-400 px-2 py-1 text-[10px] transition-colors"
               >
-                Dismiss
+                {t('dismiss')}
               </button>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import { useAccentColor } from '../hooks/useAccentColor';
+import { useTranslation } from '../hooks/useTranslation';
 
 // Lazy load ProModal to avoid loading Stripe unnecessarily
 const ProModal = lazy(() => import('./subscription/ProModal.tsx'));
@@ -8,6 +9,7 @@ export default function StandardUserBanner() {
   const [isVisible, setIsVisible] = useState(true);
   const [showProModal, setShowProModal] = useState(false);
   const accentColor = useAccentColor();
+  const { t } = useTranslation();
 
   const handleDismiss = () => {
     setIsVisible(false);
@@ -32,9 +34,9 @@ export default function StandardUserBanner() {
           {/* Content - styled like home page text */}
           <div className="text-left">
             <p className="text-gray-400 text-[10px] mb-1.5 leading-tight">
-              <span className="text-gray-900 dark:text-white font-medium">You are missing out</span>
+              <span className="text-gray-900 dark:text-white font-medium">{t('missingOut')}</span>
               <br />
-              Upgrade to Pro for unlimited searches and advanced features.
+              {t('upgradeToProMessage')}
             </p>
 
             {/* Action buttons - more subtle styling */}
@@ -45,14 +47,14 @@ export default function StandardUserBanner() {
                 style={{ backgroundColor: accentColor.primary }}
                 className="text-white px-2 py-1 rounded text-[10px] font-medium transition-colors hover:opacity-90"
               >
-                Upgrade
+                {t('upgrade')}
               </button>
               <button
                 type="button"
                 onClick={handleDismiss}
                 className="text-gray-500 hover:text-gray-400 px-2 py-1 text-[10px] transition-colors"
               >
-                Dismiss
+                {t('dismiss')}
               </button>
             </div>
           </div>

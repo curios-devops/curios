@@ -98,5 +98,11 @@
   "analyzeFilesFree": "ファイルを無料で分析",
   "logInToYourAccount": "アカウントにログイン",
   "dontHaveAccount": "アカウントをお持ちでないですか？",
-  "signUpForFree": "無料で登録"
+  "signUpForFree": "無料で登録",
+  "completingSignIn": "サインインを完了しています...",
+  "verifyingCredentials": "資格情報を確認していますので、お待ちください。",
+  "missingOut": "見逃しています",
+  "upgradeToProMessage": "無制限の検索と高度な機能のためにProにアップグレードしてください。",
+  "upgrade": "アップグレード",
+  "dismiss": "閉じる"
 }

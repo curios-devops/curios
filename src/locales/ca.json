@@ -98,5 +98,11 @@
   "analyzeFilesFree": "Analitza arxius gratis",
   "logInToYourAccount": "Inicia sessió al teu compte",
   "dontHaveAccount": "No tens un compte?",
-  "signUpForFree": "Registra't de franc"
+  "signUpForFree": "Registra't de franc",
+  "completingSignIn": "Completant inici de sessió...",
+  "verifyingCredentials": "Si us plau, espereu mentre verifiquem les vostres credencials.",
+  "missingOut": "T'estàs perdent",
+  "upgradeToProMessage": "Actualitza a Pro per a cerques il·limitades i funcions avançades.",
+  "upgrade": "Actualitzar",
+  "dismiss": "Descartar"
 }
