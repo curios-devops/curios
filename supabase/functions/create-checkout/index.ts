@@ -8,6 +8,51 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const STRIPE_SUPPORTED_LOCALES = [
+  'auto','ar','bg','cs','da','de','el','en','en-GB','es','es-419','et','fi','fil','fr','fr-CA','he','hr','hu','id','it','ja','ko','lt','lv','ms','mt','nb','nl','pl','pt','pt-BR','ro','ru','sk','sl','sv','th','tr','vi','zh','zh-HK','zh-TW'
+] as const;
+
+type StripeLocale = (typeof STRIPE_SUPPORTED_LOCALES)[number];
+
+function sanitizeStripeLocale(locale?: string | null): StripeLocale {
+  if (!locale || typeof locale !== 'string') {
+    return 'auto';
+  }
+
+  const trimmed = locale.trim();
+  if (!trimmed) {
+    return 'auto';
+  }
+
+  const normalized = trimmed.toLowerCase();
+  const directMatch = STRIPE_SUPPORTED_LOCALES.find((value) => value.toLowerCase() === normalized);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  const [language] = normalized.split(/[-_]/);
+  if (language) {
+    const baseMatch = STRIPE_SUPPORTED_LOCALES.find((value) => value.toLowerCase() === language);
+    if (baseMatch) {
+      return baseMatch;
+    }
+
+    if (language === 'es') {
+      return 'es';
+    }
+
+    if (language === 'pt') {
+      return 'pt';
+    }
+
+    if (language === 'zh') {
+      return 'zh';
+    }
+  }
+
+  return 'auto';
+}
+
 function classifyError(error: unknown) {
   const message = error instanceof Error ? error.message : 'Failed to create checkout session';
   const normalized = message.toLowerCase();
@@ -26,6 +71,10 @@ function classifyError(error: unknown) {
 
   if (normalized.includes('invalid price configuration')) {
     return { status: 500, code: 'INVALID_PRICE_CONFIG', message };
+  }
+
+  if (normalized.includes('invalid locale')) {
+    return { status: 400, code: 'UNSUPPORTED_LOCALE', message };
   }
 
   if (normalized.includes('already has an active subscription')) {
@@ -55,7 +104,8 @@ serve(async (req) => {
     );
 
     // Get request data
-    const { userId, email, interval, locale } = await req.json();
+  const { userId, email, interval, locale } = await req.json();
+  const sanitizedLocale = sanitizeStripeLocale(locale);
 
     // Validate required fields
     if (!userId?.trim()) {
@@ -109,7 +159,7 @@ serve(async (req) => {
       interval,
       priceId,
       customerId,
-      locale: locale || 'en'
+      locale: sanitizedLocale
     });
 
     // Create checkout session
@@ -125,7 +175,7 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      locale: locale || 'en', // Use provided locale or default to 'en'
+  locale: sanitizedLocale,
       success_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/`,
       allow_promotion_codes: true,

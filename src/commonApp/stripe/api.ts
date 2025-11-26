@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { STRIPE_CONFIG } from './config';
+import { sanitizeStripeLocale } from './locales';
 import type { CheckoutSession } from './types';
 import type { FunctionsHttpError } from '@supabase/supabase-js';
 
@@ -29,11 +30,15 @@ export async function createCheckoutSession(
       throw new Error('Invalid price configuration');
     }
 
+    const browserLocale = typeof navigator !== 'undefined' ? navigator.language : 'auto';
+    const normalizedLocale = sanitizeStripeLocale(browserLocale);
+
     console.log('Creating checkout session:', {
       userId,
       email,
       interval,
-      priceId
+      priceId,
+      locale: normalizedLocale
     });
 
     // Call Supabase Edge Function
@@ -42,7 +47,7 @@ export async function createCheckoutSession(
         userId,
         email,
         interval,
-        locale: navigator.language || 'en' // Send browser locale
+        locale: normalizedLocale
       }
     });
 
