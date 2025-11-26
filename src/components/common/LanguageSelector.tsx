@@ -29,7 +29,7 @@ const LanguageSelector = () => {
       <button
         type='button'
         onClick={() => setOpen(!open)}
-        className={`px-3 h-7 rounded-lg flex items-center justify-center text-sm font-medium shadow-md relative group border
+        className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-medium shadow-md relative group border
           ${isDarkMode
             ? 'bg-[#23272A] border-[#3A3F42] text-[#F3F6F4]'
             : 'bg-[#FAFBF9] border-[#D1D5DB] text-[#2A3B39]'}
@@ -49,8 +49,8 @@ const LanguageSelector = () => {
         }}
         aria-label="Language selector"
       >
-        {/* Flag + short code for active language */}
-        <div className="flex items-center gap-1">
+        {/* Flag only for active language */}
+        <div className="flex items-center justify-center">
           {currentLanguage.flag.startsWith('/') ? (
             currentLanguage.code === 'ca' ? (
               <img src="/ca.svg" alt="Catalan flag" className="w-5 h-3.5 rounded object-cover" />
@@ -62,9 +62,6 @@ const LanguageSelector = () => {
               <span style={{ fontSize: '18px', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.3)' }}>{currentLanguage.flag}</span>
             </div>
           )}
-          <span className={`text-xs font-medium uppercase ${theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'text-[#F3F6F4]' : 'text-[#2A3B39]' }`}>
-            {currentLanguage.code}
-          </span>
         </div>
         {/* Tooltip */}
         <span

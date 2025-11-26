@@ -1,4 +1,4 @@
-import { useState, ReactNode } from 'react';
+import { useState, ReactNode, useRef } from 'react';
 import { useSession } from '../../hooks/useSession';
 import { useAccentColor } from '../../hooks/useAccentColor';
 import { createCheckoutSession } from '../../commonApp/stripe/api';
@@ -28,8 +28,29 @@ export default function CheckoutButton({
   const accentColor = useAccentColor();
   const loading = externalLoading || internalLoading || isResetting;
 
+  // Rate limiting to prevent duplicate Stripe API calls
+  const isRequestInFlight = useRef(false);
+  const lastRequestTime = useRef(0);
+
   const handleClick = async () => {
+    // Prevent multiple simultaneous requests
+    if (isRequestInFlight.current) {
+      console.log('Checkout request already in progress, ignoring...');
+      return;
+    }
+
+    // Rate limiting: prevent requests within 1 second of each other
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime.current;
+    if (timeSinceLastRequest < 1000) {
+      console.log('Rate limit: Please wait before making another request');
+      onError?.('Please wait a moment before trying again');
+      return;
+    }
+
     try {
+      isRequestInFlight.current = true;
+      lastRequestTime.current = now;
       setInternalLoading(true);
       
       if (sessionError) {
@@ -65,6 +86,7 @@ export default function CheckoutButton({
       );
     } finally {
       setInternalLoading(false);
+      isRequestInFlight.current = false;
     }
   };
 

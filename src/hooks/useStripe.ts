@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { useSession } from './useSession';
 import { createCheckoutSession, checkSubscription } from '../commonApp/stripe/api';
@@ -21,9 +21,28 @@ export function useStripe() {
   const { session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isRequestInFlight = useRef(false);
+  const lastRequestTime = useRef(0);
 
   const handleCheckoutSession = async (interval: 'month' | 'year') => {
+    // Prevent multiple simultaneous requests
+    if (isRequestInFlight.current) {
+      console.log('Checkout request already in progress, ignoring...');
+      return null;
+    }
+
+    // Rate limiting: prevent requests within 1 second of each other
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime.current;
+    if (timeSinceLastRequest < 1000) {
+      console.log('Rate limit: Please wait before making another request');
+      setError('Please wait a moment before trying again');
+      return null;
+    }
+
     try {
+      isRequestInFlight.current = true;
+      lastRequestTime.current = now;
       setLoading(true);
       setError(null);
 
@@ -53,6 +72,7 @@ export function useStripe() {
       return null;
     } finally {
       setLoading(false);
+      isRequestInFlight.current = false;
     }
   };
 

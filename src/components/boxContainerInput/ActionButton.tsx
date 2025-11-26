@@ -60,7 +60,9 @@ export default function ActionButton({
       {tooltip && (
         <div className={`
           absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none
-          ${theme === 'light' ? 'bg-gray-100 text-gray-800' : 'bg-[#1a1a1a] text-white'}
+          ${theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+            ? 'bg-gray-800 text-gray-100'
+            : 'bg-gray-100 text-gray-800'}
         `}
         >
             {tooltip}
