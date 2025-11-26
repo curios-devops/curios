@@ -16,7 +16,7 @@ export default function CookieButton({ onClick, hidden, showTooltip = true }: { 
     <button
       type="button"
       onClick={onClick}
-      className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-md relative group border
+      className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold shadow-md relative group border
         ${isDarkMode
           ? 'bg-[#23272A] border-[#3A3F42]'
           : 'bg-[#FAFBF9] border-[#D1D5DB]'}

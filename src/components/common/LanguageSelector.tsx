@@ -29,7 +29,7 @@ const LanguageSelector = () => {
       <button
         type='button'
         onClick={() => setOpen(!open)}
-        className={`px-3 h-7 rounded-full flex items-center justify-center text-sm font-medium shadow-md relative group border
+        className={`px-3 h-7 rounded-lg flex items-center justify-center text-sm font-medium shadow-md relative group border
           ${isDarkMode
             ? 'bg-[#23272A] border-[#3A3F42] text-[#F3F6F4]'
             : 'bg-[#FAFBF9] border-[#D1D5DB] text-[#2A3B39]'}
@@ -53,12 +53,12 @@ const LanguageSelector = () => {
         <div className="flex items-center gap-1">
           {currentLanguage.flag.startsWith('/') ? (
             currentLanguage.code === 'ca' ? (
-              <img src="/ca.svg" alt="Catalan flag" className="w-5 h-5 rounded-full object-cover" />
+              <img src="/ca.svg" alt="Catalan flag" className="w-5 h-3.5 rounded object-cover" />
             ) : (
-              <img src={currentLanguage.flag} alt={currentLanguage.name} className="w-5 h-5 rounded-full object-cover" />
+              <img src={currentLanguage.flag} alt={currentLanguage.name} className="w-5 h-3.5 rounded object-cover" />
             )
           ) : (
-            <div className="overflow-hidden w-5 h-5 rounded-full relative flex-shrink-0">
+            <div className="overflow-hidden w-5 h-3.5 rounded relative flex-shrink-0">
               <span style={{ fontSize: '18px', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.3)' }}>{currentLanguage.flag}</span>
             </div>
           )}
@@ -102,11 +102,11 @@ const LanguageSelector = () => {
                   title={lang.name}
                 >
                   {lang.code === 'ca' ? (
-                    <img src="/ca.svg" alt="Catalan flag" className="w-6 h-6 rounded-full object-cover" />
+                    <img src="/ca.svg" alt="Catalan flag" className="w-6 h-4 rounded object-cover" />
                   ) : lang.flag.startsWith('/') ? (
-                    <img src={lang.flag} alt={`Language ${lang.code} flag`} className="w-6 h-6 rounded-full object-cover" />
+                    <img src={lang.flag} alt={`Language ${lang.code} flag`} className="w-6 h-4 rounded object-cover" />
                   ) : (
-                    <div className="overflow-hidden w-6 h-6 rounded-full relative">
+                    <div className="overflow-hidden w-6 h-4 rounded relative">
                       <span style={{ fontSize: '22px', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.6)' }}>{lang.flag}</span>
                     </div>
                   )}

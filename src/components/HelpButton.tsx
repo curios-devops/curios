@@ -36,7 +36,7 @@ export default function HelpButton() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(true)}
-        className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-md relative group border
+        className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold shadow-md relative group border
           ${isDarkMode
             ? 'bg-[#23272A] border-[#3A3F42] text-white'
             : 'bg-[#FAFBF9] border-[#D1D5DB] text-[#2A3B39]'}

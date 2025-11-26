@@ -48,7 +48,7 @@ export default function ThemeToggle() {
 		<div className="relative" ref={ref}>
 			<button
 				onClick={() => setOpen(!open)}
-				className={`flex items-center justify-center w-7 h-7 rounded-full border focus:outline-none shadow-md relative group
+				className={`flex items-center justify-center w-7 h-7 rounded-lg border focus:outline-none shadow-md relative group
 						${isDarkMode
 							? 'bg-[#23272A] border-[#3A3F42] text-white'
 							: 'bg-[#FAFBF9] border-[#D1D5DB] text-[#2A3B39]'}

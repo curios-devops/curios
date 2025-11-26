@@ -67,7 +67,7 @@ export default function Home() {
           <ThemeToggle />
         </div>
         <button
-          className="h-7 px-3 rounded-full flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
+          className="h-7 px-3 rounded-lg flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
           style={{
             backgroundColor: accentColors.primary,
           }}
