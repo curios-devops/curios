@@ -29,25 +29,21 @@ export async function createCheckoutSession(
       throw new Error('Invalid price configuration');
     }
 
-    // Always use 'auto' for locale to prevent Stripe checkout page errors
-    // Stripe will automatically detect the user's browser locale
-    const safeLocale = 'auto';
-
     console.log('Creating checkout session:', {
       userId,
       email,
       interval,
-      priceId,
-      locale: safeLocale
+      priceId
     });
 
-    // Call Supabase Edge Function
+    // Call Supabase Edge Function WITHOUT locale parameter
+    // Let Stripe auto-detect from browser headers (most reliable)
     const { data, error } = await supabase.functions.invoke('create-checkout', {
       body: {
         userId,
         email,
-        interval,
-        locale: safeLocale
+        interval
+        // NO locale parameter
       }
     });
 

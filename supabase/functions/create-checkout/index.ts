@@ -159,11 +159,11 @@ serve(async (req) => {
       email,
       interval,
       priceId,
-      customerId,
-      locale: sanitizedLocale
+      customerId
     });
 
-    // Create checkout session
+    // Create checkout session WITHOUT locale parameter
+    // Stripe will automatically detect from browser, which is most reliable
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : email,
@@ -176,7 +176,7 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-  locale: sanitizedLocale,
+      // NOTE: No locale parameter - let Stripe auto-detect from browser
       success_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/`,
       allow_promotion_codes: true,
