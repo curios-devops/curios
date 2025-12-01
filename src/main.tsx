@@ -90,6 +90,13 @@ globalThis.addEventListener('unhandledrejection', (event) => {
     return;
   }
   
+  // Suppress Supabase clock skew warnings (non-critical)
+  if (errorMessage.includes('clock for skew') || errorMessage.includes('issued in the future')) {
+    console.warn('Supabase clock skew warning suppressed (non-critical)');
+    event.preventDefault();
+    return;
+  }
+  
   logger.error('Unhandled Promise Rejection:', {
     reason: event.reason,
     promise: event.promise,
@@ -112,6 +119,13 @@ globalThis.addEventListener('error', (event) => {
   // Suppress Stripe module loading errors
   if (errorMessage.includes('Cannot find module') && errorMessage.includes("'./")) {
     console.warn('Stripe module loading error suppressed (non-critical):', errorMessage);
+    event.preventDefault();
+    return;
+  }
+  
+  // Suppress Supabase clock skew warnings
+  if (errorMessage.includes('clock for skew') || errorMessage.includes('issued in the future')) {
+    console.warn('Supabase clock skew warning suppressed (non-critical)');
     event.preventDefault();
     return;
   }

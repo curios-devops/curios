@@ -105,7 +105,8 @@ serve(async (req) => {
 
     // Get request data
   const { userId, email, interval, locale } = await req.json();
-  const sanitizedLocale = sanitizeStripeLocale(locale);
+  // Always default to 'auto' to prevent Stripe locale errors
+  const sanitizedLocale = (locale && sanitizeStripeLocale(locale)) || 'auto';
 
     // Validate required fields
     if (!userId?.trim()) {
