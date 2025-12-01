@@ -1,6 +1,6 @@
 export type UserType = 'free' | 'premium' | 'guest';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from '../hooks/useSession.ts';
 import HelpButton from '../components/HelpButton.tsx';
 import InputContainer from '../components/boxContainer/InputContainer.tsx';
@@ -27,6 +27,33 @@ export default function Home() {
 
   const isGuest = !session; // Guest = not logged in
   const isStandard = session && !subscription?.isActive; // Logged in but not pro
+
+  // Handle cleanup when returning from Stripe checkout (canceled or completed)
+  useEffect(() => {
+    const wasCheckoutPending = sessionStorage.getItem('stripe_checkout_pending');
+    
+    if (wasCheckoutPending === 'true') {
+      console.log('Detected return from Stripe checkout - cleaning up');
+      
+      // Clear the flag
+      sessionStorage.removeItem('stripe_checkout_pending');
+      
+      // Remove any Stripe-injected scripts or iframes that might cause issues
+      try {
+        // Remove Stripe.js script if it was loaded
+        const stripeScripts = document.querySelectorAll('script[src*="stripe"]');
+        stripeScripts.forEach(script => script.remove());
+        
+        // Remove any Stripe iframes that might have been injected
+        const stripeIframes = document.querySelectorAll('iframe[name*="stripe"], iframe[src*="stripe"]');
+        stripeIframes.forEach(iframe => iframe.remove());
+        
+        console.log('Stripe cleanup completed');
+      } catch (error) {
+        console.error('Error during Stripe cleanup:', error);
+      }
+    }
+  }, []);
 
   const handleAcceptAllCookies = () => {
     localStorage.setItem('cookieConsent', 'all');

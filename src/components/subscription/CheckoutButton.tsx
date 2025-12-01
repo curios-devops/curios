@@ -1,4 +1,4 @@
-import { useState, ReactNode, useRef } from 'react';
+import { useState, ReactNode, useRef, useEffect } from 'react';
 import { useSession } from '../../hooks/useSession';
 import { useAccentColor } from '../../hooks/useAccentColor';
 import { createCheckoutSession } from '../../commonApp/stripe/api';
@@ -32,6 +32,12 @@ export default function CheckoutButton({
   const isRequestInFlight = useRef(false);
   const lastRequestTime = useRef(0);
 
+  // Clean up any leftover Stripe state when component mounts
+  useEffect(() => {
+    // Clear any Stripe-related flags that might have been set
+    sessionStorage.removeItem('stripe_checkout_pending');
+  }, []);
+
   const handleClick = async () => {
     // Prevent multiple simultaneous requests
     if (isRequestInFlight.current) {
@@ -62,6 +68,9 @@ export default function CheckoutButton({
         throw new Error('You must be logged in to subscribe');
       }
       
+      // Mark that we're going to Stripe checkout
+      sessionStorage.setItem('stripe_checkout_pending', 'true');
+      
       // Create checkout session directly without loading Stripe client-side
       const { url } = await createCheckoutSession(
         session.user.id,
@@ -70,8 +79,13 @@ export default function CheckoutButton({
       );
 
       console.log('Redirecting to Stripe Checkout:', url);
+      
+      // Redirect to Stripe - user will return to home page if they cancel
       window.location.href = url;
     } catch (error) {
+      // Clean up on error
+      sessionStorage.removeItem('stripe_checkout_pending');
+      
       console.error('Checkout error:', {
         error,
         message: error instanceof Error ? error.message : 'Unknown error',

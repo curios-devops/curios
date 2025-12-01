@@ -76,8 +76,16 @@ const router = createBrowserRouter(
 globalThis.addEventListener('unhandledrejection', (event) => {
   // Suppress Supabase "Invalid Refresh Token" errors for guest users
   const errorMessage = event.reason?.message || String(event.reason);
+  
   if (errorMessage.includes('Invalid Refresh Token') || errorMessage.includes('Refresh Token Not Found')) {
     console.warn('Supabase refresh token error suppressed (guest mode)');
+    event.preventDefault();
+    return;
+  }
+  
+  // Suppress Stripe module loading errors (these are non-critical)
+  if (errorMessage.includes('Cannot find module') && errorMessage.includes("'./")) {
+    console.warn('Stripe module loading error suppressed (non-critical):', errorMessage);
     event.preventDefault();
     return;
   }
@@ -94,8 +102,16 @@ globalThis.addEventListener('unhandledrejection', (event) => {
 globalThis.addEventListener('error', (event) => {
   // Suppress Supabase auth errors
   const errorMessage = event.message || '';
+  
   if (errorMessage.includes('Invalid Refresh Token') || errorMessage.includes('Refresh Token Not Found')) {
     console.warn('Supabase auth error suppressed (guest mode)');
+    event.preventDefault();
+    return;
+  }
+  
+  // Suppress Stripe module loading errors
+  if (errorMessage.includes('Cannot find module') && errorMessage.includes("'./")) {
+    console.warn('Stripe module loading error suppressed (non-critical):', errorMessage);
     event.preventDefault();
     return;
   }

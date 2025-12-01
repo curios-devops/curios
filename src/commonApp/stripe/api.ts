@@ -30,15 +30,21 @@ export async function createCheckoutSession(
       throw new Error('Invalid price configuration');
     }
 
+    // Get and sanitize browser locale, ensuring it's always a valid Stripe locale
     const browserLocale = typeof navigator !== 'undefined' ? navigator.language : 'auto';
     const normalizedLocale = sanitizeStripeLocale(browserLocale);
+    
+    // Additional validation to ensure we never pass undefined/null
+    const safeLocale = normalizedLocale || 'auto';
 
     console.log('Creating checkout session:', {
       userId,
       email,
       interval,
       priceId,
-      locale: normalizedLocale
+      browserLocale,
+      normalizedLocale,
+      safeLocale
     });
 
     // Call Supabase Edge Function
@@ -47,7 +53,7 @@ export async function createCheckoutSession(
         userId,
         email,
         interval,
-        locale: normalizedLocale
+        locale: safeLocale
       }
     });
 
