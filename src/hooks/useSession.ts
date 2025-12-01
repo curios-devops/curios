@@ -3,17 +3,30 @@ import { supabase } from "../lib/supabase.ts";
 import { Session } from "@supabase/supabase-js";
 import { ensureProfileExists } from "../lib/ensureProfile.ts";
 
+// Session restoration timeout (10 seconds)
+const SESSION_RESTORE_TIMEOUT = 10000;
+
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const isInitializedRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Prevent running twice in StrictMode
     if (isInitializedRef.current) return;
     isInitializedRef.current = true;
+
+    // Safety timeout - if session doesn't load in 10 seconds, force logout
+    timeoutRef.current = setTimeout(() => {
+      if (isLoading) {
+        console.error('Session restoration timeout - forcing logout');
+        clearLocalSession('Session restore timed out. Please sign in again.');
+        setIsLoading(false);
+      }
+    }, SESSION_RESTORE_TIMEOUT);
 
     const ensureProfileAndSetSession = async (nextSession: Session | null) => {
       if (nextSession?.user) {
@@ -21,6 +34,7 @@ export function useSession() {
           await ensureProfileExists(nextSession.user);
         } catch (error) {
           console.warn('Failed to ensure profile exists:', error);
+          // Don't fail - continue with session
         }
       }
       setSession(nextSession);
@@ -43,6 +57,7 @@ export function useSession() {
     const fetchSession = async () => {
       setIsLoading(true);
       try {
+        console.log('🔄 Fetching session...');
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
@@ -52,6 +67,7 @@ export function useSession() {
         }
 
         if (session) {
+          console.log('✅ Session found, validating...');
           // Validate the session by checking if token is still valid
           try {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -61,36 +77,44 @@ export function useSession() {
                                    userError?.message?.includes('Check the device clock');
             
             if (userError && !isTimeSkewError) {
-              console.warn('Session token invalid, clearing:', userError?.message);
+              console.warn('❌ Session token invalid, clearing:', userError?.message);
               await clearLocalSession('We could not refresh your session. Please sign in again.');
               return;
             }
             
             if (isTimeSkewError) {
-              console.warn('Time skew detected but continuing with session:', userError?.message);
+              console.warn('⚠️ Time skew detected but continuing with session');
             }
             
             // If we have a user (even with time skew warning), the session is valid
             if (user || isTimeSkewError) {
+              console.log('✅ Session validated successfully');
               await ensureProfileAndSetSession(session);
             } else {
-              console.warn('No user returned from getUser, clearing session');
+              console.warn('❌ No user returned from getUser, clearing session');
               await clearLocalSession('We could not refresh your session. Please sign in again.');
             }
           } catch (validationError) {
-            console.error('Error validating session:', validationError);
+            console.error('❌ Error validating session:', validationError);
             await clearLocalSession('Session validation failed. Please sign in again.');
           }
         } else {
           // No session - clear everything silently
+          console.log('ℹ️ No session found (guest user)');
           setSession(null);
           setSessionError(null);
         }
       } catch (error) {
-        console.error('Error fetching session:', error);
+        console.error('❌ Error fetching session:', error);
         await clearLocalSession('We could not reach the auth service. Please try again.');
       } finally {
+        // Clear the timeout since we finished loading
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
         setIsLoading(false);
+        console.log('✅ Session loading complete');
       }
     };
 
@@ -129,6 +153,11 @@ export function useSession() {
     // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
+      // Clear timeout if component unmounts
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     };
   }, []); // Empty dependency array - run once on mount
 
