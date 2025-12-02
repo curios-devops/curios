@@ -30,7 +30,8 @@ export function useSearchLimit() {
               .single();
             if (error) throw error;
             return data;
-          }
+          },
+          { remaining_searches: maxSearches, searches_reset_at: new Date().toISOString() }
         );
 
         if ('code' in result && result.code === -1) {
@@ -51,7 +52,8 @@ export function useSearchLimit() {
                     searches_reset_at: now.toISOString(),
                   })
                   .eq('id', session.user.id);
-              }
+              },
+              undefined // No fallback needed for update operations
             );
             setRemainingSearches(newCount);
           } else if (typeof result.remaining_searches === 'number') {
@@ -90,11 +92,12 @@ export function useSearchLimit() {
             .single();
           if (error) throw error;
           return data;
-        }
+        },
+        { remaining_searches: remainingSearches - 1 }
       );
 
       if ('code' in result && result.code === -1) {
-        setError(result.message);
+        setError('Failed to decrement search count');
         return false;
       } else if ('remaining_searches' in result) {
         setRemainingSearches(result.remaining_searches as number);

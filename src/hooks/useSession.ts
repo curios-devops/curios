@@ -9,6 +9,7 @@ export function useSession() {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const isInitializedRef = useRef(false);
+  const hasInitialSessionRef = useRef(false); // Track if initial session is loaded
 
   useEffect(() => {
     // Prevent running twice in StrictMode
@@ -106,8 +107,15 @@ export function useSession() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session ? 'User signed in' : 'User signed out');
 
-      // Skip INITIAL_SESSION event - it's handled by fetchSession() above
+      // Skip all events until initial session is loaded to prevent duplicate fetches
       if (event === 'INITIAL_SESSION') {
+        hasInitialSessionRef.current = true;
+        return;
+      }
+
+      // Skip SIGNED_IN during initialization (happens before INITIAL_SESSION)
+      if (event === 'SIGNED_IN' && !hasInitialSessionRef.current) {
+        console.log('Skipping SIGNED_IN during initialization');
         return;
       }
 
@@ -123,11 +131,13 @@ export function useSession() {
         setSession(null);
         setSessionError(null);
         setIsLoading(false);
+        hasInitialSessionRef.current = false; // Reset for next sign in
         return;
       }
 
-      // For signed in or token refreshed with valid session
+      // For signed in or token refreshed with valid session (after initialization)
       if (session) {
+        console.log('Processing auth state change:', event);
         await ensureProfileAndSetSession(session);
       } else {
         setSession(null);
