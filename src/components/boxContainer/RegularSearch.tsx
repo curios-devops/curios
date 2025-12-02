@@ -33,7 +33,7 @@ export default function RegularSearch() {
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const { decrementSearches, remainingSearches, maxSearches } = useSearchLimit();
   const { session } = useSession();
-  const { subscription } = useSubscription();
+  const { subscription } = useSubscription(session);
   
   // Determine the actual user type based on session and subscription
   const actualUserType: 'guest' | 'standard' | 'premium' = !session 

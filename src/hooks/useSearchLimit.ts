@@ -6,7 +6,7 @@ import { useUserType } from './useUserType.ts';
 
 export function useSearchLimit() {
   const { session } = useSession()
-  const { subscription } = useSubscription()
+  const { subscription } = useSubscription(session)
   const userType = useUserType() as 'pro' | 'guest' | null;
   const [remainingSearches, setRemainingSearches] = useState<number>(5)
   const [loading, setLoading] = useState(true);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase.ts';
 import { ensureProfileExists } from '../lib/ensureProfile.ts';
-import { useSession } from './useSession.ts';
 
 export interface Subscription {
   status: string;
@@ -13,33 +13,23 @@ export interface Subscription {
 // Subscription fetch timeout (5 seconds)
 const SUBSCRIPTION_FETCH_TIMEOUT = 5000;
 
-export function useSubscription(markSessionLoaded?: () => void) {
-  const { session } = useSession();
+/**
+ * Hook to fetch user subscription data
+ * @param session - The current user session (pass from useSession, don't call useSession internally)
+ * @returns Subscription data, loading state, and error
+ */
+export function useSubscription(session: Session | null) {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasCalledCallbackRef = useRef(false);
-
-  // Helper to call markSessionLoaded only once per session
-  const signalCompletion = () => {
-    if (markSessionLoaded && !hasCalledCallbackRef.current) {
-      hasCalledCallbackRef.current = true;
-      markSessionLoaded();
-    }
-  };
 
   useEffect(() => {
     if (!session?.user) {
       setSubscription(null);
       setLoading(false);
-      // Signal completion for guest users
-      signalCompletion();
       return;
     }
-
-    // Reset the callback flag when session changes (new login)
-    hasCalledCallbackRef.current = false;
 
     // Clear any existing timeout
     if (fetchTimeoutRef.current) {
@@ -57,9 +47,6 @@ export function useSubscription(markSessionLoaded?: () => void) {
       });
       setLoading(false);
       setError('Subscription fetch timed out');
-      
-      // Signal completion even on timeout
-      signalCompletion();
     }, SUBSCRIPTION_FETCH_TIMEOUT);
 
     const fetchSubscription = async () => {
@@ -127,9 +114,6 @@ export function useSubscription(markSessionLoaded?: () => void) {
           fetchTimeoutRef.current = null;
         }
         setLoading(false);
-        
-        // Signal to useSession that profile/subscription loading is complete
-        signalCompletion();
       }
     };
 

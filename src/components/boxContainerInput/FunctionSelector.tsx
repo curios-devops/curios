@@ -70,7 +70,7 @@ export default function FunctionSelector({
   const [hoveredTabIndex, setHoveredTabIndex] = useState<number>(0);
 
   const { session, isLoading: sessionLoading } = useSession();
-  const { subscription, loading: subscriptionLoading } = useSubscription();
+  const { subscription, loading: subscriptionLoading } = useSubscription(session);
   const { remainingQuota } = useProQuota();
   const accentColor = useAccentColor();
 

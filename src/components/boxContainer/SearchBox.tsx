@@ -32,7 +32,7 @@ export default function SearchBox() {
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | number>();
   
   const { session, isLoading: sessionLoading } = useSession();
-  const { subscription, loading: subscriptionLoading } = useSubscription();
+  const { subscription, loading: subscriptionLoading } = useSubscription(session);
   const { remainingSearches, hasSearchesLeft, decrementSearches } = useSearchLimit();
 
   // Determine user type using same pattern as Home.tsx

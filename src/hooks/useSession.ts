@@ -1,10 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase.ts";
 import { Session } from "@supabase/supabase-js";
 import { ensureProfileExists } from "../lib/ensureProfile.ts";
-
-// Session restoration timeout (15 seconds - increased for slower connections)
-const SESSION_RESTORE_TIMEOUT = 15000;
 
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
@@ -12,8 +9,6 @@ export function useSession() {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const isInitializedRef = useRef(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isSessionLoadedRef = useRef(false);
 
   useEffect(() => {
     // Prevent running twice in StrictMode
@@ -60,15 +55,6 @@ export function useSession() {
 
         if (session) {
           console.log('✅ Session found, validating...', session.user.id);
-          
-          // Start timeout ONLY after we have a session
-          // This gives profile/subscription time to load
-          timeoutRef.current = setTimeout(() => {
-            if (isLoading && !isSessionLoadedRef.current) {
-              console.warn('⏰ Session restoration taking >15s - keeping session but stopping loading UI');
-              setIsLoading(false);
-            }
-          }, SESSION_RESTORE_TIMEOUT);
           
           // Validate the session by checking if token is still valid
           try {
@@ -154,11 +140,6 @@ export function useSession() {
     // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
-      // Clear timeout if component unmounts
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
     };
   }, []); // Empty dependency array - run once on mount
 
@@ -181,23 +162,11 @@ export function useSession() {
     }
   };
 
-  // Callback for other hooks (like useProfile) to signal they've finished loading
-  const markSessionLoaded = useCallback(() => {
-    console.log('✅ markSessionLoaded called - profile/subscription complete');
-    isSessionLoadedRef.current = true;
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    setIsLoading(false);
-  }, []);
-
   return {
     session,
     isLoading,
     error: sessionError,
     isResetting,
     resetSession,
-    markSessionLoaded,
   };
 }

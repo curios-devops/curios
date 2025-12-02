@@ -18,7 +18,7 @@ import { useAccentColor } from '../hooks/useAccentColor.ts';
 
 export default function Home() {
   const { session } = useSession();
-  const { subscription } = useSubscription();
+  const { subscription } = useSubscription(session);
   const accentColors = useAccentColor();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [bannerEnabled, setBannerEnabled] = useState(false);

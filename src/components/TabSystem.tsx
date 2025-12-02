@@ -112,7 +112,7 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
   const imageModalTimeoutRef = useRef<number | null>(null);
   const accent = useAccentColor();
   const { session } = useSession();
-  const { subscription } = useSubscription();
+  const { subscription } = useSubscription(session);
   const { remainingQuota, decrementProQuota } = useProQuota();
 
   // Determine user type
