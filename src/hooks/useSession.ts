@@ -120,6 +120,11 @@ export function useSession() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session ? 'User signed in' : 'User signed out');
 
+      // Skip INITIAL_SESSION event - it's handled by fetchSession() above
+      if (event === 'INITIAL_SESSION') {
+        return;
+      }
+
       // Handle various auth error events
       if (event === 'TOKEN_REFRESHED' && !session) {
         console.warn('Token refresh failed, signing out locally');

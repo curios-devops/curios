@@ -19,17 +19,27 @@ export function useSubscription(markSessionLoaded?: () => void) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasCalledCallbackRef = useRef(false);
+
+  // Helper to call markSessionLoaded only once per session
+  const signalCompletion = () => {
+    if (markSessionLoaded && !hasCalledCallbackRef.current) {
+      hasCalledCallbackRef.current = true;
+      markSessionLoaded();
+    }
+  };
 
   useEffect(() => {
     if (!session?.user) {
       setSubscription(null);
       setLoading(false);
       // Signal completion for guest users
-      if (markSessionLoaded) {
-        markSessionLoaded();
-      }
+      signalCompletion();
       return;
     }
+
+    // Reset the callback flag when session changes (new login)
+    hasCalledCallbackRef.current = false;
 
     // Clear any existing timeout
     if (fetchTimeoutRef.current) {
@@ -49,9 +59,7 @@ export function useSubscription(markSessionLoaded?: () => void) {
       setError('Subscription fetch timed out');
       
       // Signal completion even on timeout
-      if (markSessionLoaded) {
-        markSessionLoaded();
-      }
+      signalCompletion();
     }, SUBSCRIPTION_FETCH_TIMEOUT);
 
     const fetchSubscription = async () => {
@@ -121,9 +129,7 @@ export function useSubscription(markSessionLoaded?: () => void) {
         setLoading(false);
         
         // Signal to useSession that profile/subscription loading is complete
-        if (markSessionLoaded) {
-          markSessionLoaded();
-        }
+        signalCompletion();
       }
     };
 
@@ -136,7 +142,7 @@ export function useSubscription(markSessionLoaded?: () => void) {
         fetchTimeoutRef.current = null;
       }
     };
-  }, [session]);
+  }, [session?.user?.id]); // Only re-run if user ID changes, not on every session update
 
   return {
     subscription,
