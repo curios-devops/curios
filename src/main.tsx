@@ -2,6 +2,7 @@ import { useState, useEffect, ReactNode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './components/auth/AuthContext.tsx';
+import { SessionCoordinator } from './components/SessionCoordinator.tsx';
 import App from './App.tsx';
 import Home from './mainPages/Home.tsx'; // Keep Home page eager loaded as it's the landing page
 import { logger } from './utils/logger.ts';
@@ -227,11 +228,13 @@ if (!rootElement) {
 // Create root and render app
 const root = createRoot(rootElement);
 
-// Wrap app with error boundary and auth provider
+// Wrap app with error boundary, auth provider, and session coordinator
 root.render(
   <ErrorBoundary>
     <AuthProvider>
-      <RouterProvider router={router} />
+      <SessionCoordinator>
+        <RouterProvider router={router} />
+      </SessionCoordinator>
     </AuthProvider>
   </ErrorBoundary>
 );

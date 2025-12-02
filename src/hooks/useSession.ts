@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase.ts";
 import { Session } from "@supabase/supabase-js";
 import { ensureProfileExists } from "../lib/ensureProfile.ts";
 
-// Session restoration timeout (10 seconds)
-const SESSION_RESTORE_TIMEOUT = 10000;
+// Session restoration timeout (15 seconds - increased for slower connections)
+const SESSION_RESTORE_TIMEOUT = 15000;
 
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
@@ -13,20 +13,12 @@ export function useSession() {
   const [isResetting, setIsResetting] = useState(false);
   const isInitializedRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isSessionLoadedRef = useRef(false);
 
   useEffect(() => {
     // Prevent running twice in StrictMode
     if (isInitializedRef.current) return;
     isInitializedRef.current = true;
-
-    // Safety timeout - if session doesn't load in 10 seconds, force logout
-    timeoutRef.current = setTimeout(() => {
-      if (isLoading) {
-        console.error('Session restoration timeout - forcing logout');
-        clearLocalSession('Session restore timed out. Please sign in again.');
-        setIsLoading(false);
-      }
-    }, SESSION_RESTORE_TIMEOUT);
 
     const ensureProfileAndSetSession = async (nextSession: Session | null) => {
       if (nextSession?.user) {
@@ -61,13 +53,23 @@ export function useSession() {
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.warn('Auth error during session fetch, clearing session:', error.message);
+          console.warn('❌ Auth error during session fetch, clearing session:', error.message);
           await clearLocalSession('Your session expired. Please sign in again.');
           return;
         }
 
         if (session) {
-          console.log('✅ Session found, validating...');
+          console.log('✅ Session found, validating...', session.user.id);
+          
+          // Start timeout ONLY after we have a session
+          // This gives profile/subscription time to load
+          timeoutRef.current = setTimeout(() => {
+            if (isLoading && !isSessionLoadedRef.current) {
+              console.warn('⏰ Session restoration taking >15s - keeping session but stopping loading UI');
+              setIsLoading(false);
+            }
+          }, SESSION_RESTORE_TIMEOUT);
+          
           // Validate the session by checking if token is still valid
           try {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -90,6 +92,7 @@ export function useSession() {
             if (user || isTimeSkewError) {
               console.log('✅ Session validated successfully');
               await ensureProfileAndSetSession(session);
+              // Don't set loading false yet - let markSessionLoaded do that
             } else {
               console.warn('❌ No user returned from getUser, clearing session');
               await clearLocalSession('We could not refresh your session. Please sign in again.');
@@ -103,18 +106,11 @@ export function useSession() {
           console.log('ℹ️ No session found (guest user)');
           setSession(null);
           setSessionError(null);
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('❌ Error fetching session:', error);
         await clearLocalSession('We could not reach the auth service. Please try again.');
-      } finally {
-        // Clear the timeout since we finished loading
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-        }
-        setIsLoading(false);
-        console.log('✅ Session loading complete');
       }
     };
 
@@ -180,11 +176,23 @@ export function useSession() {
     }
   };
 
+  // Callback for other hooks (like useProfile) to signal they've finished loading
+  const markSessionLoaded = useCallback(() => {
+    console.log('✅ markSessionLoaded called - profile/subscription complete');
+    isSessionLoadedRef.current = true;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsLoading(false);
+  }, []);
+
   return {
     session,
     isLoading,
     error: sessionError,
     isResetting,
     resetSession,
+    markSessionLoaded,
   };
 }

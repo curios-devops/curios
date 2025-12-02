@@ -13,7 +13,7 @@ export interface Subscription {
 // Subscription fetch timeout (5 seconds)
 const SUBSCRIPTION_FETCH_TIMEOUT = 5000;
 
-export function useSubscription() {
+export function useSubscription(markSessionLoaded?: () => void) {
   const { session } = useSession();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,6 +24,10 @@ export function useSubscription() {
     if (!session?.user) {
       setSubscription(null);
       setLoading(false);
+      // Signal completion for guest users
+      if (markSessionLoaded) {
+        markSessionLoaded();
+      }
       return;
     }
 
@@ -43,6 +47,11 @@ export function useSubscription() {
       });
       setLoading(false);
       setError('Subscription fetch timed out');
+      
+      // Signal completion even on timeout
+      if (markSessionLoaded) {
+        markSessionLoaded();
+      }
     }, SUBSCRIPTION_FETCH_TIMEOUT);
 
     const fetchSubscription = async () => {
@@ -110,6 +119,11 @@ export function useSubscription() {
           fetchTimeoutRef.current = null;
         }
         setLoading(false);
+        
+        // Signal to useSession that profile/subscription loading is complete
+        if (markSessionLoaded) {
+          markSessionLoaded();
+        }
       }
     };
 
