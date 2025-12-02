@@ -262,8 +262,15 @@ When there's an issue:
 
 ## Files Changed
 
-1. `/src/hooks/useSession.ts` - Added markSessionLoaded callback, increased timeout to 15s
-2. `/src/hooks/useSubscription.ts` - Added markSessionLoaded parameter, calls it on completion
+1. `/src/hooks/useSession.ts` 
+   - Added markSessionLoaded callback, increased timeout to 15s
+   - Skip INITIAL_SESSION event to prevent duplicate session fetches
+   
+2. `/src/hooks/useSubscription.ts` 
+   - Added markSessionLoaded parameter, calls it on completion
+   - Added hasCalledCallbackRef to prevent calling callback multiple times
+   - Changed dependency array to `[session?.user?.id]` to prevent unnecessary re-runs
+   
 3. `/src/components/SessionCoordinator.tsx` - New component to coordinate loading states
 4. `/src/main.tsx` - Integrated SessionCoordinator into app root
 
@@ -271,15 +278,37 @@ When there's an issue:
 
 - ✅ Fixed: SESSION_RESTORATION_FREEZE_FIX.md - Added original 10s timeout
 - ✅ Fixed: This document - Improved timeout to prevent premature logout
+- ✅ Fixed: Infinite loop caused by duplicate INITIAL_SESSION handling
 - ⚠️ Note: Maintains compatibility with STRIPE_CANCEL_FREEZE_FIX.md
+
+## Troubleshooting
+
+### Issue: Infinite Loop (Fixed in v3)
+**Symptoms**: 
+- Console repeatedly shows "🔄 Fetching session..." and "✅ markSessionLoaded called"
+- App freezes after initial load
+- Multiple "Auth state changed: SIGNED_IN" messages
+
+**Root Cause**: 
+The `onAuthStateChange` handler was processing the `INITIAL_SESSION` event, which duplicated the work done by `fetchSession()`. This caused:
+1. `fetchSession()` runs → calls `ensureProfileAndSetSession` → triggers useSubscription
+2. `onAuthStateChange(INITIAL_SESSION)` runs → calls `ensureProfileAndSetSession` again → triggers useSubscription again  
+3. Subscription hook triggers → session state updates → triggers re-render
+4. Loop repeats indefinitely
+
+**Solution**: 
+- Skip `INITIAL_SESSION` event in auth state change handler
+- Add `hasCalledCallbackRef` to prevent calling `markSessionLoaded` multiple times
+- Use `session?.user?.id` in dependency array instead of whole session object
 
 ## Version History
 
 - **v1**: Added 10s timeout to prevent infinite freeze (too aggressive)
-- **v2**: This fix - Coordinated loading with 15s fallback (balanced approach)
+- **v2**: Coordinated loading with 15s fallback (caused infinite loop)
+- **v3**: Fixed infinite loop by skipping INITIAL_SESSION event and preventing duplicate callbacks
 
 ---
 
-**Status**: ✅ Implemented, Ready for Testing
+**Status**: ✅ Implemented, Deployed, Ready for Testing
 **Priority**: High (Affects user authentication experience)
 **Impact**: Positive (Better UX without losing freeze protection)
