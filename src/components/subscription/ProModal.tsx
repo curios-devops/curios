@@ -33,13 +33,15 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
       <div className="bg-[#1a1a1a] w-full max-w-[900px] p-8 rounded-2xl relative">
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors"
+          className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-20"
         >
           <X size={20} />
         </button>
 
-        {/* Black Friday Promo Banner - Easily removable */}
-        <PromoBanner />
+        {/* Promo Banner - Easily removable */}
+        <div className="mt-6">
+          <PromoBanner />
+        </div>
 
         <div className="text-center mb-4">
           <h2 className="text-3xl font-bold text-white mb-1">{t('upgradeToPremium')}</h2>
