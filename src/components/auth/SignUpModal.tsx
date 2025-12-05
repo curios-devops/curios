@@ -48,8 +48,8 @@ export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
 
         {/* Custom title and subtitle for sign up */}
         <div className="text-center mb-8">
-          <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>Welcome</h2>
-          <p className="text-gray-400 text-sm">Create your free account. No credit card needed. Upgrade anytime.</p>
+          <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{t('welcome')}</h2>
+          <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>{t('createFreeAccount')}</p>
         </div>
         <div className="mt-10 space-y-6">
           <GoogleButton
@@ -63,14 +63,15 @@ export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
           />
           <Divider text={t('or_continue_with_email')} />
           <EmailForm onSubmit={handleEmailSubmit} />
-          <div className="pt-4 text-center text-xs text-gray-500">
-            Already have an account?
+          <div className={`pt-4 text-center text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
+            {t('alreadyHaveAccount')}
             <button
               type="button"
-              className="ml-1 font-semibold text-[#007BFF] hover:underline inline-flex items-center gap-1"
+              className="ml-1 font-semibold hover:underline inline-flex items-center gap-1"
+              style={{ color: 'var(--accent-primary)' }}
               onClick={() => { setShowSignIn(true); }}
             >
-              Log In <span className="ml-0.5" style={{ color: '#007BFF', fontWeight: 700 }}>&rarr;</span>
+              {t('logIn')} <span className="ml-0.5" style={{ fontWeight: 700 }}>&rarr;</span>
             </button>
           </div>
         </div>

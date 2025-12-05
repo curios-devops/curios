@@ -111,5 +111,7 @@
   "contactSupport": "Por favor contacta soporte si este problema persiste.",
   "checkYourEmail": "Revisa tu correo electrónico",
   "temporarySignInLink": "Se ha enviado un enlace de inicio de sesión temporal a {email}",
-  "enterCodeManually": "Introducir código manualmente"
+  "enterCodeManually": "Introducir código manualmente",
+  "createFreeAccount": "Crea tu cuenta gratis. Sin tarjeta de crédito. Actualiza cuando quieras.",
+  "alreadyHaveAccount": "¿Ya tienes una cuenta?"
 }

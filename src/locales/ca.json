@@ -111,5 +111,7 @@
   "contactSupport": "Si us plau, contacta amb suport si aquest problema persisteix.",
   "checkYourEmail": "Revisa el teu correu electrònic",
   "temporarySignInLink": "S'ha enviat un enllaç d'inici de sessió temporal a {email}",
-  "enterCodeManually": "Introduir codi manualment"
+  "enterCodeManually": "Introduir codi manualment",
+  "createFreeAccount": "Crea el teu compte gratuït. Sense targeta de crèdit. Actualitza quan vulguis.",
+  "alreadyHaveAccount": "Ja tens un compte?"
 }

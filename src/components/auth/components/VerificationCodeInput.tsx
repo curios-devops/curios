@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { verifyOtp } from '../../../lib/auth';
+import { useTheme } from '../../theme/ThemeContext';
 
 interface VerificationCodeInputProps {
   email: string;
@@ -12,6 +13,7 @@ export default function VerificationCodeInput({ email, onSubmit, onClose }: Veri
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -72,12 +74,12 @@ export default function VerificationCodeInput({ email, onSubmit, onClose }: Veri
             setError('');
           }}
           disabled={loading || timeLeft <= 0}
-          className={`w-full bg-[#222222] border ${
-            error ? 'border-red-500' : timeLeft <= 0 ? 'border-yellow-500' : 'border-gray-700'
-          } rounded-lg px-4 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#007BFF] transition-colors text-center tracking-wider text-lg`}
+          className={`w-full ${theme === 'dark' ? 'bg-[#222222] text-white border-gray-700 placeholder-gray-500' : 'bg-gray-100 text-gray-900 border-gray-300 placeholder-gray-400'} border ${
+            error ? 'border-red-500' : timeLeft <= 0 ? 'border-yellow-500' : ''
+          } rounded-lg px-4 py-3.5 focus:outline-none focus:border-[#007BFF] transition-colors text-center tracking-wider text-lg`}
         />
         {timeLeft > 0 && (
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+          <div className={`absolute right-4 top-1/2 -translate-y-1/2 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
             {formatTime(timeLeft)}
           </div>
         )}
@@ -97,9 +99,14 @@ export default function VerificationCodeInput({ email, onSubmit, onClose }: Veri
           disabled={code.length !== 6 || loading}
           className={`w-full py-3.5 rounded-lg transition-all ${
             code.length === 6 && !loading
-              ? 'bg-[#007BFF] text-white hover:bg-[#0056b3]'
-              : 'bg-[#222222] text-gray-500 cursor-not-allowed'
+              ? 'text-white'
+              : theme === 'dark' 
+                ? 'bg-[#222222] text-gray-500 cursor-not-allowed' 
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           }`}
+          style={code.length === 6 && !loading ? { backgroundColor: 'var(--accent-primary)' } : undefined}
+          onMouseEnter={(e) => { if (code.length === 6 && !loading) e.currentTarget.style.backgroundColor = 'var(--accent-hover)'; }}
+          onMouseLeave={(e) => { if (code.length === 6 && !loading) e.currentTarget.style.backgroundColor = 'var(--accent-primary)'; }}
         >
           {loading ? 'Verifying...' : 'Continue'}
         </button>
@@ -107,7 +114,7 @@ export default function VerificationCodeInput({ email, onSubmit, onClose }: Veri
 
       <button
         onClick={onClose}
-        className="w-full text-gray-400 py-2 hover:text-white transition-colors text-sm"
+        className={`w-full py-2 transition-colors text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
       >
         Back
       </button>

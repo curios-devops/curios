@@ -111,5 +111,7 @@
   "contactSupport": "問題が解決しない場合は、サポートにお問い合わせください。",
   "checkYourEmail": "メールを確認してください",
   "temporarySignInLink": "{email}に一時的なサインインリンクが送信されました",
-  "enterCodeManually": "コードを手動で入力"
+  "enterCodeManually": "コードを手動で入力",
+  "createFreeAccount": "無料アカウントを作成。クレジットカード不要。いつでもアップグレード可能。",
+  "alreadyHaveAccount": "すでにアカウントをお持ちですか？"
 }
