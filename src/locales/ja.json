@@ -104,5 +104,9 @@
   "missingOut": "見逃しています",
   "upgradeToProMessage": "無制限の検索と高度な機能のためにProにアップグレードしてください。",
   "upgrade": "アップグレード",
-  "dismiss": "閉じる"
+  "dismiss": "閉じる",
+  "welcomeToPro": "Proへようこそ！",
+  "proUpgradeSuccess": "アカウントがPro機能にアップグレードされました。毎月500回のPro検索にアクセスできるようになりました。",
+  "startExploring": "探索を開始",
+  "contactSupport": "問題が解決しない場合は、サポートにお問い合わせください。"
 }

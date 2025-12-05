@@ -104,5 +104,9 @@
   "missingOut": "You are missing out",
   "upgradeToProMessage": "Upgrade to Pro for unlimited searches and advanced features.",
   "upgrade": "Upgrade",
-  "dismiss": "Dismiss"
+  "dismiss": "Dismiss",
+  "welcomeToPro": "Welcome to Pro!",
+  "proUpgradeSuccess": "Your account has been upgraded with Pro features. You now have access to 500 Pro searches per month.",
+  "startExploring": "Start Exploring",
+  "contactSupport": "Please contact support if this issue persists."
 }

@@ -104,5 +104,9 @@
   "missingOut": "T'estàs perdent",
   "upgradeToProMessage": "Actualitza a Pro per a cerques il·limitades i funcions avançades.",
   "upgrade": "Actualitzar",
-  "dismiss": "Descartar"
+  "dismiss": "Descartar",
+  "welcomeToPro": "Benvingut a Pro!",
+  "proUpgradeSuccess": "El teu compte ha estat actualitzat amb funcions Pro. Ara tens accés a 500 cerques Pro al mes.",
+  "startExploring": "Començar a Explorar",
+  "contactSupport": "Si us plau, contacta amb suport si aquest problema persisteix."
 }

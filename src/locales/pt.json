@@ -104,5 +104,9 @@
   "missingOut": "Você está perdendo",
   "upgradeToProMessage": "Atualize para Pro para buscas ilimitadas e recursos avançados.",
   "upgrade": "Atualizar",
-  "dismiss": "Dispensar"
+  "dismiss": "Dispensar",
+  "welcomeToPro": "Bem-vindo ao Pro!",
+  "proUpgradeSuccess": "Sua conta foi atualizada com recursos Pro. Agora você tem acesso a 500 buscas Pro por mês.",
+  "startExploring": "Começar a Explorar",
+  "contactSupport": "Entre em contato com o suporte se este problema persistir."
 }

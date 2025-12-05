@@ -104,5 +104,9 @@
   "missingOut": "Ti stai perdendo qualcosa",
   "upgradeToProMessage": "Passa a Pro per ricerche illimitate e funzionalità avanzate.",
   "upgrade": "Aggiorna",
-  "dismiss": "Ignora"
+  "dismiss": "Ignora",
+  "welcomeToPro": "Benvenuto in Pro!",
+  "proUpgradeSuccess": "Il tuo account è stato aggiornato con le funzionalità Pro. Ora hai accesso a 500 ricerche Pro al mese.",
+  "startExploring": "Inizia a Esplorare",
+  "contactSupport": "Contatta il supporto se il problema persiste."
 }
