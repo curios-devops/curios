@@ -50,7 +50,12 @@ export default function VerificationModal({ email, onClose }: VerificationModalP
           {!showCodeInput ? (
             <button
               onClick={() => setShowCodeInput(true)}
-              className="w-full bg-[#00C896] hover:bg-[#00B085] text-white font-medium py-3.5 rounded-lg transition-colors"
+              className="w-full text-white font-medium py-3.5 rounded-lg transition-colors"
+              style={{ 
+                backgroundColor: 'var(--accent-primary)',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-primary)'}
             >
               {t('enterCodeManually')}
             </button>
