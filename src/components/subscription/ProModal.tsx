@@ -4,6 +4,7 @@ import { useSession } from '../../hooks/useSession';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAccentColor } from '../../hooks/useAccentColor';
 import CheckoutButton from './CheckoutButton';
+import BlackFridayBanner from './BlackFridayBanner';
 
 interface ProModalProps {
   isOpen: boolean;
@@ -36,6 +37,9 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
         >
           <X size={20} />
         </button>
+
+        {/* Black Friday Promo Banner - Easily removable */}
+        <BlackFridayBanner />
 
         <div className="text-center mb-4">
           <h2 className="text-3xl font-bold text-white mb-1">{t('upgradeToPremium')}</h2>
@@ -94,7 +98,7 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
                 <h3 className="text-xl font-medium text-white mb-2">{t('premium')}</h3>
                 <div className="flex items-center justify-center gap-2">
                   <span className="text-3xl font-bold text-white">
-                    {selectedInterval === 'month' ? '$10' : '$50'}
+                    {selectedInterval === 'month' ? '$1' : '$10'}
                   </span>
                   <span className="text-gray-400">
                     {selectedInterval === 'month' ? t('perMonth') : t('perYear')}
