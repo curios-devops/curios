@@ -108,5 +108,8 @@
   "welcomeToPro": "Benvingut a Pro!",
   "proUpgradeSuccess": "El teu compte ha estat actualitzat amb funcions Pro. Ara tens accés a 500 cerques Pro al mes.",
   "startExploring": "Començar a Explorar",
-  "contactSupport": "Si us plau, contacta amb suport si aquest problema persisteix."
+  "contactSupport": "Si us plau, contacta amb suport si aquest problema persisteix.",
+  "checkYourEmail": "Revisa el teu correu electrònic",
+  "temporarySignInLink": "S'ha enviat un enllaç d'inici de sessió temporal a {email}",
+  "enterCodeManually": "Introduir codi manualment"
 }

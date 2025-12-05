@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Mail, X } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
+import { useTranslation } from '../../../hooks/useTranslation';
 import VerificationCodeInput from './VerificationCodeInput';
 
 interface VerificationModalProps {
@@ -11,6 +12,7 @@ interface VerificationModalProps {
 export default function VerificationModal({ email, onClose }: VerificationModalProps) {
   const [showCodeInput, setShowCodeInput] = useState(false);
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   const handleVerificationSuccess = () => {
     // Close the modal after successful verification
@@ -37,12 +39,12 @@ export default function VerificationModal({ email, onClose }: VerificationModalP
 
           {/* Title */}
           <h2 className={`text-3xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4`}>
-            Check your email
+            {t('checkYourEmail')}
           </h2>
 
           {/* Subtitle */}
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-base mb-8`}>
-            A temporary sign-in link has been sent to {email}
+            {t('temporarySignInLink').replace('{email}', email)}
           </p>
 
           {!showCodeInput ? (
@@ -50,7 +52,7 @@ export default function VerificationModal({ email, onClose }: VerificationModalP
               onClick={() => setShowCodeInput(true)}
               className={`w-full ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'} py-3.5 rounded-lg transition-colors`}
             >
-              Enter code manually
+              {t('enterCodeManually')}
             </button>
           ) : (
             <VerificationCodeInput 

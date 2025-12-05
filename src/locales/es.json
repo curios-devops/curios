@@ -108,5 +108,8 @@
   "welcomeToPro": "¡Bienvenido a Pro!",
   "proUpgradeSuccess": "Tu cuenta ha sido actualizada con funciones Pro. Ahora tienes acceso a 500 búsquedas Pro por mes.",
   "startExploring": "Comenzar a Explorar",
-  "contactSupport": "Por favor contacta soporte si este problema persiste."
+  "contactSupport": "Por favor contacta soporte si este problema persiste.",
+  "checkYourEmail": "Revisa tu correo electrónico",
+  "temporarySignInLink": "Se ha enviado un enlace de inicio de sesión temporal a {email}",
+  "enterCodeManually": "Introducir código manualmente"
 }

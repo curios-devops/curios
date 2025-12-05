@@ -108,5 +108,8 @@
   "welcomeToPro": "Proへようこそ！",
   "proUpgradeSuccess": "アカウントがPro機能にアップグレードされました。毎月500回のPro検索にアクセスできるようになりました。",
   "startExploring": "探索を開始",
-  "contactSupport": "問題が解決しない場合は、サポートにお問い合わせください。"
+  "contactSupport": "問題が解決しない場合は、サポートにお問い合わせください。",
+  "checkYourEmail": "メールを確認してください",
+  "temporarySignInLink": "{email}に一時的なサインインリンクが送信されました",
+  "enterCodeManually": "コードを手動で入力"
 }
