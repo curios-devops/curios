@@ -1,6 +1,6 @@
 export default function PromoBanner() {
   return (
-    <div className="relative w-full h-24 mb-6 overflow-hidden rounded-lg">
+    <div className="relative w-full h-16 mb-4 overflow-hidden rounded-lg">
       {/* Christmas red background */}
       <div className="absolute inset-0 bg-gradient-to-r from-red-900 via-red-800 to-red-900"></div>
 
@@ -17,16 +17,12 @@ export default function PromoBanner() {
       <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
         <div className="text-center">
           {/* Christmas Deal */}
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <span className="text-3xl font-bold text-green-400">🎄</span>
-            <span className="text-3xl font-bold text-amber-300">CHRISTMAS</span>
-            <span className="text-3xl font-bold text-white">DEAL</span>
-            <span className="text-3xl font-bold text-green-400">🎄</span>
-          </div>
-
-          {/* 50% Off */}
-          <div className="text-base font-semibold text-amber-200">
-            50% Off Premium
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xl font-bold text-green-400">🎄</span>
+            <span className="text-xl font-bold text-amber-300">CHRISTMAS</span>
+            <span className="text-xl font-bold text-white">DEAL</span>
+            <span className="text-sm font-semibold text-amber-200 ml-2">50% Off</span>
+            <span className="text-xl font-bold text-green-400">🎄</span>
           </div>
         </div>
       </div>
