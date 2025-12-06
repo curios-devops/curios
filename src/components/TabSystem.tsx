@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Compass, Image, List, Globe, ChevronDown, Wand2, Loader2 } from 'lucide-react';
+import { Image, List, Globe, ChevronDown, Wand2, Loader2 } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useSession } from '../hooks/useSession';
 import { useSubscription } from '../hooks/useSubscription';
@@ -8,6 +8,7 @@ import { generateArticleImage, extractArticleSummary } from '../services/researc
 import ImageGenerationModal from './common/ImageGenerationModal';
 import SignInModal from './auth/SignInModal';
 import ProModal from './subscription/ProModal';
+import CuriosLogo from './common/CuriosLogo';
 
 // Helper function to calculate reading and listening time
 const calculateReadingTime = (text: string) => {
@@ -344,7 +345,7 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
     { 
       id: 'curios', 
       label: 'Curios AI',
-      icon: <Compass size={16} />,
+      icon: <CuriosLogo size={16} />,
       customLabel: (
         <span>
           Curios<span style={{ color: accent.primary }}>AI</span>

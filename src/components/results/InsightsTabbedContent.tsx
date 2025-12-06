@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FileText, Search, LucideIcon } from 'lucide-react';
+import CuriosLogo from '../common/CuriosLogo';
 
 // Helper function to calculate reading and listening time
 const calculateReadingTime = (text: string) => {
@@ -66,11 +67,7 @@ export default function InsightsTabbedContent({
       id: 'curios' as const, 
       label: 'Curios AI', 
       icon: (
-        <img 
-          src="/compass.svg" 
-          alt="Compass" 
-          className="w-4 h-4"
-        />
+        <CuriosLogo size={16} />
       ) as React.ReactElement,
       customLabel: (
         <span>
