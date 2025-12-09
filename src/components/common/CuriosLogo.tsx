@@ -1,4 +1,5 @@
 import { useAccentColor } from "../../hooks/useAccentColor.ts";
+import { useId } from "react";
 
 interface CuriosLogoProps {
   size?: number;
@@ -7,46 +8,43 @@ interface CuriosLogoProps {
 
 export default function CuriosLogo({ size = 16, className = "" }: CuriosLogoProps) {
   const accentColor = useAccentColor();
+  const maskId = useId();
   
   return (
     <svg 
       width={size} 
       height={size} 
-      viewBox="-150 -150 300 300" 
+      viewBox="-500 -500 1000 1000"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      {/* Center circle (radius 34) */}
-      <circle cx="0" cy="0" r="34" fill={accentColor.primary}/>
+      {/* Mask: white = visible, black = removed */}
+      <mask id={maskId}>
+        <rect x="-500" y="-500" width="1000" height="1000" fill="white"/>
+        {/* Extended rectangular cut for a clean full-width removal */}
+        <rect x="214" y="-50" width="220" height="100" fill="black"/>
+      </mask>
 
-      {/* Define smooth 34px cut in the outer ring */}
-      <defs>
-        <mask id={`ringMask-${size}`}>
-          {/* Full canvas */}
-          <rect x="-150" y="-150" width="300" height="300" fill="white"/>
+      {/* Donut */}
+      <path
+        d="
+          M 414 0
+          A 414 414 0 1 1 -414 0
+          A 414 414 0 1 1 414 0
+          Z
 
-          {/* Smooth cut: capsule shape 34px tall */}
-          <path d="
-            M 0 -17
-            H 200
-            A 17 17 0 0 1 200 17
-            H 0
-            A 17 17 0 0 1 0 -17
-            Z"
-            fill="black"/>
-        </mask>
-      </defs>
-
-      {/* Outer ring (inner 68, outer 102, stroke 34) */}
-      <circle 
-        cx="0" 
-        cy="0" 
-        r="85"
-        fill="none"
-        stroke={accentColor.primary}
-        strokeWidth="34"
-        mask={`url(#ringMask-${size})`}
+          M 234 0
+          A 234 234 0 1 0 -234 0
+          A 234 234 0 1 0 234 0
+          Z
+        "
+        fill={accentColor.primary}
+        fillRule="evenodd"
+        mask={`url(#${maskId})`}
       />
+
+      {/* Center circle */}
+      <circle cx="0" cy="0" r="134" fill={accentColor.primary}/>
     </svg>
   );
 }

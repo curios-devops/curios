@@ -1,30 +1,33 @@
-<svg width="32" height="32" viewBox="-110 -110 220 220" xmlns="http://www.w3.org/2000/svg">
+<svg width="32" height="32" viewBox="-500 -500 1000 1000"
+     xmlns="http://www.w3.org/2000/svg">
 
-  <!-- Center circle (radius 34) -->
-  <circle cx="0" cy="0" r="34" fill="#1E90FF"/>
+  <!-- Mask: white = visible, black = removed -->
+  <mask id="cutmask">
+    <rect x="-500" y="-500" width="1000" height="1000" fill="white"/>
 
-  <!-- Define smooth 34px cut in the outer ring -->
-  <defs>
-    <mask id="ringMask">
-      <!-- Full canvas -->
-      <rect x="-110" y="-110" width="220" height="220" fill="white"/>
+    <!-- Extended rectangular cut for a clean full-width removal -->
+    <rect x="214" y="-50" width="220" height="100" fill="black"/>
+  </mask>
 
-      <!-- Smooth cut: capsule shape 34px tall -->
-      <path d="
-        M 0 -17
-        H 200
-        A 17 17 0 0 1 200 17
-        H 0
-        A 17 17 0 0 1 0 -17
-        Z"
-        fill="black"/>
-    </mask>
-  </defs>
+  <!-- Donut -->
+  <path
+    d="
+      M 414 0
+      A 414 414 0 1 1 -414 0
+      A 414 414 0 1 1 414 0
+      Z
 
-  <!-- Outer ring (inner 68, outer 102, stroke 34) -->
-  <circle cx="0" cy="0" r="85"
-          fill="none"
-          stroke="#1E90FF"
-          stroke-width="34"
-          mask="url(#ringMask)"/>
+      M 234 0
+      A 234 234 0 1 0 -234 0
+      A 234 234 0 1 0 234 0
+      Z
+    "
+    fill="#0099DD"
+    fill-rule="evenodd"
+    mask="url(#cutmask)"
+  />
+
+  <!-- Center circle -->
+  <circle cx="0" cy="0" r="134" fill="#0099DD"/>
+
 </svg>

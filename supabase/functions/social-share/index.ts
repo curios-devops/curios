@@ -139,11 +139,14 @@ serve(async (req) => {
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="CuriosAI" />
 
-  <!-- Twitter Card -->
+  <!-- Twitter Card - Twitter-specific tags (isolated from Open Graph for LinkedIn) -->
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@CuriosAI" />
+  <meta name="twitter:creator" content="@CuriosAI" />
   <meta name="twitter:title" content="${safeTitle}" />
   <meta name="twitter:description" content="${safeDescription}" />
   <meta name="twitter:image" content="${ogImage}" />
+  <meta name="twitter:image:alt" content="CuriosAI Search: ${safeTitle}" />
 
   <link rel="canonical" href="${shareUrl}" />
 </head>
