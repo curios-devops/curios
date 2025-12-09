@@ -99,7 +99,32 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
           break;
         case 'twitter':
-          window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, '_blank');
+          // Build Twitter share URL using social-share function (same as LinkedIn but isolated)
+          // This ensures Twitter gets the proper meta tags including the image
+          const twitterQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          
+          // Get snippet for Twitter (similar to LinkedIn but isolated logic)
+          let twitterSnippet = '';
+          if (text && text.length > 20) {
+            const cleanText = text.replace(/\*\*/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+            const firstSentence = cleanText.split(/[.!?]/)[0].trim();
+            if (firstSentence.length > 15 && firstSentence.length < 150) {
+              twitterSnippet = firstSentence + '.';
+            }
+          }
+          if (!twitterSnippet) {
+            twitterSnippet = `AI-powered insights for "${twitterQuery}" with CuriosAI.`;
+          }
+          
+          // Get first search result image for Twitter
+          const twitterImage = images && images.length > 0 ? images[0].url : '';
+          
+          // Use social-share function URL so Twitter crawler gets proper meta tags with image
+          const twitterShareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(twitterQuery)}&snippet=${encodeURIComponent(twitterSnippet)}${twitterImage ? `&image=${encodeURIComponent(twitterImage)}` : ''}`;
+          
+          // Open Twitter sharing dialog with the social-share URL
+          window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(twitterShareUrl)}&text=${encodeURIComponent(twitterQuery)}`, '_blank');
+          setIsOpen(false);
           break;
         case 'copy':
           await navigator.clipboard.writeText(url);
