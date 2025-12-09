@@ -1,3 +1,4 @@
+// @ts-ignore - Deno import
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
@@ -5,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -94,20 +95,24 @@ serve(async (req) => {
     // Use curiosai.com for all URLs (LinkedIn trusts this domain)
     const baseUrl = 'https://curiosai.com';
 
-    // LinkedIn requires PNG/JPG images with exact 1200x627 dimensions (1.91:1 ratio)
-    // Use proper fallback image that meets LinkedIn specifications
-    let ogImage = 'https://curiosai.com/curiosai-og-image-1200x627.png';
-    let imageWidth = '1200';
-    let imageHeight = '627';
+    // LINKEDIN: Uses dynamic SVG image generator (LinkedIn supports SVG)
+    // This creates a custom preview with the search query and snippet
+    // DO NOT MODIFY - This is working for LinkedIn
+    const linkedInImage = `${baseUrl}/functions/v1/social-og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
     
+    // TWITTER: Uses separate endpoint that handles PNG/JPG requirements
+    // Priority: 1) Provided search result image, 2) Dynamic Twitter image, 3) Static fallback
+    let twitterImage: string;
     if (image && image.startsWith('http')) {
-      // Use provided image from search results
-      ogImage = image;
-      // Assume user images also meet LinkedIn specs
-      // (In production, you'd want to fetch actual dimensions or resize)
-      imageWidth = '1200';
-      imageHeight = '627';
+      // Use provided image from search results (usually PNG/JPG from the article)
+      twitterImage = image;
+    } else {
+      // Use Twitter-specific endpoint that generates dynamic image or falls back to static PNG
+      twitterImage = `${baseUrl}/functions/v1/twitter-og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
     }
+    
+    const imageWidth = '1200';
+    const imageHeight = '627';
 
     // Generate share URL (canonical for crawlers) - use curiosai.com domain
     const shareUrl = `${baseUrl}/functions/v1/social-share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
@@ -124,14 +129,14 @@ serve(async (req) => {
   <!-- Combined name+property tags as per LinkedIn Inspector guidance -->
   <meta name="title" property="og:title" content="${safeTitle}" />
   <meta name="description" property="og:description" content="${safeDescription}" />
-  <meta name="image" property="og:image" content="${ogImage}" />
+  <meta name="image" property="og:image" content="${linkedInImage}" />
 
-  <!-- Open Graph Meta Tags -->
+  <!-- Open Graph Meta Tags (LinkedIn uses these - supports SVG) -->
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDescription}" />
-  <meta property="og:image" content="${ogImage}" />
-  <meta property="og:image:secure_url" content="${ogImage}" />
-  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image" content="${linkedInImage}" />
+  <meta property="og:image:secure_url" content="${linkedInImage}" />
+  <meta property="og:image:type" content="image/svg+xml" />
   <meta property="og:image:alt" content="CuriosAI preview image for: ${safeTitle}" />
   <meta property="og:image:width" content="${imageWidth}" />
   <meta property="og:image:height" content="${imageHeight}" />
@@ -139,13 +144,13 @@ serve(async (req) => {
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="CuriosAI" />
 
-  <!-- Twitter Card - Twitter-specific tags (isolated from Open Graph for LinkedIn) -->
+  <!-- Twitter Card - Twitter-specific tags (isolated from Open Graph - Twitter needs PNG/JPG) -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@CuriosAI" />
   <meta name="twitter:creator" content="@CuriosAI" />
   <meta name="twitter:title" content="${safeTitle}" />
   <meta name="twitter:description" content="${safeDescription}" />
-  <meta name="twitter:image" content="${ogImage}" />
+  <meta name="twitter:image" content="${twitterImage}" />
   <meta name="twitter:image:alt" content="CuriosAI Search: ${safeTitle}" />
 
   <link rel="canonical" href="${shareUrl}" />
