@@ -95,10 +95,23 @@ serve(async (req: Request) => {
     // Use curiosai.com for all URLs (LinkedIn trusts this domain)
     const baseUrl = 'https://curiosai.com';
 
-    // LINKEDIN: Uses dynamic SVG image generator (LinkedIn supports SVG)
-    // This creates a custom preview with the search query and snippet
-    // DO NOT MODIFY - This is working for LinkedIn
-    const linkedInImage = `${baseUrl}/functions/v1/social-og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
+    // OPEN GRAPH IMAGE (used by LinkedIn and Facebook)
+    // Priority: 1) Provided search result image (PNG/JPG - works everywhere)
+    //           2) Dynamic SVG (works for LinkedIn, not Facebook)
+    // LinkedIn supports SVG, Facebook does NOT - so prefer PNG/JPG when available
+    let ogImage: string;
+    let ogImageType: string;
+    if (image && image.startsWith('http')) {
+      // Use provided image from search results (usually PNG/JPG from the article)
+      // This works for both LinkedIn AND Facebook
+      ogImage = image;
+      ogImageType = 'image/jpeg'; // Assume JPG for article images
+    } else {
+      // Fallback to dynamic SVG - works great for LinkedIn
+      // Facebook may not render this well, but will show title/description
+      ogImage = `${baseUrl}/functions/v1/social-og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
+      ogImageType = 'image/svg+xml';
+    }
     
     // TWITTER: Uses separate endpoint that handles PNG/JPG requirements
     // Priority: 1) Provided search result image, 2) Dynamic Twitter image, 3) Static fallback
@@ -129,14 +142,14 @@ serve(async (req: Request) => {
   <!-- Combined name+property tags as per LinkedIn Inspector guidance -->
   <meta name="title" property="og:title" content="${safeTitle}" />
   <meta name="description" property="og:description" content="${safeDescription}" />
-  <meta name="image" property="og:image" content="${linkedInImage}" />
+  <meta name="image" property="og:image" content="${ogImage}" />
 
-  <!-- Open Graph Meta Tags (LinkedIn uses these - supports SVG) -->
+  <!-- Open Graph Meta Tags (used by LinkedIn and Facebook) -->
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDescription}" />
-  <meta property="og:image" content="${linkedInImage}" />
-  <meta property="og:image:secure_url" content="${linkedInImage}" />
-  <meta property="og:image:type" content="image/svg+xml" />
+  <meta property="og:image" content="${ogImage}" />
+  <meta property="og:image:secure_url" content="${ogImage}" />
+  <meta property="og:image:type" content="${ogImageType}" />
   <meta property="og:image:alt" content="CuriosAI preview image for: ${safeTitle}" />
   <meta property="og:image:width" content="${imageWidth}" />
   <meta property="og:image:height" content="${imageHeight}" />

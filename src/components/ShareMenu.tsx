@@ -9,11 +9,55 @@ interface ShareMenuProps {
   text: string;
   query?: string;
   images?: Array<{ url: string; alt?: string }>;
+  validImageIndices?: number[]; // Pre-validated image indices from parent component
 }
 
 type SharePlatform = 'linkedin' | 'email' | 'whatsapp' | 'facebook' | 'twitter' | 'copy';
 
-export default function ShareMenu({ url, title, text, query, images }: ShareMenuProps) {
+// Helper: Get the best available image URL from validated images
+// Tries first valid image, falls back to second, then empty string
+const getBestImageUrl = (
+  images: Array<{ url: string; alt?: string }> | undefined,
+  validImageIndices?: number[]
+): string => {
+  if (!images || images.length === 0) return '';
+  
+  // If we have pre-validated indices, use them
+  if (validImageIndices && validImageIndices.length > 0) {
+    // Try first valid image
+    const firstValidIdx = validImageIndices[0];
+    if (firstValidIdx !== undefined && images[firstValidIdx]?.url) {
+      return images[firstValidIdx].url;
+    }
+    // Try second valid image as fallback
+    if (validImageIndices.length > 1) {
+      const secondValidIdx = validImageIndices[1];
+      if (secondValidIdx !== undefined && images[secondValidIdx]?.url) {
+        return images[secondValidIdx].url;
+      }
+    }
+  }
+  
+  // Fallback: try first two images if no validation info
+  // Basic URL validation - must be https and look like an image
+  const isValidImageUrl = (url: string): boolean => {
+    if (!url || !url.startsWith('http')) return false;
+    // Skip obviously broken/placeholder URLs
+    if (url.includes('placeholder') || url.includes('no-image') || url.includes('default')) return false;
+    return true;
+  };
+  
+  if (images[0]?.url && isValidImageUrl(images[0].url)) {
+    return images[0].url;
+  }
+  if (images.length > 1 && images[1]?.url && isValidImageUrl(images[1].url)) {
+    return images[1].url;
+  }
+  
+  return '';
+};
+
+export default function ShareMenu({ url, title, text, query, images, validImageIndices }: ShareMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
@@ -74,8 +118,8 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           }
           
           
-          // Get first search result image
-          const shareImage = images && images.length > 0 ? images[0].url : '';
+          // Get best available image (with fallback to second image if first fails)
+          const shareImage = getBestImageUrl(images, validImageIndices);
           
           // Use curiosai.com domain for better LinkedIn compatibility
           // LinkedIn Post Inspector has issues with *.supabase.co domains
@@ -96,14 +140,30 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
           window.open(`https://wa.me/?text=${encodeURIComponent(title)}%0A${encodeURIComponent(url)}`, '_blank');
           break;
         case 'facebook':
-          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+          // Facebook uses social-share URL for proper Open Graph meta tags (isolated from LinkedIn/Twitter)
+          const fbQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          let fbSnippet = '';
+          if (text && text.length > 20) {
+            const cleanText = text.replace(/\*\*/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+            const firstSentence = cleanText.split(/[.!?]/)[0].trim();
+            if (firstSentence.length > 15 && firstSentence.length < 150) {
+              fbSnippet = firstSentence + '.';
+            }
+          }
+          if (!fbSnippet) {
+            fbSnippet = `AI-powered insights for "${fbQuery}" with CuriosAI.`;
+          }
+          const fbImage = getBestImageUrl(images, validImageIndices);
+          const fbShareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(fbQuery)}&snippet=${encodeURIComponent(fbSnippet)}${fbImage ? `&image=${encodeURIComponent(fbImage)}` : ''}`;
+          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fbShareUrl)}`, '_blank');
+          setIsOpen(false);
           break;
         case 'twitter':
-          // Build Twitter share URL using social-share function (same as LinkedIn but isolated)
+          // Build Twitter share URL using social-share function (isolated from LinkedIn)
           // This ensures Twitter gets the proper meta tags including the image
           const twitterQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
           
-          // Get snippet for Twitter (similar to LinkedIn but isolated logic)
+          // Get snippet for Twitter (isolated logic)
           let twitterSnippet = '';
           if (text && text.length > 20) {
             const cleanText = text.replace(/\*\*/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -116,8 +176,8 @@ export default function ShareMenu({ url, title, text, query, images }: ShareMenu
             twitterSnippet = `AI-powered insights for "${twitterQuery}" with CuriosAI.`;
           }
           
-          // Get first search result image for Twitter
-          const twitterImage = images && images.length > 0 ? images[0].url : '';
+          // Get best available image for Twitter (with fallback to second image)
+          const twitterImage = getBestImageUrl(images, validImageIndices);
           
           // Use social-share function URL so Twitter crawler gets proper meta tags with image
           const twitterShareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(twitterQuery)}&snippet=${encodeURIComponent(twitterSnippet)}${twitterImage ? `&image=${encodeURIComponent(twitterImage)}` : ''}`;
