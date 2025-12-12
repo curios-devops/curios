@@ -23,6 +23,9 @@ export default function Results() {
   const [streamingContent, setStreamingContent] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
   
+  // Track found sources for inline display
+  const [foundSources, setFoundSources] = useState<string[]>([]);
+  
   const [searchState, setSearchState] = useState<SearchState>({
     isLoading: true,
     error: null,
@@ -73,6 +76,7 @@ export default function Results() {
           setStatusMessage('Initializing search...');
           setStreamingContent('');
           setIsStreaming(true);
+          setFoundSources([]);
         }
         
         // Streaming callback - updates content as it arrives
@@ -92,7 +96,13 @@ export default function Results() {
               setStatusMessage(status);
             }
           },
-          onContentChunk: handleStreamingChunk
+          onContentChunk: handleStreamingChunk,
+          onSourcesFound: (sources: string[]) => {
+            if (isCurrentRequest) {
+              console.log('📚 [SearchResults] Sources found:', sources.length);
+              setFoundSources(sources);
+            }
+          }
         });
         
         // Add timeout to prevent infinite waiting
@@ -206,6 +216,7 @@ export default function Results() {
           onTabChange={setActiveTab}
           streamingContent={streamingContent}
           isStreaming={isStreaming}
+          foundSources={foundSources}
         />
       </main>
     </div>

@@ -15,8 +15,9 @@ interface RegularSearchOptions {
   imageUrls?: string[]; // Public URLs of images for reverse image search
 }
 
-interface StreamingSearchOptions extends RegularSearchOptions {
+export interface StreamingSearchOptions extends RegularSearchOptions {
   onContentChunk?: StreamingCallback; // Callback for streaming content chunks
+  onSourcesFound?: (sources: string[]) => void; // Callback when sources are found
 }
 
 // Initialize agents for regular search
@@ -185,7 +186,7 @@ export async function performRegularSearchWithStreaming(
   options: StreamingSearchOptions = {}
 ): Promise<SearchResponse> {
   try {
-    const { onStatusUpdate, imageUrls, onContentChunk } = options;
+    const { onStatusUpdate, imageUrls, onContentChunk, onSourcesFound } = options;
     
     // Validate: need either query text OR images
     const hasQuery = query && query.trim().length > 0;
@@ -215,6 +216,14 @@ export async function performRegularSearchWithStreaming(
       }
       
       console.log('✅ [STREAMING SEARCH] Search retrieval SUCCESS, starting streaming writer');
+      
+      // Notify about found sources (extract URLs from results)
+      if (onSourcesFound && searchResponse.data.results) {
+        const sourceUrls = searchResponse.data.results
+          .map(r => r.url)
+          .filter(url => url && url !== '#');
+        onSourcesFound(sourceUrls);
+      }
 
       // Step 2: Generate article with streaming
       onStatusUpdate?.('Generating answer...');

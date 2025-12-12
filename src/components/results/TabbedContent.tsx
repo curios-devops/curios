@@ -1,8 +1,21 @@
 import { Video } from 'lucide-react';
 import AIOverview from '../AIOverview.tsx';
-import LoadingState from './LoadingState.tsx';
 import ErrorState from './ErrorState.tsx';
 import type { SearchState, Source, ImageResult, VideoResult } from '../../types/index.ts';
+
+// Helper to extract clean domain name from URL
+function extractDomainName(url: string): string {
+  try {
+    const hostname = new URL(url).hostname;
+    // Remove www. and .com/.org/.net etc
+    return hostname
+      .replace(/^www\./, '')
+      .replace(/\.(com|org|net|io|co|gov|edu|info|biz)(\.[a-z]{2})?$/, '')
+      .split('.')[0]; // Take first part if still has dots
+  } catch {
+    return '';
+  }
+}
 
 export interface TabbedContentProps {
   searchState: SearchState;
@@ -11,6 +24,7 @@ export interface TabbedContentProps {
   onTabChange: (tab: string) => void;
   streamingContent?: string;
   isStreaming?: boolean;
+  foundSources?: string[]; // URLs of sources found so far
 }
 
 export default function TabbedContent({ 
@@ -18,9 +32,15 @@ export default function TabbedContent({
   statusMessage,
   activeTab,
   streamingContent,
-  isStreaming
+  isStreaming,
+  foundSources = []
 }: TabbedContentProps) {
 
+  // Extract clean source names for display
+  const sourceNames = foundSources
+    .map(extractDomainName)
+    .filter(name => name.length > 0)
+    .slice(0, 4); // Show max 4 sources
 
   // Show streaming content while loading (if available)
   if (searchState.isLoading && streamingContent && streamingContent.length > 0) {
@@ -54,8 +74,28 @@ export default function TabbedContent({
     );
   }
 
+  // Show inline loading status (no modal)
   if (searchState.isLoading) {
-    return <LoadingState message={statusMessage} />;
+    return (
+      <div className="flex-1">
+        <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-8 transition-colors duration-200">
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+            <div className="relative">
+              <div className="w-3 h-3 rounded-full animate-ping absolute" style={{ backgroundColor: 'var(--accent-primary)', opacity: 0.4 }}></div>
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
+            </div>
+            <span className="text-base">
+              {statusMessage}
+              {sourceNames.length > 0 && (
+                <span className="ml-2 text-gray-500 dark:text-gray-500">
+                  · found {sourceNames.join(', ')}
+                </span>
+              )}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (searchState.error) {
