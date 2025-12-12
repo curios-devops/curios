@@ -113,12 +113,14 @@ serve(async (req: Request) => {
       ogImageType = 'image/svg+xml';
     }
     
-    // TWITTER: Uses separate endpoint that handles PNG/JPG requirements
-    // Priority: 1) Provided search result image, 2) Dynamic Twitter image, 3) Static fallback
+    // TWITTER: Uses separate proxy to ensure reliable image loading
+    // Twitter's crawler can fail on slow/blocking servers, so we proxy all images
+    // Priority: 1) Proxied search result image, 2) Dynamic Twitter image, 3) Static fallback
     let twitterImage: string;
     if (image && image.startsWith('http')) {
-      // Use provided image from search results (usually PNG/JPG from the article)
-      twitterImage = image;
+      // Route external images through our Twitter image proxy
+      // This ensures reliable loading even if original server is slow/blocking
+      twitterImage = `${baseUrl}/functions/v1/twitter-image-proxy?url=${encodeURIComponent(image)}`;
     } else {
       // Use Twitter-specific endpoint that generates dynamic image or falls back to static PNG
       twitterImage = `${baseUrl}/functions/v1/twitter-og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
