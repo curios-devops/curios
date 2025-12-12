@@ -1,7 +1,18 @@
+import { useState, useMemo } from 'react';
 import { Video } from 'lucide-react';
 import AIOverview from '../AIOverview.tsx';
 import ErrorState from './ErrorState.tsx';
 import type { SearchState, Source, ImageResult, VideoResult } from '../../types/index.ts';
+
+// Helper to deduplicate images by URL
+function deduplicateImages(images: ImageResult[]): ImageResult[] {
+  const seen = new Set<string>();
+  return images.filter(image => {
+    if (!image.url || seen.has(image.url)) return false;
+    seen.add(image.url);
+    return true;
+  });
+}
 
 // Helper to extract clean domain name from URL
 function extractDomainName(url: string): string {
@@ -35,6 +46,20 @@ export default function TabbedContent({
   isStreaming,
   foundSources = []
 }: TabbedContentProps) {
+
+  // Track broken image URLs to hide them
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
+
+  // Deduplicate and filter out broken images
+  const validImages = useMemo(() => {
+    if (!searchState.data?.images) return [];
+    return deduplicateImages(searchState.data.images).filter(img => !brokenImages.has(img.url));
+  }, [searchState.data?.images, brokenImages]);
+
+  // Handle image error - add to broken set
+  const handleImageError = (imageUrl: string) => {
+    setBrokenImages(prev => new Set([...prev, imageUrl]));
+  };
 
   // Extract clean source names for display
   const sourceNames = foundSources
@@ -195,20 +220,17 @@ export default function TabbedContent({
                 })}
               </div>
 
-              {/* Images Grid - Show first 4 images */}
-              {data.images && data.images.length > 0 && (
+              {/* Images Grid - Show first 4 valid images */}
+              {validImages.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                  {data.images.slice(0, 4).map((image: ImageResult, index: number) => (
-                    <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group">
+                  {validImages.slice(0, 4).map((image: ImageResult) => (
+                    <div key={image.url} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group">
                       <img
                         src={image.url}
                         alt={image.alt || ''}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
                         onClick={() => globalThis.open(image.url, '_blank')}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M0M2MS44OTU0IDc0IDYxIDc0Ljg5NTQgNjEgNzZWMTI0QzYxIDEyNS4xMDUgNjEuODk1NCAxMjYgNjMgMTI2SDEzN0MxMzguMTA1IDEyNiAxMzkgMTI1LjEwNSAxMzkgMTI0Vjc2QzEzOSA3NC44OTU0IDEzOC4xMDUgNzQgMTM3IDc0SDExM00xMTMgNzRWNzBDMTEzIDY4Ljg5NTQgMTEyLjEwNSA2OCAxMTEgNjhIODlDODcuODk1NCA2OCA4NyA2OC44OTU0IDg3IDcwVjc0TTExMyA3NEg4N00xMDAgOTBWMTA2TTkzIDk4TDEwNyA5OCIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K';
-                        }}
+                        onError={() => handleImageError(image.url)}
                       />
                     </div>
                   ))}
@@ -232,19 +254,16 @@ export default function TabbedContent({
         {activeTab === 'images' && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Images</h3>
-            {data.images && data.images.length > 0 ? (
+            {validImages.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {data.images.map((image: ImageResult, index: number) => (
-                  <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group">
+                {validImages.map((image: ImageResult) => (
+                  <div key={image.url} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group">
                     <img
                       src={image.url}
                       alt={image.alt || ''}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
                       onClick={() => globalThis.open(image.url, '_blank')}
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M0M2MS44OTU0IDc0IDYxIDc0Ljg5NTQgNjEgNzZWMTI0QzYxIDEyNS4xMDUgNjEuODk1NCAxMjYgNjMgMTI2SDEzN0MxMzguMTA1IDEyNiAxMzkgMTI1LjEwNSAxMzkgMTI0Vjc2QzEzOSA3NC44OTU0IDEzOC4xMDUgNzQgMTM3IDc0SDExM00xMTMgNzRWNzBDMTEzIDY4Ljg5NTQgMTEyLjEwNSA2OCAxMTEgNjhIODlDODcuODk1NCA2OCA4NyA2OC44OTU0IDg3IDcwVjc0TTExMyA3NEg4N00xMDAgOTBWMTA2TTkzIDk4TDEwNyA5OCIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K';
-                      }}
+                      onError={() => handleImageError(image.url)}
                     />
                   </div>
                 ))}
