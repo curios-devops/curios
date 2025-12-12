@@ -57,20 +57,37 @@ export default function AnswerSection({ answer, citations = [], isStreaming = fa
             {answer}
           </CustomMarkdown>
           {isStreaming && (
-            <span className="inline-block w-2 h-4 bg-[#0095FF] animate-pulse ml-1" />
+            <span className="inline-block w-2 h-4 animate-pulse ml-1" style={{ backgroundColor: 'var(--accent-primary)' }} />
           )}
         </div>
       </div>
 
       <div className="flex items-center justify-between mt-4">
         <div className="flex items-center gap-1">
-          <button type="button" className="text-gray-400 hover:text-[#0095FF] p-1.5 rounded-lg transition-colors" onClick={handleCopyClick} disabled={isStreaming}>
+          <button 
+            type="button" 
+            className="text-gray-400 p-1.5 rounded-lg transition-colors" 
+            onClick={handleCopyClick} 
+            disabled={isStreaming}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = ''}
+          >
             <Copy size={16} />
           </button>
-          <button type="button" className="text-gray-400 hover:text-[#0095FF] p-1.5 rounded-lg transition-colors">
+          <button 
+            type="button" 
+            className="text-gray-400 p-1.5 rounded-lg transition-colors"
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = ''}
+          >
             <ThumbsUp size={16} />
           </button>
-          <button type="button" className="text-gray-400 hover:text-[#0095FF] p-1.5 rounded-lg transition-colors">
+          <button 
+            type="button" 
+            className="text-gray-400 p-1.5 rounded-lg transition-colors"
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = ''}
+          >
             <ThumbsDown size={16} />
           </button>
         </div>

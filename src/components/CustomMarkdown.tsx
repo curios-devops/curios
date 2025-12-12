@@ -129,11 +129,12 @@ export default function CustomMarkdown({ children, className = "", citations = [
           }
         }
         
-        // Fallback: display as blue button even if no citation match found
+        // Fallback: display as accent-colored button even if no citation match found
         return (
           <span
             key={`citation-fallback-${index}`} 
-            className="inline-flex items-center px-2 py-0.5 mx-0.5 bg-blue-600 text-white text-xs font-medium rounded-md"
+            className="inline-flex items-center px-2 py-0.5 mx-0.5 text-white text-xs font-medium rounded-md"
+            style={{ backgroundColor: 'var(--accent-primary)' }}
           >
             {citationText}
           </span>

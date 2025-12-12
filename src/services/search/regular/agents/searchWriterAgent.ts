@@ -292,6 +292,7 @@ Guidelines for the article:
 - Use inline citations like [1], [2], etc. to reference sources
 - Make it comprehensive but well-organized
 - Use markdown formatting for readability
+- DO NOT include a "References", "Sources", or "Bibliography" section at the end - we display sources separately
 
 Guidelines for followUpQuestions:
 - Provide 5 related questions that naturally extend the topic
@@ -300,7 +301,8 @@ Guidelines for followUpQuestions:
 
 Leave citations array empty (we handle it separately).
 
-CRITICAL: You must base your content strictly on the provided sources. Do not invent information.`;
+CRITICAL: You must base your content strictly on the provided sources. Do not invent information.
+CRITICAL: Do NOT add any References, Sources, or Bibliography section - these are displayed separately in the UI.`;
 
     const sourcesText = researchResult.results
       .map((source: any, index: number) => {
@@ -337,8 +339,10 @@ Guidelines for the article:
 - Use inline citations like [1], [2], etc. to reference sources
 - Make it comprehensive but well-organized
 - Use markdown formatting for readability
+- DO NOT include a "References", "Sources", or "Bibliography" section - sources are displayed separately
 
 CRITICAL: You must base your content strictly on the provided sources. Do not invent information.
+CRITICAL: Do NOT add any References, Sources, or Bibliography section at the end.
 Write the article content directly - do not wrap in JSON or any other format.`;
 
     const sourcesText = researchResult.results
@@ -352,7 +356,7 @@ Write the article content directly - do not wrap in JSON or any other format.`;
 Search Results:
 ${sourcesText}
 
-Based on these search results, write a comprehensive article addressing the query. Remember to use inline citations like [1], [2], etc.`;
+Based on these search results, write a comprehensive article addressing the query. Use inline citations like [1], [2], etc. Do NOT include a References or Sources section at the end.`;
 
     return { systemPrompt, userPrompt };
   }

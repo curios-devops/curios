@@ -33,6 +33,10 @@ export default function Results() {
   });
 
 
+  // Scroll to top on mount to ensure page starts at top position
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
