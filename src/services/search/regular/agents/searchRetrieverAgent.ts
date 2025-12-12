@@ -88,7 +88,7 @@ export class SearchRetrieverAgent {
         
       } else {
         // No image: Regular text search with Brave
-        onStatusUpdate?.('Searching with Brave Search...');
+        onStatusUpdate?.('Looking for trusted sources...');
         searchResults = await this.textOnlySearch(trimmedQuery, onStatusUpdate);
       }
 
@@ -308,7 +308,7 @@ export class SearchRetrieverAgent {
         videosCount: searchResults.videos.length
       });
 
-      onStatusUpdate?.('Search completed successfully!');
+      onStatusUpdate?.('Sources found, analyzing...');
       
       return searchResults;
       
@@ -317,7 +317,7 @@ export class SearchRetrieverAgent {
         error: braveError instanceof Error ? braveError.message : braveError
       });
       
-      onStatusUpdate?.('Brave Search failed, trying Apify...');
+      onStatusUpdate?.('Trying alternative sources...');
       
       // Wait 1 second before fallback (rate limit respect)
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -337,7 +337,7 @@ export class SearchRetrieverAgent {
           imagesCount: searchResults.images.length
         });
         
-        onStatusUpdate?.('Search completed with Apify!');
+        onStatusUpdate?.('Sources found, analyzing...');
         
         return searchResults;
         

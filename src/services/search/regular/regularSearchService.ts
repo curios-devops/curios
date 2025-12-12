@@ -1,6 +1,6 @@
 import { SearchResponse } from '../../../commonApp/types/index';
 import { SearchRetrieverAgent } from './agents/searchRetrieverAgent.ts';
-import { SearchWriterAgent } from './agents/searchWriterAgent.ts';
+import { SearchWriterAgent, StreamingCallback } from './agents/searchWriterAgent.ts';
 import { logger } from '../../../utils/logger.ts';
 
 export class SearchError extends Error {
@@ -13,6 +13,10 @@ export class SearchError extends Error {
 interface RegularSearchOptions {
   onStatusUpdate?: (status: string) => void;
   imageUrls?: string[]; // Public URLs of images for reverse image search
+}
+
+interface StreamingSearchOptions extends RegularSearchOptions {
+  onContentChunk?: StreamingCallback; // Callback for streaming content chunks
 }
 
 // Initialize agents for regular search
@@ -53,7 +57,7 @@ export async function performRegularSearch(
     
     try {
       // Step 1: Get search results (direct Brave/Apify call)
-      onStatusUpdate?.('Searching...');
+      onStatusUpdate?.('Finding relevant information...');
       console.log('🔍 [REGULAR SEARCH] Calling RetrieverAgent.execute()');
       const searchResponse = await retrieverAgent.execute(effectiveQuery, onStatusUpdate, imageUrls);
       console.log('🔍 [REGULAR SEARCH] RetrieverAgent.execute() completed:', {
@@ -169,4 +173,127 @@ export async function performRegularSearch(
   }
 }
 
+/**
+ * Regular Search Service with Streaming Support
+ * Query → Brave Search → Writer (streaming) → Results
+ * 
+ * Same as performRegularSearch but streams the article content progressively
+ * Returns sources/images/videos immediately, then streams article content
+ */
+export async function performRegularSearchWithStreaming(
+  query: string,
+  options: StreamingSearchOptions = {}
+): Promise<SearchResponse> {
+  try {
+    const { onStatusUpdate, imageUrls, onContentChunk } = options;
+    
+    // Validate: need either query text OR images
+    const hasQuery = query && query.trim().length > 0;
+    const hasImages = imageUrls && imageUrls.length > 0;
+    
+    if (!hasQuery && !hasImages) {
+      throw new SearchError('Search query or images required');
+    }
+    
+    const effectiveQuery = hasQuery ? query : '';
 
+    console.log('🔄 [STREAMING SEARCH] Starting streaming search flow:', {
+      query: effectiveQuery,
+      hasImages,
+      hasStreamingCallback: !!onContentChunk,
+      timestamp: new Date().toISOString()
+    });
+    
+    try {
+      // Step 1: Get search results (same as non-streaming)
+      onStatusUpdate?.('Finding relevant information...');
+      const searchResponse = await retrieverAgent.execute(effectiveQuery, onStatusUpdate, imageUrls);
+      
+      if (!searchResponse.success || !searchResponse.data) {
+        console.error('❌ [STREAMING SEARCH] Search retrieval failed');
+        throw new Error('Search retrieval failed');
+      }
+      
+      console.log('✅ [STREAMING SEARCH] Search retrieval SUCCESS, starting streaming writer');
+
+      // Step 2: Generate article with streaming
+      onStatusUpdate?.('Generating answer...');
+      const researchData = {
+        query: effectiveQuery,
+        perspectives: [],
+        results: searchResponse.data.results || [],
+        images: searchResponse.data.images || [],
+        videos: searchResponse.data.videos || [],
+        isReverseImageSearch: searchResponse.data.isReverseImageSearch || false
+      };
+
+      // Use streaming if callback provided, otherwise fallback to regular execution
+      let writerResponse;
+      if (onContentChunk) {
+        writerResponse = await writerAgent.executeWithStreaming({
+          query: effectiveQuery,
+          researchResult: researchData,
+          isImageSearch: researchData.isReverseImageSearch,
+          onContentChunk
+        });
+      } else {
+        writerResponse = await writerAgent.execute({
+          query: effectiveQuery,
+          researchResult: researchData,
+          isImageSearch: researchData.isReverseImageSearch
+        });
+      }
+      
+      if (!writerResponse?.success || !writerResponse?.data?.content) {
+        console.error('❌ [STREAMING SEARCH] Writer failed to generate content');
+        throw new Error('Writer failed to generate content');
+      }
+      
+      // Step 3: Format & Return
+      const finalResponse = {
+        answer: writerResponse.data.content,
+        sources: (searchResponse.data.results || []).map((r: any) => ({
+          title: r.title,
+          url: r.url,
+          snippet: r.content
+        })),
+        images: searchResponse.data.images || [],
+        videos: searchResponse.data.videos || [],
+        provider: 'Standard Search',
+        perspectives: undefined,
+        citations: writerResponse.data.citations || [],
+        followUpQuestions: writerResponse.data.followUpQuestions || []
+      };
+      
+      console.log('✅ [STREAMING SEARCH] === COMPLETE ===', {
+        answerLength: finalResponse.answer?.length || 0,
+        sourcesCount: finalResponse.sources.length,
+        timestamp: new Date().toISOString()
+      });
+      
+      return finalResponse;
+      
+    } catch (error) {
+      console.error('❌ [STREAMING SEARCH] Search failed:', {
+        error: error instanceof Error ? error.message : error,
+        timestamp: new Date().toISOString()
+      });
+      throw error;
+    }
+  } catch (error) {
+    logger.error('Streaming search error:', {
+      error: error instanceof Error ? error.message : error,
+      query,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      answer: 'We apologize, but we could not process your search at this time. Please try again in a moment.',
+      sources: [],
+      images: [],
+      videos: [],
+      provider: 'Standard Search',
+      perspectives: undefined,
+    };
+  }
+}

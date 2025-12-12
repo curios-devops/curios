@@ -4,19 +4,55 @@ import LoadingState from './LoadingState.tsx';
 import ErrorState from './ErrorState.tsx';
 import type { SearchState, Source, ImageResult, VideoResult } from '../../types/index.ts';
 
-interface TabbedContentProps {
+export interface TabbedContentProps {
   searchState: SearchState;
   statusMessage: string;
   activeTab: string;
   onTabChange: (tab: string) => void;
+  streamingContent?: string;
+  isStreaming?: boolean;
 }
 
 export default function TabbedContent({ 
   searchState, 
   statusMessage,
-  activeTab
+  activeTab,
+  streamingContent,
+  isStreaming
 }: TabbedContentProps) {
 
+
+  // Show streaming content while loading (if available)
+  if (searchState.isLoading && streamingContent && streamingContent.length > 0) {
+    // Show partial content with streaming indicator
+    return (
+      <div className="flex-1">
+        <div className="space-y-6">
+          <div className="space-y-4">
+            {/* Streaming indicator */}
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <div className="animate-pulse flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
+                <span>Generating answer...</span>
+              </div>
+            </div>
+            
+            {/* AI Overview with streaming content */}
+            <div>
+              <AIOverview 
+                answer={streamingContent} 
+                sources={[]} 
+                query={new URLSearchParams(globalThis.location.search).get('q') || ''} 
+                followUpQuestions={[]}
+                citations={[]}
+                isStreaming={isStreaming ?? true}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (searchState.isLoading) {
     return <LoadingState message={statusMessage} />;
@@ -106,7 +142,12 @@ export default function TabbedContent({
                           </div>
                         </div>
                       )}
-                      <div className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#0095FF] transition-colors">
+                      <div 
+                        className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 transition-colors"
+                        style={{ ['--tw-hover-color' as string]: 'var(--accent-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = ''}
+                      >
                         {source.title}
                       </div>
                     </a>
@@ -201,7 +242,10 @@ export default function TabbedContent({
                         href={video.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm font-medium text-gray-900 dark:text-white hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors"
+                        className="text-sm font-medium text-gray-900 dark:text-white transition-colors hover:opacity-90"
+                        style={{ ['--hover-color' as string]: 'var(--accent-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = ''}
                       >
                         {video.title}
                       </a>
@@ -233,7 +277,10 @@ export default function TabbedContent({
                     className="flex items-start gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-gray-800"
                   >
                     {/* Number indicator */}
-                    <div className="flex-shrink-0 w-6 h-6 bg-[#0095FF] text-white rounded text-xs font-medium flex items-center justify-center mt-1">
+                    <div 
+                      className="flex-shrink-0 w-6 h-6 text-white rounded text-xs font-medium flex items-center justify-center mt-1"
+                      style={{ backgroundColor: 'var(--accent-primary)' }}
+                    >
                       {index + 1}
                     </div>
                     
@@ -276,7 +323,9 @@ export default function TabbedContent({
                         href={source.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-lg font-medium text-gray-900 dark:text-white hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors block mb-2"
+                        className="text-lg font-medium text-gray-900 dark:text-white transition-colors block mb-2"
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = ''}
                       >
                         {source.title}
                       </a>

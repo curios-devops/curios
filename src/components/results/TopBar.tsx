@@ -40,7 +40,10 @@ export default function TopBar({
           <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 mr-2">
             <button 
               onClick={() => navigate('/')}
-              className="text-[#0095FF] hover:text-[#0080FF] transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex-shrink-0"
+              className="transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex-shrink-0"
+              style={{ color: 'var(--accent-primary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
               <ArrowLeft size={20} />
             </button>
@@ -75,9 +78,13 @@ export default function TopBar({
                     onClick={() => onTabChange(tab.id)}
                     className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors cursor-pointer whitespace-nowrap flex-shrink-0 ${
                       isActive
-                        ? 'border-[#0095FF] text-[#0095FF]'
+                        ? ''
                         : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
+                    style={isActive ? { 
+                      borderColor: 'var(--accent-primary)', 
+                      color: 'var(--accent-primary)' 
+                    } : undefined}
                   >
                     <Icon size={16} />
                     {tab.label}

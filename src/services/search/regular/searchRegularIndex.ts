@@ -4,4 +4,7 @@ export { SearchWriterAgent as WriterAgent } from './agents/searchWriterAgent.ts'
 export { SearchRetrieverAgent as RetrieverAgent } from './agents/searchRetrieverAgent.ts';
 
 // Export the regular search service directly
-export { performRegularSearch as performSearch } from './regularSearchService.ts';
+export { performRegularSearch as performSearch, performRegularSearchWithStreaming as performSearchWithStreaming } from './regularSearchService.ts';
+
+// Export streaming callback type
+export type { StreamingCallback } from './agents/searchWriterAgent.ts';

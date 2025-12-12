@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router';
-import { performSearch } from '../searchRegularIndex.ts';
+import { performSearchWithStreaming } from '../searchRegularIndex.ts';
 import { formatTimeAgo } from '../../../../utils/time.ts';
 import TopBar from '../../../../components/results/TopBar.tsx';
 import TabbedContent from '../../../../components/results/TabbedContent.tsx';
@@ -18,6 +18,10 @@ export default function Results() {
   const [timeAgo, setTimeAgo] = useState('just now');
   const [statusMessage, setStatusMessage] = useState('Initializing search...');
   const [activeTab, setActiveTab] = useState('answer');
+  
+  // Streaming content state - shows content as it arrives
+  const [streamingContent, setStreamingContent] = useState<string>('');
+  const [isStreaming, setIsStreaming] = useState(false);
   
   const [searchState, setSearchState] = useState<SearchState>({
     isLoading: true,
@@ -54,30 +58,41 @@ export default function Results() {
       }
 
       try {
-        console.log('🔍 [SearchResults] Starting search request:', {
+        console.log('🔍 [SearchResults] Starting STREAMING search request:', {
           query,
           hasImages: imageUrls.length > 0,
           imageCount: imageUrls.length,
           timestamp: new Date().toISOString()
         });
         
-        logger.info('Starting search', { query, hasImages: imageUrls.length > 0, imageCount: imageUrls.length });
+        logger.info('Starting streaming search', { query, hasImages: imageUrls.length > 0, imageCount: imageUrls.length });
         
-        // Set loading state
+        // Set loading state and reset streaming
         if (isCurrentRequest) {
           setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
           setStatusMessage('Initializing search...');
+          setStreamingContent('');
+          setIsStreaming(true);
         }
         
-        // Call performSearch with timeout protection
-        const searchPromise = performSearch(query, {
+        // Streaming callback - updates content as it arrives
+        const handleStreamingChunk = (chunk: string) => {
+          if (isCurrentRequest) {
+            console.log('📝 [SearchResults] Streaming chunk received, length:', chunk.length);
+            setStreamingContent(prev => prev + chunk);
+          }
+        };
+        
+        // Call performSearchWithStreaming with streaming callback
+        const searchPromise = performSearchWithStreaming(query, {
           imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
           onStatusUpdate: (status: string) => {
             if (isCurrentRequest) {
               console.log('🔍 [SearchResults] Status update:', status);
               setStatusMessage(status);
             }
-          }
+          },
+          onContentChunk: handleStreamingChunk
         });
         
         // Add timeout to prevent infinite waiting
@@ -102,22 +117,24 @@ export default function Results() {
           return;
         }
 
-        console.log('✅ [SearchResults] Search completed, updating state:', {
+        console.log('✅ [SearchResults] Streaming search completed, updating state:', {
           hasResults: !!response.sources?.length,
           imageCount: response.images?.length || 0,
           videoCount: response.videos?.length || 0,
           hasAnswer: !!response.answer,
+          streamedContentLength: streamingContent.length,
           timestamp: new Date().toISOString()
         });
 
-        logger.info('Search completed successfully', {
+        logger.info('Streaming search completed successfully', {
           hasResults: !!response.sources.length,
           imageCount: response.images.length,
           videoCount: response.videos?.length || 0,
           hasAnswer: !!response.answer
         });
 
-        // Update state synchronously
+        // Stop streaming and update state synchronously
+        setIsStreaming(false);
         setSearchState({
           isLoading: false,
           error: null,
@@ -145,6 +162,7 @@ export default function Results() {
             query
           });
           
+          setIsStreaming(false);
           setSearchState({
             isLoading: false,
             error: error instanceof Error ? error.message : 'Search services are currently unavailable',
@@ -160,6 +178,7 @@ export default function Results() {
     return () => {
       console.log('🧹 [SearchResults] Cleaning up request');
       isCurrentRequest = false;
+      setIsStreaming(false);
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
@@ -185,6 +204,8 @@ export default function Results() {
           statusMessage={statusMessage}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          streamingContent={streamingContent}
+          isStreaming={isStreaming}
         />
       </main>
     </div>

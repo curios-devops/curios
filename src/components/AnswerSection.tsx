@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { BookOpen, ThumbsUp, ThumbsDown, Copy } from 'lucide-react';
+import { BookOpen, ThumbsUp, ThumbsDown, Copy, Loader2 } from 'lucide-react';
 import CustomMarkdown from './CustomMarkdown';
 import Notification from './Notification';
 import type { CitationInfo } from '../commonApp/types';
 
-interface AnswerSectionProps {
+export interface AnswerSectionProps {
   answer: string;
   citations?: CitationInfo[];
+  isStreaming?: boolean; // Indicates if content is still streaming
 }
 
-export default function AnswerSection({ answer, citations = [] }: AnswerSectionProps) {
+export default function AnswerSection({ answer, citations = [], isStreaming = false }: AnswerSectionProps) {
   const [showNotification, setShowNotification] = useState(false);
   
   const handleCopyClick = async () => {
@@ -41,7 +42,12 @@ export default function AnswerSection({ answer, citations = [] }: AnswerSectionP
       <div className="bg-white dark:bg-[#111111] rounded-xl p-6 border border-gray-200 dark:border-gray-800 transition-colors duration-200">
         <div className="flex items-center gap-2 mb-4">
           <BookOpen className="text-[#0095FF]" size={22} />
-          <h2 className="text-xl font-medium text-gray-900 dark:text-white transition-colors duration-200">Answer</h2>
+          <h2 className="text-xl font-medium text-gray-900 dark:text-white transition-colors duration-200">
+            Answer
+            {isStreaming && (
+              <Loader2 className="inline-block ml-2 text-[#0095FF] animate-spin" size={18} />
+            )}
+          </h2>
         </div>
         <div className="prose dark:prose-invert max-w-none">
           <CustomMarkdown 
@@ -50,12 +56,15 @@ export default function AnswerSection({ answer, citations = [] }: AnswerSectionP
           >
             {answer}
           </CustomMarkdown>
+          {isStreaming && (
+            <span className="inline-block w-2 h-4 bg-[#0095FF] animate-pulse ml-1" />
+          )}
         </div>
       </div>
 
       <div className="flex items-center justify-between mt-4">
         <div className="flex items-center gap-1">
-          <button type="button" className="text-gray-400 hover:text-[#0095FF] p-1.5 rounded-lg transition-colors" onClick={handleCopyClick}>
+          <button type="button" className="text-gray-400 hover:text-[#0095FF] p-1.5 rounded-lg transition-colors" onClick={handleCopyClick} disabled={isStreaming}>
             <Copy size={16} />
           </button>
           <button type="button" className="text-gray-400 hover:text-[#0095FF] p-1.5 rounded-lg transition-colors">

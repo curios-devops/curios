@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { performSearch } from '../services/search/searchService';
+import { performSearchWithStreaming } from '../services/search/searchService';
 import { formatTimeAgo } from '../utils/time';
 import ShareMenu from '../components/ShareMenu';
 import TopBar from '../components/results/TopBar';
@@ -20,12 +20,29 @@ export default function Results() {
   const [timeAgo, setTimeAgo] = useState('just now');
   const [showAllSources, setShowAllSources] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Initializing search...');
+  const [streamingContent, setStreamingContent] = useState('');
   
   const [searchState, setSearchState] = useState<SearchState>({
     isLoading: true,
     error: null,
     data: null
   });
+
+  // Streaming callback to progressively update content
+  const handleContentChunk = useCallback((chunk: string, isComplete: boolean) => {
+    console.log('🔄 [RESULTS] Content chunk received:', { 
+      chunkLength: chunk.length, 
+      isComplete,
+      preview: chunk.substring(0, 30) 
+    });
+    if (chunk) {
+      setStreamingContent(prev => prev + chunk);
+    }
+    if (isComplete) {
+      console.log('✅ [RESULTS] Streaming complete');
+      logger.debug('Streaming complete');
+    }
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -47,15 +64,17 @@ export default function Results() {
       }
 
       try {
-        logger.info('Starting search', { query });
+        logger.info('Starting streaming search', { query });
         setSearchState((prev: SearchState) => ({ ...prev, isLoading: true, error: null }));
+        setStreamingContent(''); // Reset streaming content
         
-        const response = await performSearch(query, {
+        const response = await performSearchWithStreaming(query, {
           isPro: false,
           onStatusUpdate: (status: string) => {
             logger.debug('Search status update', { status });
             setStatusMessage(status);
-          }
+          },
+          onContentChunk: handleContentChunk
         });
 
         logger.info('Search completed', {
@@ -84,7 +103,7 @@ export default function Results() {
     };
 
     fetchResults();
-  }, [query]);
+  }, [query, handleContentChunk]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">
@@ -114,6 +133,7 @@ export default function Results() {
             showAllSources={showAllSources}
             setShowAllSources={setShowAllSources}
             statusMessage={statusMessage}
+            streamingContent={streamingContent}
           />
 
           {!searchState.error && (

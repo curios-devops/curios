@@ -1,9 +1,13 @@
 // searchWriterAgent.ts
 // Simplified following Swarm architecture: lightweight, stateless, minimal abstractions
 // Regular search flow: Research data → OpenAI (via Supabase Edge Function) → Article
+// Supports both streaming and non-streaming modes for optimal latency
 
 import { AgentResponse, ResearchResult, ArticleResult } from '../../../../commonApp/types/index';
 import { logger } from '../../../../utils/logger.ts';
+
+// Callback type for streaming content chunks
+export type StreamingCallback = (chunk: string, isComplete: boolean) => void;
 
 export class SearchWriterAgent {
   private readonly defaultModel: string = 'gpt-4.1-mini-2025-04-14'; // GPT-4.1 mini model
@@ -123,27 +127,153 @@ export class SearchWriterAgent {
   }
 
   /**
-   * Transforms research data into an article
+   * Calls OpenAI API with streaming via Supabase Edge Function
+   * Returns content progressively through callback
    */
-  async execute(params: {
-    query: string;
-    researchResult: ResearchResult;
-    model?: string;
-    isImageSearch?: boolean;
-  }): Promise<AgentResponse<ArticleResult>> {
-    const { query, researchResult, model, isImageSearch } = params;
-    const modelToUse = model || (isImageSearch ? this.imageSearchModel : this.defaultModel);
+  private async callOpenAIStreaming(
+    messages: Array<{ role: string; content: string }>,
+    model: string = this.defaultModel,
+    onChunk: StreamingCallback
+  ): Promise<string> {
+    const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseEdgeUrl) {
+      throw new Error('Supabase Edge Function URL not configured');
+    }
+    if (!supabaseAnonKey) {
+      throw new Error('Supabase anon key not found');
+    }
+
+    console.log('🔄 [WRITER STREAMING] Starting streaming call to OpenAI', { model, messageCount: messages.length });
+    logger.debug('Calling OpenAI via Supabase (streaming)', { model, messageCount: messages.length });
+
+    // Prepare payload with streaming enabled
+    const payload = {
+      prompt: JSON.stringify({
+        messages,
+        model,
+        temperature: 0.7,
+        max_output_tokens: 1200
+      }),
+      stream: true
+    };
+
+    console.log('🔄 [WRITER STREAMING] Payload prepared with stream: true');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for streaming
 
     try {
-      logger.info('SearchWriterAgent: Starting execution', {
-        query,
-        sourceCount: researchResult.results.length,
-        isImageSearch: !!isImageSearch,
-        model: modelToUse
+      console.log('🔄 [WRITER STREAMING] Fetching from edge function...');
+      const response = await fetch(supabaseEdgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
 
-      // Build system prompt
-      const systemPrompt = `You are an expert research writer creating comprehensive, well-structured articles.
+      clearTimeout(timeoutId);
+
+      console.log('🔄 [WRITER STREAMING] Response received:', {
+        status: response.status,
+        contentType: response.headers.get('content-type'),
+        hasBody: !!response.body
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('OpenAI streaming API error', { status: response.status, error: errorText.substring(0, 200) });
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body for streaming');
+      }
+
+      // Process the SSE stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let buffer = '';
+      let chunkCount = 0;
+
+      console.log('🔄 [WRITER STREAMING] Starting to read stream...');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) {
+          console.log('🔄 [WRITER STREAMING] Stream done, total chunks:', chunkCount);
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            
+            if (data === '[DONE]') {
+              console.log('🔄 [WRITER STREAMING] Received [DONE] signal');
+              onChunk('', true);
+              continue;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.content || '';
+              if (content) {
+                chunkCount++;
+                fullContent += content;
+                onChunk(content, false);
+                
+                // Log first few chunks for debugging
+                if (chunkCount <= 3) {
+                  console.log(`🔄 [WRITER STREAMING] Chunk ${chunkCount}:`, content.substring(0, 50));
+                }
+              }
+            } catch {
+              // Ignore parse errors for incomplete chunks
+            }
+          }
+        }
+      }
+
+      console.log('✅ [WRITER STREAMING] Streaming completed', { 
+        contentLength: fullContent.length,
+        totalChunks: chunkCount 
+      });
+      logger.debug('Streaming completed', { contentLength: fullContent.length });
+      return fullContent;
+
+    } catch (error) {
+      clearTimeout(timeoutId);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          logger.error('Streaming request timeout after 60s');
+          throw new Error('Request timeout - please try again');
+        }
+        logger.error('OpenAI streaming call failed', { error: error.message });
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Builds the system and user prompts for article generation
+   */
+  private buildPrompts(query: string, researchResult: ResearchResult): {
+    systemPrompt: string;
+    userPrompt: string;
+  } {
+    const systemPrompt = `You are an expert research writer creating comprehensive, well-structured articles.
 
 Your task: Write an article based on the provided search results.
 
@@ -172,20 +302,173 @@ Leave citations array empty (we handle it separately).
 
 CRITICAL: You must base your content strictly on the provided sources. Do not invent information.`;
 
-      // Build user prompt with sources
-      const sourcesText = researchResult.results
-        .map((source: any, index: number) => {
-          return `[${index + 1}] ${source.title}\nURL: ${source.url}\nContent: ${source.content || 'No content available'}`;
-        })
-        .join('\n\n');
+    const sourcesText = researchResult.results
+      .map((source: any, index: number) => {
+        return `[${index + 1}] ${source.title}\nURL: ${source.url}\nContent: ${source.content || 'No content available'}`;
+      })
+      .join('\n\n');
 
-      const userPrompt = `Query: "${query}"
+    const userPrompt = `Query: "${query}"
 
 Search Results:
 ${sourcesText}
 
 Based on these search results, write a comprehensive article addressing the query. Remember to use inline citations like [1], [2], etc.`;
 
+    return { systemPrompt, userPrompt };
+  }
+
+  /**
+   * Builds the streaming-optimized prompt that returns content directly (not JSON)
+   */
+  private buildStreamingPrompts(query: string, researchResult: ResearchResult): {
+    systemPrompt: string;
+    userPrompt: string;
+  } {
+    const systemPrompt = `You are an expert research writer creating comprehensive, well-structured articles.
+
+Your task: Write an article based on the provided search results.
+
+Guidelines for the article:
+- Start directly with the main content (no title, no "# Query" header)
+- Use natural, flowing prose
+- Structure with relevant section headings (##)
+- Include specific facts, data, and details from the sources
+- Use inline citations like [1], [2], etc. to reference sources
+- Make it comprehensive but well-organized
+- Use markdown formatting for readability
+
+CRITICAL: You must base your content strictly on the provided sources. Do not invent information.
+Write the article content directly - do not wrap in JSON or any other format.`;
+
+    const sourcesText = researchResult.results
+      .map((source: any, index: number) => {
+        return `[${index + 1}] ${source.title}\nURL: ${source.url}\nContent: ${source.content || 'No content available'}`;
+      })
+      .join('\n\n');
+
+    const userPrompt = `Query: "${query}"
+
+Search Results:
+${sourcesText}
+
+Based on these search results, write a comprehensive article addressing the query. Remember to use inline citations like [1], [2], etc.`;
+
+    return { systemPrompt, userPrompt };
+  }
+
+  /**
+   * Generates default follow-up questions based on the query
+   */
+  private generateFollowUpQuestions(query: string): string[] {
+    return [
+      `What are the latest developments related to ${query}?`,
+      `How does ${query} compare to alternatives?`,
+      `What are the practical applications of ${query}?`,
+      `What are experts saying about ${query}?`,
+      `What should I know before getting started with ${query}?`
+    ];
+  }
+
+  /**
+   * Transforms research data into an article with streaming support
+   * Content is streamed progressively through the onContentChunk callback
+   */
+  async executeWithStreaming(params: {
+    query: string;
+    researchResult: ResearchResult;
+    model?: string;
+    isImageSearch?: boolean;
+    onContentChunk: StreamingCallback;
+  }): Promise<AgentResponse<ArticleResult>> {
+    const { query, researchResult, model, isImageSearch, onContentChunk } = params;
+    const modelToUse = model || (isImageSearch ? this.imageSearchModel : this.defaultModel);
+
+    console.log('🔄 [WRITER] executeWithStreaming called', {
+      query: query.substring(0, 50),
+      sourceCount: researchResult.results.length,
+      hasCallback: !!onContentChunk
+    });
+
+    try {
+      logger.info('SearchWriterAgent: Starting streaming execution', {
+        query,
+        sourceCount: researchResult.results.length,
+        isImageSearch: !!isImageSearch,
+        model: modelToUse
+      });
+
+      const { systemPrompt, userPrompt } = this.buildStreamingPrompts(query, researchResult);
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ];
+
+      console.log('🔄 [WRITER] Calling callOpenAIStreaming...');
+      logger.debug('Calling OpenAI to generate article (streaming)', {
+        promptLength: systemPrompt.length + userPrompt.length,
+        sourceCount: researchResult.results.length
+      });
+
+      // Call OpenAI with streaming
+      const fullContent = await this.callOpenAIStreaming(messages, modelToUse, onContentChunk);
+
+      console.log('✅ [WRITER] Streaming complete, content length:', fullContent.length);
+      logger.info('SearchWriterAgent: Successfully generated article (streaming)', {
+        contentLength: fullContent.length
+      });
+
+      // Build the final article result
+      const articleResult: ArticleResult = {
+        content: fullContent,
+        followUpQuestions: this.generateFollowUpQuestions(query),
+        citations: []
+      };
+
+      return {
+        success: true,
+        data: articleResult
+      };
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      logger.error('SearchWriterAgent: Streaming execution failed', {
+        query,
+        error: errorMessage
+      });
+
+      // Return fallback data
+      return {
+        success: false,
+        error: errorMessage,
+        data: this.getFallbackData(query)
+      };
+    }
+  }
+
+  /**
+   * Transforms research data into an article
+   */
+  async execute(params: {
+    query: string;
+    researchResult: ResearchResult;
+    model?: string;
+    isImageSearch?: boolean;
+  }): Promise<AgentResponse<ArticleResult>> {
+    const { query, researchResult, model, isImageSearch } = params;
+    const modelToUse = model || (isImageSearch ? this.imageSearchModel : this.defaultModel);
+
+    try {
+      logger.info('SearchWriterAgent: Starting execution', {
+        query,
+        sourceCount: researchResult.results.length,
+        isImageSearch: !!isImageSearch,
+        model: modelToUse
+      });
+
+      // Build prompts using shared method
+      const { systemPrompt, userPrompt } = this.buildPrompts(query, researchResult);
       const messages = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }

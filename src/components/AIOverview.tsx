@@ -12,9 +12,10 @@ interface AIOverviewProps {
   query: string;
   followUpQuestions?: string[];
   citations?: CitationInfo[];
+  isStreaming?: boolean;
 }
 
-export default function AIOverview({ answer, sources, query, followUpQuestions, citations = [] }: AIOverviewProps) {
+export default function AIOverview({ answer, sources, query, followUpQuestions, citations = [], isStreaming = false }: AIOverviewProps) {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
           {/* Header with Overview title and action buttons */}
           <div className="flex items-center justify-between p-4 sm:p-6 gap-2">
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#0095FF] rounded-lg flex items-center justify-center">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-primary)' }}>
                 <FileText className="text-white" size={16} />
               </div>
               <h2 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white">Overview</h2>
@@ -93,7 +94,9 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
                 type="button"
                 onClick={handleShare}
                 title="Copy link to clipboard"
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = ''}
               >
                 <Share size={14} className="sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Share</span>
@@ -101,7 +104,9 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
               <button 
                 type="button"
                 onClick={handleExport}
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = ''}
               >
                 <Download size={14} className="sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Export</span>
@@ -109,7 +114,9 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
               <button 
                 type="button"
                 onClick={handleRewrite}
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-[#0095FF] dark:hover:text-[#0095FF] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = ''}
               >
                 <RotateCcw size={14} className="sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Rewrite</span>
@@ -126,18 +133,23 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
               >
                 {answer}
               </CustomMarkdown>
+              {/* Streaming cursor indicator */}
+              {isStreaming && (
+                <span className="inline-block w-2 h-4 animate-pulse ml-1 align-middle" style={{ backgroundColor: 'var(--accent-primary)' }}></span>
+              )}
             </div>
           </div>
 
-          {/* Related Section */}
+          {/* Related Section - hide when streaming */}
+          {!isStreaming && (
           <div className="p-4 sm:p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-5 h-5 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
                 <div className="w-2.5 h-2.5 grid grid-cols-2 gap-0.5">
-                  <div className="bg-[#0095FF] rounded-sm"></div>
-                  <div className="bg-[#0095FF] rounded-sm"></div>
-                  <div className="bg-[#0095FF] rounded-sm"></div>
-                  <div className="bg-[#0095FF] rounded-sm"></div>
+                  <div className="rounded-sm" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
+                  <div className="rounded-sm" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
+                  <div className="rounded-sm" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
+                  <div className="rounded-sm" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
                 </div>
               </div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">Related</h3>
@@ -148,13 +160,31 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
                 <div key={index}>
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between py-2.5 px-0 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group cursor-pointer"
+                    className="w-full flex items-center justify-between py-2.5 px-0 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group cursor-pointer related-question-btn"
                     onClick={() => handleRelatedQuestionClick(question)}
+                    onMouseEnter={(e) => {
+                      const span = e.currentTarget.querySelector('.question-text') as HTMLElement;
+                      const circle = e.currentTarget.querySelector('.plus-circle') as HTMLElement;
+                      if (span) span.style.color = 'var(--accent-primary)';
+                      if (circle) {
+                        circle.style.borderColor = 'var(--accent-primary)';
+                        circle.style.backgroundColor = 'var(--accent-primary)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      const span = e.currentTarget.querySelector('.question-text') as HTMLElement;
+                      const circle = e.currentTarget.querySelector('.plus-circle') as HTMLElement;
+                      if (span) span.style.color = '';
+                      if (circle) {
+                        circle.style.borderColor = '';
+                        circle.style.backgroundColor = '';
+                      }
+                    }}
                   >
-                    <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-[#0095FF] transition-colors leading-relaxed">
+                    <span className="question-text text-sm text-gray-700 dark:text-gray-300 transition-colors leading-relaxed">
                       {question}
                     </span>
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center group-hover:border-[#0095FF] group-hover:bg-[#0095FF] transition-colors ml-3">
+                    <div className="plus-circle flex-shrink-0 w-5 h-5 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center transition-colors ml-3">
                       <Plus size={10} className="text-gray-400 group-hover:text-white transition-colors" />
                     </div>
                   </button>
@@ -165,6 +195,7 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
               ))}
             </div>
           </div>
+          )}
         </div>
 
         <Notification
