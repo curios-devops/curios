@@ -10,6 +10,19 @@ interface MultipleCitationsProps {
   primarySiteName: string;
 }
 
+// Helper to extract clean domain name from URL
+function extractDomainName(url: string): string {
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname
+      .replace(/^www\./, '')
+      .replace(/\.(com|org|net|io|co|gov|edu|info|biz)(\.[a-z]{2})?$/, '')
+      .split('.')[0];
+  } catch {
+    return '';
+  }
+}
+
 export default function MultipleCitations({ citations, primarySiteName }: MultipleCitationsProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   
@@ -27,51 +40,65 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
     >
       <button
         onClick={() => handleSourceClick(citations[0].url)}
-        className="inline-flex items-center px-2 py-0.5 mx-0.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors duration-200 cursor-pointer"
+        className="inline-flex items-center px-2 py-0.5 mx-0.5 text-white text-xs font-medium rounded-md transition-colors duration-200 cursor-pointer hover:opacity-90"
+        style={{ backgroundColor: 'var(--accent-primary)' }}
         title={`${citations.length} sources from ${primarySiteName}`}
       >
         {primarySiteName} +{additionalCount}
       </button>
       
       {showTooltip && (
-        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4">
-          <div className="mb-3">
-            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
-              Sources • {citations.length}
-            </h4>
+        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4">
+          {/* Pointer arrow */}
+          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 rotate-45"></div>
+          
+          {/* Header */}
+          <div className="mb-3 text-gray-500 dark:text-gray-400 text-sm">
+            Sources · {citations.length}
           </div>
           
-          <div className="space-y-3 max-h-64 overflow-y-auto">
-            {citations.map((citation, index) => (
-              <div
-                key={index}
-                onClick={() => handleSourceClick(citation.url)}
-                className="flex items-start space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200"
-              >
-                                <img
-                  src={`https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(citation.url)}&size=16`}
-                  alt=""
-                  className="w-4 h-4 flex-shrink-0"
-                  onError={(e) => {
-                    // Fallback: hide broken favicon
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <div className="flex-1 min-w-0">
-                  <h5 className="font-medium text-gray-900 dark:text-white text-sm truncate">
-                    {citation.siteName || new URL(citation.url).hostname.replace('www.', '')}
-                  </h5>
-                  <p className="text-gray-700 dark:text-gray-300 text-sm mt-1 line-clamp-2">
-                    {citation.title}
-                  </p>
-                  {citation.snippet && (
-                    <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 line-clamp-2">
-                      {citation.snippet.slice(0, 100)}...
-                    </p>
-                  )}
+          {/* Sources list */}
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {citations.map((citation, index) => {
+              const cleanDomain = extractDomainName(citation.url);
+              const fullDomain = (() => {
+                try {
+                  return new URL(citation.url).hostname.replace('www.', '');
+                } catch {
+                  return '';
+                }
+              })();
+              
+              return (
+                <div
+                  key={index}
+                  onClick={() => handleSourceClick(citation.url)}
+                  className="flex items-center gap-3 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg px-2 -mx-2 transition-colors"
+                >
+                  {/* Favicon */}
+                  <div className="flex-shrink-0 w-6 h-6 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                    <img
+                      src={`https://www.google.com/s2/favicons?domain=${fullDomain}&sz=32`}
+                      alt=""
+                      className="w-4 h-4 rounded-sm"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Title and domain - single line */}
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <span className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                      {citation.title.length > 30 ? citation.title.slice(0, 30) + '...' : citation.title}
+                    </span>
+                    <span className="text-gray-400 dark:text-gray-500 text-sm flex-shrink-0 capitalize">
+                      {cleanDomain}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

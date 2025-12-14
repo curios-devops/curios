@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ExternalLink } from 'lucide-react';
 
 interface CitationTooltipProps {
   citation: {
@@ -11,6 +10,20 @@ interface CitationTooltipProps {
   children: React.ReactNode;
 }
 
+// Helper to extract clean domain name from URL
+function extractDomainName(url: string): string {
+  try {
+    const hostname = new URL(url).hostname;
+    // Remove www. and .com/.org/.net etc
+    return hostname
+      .replace(/^www\./, '')
+      .replace(/\.(com|org|net|io|co|gov|edu|info|biz)(\.[a-z]{2})?$/, '')
+      .split('.')[0]; // Take first part if still has dots
+  } catch {
+    return '';
+  }
+}
+
 export default function CitationTooltip({ citation, children }: CitationTooltipProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   
@@ -18,16 +31,14 @@ export default function CitationTooltip({ citation, children }: CitationTooltipP
     window.open(citation.url, '_blank', 'noopener,noreferrer');
   };
 
-  const extractSiteName = (url: string): string => {
+  const cleanDomain = extractDomainName(citation.url);
+  const fullDomain = (() => {
     try {
-      const domain = new URL(url).hostname;
-      return domain.replace('www.', '').split('.')[0];
+      return new URL(citation.url).hostname.replace('www.', '');
     } catch {
-      return 'Unknown Site';
+      return '';
     }
-  };
-
-  const displaySiteName = citation.siteName || extractSiteName(citation.url);
+  })();
 
   return (
     <span 
@@ -37,45 +48,48 @@ export default function CitationTooltip({ citation, children }: CitationTooltipP
     >
       <button
         onClick={handleClick}
-        className="inline-flex items-center px-2 py-0.5 mx-0.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors duration-200 cursor-pointer"
-        title={`Source: ${displaySiteName}`}
+        className="inline-flex items-center px-2 py-0.5 mx-0.5 text-white text-xs font-medium rounded-md transition-colors duration-200 cursor-pointer hover:opacity-90"
+        style={{ backgroundColor: 'var(--accent-primary)' }}
+        title={`Source: ${cleanDomain}`}
       >
         {children}
       </button>
       
       {showTooltip && (
-        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4">
-          <div className="flex items-start space-x-3">
-                        <img
-              src={`https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(citation.url)}&size=16`}
-              alt=""
-              className="w-4 h-4 flex-shrink-0"
-              onError={(e) => {
-                // Fallback: hide broken favicon or show placeholder
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-            <div className="flex-1 min-w-0">
-              <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-                {displaySiteName}
-              </h4>
-              <p className="text-gray-700 dark:text-gray-300 text-sm mt-1 line-clamp-2">
-                {citation.title}
-              </p>
-              {citation.snippet && (
-                <p className="text-gray-500 dark:text-gray-400 text-xs mt-2 line-clamp-3">
-                  {citation.snippet}
-                </p>
-              )}
-              <button
-                onClick={handleClick}
-                className="text-blue-600 dark:text-blue-400 text-xs mt-2 hover:underline flex items-center gap-1"
-              >
-                <ExternalLink size={10} />
-                Visit website →
-              </button>
+        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 cursor-pointer"
+          onClick={handleClick}
+        >
+          {/* Pointer arrow */}
+          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 rotate-45"></div>
+          
+          {/* Favicon + Domain name */}
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex-shrink-0 w-5 h-5 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+              <img
+                src={`https://www.google.com/s2/favicons?domain=${fullDomain}&sz=32`}
+                alt=""
+                className="w-4 h-4 rounded-sm"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
             </div>
+            <span className="text-sm text-gray-500 dark:text-gray-400 capitalize">
+              {cleanDomain}
+            </span>
           </div>
+          
+          {/* Title */}
+          <h4 className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-2 mb-1">
+            {citation.title}
+          </h4>
+          
+          {/* Snippet */}
+          {citation.snippet && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed">
+              {citation.snippet}
+            </p>
+          )}
         </div>
       )}
     </span>
