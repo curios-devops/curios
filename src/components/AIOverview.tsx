@@ -1,8 +1,21 @@
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus, Sparkles, Link2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import CustomMarkdown from './CustomMarkdown';
 import type { Source } from '../types';
 import type { CitationInfo } from '../commonApp/types';
+
+// Helper to extract clean domain name from URL
+function extractDomainName(url: string): string {
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname
+      .replace(/^www\./, '')
+      .replace(/\.(com|org|net|io|co|gov|edu|info|biz)(\.[a-z]{2})?$/, '')
+      .split('.')[0];
+  } catch {
+    return '';
+  }
+}
 
 interface AIOverviewProps {
   answer: string;
@@ -112,9 +125,85 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
             </div>
           </div>
 
+          {/* Sources Section - hide when streaming */}
+          {!isStreaming && sources.length > 0 && (
+          <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-5 h-5 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
+                <Link2 size={12} style={{ color: 'var(--accent-primary)' }} />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Sources</h3>
+            </div>
+            
+            {/* 4-column grid of source cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {sources.slice(0, 4).map((source, index) => {
+                const cleanDomain = extractDomainName(source.url);
+                const fullDomain = (() => {
+                  try {
+                    return new URL(source.url).hostname.replace('www.', '');
+                  } catch {
+                    return '';
+                  }
+                })();
+                
+                return (
+                  <a
+                    key={index}
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex flex-col rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 bg-white dark:bg-gray-800 hover:shadow-md overflow-hidden cursor-pointer"
+                  >
+                    {/* Source image if available */}
+                    {source.image && (
+                      <div className="aspect-video w-full overflow-hidden bg-gray-100 dark:bg-gray-700">
+                        <img
+                          src={source.image}
+                          alt=""
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          onError={(e) => {
+                            e.currentTarget.parentElement!.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                    
+                    <div className="p-3 flex-1 flex flex-col">
+                      {/* Favicon + Domain */}
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="flex-shrink-0 w-4 h-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                          <img
+                            src={`https://www.google.com/s2/favicons?domain=${fullDomain}&sz=32`}
+                            alt=""
+                            className="w-3 h-3"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
+                          {cleanDomain}
+                        </span>
+                      </div>
+                      
+                      {/* Title */}
+                      <h4 
+                        className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 transition-colors group-hover:text-[var(--accent-primary)]"
+                      >
+                        {source.title}
+                      </h4>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+          )}
+
           {/* Related Section - hide when streaming */}
           {!isStreaming && (
-          <div className="p-4 sm:p-6">
+          <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-5 h-5 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
                 <div className="w-2.5 h-2.5 grid grid-cols-2 gap-0.5">

@@ -147,7 +147,7 @@ export default function TabbedContent({
       <div className="space-y-6">
         {activeTab === 'answer' && (
           <div className="space-y-6">
-            {/* Sources List - Single Column Cards */}
+            {/* Sources List - Cards with images on right */}
             <div className="space-y-3">
               {data.sources.slice(0, 6).map((source: Source, index: number) => {
                 const cleanDomain = extractDomainName(source.url);
@@ -158,41 +158,60 @@ export default function TabbedContent({
                     href={source.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 bg-white dark:bg-gray-800 hover:shadow-md cursor-pointer"
+                    className="flex gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 bg-white dark:bg-gray-800 hover:shadow-md cursor-pointer"
                   >
-                    {/* Favicon + Domain name */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex-shrink-0 w-5 h-5 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                    {/* Left side - content */}
+                    <div className="flex-1 min-w-0">
+                      {/* Favicon + Domain name */}
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="flex-shrink-0 w-5 h-5 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                          <img
+                            src={`https://www.google.com/s2/favicons?domain=${fullDomain}&sz=32`}
+                            alt=""
+                            className="w-4 h-4 rounded-sm"
+                            loading="lazy"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                          {cleanDomain}
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 truncate hidden sm:inline">
+                          {source.url.length > 40 ? source.url.slice(0, 40) + '...' : source.url}
+                        </span>
+                      </div>
+                      
+                      {/* Title */}
+                      <h3 
+                        className="text-lg font-medium text-blue-600 dark:text-blue-400 mb-1 line-clamp-2 transition-colors hover:underline"
+                      >
+                        {source.title}
+                      </h3>
+                      
+                      {/* Snippet */}
+                      {source.snippet && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                          {source.snippet}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Right side - image thumbnail */}
+                    {source.image && (
+                      <div className="flex-shrink-0 w-28 h-28 sm:w-32 sm:h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
                         <img
-                          src={`https://www.google.com/s2/favicons?domain=${fullDomain}&sz=32`}
+                          src={source.image}
                           alt=""
-                          className="w-4 h-4 rounded-sm"
-                          loading="lazy"
+                          className="w-full h-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
+                            target.parentElement!.style.display = 'none';
                           }}
                         />
                       </div>
-                      <span className="text-sm text-gray-500 dark:text-gray-400 capitalize">
-                        {cleanDomain}
-                      </span>
-                    </div>
-                    
-                    {/* Title */}
-                    <h3 
-                      className="text-base font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2 transition-colors"
-                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                      onMouseLeave={(e) => e.currentTarget.style.color = ''}
-                    >
-                      {source.title}
-                    </h3>
-                    
-                    {/* Snippet */}
-                    {source.snippet && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">
-                        {source.snippet}
-                      </p>
                     )}
                   </a>
                 );
@@ -315,41 +334,60 @@ export default function TabbedContent({
                   href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 bg-white dark:bg-gray-800 hover:shadow-md cursor-pointer"
+                  className="flex gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 bg-white dark:bg-gray-800 hover:shadow-md cursor-pointer"
                 >
-                  {/* Favicon + Domain name */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex-shrink-0 w-5 h-5 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                  {/* Left side - content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Favicon + Domain name */}
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-shrink-0 w-5 h-5 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                        <img
+                          src={`https://www.google.com/s2/favicons?domain=${fullDomain}&sz=32`}
+                          alt=""
+                          className="w-4 h-4 rounded-sm"
+                          loading="lazy"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                        {cleanDomain}
+                      </span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                        {source.url.length > 40 ? source.url.slice(0, 40) + '...' : source.url}
+                      </span>
+                    </div>
+                    
+                    {/* Title */}
+                    <h3 
+                      className="text-lg font-medium text-blue-600 dark:text-blue-400 mb-1 line-clamp-2 transition-colors hover:underline"
+                    >
+                      {source.title}
+                    </h3>
+                    
+                    {/* Snippet */}
+                    {source.snippet && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed">
+                        {source.snippet}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Right side - image thumbnail */}
+                  {source.image && (
+                    <div className="flex-shrink-0 w-28 h-28 sm:w-32 sm:h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
                       <img
-                        src={`https://www.google.com/s2/favicons?domain=${fullDomain}&sz=32`}
+                        src={source.image}
                         alt=""
-                        className="w-4 h-4 rounded-sm"
-                        loading="lazy"
+                        className="w-full h-full object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
+                          target.parentElement!.style.display = 'none';
                         }}
                       />
                     </div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400 capitalize">
-                      {cleanDomain}
-                    </span>
-                  </div>
-                  
-                  {/* Title */}
-                  <h3 
-                    className="text-base font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2 transition-colors"
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = ''}
-                  >
-                    {source.title}
-                  </h3>
-                  
-                  {/* Snippet */}
-                  {source.snippet && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed">
-                      {source.snippet}
-                    </p>
                   )}
                 </a>
               );
