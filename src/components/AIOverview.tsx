@@ -11,9 +11,10 @@ interface AIOverviewProps {
   followUpQuestions?: string[];
   citations?: CitationInfo[];
   isStreaming?: boolean;
+  onSourcesClick?: () => void;
 }
 
-export default function AIOverview({ answer, sources, query, followUpQuestions, citations = [], isStreaming = false }: AIOverviewProps) {
+export default function AIOverview({ answer, sources, query, followUpQuestions, citations = [], isStreaming = false, onSourcesClick }: AIOverviewProps) {
   const navigate = useNavigate();
 
   // Generate fallback related questions based on the query (used as fallback)
@@ -51,9 +52,13 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
               <h2 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white">AI Overview</h2>
             </div>
             
-            {/* Stacked source favicons with +N count */}
+            {/* Stacked source favicons with +N count - clickable */}
             {sources.length > 0 && (
-              <div className="flex items-center gap-2">
+              <button
+                onClick={onSourcesClick}
+                title="View all sources"
+                className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              >
                 {/* Stacked favicons - show first 3 overlapping */}
                 <div className="flex items-center">
                   {sources.slice(0, 3).map((source, index) => {
@@ -87,7 +92,7 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
                 <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
                   +{sources.length}
                 </span>
-              </div>
+              </button>
             )}
           </div>
 

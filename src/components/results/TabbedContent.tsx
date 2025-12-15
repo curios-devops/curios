@@ -42,6 +42,7 @@ export default function TabbedContent({
   searchState, 
   statusMessage,
   activeTab,
+  onTabChange,
   streamingContent,
   isStreaming,
   foundSources = []
@@ -91,6 +92,7 @@ export default function TabbedContent({
                 followUpQuestions={[]}
                 citations={[]}
                 isStreaming={isStreaming ?? true}
+                onSourcesClick={() => onTabChange('news')}
               />
             </div>
           </div>
@@ -222,6 +224,7 @@ export default function TabbedContent({
                 query={new URLSearchParams(globalThis.location.search).get('q') || ''} 
                 followUpQuestions={data.followUpQuestions}
                 citations={data.citations}
+                onSourcesClick={() => onTabChange('news')}
               />
             </div>
           </div>
