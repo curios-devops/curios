@@ -1,8 +1,6 @@
-import { useState } from 'react';
-import { FileText, Share, Download, RotateCcw, Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import CustomMarkdown from './CustomMarkdown';
-import Notification from './Notification';
 import type { Source } from '../types';
 import type { CitationInfo } from '../commonApp/types';
 
@@ -16,8 +14,6 @@ interface AIOverviewProps {
 }
 
 export default function AIOverview({ answer, sources, query, followUpQuestions, citations = [], isStreaming = false }: AIOverviewProps) {
-  const [showNotification, setShowNotification] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState('');
   const navigate = useNavigate();
 
   // Generate fallback related questions based on the query (used as fallback)
@@ -37,32 +33,6 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
     ? followUpQuestions 
     : generateFallbackQuestions(query);
 
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(globalThis.location.href);
-      showNotificationMessage('Link copied to clipboard');
-    } catch (error) {
-      console.error('Share failed:', error);
-      // Fallback: show the URL in an alert if clipboard fails
-      alert(`Copy this link: ${globalThis.location.href}`);
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      const exportText = `AI Overview: ${query}\n\n${answer}\n\nSources:\n${sources.map((source, index) => `${index + 1}. ${source.title} - ${source.url}`).join('\n')}`;
-      await navigator.clipboard.writeText(exportText);
-      showNotificationMessage('Overview exported to clipboard');
-    } catch (error) {
-      console.error('Export failed:', error);
-    }
-  };
-
-  const handleRewrite = () => {
-    // In a real implementation, this would trigger a rewrite of the answer
-    showNotificationMessage('Rewriting answer...');
-  };
-
   const handleRelatedQuestionClick = (question: string) => {
     // Navigate to search results with the new query
     const searchParams = new URLSearchParams();
@@ -70,58 +40,55 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
     navigate(`/search?${searchParams.toString()}`);
   };
 
-  const showNotificationMessage = (message: string) => {
-    setNotificationMessage(message);
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 2000);
-  };
-
   try {
     return (
       <>
         <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 transition-colors duration-200">
-          {/* Header with Overview title and action buttons */}
+          {/* Header with AI Overview title and stacked source icons */}
           <div className="flex items-center justify-between p-4 sm:p-6 gap-2">
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-primary)' }}>
-                <FileText className="text-white" size={16} />
-              </div>
-              <h2 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white">Overview</h2>
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: 'var(--accent-primary)' }} />
+              <h2 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white">AI Overview</h2>
             </div>
             
-            <div className="flex items-center gap-1 sm:gap-2">
-              <button 
-                type="button"
-                onClick={handleShare}
-                title="Copy link to clipboard"
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
-                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = ''}
-              >
-                <Share size={14} className="sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Share</span>
-              </button>
-              <button 
-                type="button"
-                onClick={handleExport}
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
-                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = ''}
-              >
-                <Download size={14} className="sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Export</span>
-              </button>
-              <button 
-                type="button"
-                onClick={handleRewrite}
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap"
-                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = ''}
-              >
-                <RotateCcw size={14} className="sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Rewrite</span>
-              </button>
-            </div>
+            {/* Stacked source favicons with +N count */}
+            {sources.length > 0 && (
+              <div className="flex items-center gap-2">
+                {/* Stacked favicons - show first 3 overlapping */}
+                <div className="flex items-center">
+                  {sources.slice(0, 3).map((source, index) => {
+                    const domain = (() => {
+                      try {
+                        return new URL(source.url).hostname.replace('www.', '');
+                      } catch {
+                        return '';
+                      }
+                    })();
+                    return (
+                      <div 
+                        key={index}
+                        className="w-6 h-6 rounded-full bg-white dark:bg-gray-700 border-2 border-white dark:border-gray-800 flex items-center justify-center overflow-hidden"
+                        style={{ marginLeft: index > 0 ? '-8px' : '0', zIndex: 3 - index }}
+                      >
+                        <img
+                          src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+                          alt=""
+                          className="w-4 h-4"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* +N badge showing total sources */}
+                <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                  +{sources.length}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Overview Content */}
@@ -197,12 +164,6 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
           </div>
           )}
         </div>
-
-        <Notification
-          message={notificationMessage}
-          isVisible={showNotification}
-          onHide={() => setShowNotification(false)}
-        />
       </>
     );
   } catch (error) {
