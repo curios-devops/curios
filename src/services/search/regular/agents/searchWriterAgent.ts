@@ -289,7 +289,8 @@ Guidelines for the article:
 - Use natural, flowing prose
 - Structure with relevant section headings (##)
 - Include specific facts, data, and details from the sources
-- Use inline citations like [1], [2], etc. to reference sources
+- Use inline citations with the source website name like [wikipedia], [nytimes], [bbc], etc. to reference sources
+- If multiple sources from the same site, use [sitename +N] format like [wikipedia +2] for 3 wikipedia sources
 - Make it comprehensive but well-organized
 - Use markdown formatting for readability
 - DO NOT include a "References", "Sources", or "Bibliography" section at the end - we display sources separately
@@ -304,9 +305,23 @@ Leave citations array empty (we handle it separately).
 CRITICAL: You must base your content strictly on the provided sources. Do not invent information.
 CRITICAL: Do NOT add any References, Sources, or Bibliography section - these are displayed separately in the UI.`;
 
+    // Extract clean site name from URL
+    const extractSiteName = (url: string): string => {
+      try {
+        const hostname = new URL(url).hostname;
+        return hostname
+          .replace(/^www\./, '')
+          .replace(/\.(com|org|net|io|co|gov|edu|info|biz)(\.[a-z]{2})?$/, '')
+          .split('.')[0];
+      } catch {
+        return 'source';
+      }
+    };
+
     const sourcesText = researchResult.results
-      .map((source: any, index: number) => {
-        return `[${index + 1}] ${source.title}\nURL: ${source.url}\nContent: ${source.content || 'No content available'}`;
+      .map((source: any) => {
+        const siteName = extractSiteName(source.url);
+        return `[${siteName}] ${source.title}\nURL: ${source.url}\nContent: ${source.content || 'No content available'}`;
       })
       .join('\n\n');
 
@@ -315,7 +330,7 @@ CRITICAL: Do NOT add any References, Sources, or Bibliography section - these ar
 Search Results:
 ${sourcesText}
 
-Based on these search results, write a comprehensive article addressing the query. Remember to use inline citations like [1], [2], etc.`;
+Based on these search results, write a comprehensive article addressing the query. Use inline citations with the website name like [wikipedia], [nytimes], etc.`;
 
     return { systemPrompt, userPrompt };
   }
@@ -336,7 +351,8 @@ Guidelines for the article:
 - Use natural, flowing prose
 - Structure with relevant section headings (##)
 - Include specific facts, data, and details from the sources
-- Use inline citations like [1], [2], etc. to reference sources
+- Use inline citations with the source website name like [wikipedia], [nytimes], [bbc], etc.
+- If multiple sources from the same site, use [sitename +N] format like [wikipedia +2] for 3 wikipedia sources
 - Make it comprehensive but well-organized
 - Use markdown formatting for readability
 - DO NOT include a "References", "Sources", or "Bibliography" section - sources are displayed separately
@@ -345,9 +361,23 @@ CRITICAL: You must base your content strictly on the provided sources. Do not in
 CRITICAL: Do NOT add any References, Sources, or Bibliography section at the end.
 Write the article content directly - do not wrap in JSON or any other format.`;
 
+    // Extract clean site name from URL
+    const extractSiteName = (url: string): string => {
+      try {
+        const hostname = new URL(url).hostname;
+        return hostname
+          .replace(/^www\./, '')
+          .replace(/\.(com|org|net|io|co|gov|edu|info|biz)(\.[a-z]{2})?$/, '')
+          .split('.')[0];
+      } catch {
+        return 'source';
+      }
+    };
+
     const sourcesText = researchResult.results
-      .map((source: any, index: number) => {
-        return `[${index + 1}] ${source.title}\nURL: ${source.url}\nContent: ${source.content || 'No content available'}`;
+      .map((source: any) => {
+        const siteName = extractSiteName(source.url);
+        return `[${siteName}] ${source.title}\nURL: ${source.url}\nContent: ${source.content || 'No content available'}`;
       })
       .join('\n\n');
 
@@ -356,7 +386,7 @@ Write the article content directly - do not wrap in JSON or any other format.`;
 Search Results:
 ${sourcesText}
 
-Based on these search results, write a comprehensive article addressing the query. Use inline citations like [1], [2], etc. Do NOT include a References or Sources section at the end.`;
+Based on these search results, write a comprehensive article addressing the query. Use inline citations with the website name like [wikipedia], [nytimes], etc. Do NOT include a References or Sources section at the end.`;
 
     return { systemPrompt, userPrompt };
   }

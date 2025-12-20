@@ -125,14 +125,14 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
             </div>
           </div>
 
-          {/* Sources Section - hide when streaming */}
+          {/* Quick Links Section - hide when streaming */}
           {!isStreaming && sources.length > 0 && (
           <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-5 h-5 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
                 <Link2 size={12} style={{ color: 'var(--accent-primary)' }} />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Sources</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Quick Links</h3>
             </div>
             
             {/* 4-column grid of source cards */}
