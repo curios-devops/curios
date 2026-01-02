@@ -107,6 +107,34 @@
   display: none;  /* Chrome, Safari and Opera */
 }
 
+/* Prevent horizontal overflow on mobile */
+@layer utilities {
+  .break-words {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+}
+
+/* Ensure prose content doesn't overflow */
+.prose {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.prose p,
+.prose li,
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
 /* HelpButton theme-aware styles */
 
 

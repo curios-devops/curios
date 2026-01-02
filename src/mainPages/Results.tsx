@@ -109,16 +109,16 @@ export default function Results() {
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">
       <TopBar query={query} timeAgo={timeAgo} />
 
-      <main className="max-w-7xl mx-auto px-6 py-6">
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="flex items-center justify-between gap-2 sm:gap-4 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
             <button 
               onClick={() => navigate('/')}
-              className="text-[#0095FF] hover:text-[#0080FF] transition-colors"
+              className="text-[#0095FF] hover:text-[#0080FF] transition-colors flex-shrink-0"
             >
               <ArrowLeft size={20} />
             </button>
-            <h1 className="text-2xl font-medium">{query}</h1>
+            <h1 className="text-lg sm:text-2xl font-medium truncate">{query}</h1>
           </div>
           <ShareMenu
             url={window.location.href}
@@ -127,7 +127,7 @@ export default function Results() {
           />
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
           <MainContent 
             searchState={searchState}
             showAllSources={showAllSources}
