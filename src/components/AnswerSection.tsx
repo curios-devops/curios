@@ -1,18 +1,49 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { BookOpen, ThumbsUp, ThumbsDown, Copy, Loader2 } from 'lucide-react';
 import CustomMarkdown from './CustomMarkdown';
 import Notification from './Notification';
 import type { CitationInfo } from '../commonApp/types';
+import type { Source } from '../types';
+
+// Helper to extract clean root domain name from URL (handles subdomains like en.wikipedia.org)
+function extractDomainName(url: string): string {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, '');
+    const parts = hostname.split('.');
+    if (parts.length >= 3 && parts[parts.length - 1].length === 2) {
+      return parts[parts.length - 3];
+    }
+    if (parts.length >= 2) {
+      return parts[parts.length - 2];
+    }
+    return parts[0] || '';
+  } catch {
+    return '';
+  }
+}
 
 export interface AnswerSectionProps {
   answer: string;
   citations?: CitationInfo[];
+  sources?: Source[];
   isStreaming?: boolean; // Indicates if content is still streaming
 }
 
-export default function AnswerSection({ answer, citations = [], isStreaming = false }: AnswerSectionProps) {
+export default function AnswerSection({ answer, citations = [], sources = [], isStreaming = false }: AnswerSectionProps) {
   const [showNotification, setShowNotification] = useState(false);
   
+  // Convert sources to citations with snippet included for tooltip display
+  // Use provided citations if they have snippets, otherwise generate from sources
+  const citationsWithSnippets: CitationInfo[] = useMemo(() => {
+    if (citations.length > 0 && citations[0]?.snippet) return citations;
+    return sources.map(source => ({
+      url: source.url,
+      title: source.title,
+      siteName: extractDomainName(source.url),
+      snippet: source.snippet
+    }));
+  }, [citations, sources]);
+      
   const handleCopyClick = async () => {
     try {
       await navigator.clipboard.writeText(answer);
@@ -39,20 +70,20 @@ export default function AnswerSection({ answer, citations = [], isStreaming = fa
 
   return (
     <>
-      <div className="bg-white dark:bg-[#111111] rounded-xl p-6 border border-gray-200 dark:border-gray-800 transition-colors duration-200">
+      <div className="bg-white dark:bg-[#111111] rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800 transition-colors duration-200">
         <div className="flex items-center gap-2 mb-4">
           <BookOpen className="text-[#0095FF]" size={22} />
-          <h2 className="text-xl font-medium text-gray-900 dark:text-white transition-colors duration-200">
+          <h2 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white transition-colors duration-200">
             Answer
             {isStreaming && (
               <Loader2 className="inline-block ml-2 text-[#0095FF] animate-spin" size={18} />
             )}
           </h2>
         </div>
-        <div className="prose dark:prose-invert max-w-none">
+        <div className="prose dark:prose-invert max-w-none prose-p:break-words prose-headings:break-words prose-li:break-words">
           <CustomMarkdown 
-            className="text-gray-600 dark:text-gray-300 leading-relaxed text-base transition-colors duration-200"
-            citations={citations}
+            className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm sm:text-base transition-colors duration-200 break-words"
+            citations={citationsWithSnippets}
           >
             {answer}
           </CustomMarkdown>
