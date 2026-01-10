@@ -50,6 +50,7 @@ export default function MainContent({
           <AnswerSection 
             answer={searchState.data?.answer || streamingContent} 
             citations={searchState.data?.citations}
+            sources={searchState.data?.sources}
             isStreaming={isStreamingInProgress}
           />
         </>

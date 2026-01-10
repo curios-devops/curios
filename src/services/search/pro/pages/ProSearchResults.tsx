@@ -170,6 +170,7 @@ export default function ProSearchResults() {
             <AnswerSection 
               answer={searchState.data.answer} 
               citations={searchState.data.citations || []}
+              sources={searchState.data.sources}
             />
 
             {/* Top Sources */}

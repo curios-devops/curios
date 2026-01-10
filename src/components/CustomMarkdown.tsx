@@ -11,25 +11,45 @@ interface CustomMarkdownProps {
 }
 
 export default function CustomMarkdown({ children, className = "", citations = [] }: CustomMarkdownProps) {
-  console.log('🎨 CustomMarkdown: Starting render', {
-    contentLength: children?.length,
-    hasCitations: citations.length > 0,
-    citationsCount: citations.length
-  });
-  
-  // CRITICAL FIX: Memoize the parsing to prevent re-parsing on every render
+  // Memoize parsing; depend on a stable citation signature to avoid re-parsing
+  // caused by new array identities on each render.
+  const citationSignature = React.useMemo(
+    () => citations.map(c => `${c.siteName}|${c.url}|${c.title}`).join(';;'),
+    [citations]
+  );
+
+  // Preprocess: collapse adjacent citations into a single token, summing any existing +N
+  // Examples:
+  //   "[wikipedia] [britannica]" -> "[wikipedia +1]"
+  //   "[instagram], [youtube +3]" -> "[instagram +4]"
+  function collapseAdjacentCitations(text: string): string {
+    const seqRegex = /\[([^\]]+)\](?:\s*[,;]?\s*\[[^\]]+\])+/g;
+    return text.replace(seqRegex, (sequence, firstLabel) => {
+      const tokens = sequence.match(/\[([^\]]+)\]/g) || [];
+      if (tokens.length <= 1) return sequence;
+
+      let total = 0;
+      for (const t of tokens) {
+        const inner = t.slice(1, -1).trim();
+        const plusMatch = inner.match(/\s*\+(\d+)\s*$/);
+        const count = plusMatch ? 1 + parseInt(plusMatch[1], 10) : 1;
+        total += count;
+      }
+
+      const baseFirst = firstLabel.replace(/\s*\+\d+\s*$/, '').trim();
+      return `[${baseFirst} +${Math.max(0, total - 1)}]`;
+    });
+  }
+
   const parsedContent = React.useMemo(() => {
-    console.log('🎨 CustomMarkdown: useMemo - Running parseMarkdown');
-    return parseMarkdown(children);
-  }, [children, citations]); // Re-parse only when content or citations change
-  
-  console.log('🎨 CustomMarkdown: Parsed content ready, elements:', parsedContent.length);
+    const preprocessed = collapseAdjacentCitations(children);
+    return parseMarkdown(preprocessed);
+  }, [children, citationSignature]);
   
   // Simple markdown parser for basic formatting
-  function parseMarkdown(text: string): React.ReactElement[] {
-    console.log('🎨 CustomMarkdown: parseMarkdown called', { textLength: text.length });
+  function parseMarkdown(text: string): React.ReactNode[] {
     const lines = text.split('\n');
-    const elements: React.ReactElement[] = [];
+    const elements: React.ReactNode[] = [];
     let key = 0;
 
     lines.forEach((line, lineIndex) => {
@@ -98,24 +118,20 @@ export default function CustomMarkdown({ children, className = "", citations = [
 
   // Parse inline formatting like **bold** and *italic*
   function parseInlineFormatting(text: string): React.ReactNode {
-    // Citations [Website Name] or [Website Name +X] - Convert to new citation components
     const citationRegex = /(\[[^\]]+\])/g;
     const parts = text.split(citationRegex);
-    
-    const result = parts.map((part, index) => {
-      // Check if this part is a citation
-      if (part.match(/^\[[^\]]+\]$/)) {
-        const citationText = part.slice(1, -1); // Remove brackets
+
+    return parts.map((part, index) => {
+      if (/^\[[^\]]+\]$/.test(part)) {
+        const citationText = part.slice(1, -1);
         const parsedCitation = parseCitation(citationText, citations);
-        
+
         if (parsedCitation) {
           if (parsedCitation.type === 'single') {
+            const c = parsedCitation.citations[0];
             return (
-              <CitationTooltip
-                key={`citation-${index}`}
-                citation={parsedCitation.citations[0]}
-              >
-                {parsedCitation.siteName}
+              <CitationTooltip key={`citation-${index}`} citation={c}>
+                {c.siteName}
               </CitationTooltip>
             );
           } else if (parsedCitation.type === 'multiple') {
@@ -123,16 +139,15 @@ export default function CustomMarkdown({ children, className = "", citations = [
               <MultipleCitations
                 key={`citation-${index}`}
                 citations={parsedCitation.citations}
-                primarySiteName={parsedCitation.siteName}
+                primarySiteName={parsedCitation.citations[0]?.siteName || parsedCitation.siteName}
               />
             );
           }
         }
-        
-        // Fallback: display as accent-colored button even if no citation match found
+
         return (
           <span
-            key={`citation-fallback-${index}`} 
+            key={`citation-fallback-${index}`}
             className="inline-flex items-center px-2 py-0.5 mx-0.5 text-white text-xs font-medium rounded-md"
             style={{ backgroundColor: 'var(--accent-primary)' }}
           >
@@ -140,12 +155,9 @@ export default function CustomMarkdown({ children, className = "", citations = [
           </span>
         );
       }
-      
-      // Handle other inline formatting for non-citation parts
+
       return parseOtherFormatting(part, index);
     });
-
-    return result;
   }
 
   // Helper function to parse bold, italic, and code formatting

@@ -18,15 +18,27 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
   );
   
   const additionalCount = uniqueCitations.length - 1;
+  
+  // Initialize isMobile immediately with SSR-safe check
+  const [isMobile, setIsMobile] = useState(() => {
+    // Check on initial render
+    if (typeof window !== 'undefined') {
+      return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    }
+    return false;
+  });
+  
   const [showTooltip, setShowTooltip] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tooltipRef = useRef<HTMLSpanElement>(null);
 
-  // Detect if we're on a touch device
+  // Detect if we're on a touch device (backup check after mount)
   useEffect(() => {
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    setIsMobile(isTouchDevice);
+    if (isTouchDevice !== isMobile) {
+      console.log('🔄 Updating mobile detection', { was: isMobile, now: isTouchDevice });
+      setIsMobile(isTouchDevice);
+    }
     console.log('🔍 MultipleCitations: Touch detection', { 
       isTouchDevice, 
       ontouchstart: 'ontouchstart' in window,

@@ -3,6 +3,15 @@ import { SearchRetrieverAgent } from './agents/searchRetrieverAgent.ts';
 import { SearchWriterAgent, StreamingCallback } from './agents/searchWriterAgent.ts';
 import { logger } from '../../../utils/logger.ts';
 
+function normalizeUrl(url: string): string {
+  if (!url) return '#';
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith('//')) return 'https:' + url;
+  if (url.startsWith('www.')) return 'https://' + url;
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(:\d+)?(\/|$)/i.test(url)) return 'https://' + url;
+  return url;
+}
+
 export class SearchError extends Error {
   constructor(message: string, public details?: unknown) {
     super(message);
@@ -122,7 +131,7 @@ export async function performRegularSearch(
         answer: writerResponse.data.content,
         sources: (searchResponse.data.results || []).map((r: any) => ({
           title: r.title,
-          url: r.url,
+          url: normalizeUrl(r.url),
           snippet: r.content
         })),
         images: searchResponse.data.images || [],
@@ -217,10 +226,9 @@ export async function performRegularSearchWithStreaming(
       
       console.log('✅ [STREAMING SEARCH] Search retrieval SUCCESS, starting streaming writer');
       
-      // Notify about found sources (extract URLs from results)
       if (onSourcesFound && searchResponse.data.results) {
         const sourceUrls = searchResponse.data.results
-          .map(r => r.url)
+          .map(r => normalizeUrl(r.url))
           .filter(url => url && url !== '#');
         onSourcesFound(sourceUrls);
       }
@@ -263,7 +271,7 @@ export async function performRegularSearchWithStreaming(
         answer: writerResponse.data.content,
         sources: (searchResponse.data.results || []).map((r: any) => ({
           title: r.title,
-          url: r.url,
+          url: normalizeUrl(r.url),
           snippet: r.content
         })),
         images: searchResponse.data.images || [],
@@ -306,3 +314,6 @@ export async function performRegularSearchWithStreaming(
     };
   }
 }
+
+
+

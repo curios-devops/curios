@@ -131,6 +131,7 @@ export default function SearchResults() {
                 <AnswerSection 
                   answer={searchState.data.answer}
                   citations={searchState.data.citations}
+                  sources={searchState.data.sources}
                 />
                   {/* News Results Section */}
                   {searchState.data.news && searchState.data.news.length > 0 && (

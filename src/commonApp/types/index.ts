@@ -100,6 +100,7 @@ export interface CitationInfo {
   url: string;
   title: string;
   siteName: string;
+  snippet?: string;
 }
 
 // Generic AgentResponse with proper typing

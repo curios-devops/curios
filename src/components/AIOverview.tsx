@@ -1,4 +1,5 @@
 import { Plus, Sparkles, Link2 } from 'lucide-react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import CustomMarkdown from './CustomMarkdown';
 import type { Source } from '../types';
@@ -7,11 +8,16 @@ import type { CitationInfo } from '../commonApp/types';
 // Helper to extract clean domain name from URL
 function extractDomainName(url: string): string {
   try {
-    const hostname = new URL(url).hostname;
-    return hostname
-      .replace(/^www\./, '')
-      .replace(/\.(com|org|net|io|co|gov|edu|info|biz)(\.[a-z]{2})?$/, '')
-      .split('.')[0];
+    const hostname = new URL(url).hostname.replace(/^www\./, '');
+    const parts = hostname.split('.');
+    // Handle ccTLDs like .co.uk (last part length 2)
+    if (parts.length >= 3 && parts[parts.length - 1].length === 2) {
+      return parts[parts.length - 3];
+    }
+    if (parts.length >= 2) {
+      return parts[parts.length - 2];
+    }
+    return parts[0] || '';
   } catch {
     return '';
   }
@@ -29,6 +35,18 @@ interface AIOverviewProps {
 
 export default function AIOverview({ answer, sources, query, followUpQuestions, citations = [], isStreaming = false, onSourcesClick }: AIOverviewProps) {
   const navigate = useNavigate();
+
+  // Convert sources to citations with snippet included for tooltip display
+  // Use provided citations if available, otherwise generate from sources
+  const citationsWithSnippets: CitationInfo[] = useMemo(() => {
+    if (citations.length > 0) return citations;
+    return sources.map(source => ({
+      url: source.url,
+      title: source.title,
+      siteName: extractDomainName(source.url),
+      snippet: source.snippet
+    }));
+  }, [citations, sources]);
 
   // Generate fallback related questions based on the query (used as fallback)
   const generateFallbackQuestions = (originalQuery: string) => {
@@ -114,7 +132,7 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
             <div className="prose dark:prose-invert max-w-none">
               <CustomMarkdown 
                 className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm sm:text-base mb-6"
-                citations={citations}
+                citations={citationsWithSnippets}
               >
                 {answer}
               </CustomMarkdown>
