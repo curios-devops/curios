@@ -36,21 +36,35 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
   }, []);
 
   const handleClick = (url: string) => {
+    console.log('🔗 handleClick called', { url });
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
+      console.log('✅ Window opened');
+    } else {
+      console.warn('⚠️ No URL provided');
     }
   };
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('🔘 Button clicked', { 
+      isMobile, 
+      citationCount: uniqueCitations.length,
+      showTooltip 
+    });
+    
     if (isMobile && uniqueCitations.length > 1) {
       // On mobile with multiple citations, toggle tooltip
-      setShowTooltip(prev => !prev);
+      const newState = !showTooltip;
+      setShowTooltip(newState);
+      console.log('📱 Mobile: Toggling tooltip to', newState);
     } else if (!isMobile && uniqueCitations.length > 1) {
       // On desktop with multiple citations, do nothing (hover handles it)
+      console.log('🖥️ Desktop: Hover handles tooltip');
       return;
     } else {
       // Single citation, open directly
+      console.log('🔗 Opening single citation:', uniqueCitations[0]?.url);
       handleClick(uniqueCitations[0]?.url);
     }
   };
@@ -92,14 +106,22 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
   useEffect(() => {
     if (!showTooltip || !isMobile) return;
     
+    console.log('👆 Click outside listener active');
+    
     const handleClickOutside = (e: MouseEvent) => {
       if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
+        console.log('🚪 Clicked outside, closing tooltip');
         setShowTooltip(false);
+      } else {
+        console.log('📍 Clicked inside tooltip');
       }
     };
     
     document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    return () => {
+      console.log('🧹 Removing click outside listener');
+      document.removeEventListener('click', handleClickOutside);
+    };
   }, [showTooltip, isMobile]);
 
   // Cleanup timeout on unmount
