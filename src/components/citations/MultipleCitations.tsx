@@ -23,7 +23,14 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
 
   // Detect if we're on a touch device
   useEffect(() => {
-    setIsMobile('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    setIsMobile(isTouchDevice);
+    console.log('🔍 MultipleCitations: Touch detection', { 
+      isTouchDevice, 
+      ontouchstart: 'ontouchstart' in window,
+      maxTouchPoints: navigator.maxTouchPoints,
+      userAgent: navigator.userAgent
+    });
   }, []);
 
   const handleClick = (url: string) => {
