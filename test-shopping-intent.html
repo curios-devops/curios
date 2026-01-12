@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping Intent Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; margin-top: 0; }
+    h2 { color: #666; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }
+    .test-query {
+      background: #f9f9f9;
+      border-left: 4px solid #4CAF50;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .test-query.negative {
+      border-left-color: #9E9E9E;
+    }
+    .query-text { font-weight: bold; color: #333; margin-bottom: 8px; }
+    .result { display: flex; gap: 20px; font-size: 14px; color: #666; }
+    .result span { display: block; }
+    .confidence { font-weight: bold; }
+    .matched { color: #4CAF50; font-size: 12px; }
+    .stats {
+      background: #E3F2FD;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 30px;
+    }
+    .stats h3 { margin-top: 0; color: #1976D2; }
+    .stat-item { display: flex; justify-content: space-between; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🛍️ Shopping Intent Detection Test</h1>
+    <div id="results"></div>
+  </div>
+  <script type="module">
+    import { detectShoppingIntent, TEST_QUERIES } from './src/services/shopping-intent.ts';
+
+    const resultsDiv = document.getElementById('results');
+    let html = '';
+
+    // Test positive cases
+    html += '<h2>✅ Should Trigger Shopping Intent</h2>';
+    TEST_QUERIES.shouldTrigger.forEach(query => {
+      const result = detectShoppingIntent(query);
+      const isCorrect = result.isShoppingIntent;
+      html += `
+        <div class="test-query ${isCorrect ? '' : 'negative'}">
+          <div class="query-text">"${query}"</div>
+          <div class="result">
+            <span>Intent: <strong>${result.isShoppingIntent ? '✓ YES' : '✗ NO'}</strong> ${isCorrect ? '' : '❌ WRONG'}</span>
+            <span class="confidence">Confidence: ${result.confidence}%</span>
+            <span>Method: ${result.detectionMethod}</span>
+          </div>
+          ${result.matchedTerms ? `<div class="matched">Matched: ${result.matchedTerms.join(', ')}</div>` : ''}
+        </div>
+      `;
+    });
+
+    // Test negative cases
+    html += '<h2>❌ Should NOT Trigger Shopping Intent</h2>';
+    TEST_QUERIES.shouldNotTrigger.forEach(query => {
+      const result = detectShoppingIntent(query);
+      const isCorrect = !result.isShoppingIntent;
+      html += `
+        <div class="test-query negative">
+          <div class="query-text">"${query}"</div>
+          <div class="result">
+            <span>Intent: <strong>${result.isShoppingIntent ? '✓ YES' : '✗ NO'}</strong> ${isCorrect ? '' : '❌ WRONG'}</span>
+            <span class="confidence">Confidence: ${result.confidence}%</span>
+            <span>Method: ${result.detectionMethod}</span>
+          </div>
+          ${result.matchedTerms ? `<div class="matched">Matched: ${result.matchedTerms.join(', ')}</div>` : ''}
+        </div>
+      `;
+    });
+
+    // Calculate stats
+    const correctPositives = TEST_QUERIES.shouldTrigger.filter(
+      q => detectShoppingIntent(q).isShoppingIntent
+    ).length;
+
+    const correctNegatives = TEST_QUERIES.shouldNotTrigger.filter(
+      q => !detectShoppingIntent(q).isShoppingIntent
+    ).length;
+
+    const totalCorrect = correctPositives + correctNegatives;
+    const totalTests = TEST_QUERIES.shouldTrigger.length + TEST_QUERIES.shouldNotTrigger.length;
+    const accuracy = (totalCorrect / totalTests * 100).toFixed(1);
+
+    html += `
+      <div class="stats">
+        <h3>📊 Test Results</h3>
+        <div class="stat-item">
+          <span>Correct Positives:</span>
+          <strong>${correctPositives}/${TEST_QUERIES.shouldTrigger.length}</strong>
+        </div>
+        <div class="stat-item">
+          <span>Correct Negatives:</span>
+          <strong>${correctNegatives}/${TEST_QUERIES.shouldNotTrigger.length}</strong>
+        </div>
+        <div class="stat-item">
+          <span>Overall Accuracy:</span>
+          <strong style="color: ${accuracy >= 85 ? '#4CAF50' : '#F44336'};">${accuracy}%</strong>
+        </div>
+        <div class="stat-item">
+          <span>Goal:</span>
+          <strong>&gt;85% ${accuracy >= 85 ? '✓' : '✗'}</strong>
+        </div>
+      </div>
+    `;
+
+    resultsDiv.innerHTML = html;
+  </script>
+</body>
+</html>
