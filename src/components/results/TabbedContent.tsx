@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Video } from 'lucide-react';
 import AIOverview from '../AIOverview.tsx';
 import ErrorState from './ErrorState.tsx';
+import ShoppingSection from '../shopping/ShoppingSection.tsx';
 import type { SearchState, Source, ImageResult, VideoResult } from '../../types/index.ts';
 
 // Helper to deduplicate images by URL
@@ -147,8 +148,14 @@ export default function TabbedContent({
       <div className="space-y-6">
         {activeTab === 'answer' && (
           <div className="space-y-6">
-            {/* Images Grid - Show first 4 valid images */}
-            {validImages.length > 0 && (
+            {/* Shopping Section - Show if products exist, otherwise show images */}
+            {data.shoppingProducts && data.shoppingProducts.length > 0 ? (
+              <ShoppingSection 
+                products={data.shoppingProducts}
+                query={new URLSearchParams(globalThis.location.search).get('q') || ''}
+                isLoading={false}
+              />
+            ) : validImages.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {validImages.slice(0, 4).map((image: ImageResult) => (
                   <div key={image.url} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group">

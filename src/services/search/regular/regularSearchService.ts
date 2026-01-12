@@ -2,6 +2,8 @@ import { SearchResponse } from '../../../commonApp/types/index';
 import { SearchRetrieverAgent } from './agents/searchRetrieverAgent.ts';
 import { SearchWriterAgent, StreamingCallback } from './agents/searchWriterAgent.ts';
 import { logger } from '../../../utils/logger.ts';
+import { detectShoppingIntent } from '../../shopping-intent.ts';
+import { searchAmazonProducts, AmazonProduct } from '../../amazon-api.ts';
 
 function normalizeUrl(url: string): string {
   if (!url) return '#';
@@ -65,6 +67,35 @@ export async function performRegularSearch(
       timestamp: new Date().toISOString()
     });
     
+    // Shopping intent detection (parallel, non-blocking)
+    let shoppingProductsPromise: Promise<AmazonProduct[]> | null = null;
+    if (hasQuery && !hasImages) {
+      // Only detect shopping for text queries, not image searches
+      const intentResult = detectShoppingIntent(query);
+      console.log('🛍️ [SHOPPING] Intent detection:', {
+        isShoppingIntent: intentResult.isShoppingIntent,
+        confidence: intentResult.confidence,
+        method: intentResult.detectionMethod
+      });
+      
+      if (intentResult.isShoppingIntent && intentResult.confidence >= 60) {
+        // Fetch products in parallel (don't block main search)
+        console.log('🛍️ [SHOPPING] Starting product search in parallel...');
+        shoppingProductsPromise = searchAmazonProducts(query, 4)
+          .then(result => {
+            console.log('🛍️ [SHOPPING] Product search completed:', {
+              success: result.success,
+              productsCount: result.products.length
+            });
+            return result.success ? result.products : [];
+          })
+          .catch(error => {
+            console.error('🛍️ [SHOPPING] Product search failed:', error);
+            return []; // Fail silently, don't break main search
+          });
+      }
+    }
+    
     try {
       // Step 1: Get search results (direct Brave/Apify call)
       onStatusUpdate?.('Finding relevant information...');
@@ -124,7 +155,20 @@ export async function performRegularSearch(
       
       console.log('✅ [REGULAR SEARCH] Writer SUCCESS');
       
-      // Step 3: Format & Return
+      // Step 3: Wait for shopping products (if any)
+      let shoppingProducts: AmazonProduct[] = [];
+      if (shoppingProductsPromise) {
+        try {
+          console.log('🛍️ [SHOPPING] Waiting for product results...');
+          shoppingProducts = await shoppingProductsPromise;
+          console.log('🛍️ [SHOPPING] Products received:', shoppingProducts.length);
+        } catch (error) {
+          console.error('🛍️ [SHOPPING] Failed to get products:', error);
+          // Continue without products
+        }
+      }
+      
+      // Step 4: Format & Return
       console.log('✅ [REGULAR SEARCH] Formatting response...');
       
       const finalResponse = {
@@ -139,7 +183,9 @@ export async function performRegularSearch(
         provider: 'Standard Search',
         perspectives: undefined, // Regular search never has perspectives
         citations: writerResponse.data.citations || [],
-        followUpQuestions: writerResponse.data.followUpQuestions || []
+        followUpQuestions: writerResponse.data.followUpQuestions || [],
+        // Add shopping products if any
+        shoppingProducts: shoppingProducts.length > 0 ? shoppingProducts : undefined
       };
       
       console.log('✅✅✅ [REGULAR SEARCH] === COMPLETE - RETURNING TO UI ===', {
@@ -150,6 +196,7 @@ export async function performRegularSearch(
         videosCount: finalResponse.videos.length,
         citationsCount: finalResponse.citations.length,
         followUpQuestionsCount: finalResponse.followUpQuestions.length,
+        shoppingProductsCount: finalResponse.shoppingProducts?.length || 0,
         timestamp: new Date().toISOString()
       });
       
@@ -214,6 +261,33 @@ export async function performRegularSearchWithStreaming(
       timestamp: new Date().toISOString()
     });
     
+    // Shopping intent detection (parallel, non-blocking) - same as non-streaming
+    let shoppingProductsPromise: Promise<AmazonProduct[]> | null = null;
+    if (hasQuery && !hasImages) {
+      const intentResult = detectShoppingIntent(query);
+      console.log('🛍️ [SHOPPING] Intent detection:', {
+        isShoppingIntent: intentResult.isShoppingIntent,
+        confidence: intentResult.confidence,
+        method: intentResult.detectionMethod
+      });
+      
+      if (intentResult.isShoppingIntent && intentResult.confidence >= 60) {
+        console.log('🛍️ [SHOPPING] Starting product search in parallel...');
+        shoppingProductsPromise = searchAmazonProducts(query, 4)
+          .then(result => {
+            console.log('🛍️ [SHOPPING] Product search completed:', {
+              success: result.success,
+              productsCount: result.products.length
+            });
+            return result.success ? result.products : [];
+          })
+          .catch(error => {
+            console.error('🛍️ [SHOPPING] Product search failed:', error);
+            return [];
+          });
+      }
+    }
+    
     try {
       // Step 1: Get search results (same as non-streaming)
       onStatusUpdate?.('Finding relevant information...');
@@ -266,7 +340,19 @@ export async function performRegularSearchWithStreaming(
         throw new Error('Writer failed to generate content');
       }
       
-      // Step 3: Format & Return
+      // Step 3: Wait for shopping products (if any)
+      let shoppingProducts: AmazonProduct[] = [];
+      if (shoppingProductsPromise) {
+        try {
+          console.log('🛍️ [SHOPPING] Waiting for product results...');
+          shoppingProducts = await shoppingProductsPromise;
+          console.log('🛍️ [SHOPPING] Products received:', shoppingProducts.length);
+        } catch (error) {
+          console.error('🛍️ [SHOPPING] Failed to get products:', error);
+        }
+      }
+      
+      // Step 4: Format & Return
       const finalResponse = {
         answer: writerResponse.data.content,
         sources: (searchResponse.data.results || []).map((r: any) => ({
@@ -279,12 +365,14 @@ export async function performRegularSearchWithStreaming(
         provider: 'Standard Search',
         perspectives: undefined,
         citations: writerResponse.data.citations || [],
-        followUpQuestions: writerResponse.data.followUpQuestions || []
+        followUpQuestions: writerResponse.data.followUpQuestions || [],
+        shoppingProducts: shoppingProducts.length > 0 ? shoppingProducts : undefined
       };
       
       console.log('✅ [STREAMING SEARCH] === COMPLETE ===', {
         answerLength: finalResponse.answer?.length || 0,
         sourcesCount: finalResponse.sources.length,
+        shoppingProductsCount: finalResponse.shoppingProducts?.length || 0,
         timestamp: new Date().toISOString()
       });
       

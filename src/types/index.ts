@@ -46,6 +46,17 @@ export interface SearchResponse {
     title: string;
     siteName: string;
   }>;
+  // Shopping feature
+  shoppingProducts?: Array<{
+    asin: string;
+    title: string;
+    price: string;
+    imageUrl: string;
+    description: string;
+    productUrl: string;
+    rating?: number;
+    reviewCount?: number;
+  }>;
 }
 
 export interface SearchState {
