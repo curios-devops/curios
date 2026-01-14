@@ -59,10 +59,11 @@ exports.handler = async (event, context) => {
     const serpApiUrl = new URL('https://serpapi.com/search');
     serpApiUrl.searchParams.set('engine', 'amazon');
     serpApiUrl.searchParams.set('amazon_domain', 'amazon.com');
-    serpApiUrl.searchParams.set('amazon_search', query);
+    serpApiUrl.searchParams.set('k', query); // ← Changed from 'amazon_search' to 'k'
     serpApiUrl.searchParams.set('api_key', serpApiKey);
 
     console.log('🛍️ [SerpAPI] Searching Amazon:', query);
+    console.log('🛍️ [SerpAPI] Request URL:', serpApiUrl.toString().replace(serpApiKey, 'API_KEY_HIDDEN'));
 
     // Make request to SerpAPI
     const response = await fetch(serpApiUrl.toString());
@@ -86,10 +87,22 @@ exports.handler = async (event, context) => {
     }
 
     const data = await response.json();
+    
+    console.log('🛍️ [SerpAPI] Response received:', {
+      has_organic_results: !!data.organic_results,
+      organic_count: data.organic_results?.length || 0,
+      has_search_metadata: !!data.search_metadata,
+      status: data.search_metadata?.status
+    });
 
     // Extract products from SerpAPI response
     const products = [];
     const results = data.organic_results || [];
+    
+    if (results.length === 0) {
+      console.warn('⚠️ [SerpAPI] No organic_results found in response');
+      console.warn('⚠️ [SerpAPI] Response keys:', Object.keys(data));
+    }
     
     // Get Amazon affiliate tag from environment (optional)
     const affiliateTag = process.env.AMAZON_STORE_ID || '';
