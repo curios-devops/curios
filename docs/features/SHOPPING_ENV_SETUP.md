@@ -19,14 +19,14 @@ SERPAPI_API_KEY=your_serpapi_api_key_here
 
 **Free Tier:** SerpAPI offers 100 free searches per month
 
-### 2. VITE_AMAZON_STORE_ID (Optional)
+### 2. AMAZON_STORE_ID (Optional)
 
 **What it is:** Your Amazon Associates affiliate tag  
 **Where to get it:** https://affiliate-program.amazon.com/  
 **How to set it:**
 
 ```bash
-VITE_AMAZON_STORE_ID=your_amazon_associate_tag
+AMAZON_STORE_ID=your_amazon_associate_tag
 ```
 
 **Purpose:** Adds your affiliate tag to product URLs so you earn commission on clicks
@@ -58,7 +58,7 @@ VITE_AMAZON_STORE_ID=your_amazon_associate_tag
 1. Sign up for Amazon Associates program
 2. Get your associate tag (e.g., `yourstore-20`)
 3. Add to Netlify environment variables:
-   - **Key:** `VITE_AMAZON_STORE_ID`
+   - **Key:** `AMAZON_STORE_ID`
    - **Value:** Your associate tag
    - **Scopes:** All
 4. Click **Save**
@@ -78,7 +78,7 @@ To test shopping feature locally, create a `.env` file in the project root:
 ```bash
 # .env (DO NOT commit this file!)
 SERPAPI_API_KEY=your_serpapi_api_key_here
-VITE_AMAZON_STORE_ID=yourstore-20
+AMAZON_STORE_ID=yourstore-20
 ```
 
 Then run:

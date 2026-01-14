@@ -77,7 +77,7 @@ exports.handler = async (event, context) => {
     const results = data.organic_results || [];
     
     // Get Amazon affiliate tag from environment (optional)
-    const affiliateTag = process.env.VITE_AMAZON_STORE_ID || '';
+    const affiliateTag = process.env.AMAZON_STORE_ID || '';
 
     for (let i = 0; i < Math.min(results.length, maxResults); i++) {
       const result = results[i];

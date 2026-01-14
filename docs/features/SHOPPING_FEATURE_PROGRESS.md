@@ -28,26 +28,31 @@
 - `src/services/amazon-api.ts` - Amazon product search service
 
 **Features:**
-- ✅ Product search interface with TypeScript types
-- ✅ Mock data generation for development (no API keys needed yet)
-- ✅ Smart product type extraction from queries
-- ✅ Random but realistic product data (brands, prices, ratings)
+- ✅ ~~Mock data generation for development~~ → **NOW: Real Amazon product search via SerpAPI!**
+- ✅ Secure Netlify Function (API keys server-side only)
+- ✅ Affiliate URL generation with AMAZON_STORE_ID
+- ✅ Extracts: ASIN, title, price, images, ratings, reviews
+- ✅ Graceful error handling (falls back to images if API fails)
 - ✅ Helper functions (formatPrice, truncateDescription)
-- ✅ Placeholder for real Amazon PA-API integration
+- ✅ 100 free searches/month with SerpAPI
 
 **Product Data Structure:**
 ```typescript
 interface AmazonProduct {
-  asin: string;
-  title: string;
-  price: string;
-  imageUrl: string;
-  description: string;
-  productUrl: string;
-  rating?: number;
-  reviewCount?: number;
+  asin: string;              // Amazon product ID
+  title: string;             // Product name  
+  price: string;             // e.g., "$99.99"
+  imageUrl: string;          // Product thumbnail from Amazon
+  description: string;       // Product snippet/description
+  productUrl: string;        // Amazon link (with affiliate tag if configured)
+  rating?: number;           // e.g., 4.5 stars
+  reviewCount?: number;      // e.g., 1234 reviews
 }
 ```
+
+**New Files:**
+- `netlify/functions/search-amazon-products.js` - Secure API proxy
+- `docs/features/SHOPPING_ENV_SETUP.md` - Complete setup guide
 
 ---
 
@@ -126,53 +131,58 @@ Regular search now has shopping! For Pro Search, we can add it later if needed.
 
 ## 📊 Feature Status
 
-| Component | Status | Test Page | Notes |
-|-----------|--------|-----------|-------|
-| Intent Detection | ✅ Complete | `test-shopping-intent.html` | High accuracy, ready for production |
-| Amazon API (Mock) | ✅ Complete | N/A | Mock data works, real API ready to plug in |
-| Product Card | ✅ Complete | `test-shopping-components.html` | Fully responsive, interactive |
-| Shopping Section | ✅ Complete | `test-shopping-components.html` | Grid layout, loading states |
-| Search Integration | ✅ Complete | Live in app | Parallel detection, non-blocking |
-| Regular Search | ✅ Complete | Live in app | Works with streaming and non-streaming |
+| Component | Status | Implementation | Notes |
+|-----------|--------|----------------|-------|
+| Intent Detection | ✅ Complete | Keyword + Pattern matching | 40% threshold, high accuracy |
+| Amazon API | ✅ Complete | **SerpAPI Integration** | Real products via Netlify Function |
+| Product Card | ✅ Complete | React + Tailwind | Fully responsive, interactive |
+| Shopping Section | ✅ Complete | Grid layout | Loading states, empty state |
+| Search Integration | ✅ Complete | Parallel execution | Non-blocking, graceful fallback |
+| Regular Search | ✅ Complete | Streaming + non-streaming | Both modes supported |
 | Pro Search | ⏸️ Optional | N/A | Can add later if needed |
-| Real API Integration | ⏸️ Pending | N/A | Waiting for Amazon PA-API credentials |
+| Environment Setup | ✅ Complete | Documentation | SHOPPING_ENV_SETUP.md |
 
 ---
 
-## 🎉 Integration Complete!
+## 🎉 Integration Complete - NOW WITH REAL PRODUCTS!
 
-The shopping feature is now **fully integrated** into the search flow! Here's how it works:
+The shopping feature is now **100% complete** with real Amazon product data! Here's how it works:
 
 ### User Flow:
 1. User searches for "best wireless headphones"
 2. **Parallel processes:**
    - Main search finds sources, generates answer
-   - Shopping intent detector: ✅ 100% confidence
-   - Amazon API fetches 4 products (mock data for now)
+   - Shopping intent detector: ✅ 45% confidence (triggers!)
+   - **SerpAPI fetches real Amazon products** (4 results)
 3. **Results page shows:**
-   - Shopping product cards (instead of images)
+   - **Real product cards** with actual Amazon data
+   - Real product images from Amazon
+   - Real prices, ratings, and review counts
+   - Affiliate links (if configured)
    - AI-generated answer
    - Sources and citations
-4. User clicks product → opens Amazon in new tab
+4. User clicks product → opens Amazon with your affiliate tag 💰
 
 ### Technical Flow:
 ```
 Query → detectShoppingIntent()
      ↓
      ├─→ Main Search (Brave → Writer)
-     └─→ searchAmazonProducts() [parallel]
+     └─→ Netlify Function → SerpAPI → Amazon [REAL DATA!]
               ↓
          Wait for both
               ↓
-     Combine results → UI
+     Combine results → UI with real products
 ```
 
 ### Key Features:
-- ✅ **Non-blocking**: Shopping runs in parallel, doesn't slow search
-- ✅ **Graceful fallback**: If no products → show images
-- ✅ **Smart detection**: Only for text queries, not image searches
-- ✅ **High threshold**: 60%+ confidence required
-- ✅ **Error handling**: Failed product fetch doesn't break search
+- ✅ **Real Amazon products** via SerpAPI
+- ✅ **Secure API calls** (keys never exposed to browser)
+- ✅ **Affiliate support** (earn commission on clicks)
+- ✅ **Non-blocking** (doesn't slow search)
+- ✅ **Graceful fallback** (shows images if API fails)
+- ✅ **Smart detection** (40%+ confidence)
+- ✅ **Cost-effective** (100 free searches/month)
 
 ---
 

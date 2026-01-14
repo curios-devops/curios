@@ -87,7 +87,7 @@ reviews → reviewCount
 
 Build your affiliate URL:
 
-https://www.amazon.com/dp/<ASIN>?tag=VITE_AMAZON_STORE_ID
+https://www.amazon.com/dp/<ASIN>?tag=AMAZON_STORE_ID
 
 
 Replace <ASIN> with actual ASIN.
