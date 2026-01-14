@@ -86,7 +86,10 @@ export default function Results() {
         // Streaming callback - updates content as it arrives
         const handleStreamingChunk = (chunk: string) => {
           if (isCurrentRequest) {
-            console.log('📝 [SearchResults] Streaming chunk received, length:', chunk.length);
+            // Only log first and significant chunks to reduce console noise
+            if (streamingContent.length === 0 || streamingContent.length % 500 === 0) {
+              console.log('📝 [SearchResults] Streaming progress:', streamingContent.length + chunk.length, 'chars');
+            }
             setStreamingContent(prev => prev + chunk);
           }
         };

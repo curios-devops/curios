@@ -78,7 +78,7 @@ export function detectShoppingIntent(query: string): ShoppingIntentResult {
   
   if (keywordMatches.length > 0) {
     matchedTerms.push(...keywordMatches);
-    confidence += Math.min(keywordMatches.length * 20, 60); // Max 60 from keywords
+    confidence += Math.min(keywordMatches.length * 25, 70); // Increased: Max 70 from keywords (was 60)
   }
 
   // Check for product categories
@@ -89,7 +89,7 @@ export function detectShoppingIntent(query: string): ShoppingIntentResult {
   
   if (categoryMatches.length > 0) {
     matchedTerms.push(...categoryMatches);
-    confidence += Math.min(categoryMatches.length * 15, 40); // Max 40 from categories
+    confidence += Math.min(categoryMatches.length * 20, 50); // Increased: Max 50 from categories (was 40)
   }
 
   // Check for shopping patterns

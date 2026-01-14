@@ -80,7 +80,7 @@ export async function performRegularSearch(
         matchedTerms: intentResult.matchedTerms
       });
       
-      if (intentResult.isShoppingIntent && intentResult.confidence >= 60) {
+      if (intentResult.isShoppingIntent && intentResult.confidence >= 40) {
         // Fetch products in parallel (don't block main search)
         console.log('🛍️ [SHOPPING] Starting product search in parallel...');
         shoppingProductsPromise = searchAmazonProducts(query, 4)
@@ -279,7 +279,7 @@ export async function performRegularSearchWithStreaming(
         matchedTerms: intentResult.matchedTerms
       });
       
-      if (intentResult.isShoppingIntent && intentResult.confidence >= 60) {
+      if (intentResult.isShoppingIntent && intentResult.confidence >= 40) {
         console.log('🛍️ [SHOPPING STREAMING] Starting product search in parallel...');
         shoppingProductsPromise = searchAmazonProducts(query, 4)
           .then(result => {
