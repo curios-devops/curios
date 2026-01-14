@@ -71,11 +71,13 @@ export async function performRegularSearch(
     let shoppingProductsPromise: Promise<AmazonProduct[]> | null = null;
     if (hasQuery && !hasImages) {
       // Only detect shopping for text queries, not image searches
+      console.log('🛍️ [SHOPPING] Checking shopping intent for query:', query);
       const intentResult = detectShoppingIntent(query);
       console.log('🛍️ [SHOPPING] Intent detection:', {
         isShoppingIntent: intentResult.isShoppingIntent,
         confidence: intentResult.confidence,
-        method: intentResult.detectionMethod
+        method: intentResult.detectionMethod,
+        matchedTerms: intentResult.matchedTerms
       });
       
       if (intentResult.isShoppingIntent && intentResult.confidence >= 60) {
@@ -93,7 +95,11 @@ export async function performRegularSearch(
             console.error('🛍️ [SHOPPING] Product search failed:', error);
             return []; // Fail silently, don't break main search
           });
+      } else {
+        console.log('🛍️ [SHOPPING] No shopping intent detected or confidence too low');
       }
+    } else {
+      console.log('🛍️ [SHOPPING] Skipping shopping detection (image search or no query)');
     }
     
     try {
@@ -264,28 +270,34 @@ export async function performRegularSearchWithStreaming(
     // Shopping intent detection (parallel, non-blocking) - same as non-streaming
     let shoppingProductsPromise: Promise<AmazonProduct[]> | null = null;
     if (hasQuery && !hasImages) {
+      console.log('🛍️ [SHOPPING STREAMING] Checking shopping intent for query:', query);
       const intentResult = detectShoppingIntent(query);
-      console.log('🛍️ [SHOPPING] Intent detection:', {
+      console.log('🛍️ [SHOPPING STREAMING] Intent detection:', {
         isShoppingIntent: intentResult.isShoppingIntent,
         confidence: intentResult.confidence,
-        method: intentResult.detectionMethod
+        method: intentResult.detectionMethod,
+        matchedTerms: intentResult.matchedTerms
       });
       
       if (intentResult.isShoppingIntent && intentResult.confidence >= 60) {
-        console.log('🛍️ [SHOPPING] Starting product search in parallel...');
+        console.log('🛍️ [SHOPPING STREAMING] Starting product search in parallel...');
         shoppingProductsPromise = searchAmazonProducts(query, 4)
           .then(result => {
-            console.log('🛍️ [SHOPPING] Product search completed:', {
+            console.log('🛍️ [SHOPPING STREAMING] Product search completed:', {
               success: result.success,
               productsCount: result.products.length
             });
             return result.success ? result.products : [];
           })
           .catch(error => {
-            console.error('🛍️ [SHOPPING] Product search failed:', error);
+            console.error('🛍️ [SHOPPING STREAMING] Product search failed:', error);
             return [];
           });
+      } else {
+        console.log('🛍️ [SHOPPING STREAMING] No shopping intent detected or confidence too low');
       }
+    } else {
+      console.log('🛍️ [SHOPPING STREAMING] Skipping shopping detection (image search or no query)');
     }
     
     try {
