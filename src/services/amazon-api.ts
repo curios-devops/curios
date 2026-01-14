@@ -30,7 +30,7 @@ export async function searchAmazonProducts(
   maxResults: number = 4
 ): Promise<AmazonSearchResult> {
   try {
-    console.log(`🔍 [Amazon API] Searching for: "${query}"`);
+    console.log(`�️ [Amazon API] Searching for: "${query}"`);
 
     // Call Netlify function to search via SerpAPI
     const response = await fetch('/.netlify/functions/search-amazon-products', {
@@ -41,30 +41,51 @@ export async function searchAmazonProducts(
       body: JSON.stringify({ query, maxResults })
     });
 
+    // Handle HTTP errors gracefully
     if (!response.ok) {
-      console.error('🛍️ [Amazon API] Request failed:', response.status, response.statusText);
-      throw new Error(`Amazon search failed: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('❌ [Amazon API] HTTP error:', response.status, response.statusText);
+      console.error('❌ [Amazon API] Error details:', errorText);
+      
+      // Return empty result to fallback gracefully
+      return {
+        success: false,
+        products: [],
+        query,
+        error: `HTTP ${response.status}: API unavailable. Falling back to image search.`
+      };
     }
 
     const data = await response.json();
     
-    console.log(`🛍️ [Amazon API] Success! Found ${data.products?.length || 0} products`);
+    // Check if API returned an error
+    if (!data.success) {
+      console.warn('⚠️ [Amazon API] API returned error:', data.error);
+      return {
+        success: false,
+        products: [],
+        query,
+        error: data.error || 'API returned no products'
+      };
+    }
+    
+    console.log(`✅ [Amazon API] Success! Found ${data.products?.length || 0} products`);
 
     return {
-      success: data.success || false,
+      success: true,
       products: data.products || [],
       query: data.query || query,
       error: data.error
     };
   } catch (error) {
-    console.error('🛍️ [Amazon API] Search failed:', error);
+    console.error('❌ [Amazon API] Unexpected error:', error);
     
     // Return empty result on error (graceful degradation)
     return {
       success: false,
       products: [],
       query,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Network error. Falling back to image search.'
     };
   }
 }

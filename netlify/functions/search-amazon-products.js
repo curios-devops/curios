@@ -41,11 +41,17 @@ exports.handler = async (event, context) => {
     // Get SerpAPI key from environment
     const serpApiKey = process.env.SERPAPI_API_KEY;
     if (!serpApiKey) {
-      console.error('SERPAPI_API_KEY not configured');
+      console.error('❌ [SerpAPI] SERPAPI_API_KEY not configured in Netlify environment variables');
+      console.error('❌ [SerpAPI] Please add SERPAPI_API_KEY to Netlify Site Settings > Environment Variables');
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: 'SerpAPI not configured' })
+        body: JSON.stringify({ 
+          success: false,
+          products: [],
+          query,
+          error: 'SerpAPI not configured. Please add SERPAPI_API_KEY to Netlify environment variables.' 
+        })
       };
     }
 
@@ -62,11 +68,20 @@ exports.handler = async (event, context) => {
     const response = await fetch(serpApiUrl.toString());
     
     if (!response.ok) {
-      console.error('SerpAPI request failed:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('❌ [SerpAPI] Request failed:', response.status, response.statusText);
+      console.error('❌ [SerpAPI] Error details:', errorText);
+      
+      // Return graceful error that won't break the UI
       return {
-        statusCode: response.status,
+        statusCode: 200, // Return 200 so client can handle gracefully
         headers,
-        body: JSON.stringify({ error: 'Failed to fetch products from Amazon' })
+        body: JSON.stringify({ 
+          success: false,
+          products: [],
+          query,
+          error: `SerpAPI error: ${response.status} - ${response.statusText}` 
+        })
       };
     }
 
@@ -142,15 +157,18 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('Error searching Amazon products:', error);
+    console.error('❌ [SerpAPI] Unexpected error:', error);
+    console.error('❌ [SerpAPI] Error stack:', error.stack);
+    
+    // Return graceful error with 200 status so client doesn't crash
     return {
-      statusCode: 500,
+      statusCode: 200,
       headers,
       body: JSON.stringify({
         success: false,
-        error: error.message || 'Internal server error',
         products: [],
-        query: ''
+        query: '',
+        error: `Server error: ${error.message || 'Unknown error'}. Shopping feature will fallback to image search.`
       })
     };
   }
