@@ -152,7 +152,6 @@ export default function TabbedContent({
             {data.shoppingProducts && data.shoppingProducts.length > 0 ? (
               <ShoppingSection 
                 products={data.shoppingProducts}
-                query={new URLSearchParams(globalThis.location.search).get('q') || ''}
                 isLoading={false}
               />
             ) : validImages.length > 0 && (

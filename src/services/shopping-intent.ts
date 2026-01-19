@@ -12,7 +12,7 @@ export interface ShoppingIntentResult {
 
 // Shopping keywords that strongly indicate purchase intent
 const SHOPPING_KEYWORDS = [
-  'buy', 'purchase', 'price', 'cost', 'cheap', 'expensive', 'affordable',
+  'buy', 'buying', 'purchase', 'price', 'cost', 'cheap', 'expensive', 'affordable',
   'deal', 'discount', 'sale', 'coupon', 'offer', 'shop', 'store',
   'order', 'shipping', 'delivery', 'amazon', 'ebay', 'walmart',
   'review', 'rating', 'comparison', 'compare', 'vs', 'versus',
@@ -22,10 +22,12 @@ const SHOPPING_KEYWORDS = [
 // Product categories
 const PRODUCT_CATEGORIES = [
   // Electronics
-  'phone', 'iphone', 'android', 'smartphone', 'laptop', 'computer', 'tablet',
+  'phone', 'iphone', 'galaxy','android', 'smartphone', 'laptop', 'computer', 'tablet',
   'ipad', 'macbook', 'pc', 'desktop', 'monitor', 'keyboard', 'mouse',
   'headphones', 'earbuds', 'airpods', 'speaker', 'camera', 'tv', 'television',
   'smartwatch', 'watch', 'fitbit', 'console', 'playstation', 'xbox', 'nintendo',
+  'smart', 'digital', 'gadget', 'plug', 'charger', 'cable', 'bluetooth', 'wireless',
+  'router', 'modem', 'alexa', 'echo', 'siri', 'google home', 'smart home',
   
   // Clothing & Accessories
   'shoes', 'sneakers', 'boots', 'sandals', 'shirt', 'pants', 'jeans',
@@ -56,7 +58,9 @@ const SHOPPING_PATTERNS = [
   /cheap(est)? .+ (online|near me)/i,
   /.+ (price|cost) (in|at)/i,
   /buy .+ online/i,
+  /buying .+ (online|guide)/i,
   /order .+ (online|delivery)/i,
+  /amazon .+/i, // "amazon echo", "amazon kindle"
   /\d+% off/i, // "50% off"
   /\$\d+/i, // "$99"
   /.+ review(s)? \d{4}/i, // "iphone review 2024"

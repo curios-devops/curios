@@ -8,11 +8,10 @@ import ProductCard from './ProductCard';
 
 interface ShoppingSectionProps {
   products: AmazonProduct[];
-  query: string;
   isLoading?: boolean;
 }
 
-export default function ShoppingSection({ products, query, isLoading }: ShoppingSectionProps) {
+export default function ShoppingSection({ products, isLoading }: ShoppingSectionProps) {
   // Loading skeleton
   if (isLoading) {
     return (
@@ -61,7 +60,7 @@ export default function ShoppingSection({ products, query, isLoading }: Shopping
           />
         </svg>
         <h2 className="text-lg font-semibold text-gray-900">
-          Products related to "{query}"
+          Sponsored Products
         </h2>
       </div>
 
