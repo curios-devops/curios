@@ -23,7 +23,7 @@ const SHOPPING_KEYWORDS = [
 const PRODUCT_CATEGORIES = [
   // Electronics
   'phone', 'iphone', 'galaxy','android', 'smartphone', 'laptop', 'computer', 'tablet',
-  'ipad', 'macbook', 'pc', 'desktop', 'monitor', 'keyboard', 'mouse',
+  'ipad', 'macbook', 'air', 'HP', 'Lenovo', 'LG', 'Samsung', 'Xaomi', 'Huawei', 'Acer', 'pc', 'desktop', 'monitor', 'keyboard', 'mouse',
   'headphones', 'earbuds', 'airpods', 'speaker', 'camera', 'tv', 'television',
   'smartwatch', 'watch', 'fitbit', 'console', 'playstation', 'xbox', 'nintendo',
   'smart', 'digital', 'gadget', 'plug', 'charger', 'cable', 'bluetooth', 'wireless',

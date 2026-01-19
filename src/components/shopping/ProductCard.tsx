@@ -35,11 +35,11 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
   return (
     <button
       onClick={handleClick}
-      className="group flex flex-col bg-white rounded-lg border border-gray-200 hover:border-blue-400 hover:shadow-lg transition-all duration-200 overflow-hidden text-left w-full cursor-pointer"
+      className="group flex flex-col bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg transition-all duration-200 overflow-hidden text-left w-full cursor-pointer"
       aria-label={`View ${product.title} on Amazon`}
     >
       {/* Product Image */}
-      <div className="relative w-full aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+      <div className="relative w-full aspect-square bg-gray-50 dark:bg-gray-900 flex items-center justify-center overflow-hidden">
         <img
           src={product.imageUrl}
           alt={product.title}
@@ -47,7 +47,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           loading="lazy"
         />
         {/* Price Badge (overlaid on image) */}
-        <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded-md text-sm font-bold shadow-md">
+        <div className="absolute top-2 right-2 bg-blue-600 dark:bg-blue-500 text-white px-2 py-1 rounded-md text-sm font-bold shadow-md">
           {product.price}
         </div>
       </div>
@@ -55,19 +55,19 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
       {/* Product Info */}
       <div className="flex flex-col gap-2 p-3 flex-1">
         {/* Title */}
-        <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
           {product.title}
         </h3>
 
         {/* Rating */}
         {product.rating && (
           <div className="flex items-center gap-1 text-xs">
-            <span className="text-yellow-500">★</span>
-            <span className="font-medium text-gray-700">
+            <span className="text-yellow-500 dark:text-yellow-400">★</span>
+            <span className="font-medium text-gray-700 dark:text-gray-300">
               {formatRating(product.rating)}
             </span>
             {product.reviewCount && (
-              <span className="text-gray-500">
+              <span className="text-gray-500 dark:text-gray-400">
                 ({formatReviewCount(product.reviewCount)})
               </span>
             )}
@@ -75,12 +75,12 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
         )}
 
         {/* Description */}
-        <p className="text-xs text-gray-600 line-clamp-2 flex-1">
+        <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 flex-1">
           {product.description}
         </p>
 
         {/* View on Amazon Link */}
-        <div className="flex items-center gap-1 text-xs text-blue-600 font-medium mt-auto pt-2">
+        <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-medium mt-auto pt-2">
           <span>View on Amazon</span>
           <svg
             className="w-3 h-3 group-hover:translate-x-1 transition-transform"
