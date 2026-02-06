@@ -126,7 +126,8 @@ export const handler = async (event, context) => {
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
     // Use chrome-aws-lambda for serverless environment (AWS Lambda/Netlify)
-    const browserExecutable = await chromium.executablePath;
+    // This will automatically extract the bundled Chrome binary
+    const browserExecutable = await chromium.executablePath();
     console.log('[Render Chunk] Using chrome-aws-lambda:', browserExecutable);
 
     // Render the chunk using StudioChunk composition
