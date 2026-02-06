@@ -7,22 +7,21 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
-  # External dependencies for Remotion and Chromium
+  # External dependencies for Remotion
   external_node_modules = [
     "@remotion/bundler",
     "@remotion/renderer", 
     "@remotion/studio",
     "@remotion/media-parser",
-    "@sparticuz/chromium-min",
     "puppeteer-core",
     "react",
     "remotion",
     "source-map"
   ]
-  # Include Remotion source files and Chromium binaries
+  # Include Remotion source files and Chromium package
   included_files = [
     "remotion/**",
-    "node_modules/@sparticuz/chromium-min/bin/**"
+    "node_modules/@sparticuz/**"
   ]
 
 # Dev server settings
