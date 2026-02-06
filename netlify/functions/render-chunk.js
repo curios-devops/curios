@@ -121,9 +121,6 @@ export const handler = async (event, context) => {
     
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
-    // Set Remotion cache directory to /tmp (writable in Netlify)
-    process.env.REMOTION_CACHE_DIR = '/tmp/.remotion';
-    
     // Let Remotion use its own Chrome Headless Shell (officially supported)
     // Do NOT override browserExecutable - let Remotion handle it
     console.log('[Render Chunk] Using Remotion\'s managed Chrome Headless Shell');
@@ -159,6 +156,15 @@ export const handler = async (event, context) => {
       // Let Remotion use its own Chrome - DO NOT override browserExecutable
       // Increase timeout for browser connection (default is 25s, we need more)
       timeoutInMilliseconds: 120000, // 2 minutes total timeout
+      // Control browser download location
+      onBrowserDownload: (info) => {
+        console.log('[Render Chunk] Browser download:', info);
+        // Return custom cache directory in /tmp
+        return {
+          version: info.version,
+          downloadPath: `/tmp/.remotion/chrome-${info.version}`,
+        };
+      },
       chromiumOptions: {
         // Minimal stability flags - let Remotion handle defaults
         args: [
