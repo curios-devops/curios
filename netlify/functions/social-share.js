@@ -88,7 +88,7 @@ const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, 
 </body>
 </html>`;
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   const params = event.queryStringParameters || {};
   const query = params.query || DEFAULT_TITLE;
   const snippet = params.snippet || DEFAULT_DESCRIPTION;

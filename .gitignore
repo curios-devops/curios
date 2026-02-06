@@ -34,3 +34,6 @@ CLAUDE.local.md
 
 # Local Netlify folder
 .netlify
+
+# Studio video outputs
+public/studio-videos/*.mp4

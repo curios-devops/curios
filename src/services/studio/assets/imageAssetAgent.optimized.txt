@@ -1,0 +1,107 @@
+// OPTIMIZED VERSION - Single API Call
+// Replace lines 99-155 in imageAssetAgent.ts with this code
+
+    // Check if we have scenes to process
+    if (selectedScenes.length === 0) {
+      logger.warn('[Image Asset Agent] No scenes selected for images');
+      return {
+        scenes: scenesWithImages,
+        totalImages: 0,
+        failedScenes: 0
+      };
+    }
+
+    // OPTIMIZATION: Make ONE API call with general video topic query
+    // Instead of calling once per scene, get diverse images in one call
+    try {
+      // Create a general query from the first explain scene (most representative)
+      const firstScene = selectedScenes[0].scene;
+      const mood = this.getMoodFromStyle(firstScene.style);
+      
+      // Get MORE images in single call (count = selected scenes × 3 for better selection)
+      const requestCount = Math.min(selectedScenes.length * 3, 10); // Max 10 to stay reasonable
+      
+      logger.info('[Image Asset Agent] Making single Brave API call (OPTIMIZED)', {
+        requestCount,
+        scenesToCover: selectedScenes.length,
+        estimatedCost: '$0.005' // Only one API call!
+      });
+
+      const allImages = await this.braveService.searchForScene(
+        firstScene.text,
+        mood,
+        { count: requestCount }
+      );
+
+      if (allImages.length === 0) {
+        logger.warn('[Image Asset Agent] No images returned from Brave API');
+        failedScenes = selectedScenes.length;
+      } else {
+        // Select best images from the pool
+        const bestImages = this.braveService.selectBestImages(
+          allImages, 
+          selectedScenes.length
+        );
+
+        logger.info('[Image Asset Agent] Selected best images', {
+          totalReturned: allImages.length,
+          bestSelected: bestImages.length
+        });
+
+        // Assign images to scenes (NO MORE API CALLS!)
+        selectedScenes.forEach(({ scene, index }, i) => {
+          const selectedImage = bestImages[i];
+
+          if (selectedImage) {
+            const sceneDuration = (scene.to - scene.from) / 30; // frames to seconds
+            const imageDuration = Math.min(5, sceneDuration - 1); // Max 5s, leave 1s for text
+            const sceneMood = this.getMoodFromStyle(scene.style);
+
+            scenesWithImages[index] = {
+              ...scene,
+              imageUrl: selectedImage.url,
+              imageKeywords: this.braveService['engineerQuery'](scene.text, sceneMood),
+              imageEffect: this.braveService.getRecommendedImageEffect(scene.style),
+              imageDuration,
+              imagePosition: 'center',
+              imageOpacity: 0.8
+            };
+
+            totalImages++;
+            
+            logger.info('[Image Asset Agent] Image assigned to scene', {
+              sceneIndex: index,
+              sceneStyle: scene.style,
+              imageUrl: selectedImage.url.substring(0, 50),
+              effect: scenesWithImages[index].imageEffect
+            });
+          } else {
+            failedScenes++;
+            logger.warn('[Image Asset Agent] No image available for scene', {
+              sceneIndex: index,
+              sceneText: scene.text.substring(0, 50)
+            });
+          }
+        });
+      }
+
+    } catch (error) {
+      failedScenes = selectedScenes.length;
+      logger.error('[Image Asset Agent] Failed to fetch images', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+
+    logger.info('[Image Asset Agent] Key-point images assigned (OPTIMIZED: 1 API call)', {
+      totalImages,
+      failedScenes,
+      strategy: 'key-points-optimized',
+      apiCalls: 1, // Only ONE call per video!
+      costSavings: '67% (1 call vs 2-3 calls)'
+    });
+
+    return {
+      scenes: scenesWithImages,
+      totalImages,
+      failedScenes
+    };

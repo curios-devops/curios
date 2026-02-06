@@ -15,12 +15,14 @@ const ProSearchTest = lazy(() => import('./services/search/pro/pages/ProSearchTe
 const InsightsResults = lazy(() => import('./services/research/regular/pages/InsightsResults.tsx'));
 const TavilySearchTest = lazy(() => import('./services/research/regular/pages/TavilySearchTest.tsx'));
 const ResearcherResults = lazy(() => import('./services/research/pro/pages/ResearcherResults.tsx'));
-const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx'));
+// const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx')); // Replaced by Studio
+const StudioResults = lazy(() => import('./services/studio/pages/StudioResults.tsx'));
 const Settings = lazy(() => import('./mainPages/Settings.tsx'));
 const TestPage = lazy(() => import('./pages/test.tsx'));
 const ImageTest = lazy(() => import('./pages/ImageTest.tsx'));
 const SerpApiTest = lazy(() => import('./pages/SerpApiTest'));
 const ReverseImageVsTest = lazy(() => import('./pages/ReverseImageVsTest'));
+const Phase6TestPage = lazy(() => import('./pages/Phase6TestPage'));
 const Policies = lazy(() => import('./mainPages/Policies.tsx'));
 const AuthCallback = lazy(() => import('./components/auth/AuthCallback.tsx'));
 const SubscriptionSuccess = lazy(() => import('./mainPages/SubscriptionSuccess.tsx'));
@@ -57,8 +59,12 @@ const router = createBrowserRouter(
         { path: '/tavily-search', element: <LazyPageWrapper><TavilySearchTest /></LazyPageWrapper> },
         { path: '/research-results', element: <LazyPageWrapper><ResearcherResults /></LazyPageWrapper> },
         { path: '/researcher-results', element: <LazyPageWrapper><ResearcherResults /></LazyPageWrapper> },
-        { path: '/labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
-        { path: '/pro-labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
+        // Labs routes replaced by Studio
+        // { path: '/labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
+        // { path: '/pro-labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
+        { path: '/labs-results', element: <LazyPageWrapper><StudioResults /></LazyPageWrapper> },
+        { path: '/pro-labs-results', element: <LazyPageWrapper><StudioResults /></LazyPageWrapper> },
+        { path: '/studio/results', element: <LazyPageWrapper><StudioResults /></LazyPageWrapper> },
         { path: '/settings', element: <LazyPageWrapper><Settings /></LazyPageWrapper> },
         { path: '/policies', element: <LazyPageWrapper><Policies /></LazyPageWrapper> },
   { path: '/auth/callback', element: <LazyPageWrapper><AuthCallback /></LazyPageWrapper> },
@@ -67,6 +73,7 @@ const router = createBrowserRouter(
     ,{ path: '/image-test', element: <LazyPageWrapper><ImageTest /></LazyPageWrapper> }
     ,{ path: '/serp-test', element: <LazyPageWrapper><SerpApiTest /></LazyPageWrapper> }
     ,{ path: '/reverse-image-vs', element: <LazyPageWrapper><ReverseImageVsTest /></LazyPageWrapper> }
+    ,{ path: '/phase6-test', element: <LazyPageWrapper><Phase6TestPage /></LazyPageWrapper> }
       ]
     }
   ]

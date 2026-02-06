@@ -3,6 +3,31 @@
   publish = "dist"
   command = "npm run build"
 
+# Netlify Functions configuration
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  # External dependencies for Remotion and Puppeteer
+  external_node_modules = [
+    "@remotion/bundler",
+    "@remotion/renderer", 
+    "@remotion/studio",
+    "@remotion/media-parser",
+    "puppeteer",
+    "puppeteer-core",
+    "react",
+    "remotion",
+    "source-map"
+  ]
+
+# Dev server settings
+[dev]
+  functions = "netlify/functions"
+  functionsPort = 8888
+  # Increase function timeout for video rendering (local development only)
+  # Note: Production Netlify has a 10s limit on free tier
+  functionsTimeout = 60
+
 # Ensure LinkedIn sees correct HTML content type for proxied Supabase function
 [[headers]]
   for = "/functions/v1/social-share"

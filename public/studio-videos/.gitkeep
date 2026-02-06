@@ -1,0 +1,3 @@
+# This directory stores rendered Studio videos
+# Videos are generated at runtime and served by Vite dev server
+# Files are ignored by .gitignore to avoid committing large MP4 files
