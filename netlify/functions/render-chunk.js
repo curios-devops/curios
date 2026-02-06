@@ -36,6 +36,12 @@ export const handler = async (event, context) => {
   process.env.HOME = '/tmp';
   process.env.FONTCONFIG_PATH = '/tmp';
   
+  // Force @sparticuz/chromium to extract Node 20+ shared libraries
+  // Netlify Functions run on AWS Lambda with Node 22, so we need AL2023 libraries
+  if (!process.env.AWS_EXECUTION_ENV) {
+    process.env.AWS_EXECUTION_ENV = 'AWS_Lambda_nodejs20.x';
+  }
+  
   console.log('[Render Chunk] Handler invoked', { 
     method: event.httpMethod,
     hasSupabase: !!supabase,
@@ -129,13 +135,19 @@ export const handler = async (event, context) => {
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
     // Use @sparticuz/chromium (full version with binary included)
-    // Set the font data path to /tmp (writable)
+    // This package extracts Chrome AND shared libraries to /tmp
+    console.log('[Render Chunk] Getting Chrome executable...');
+    
+    // Set environment for Chrome to find shared libraries
+    // The package will extract libraries to /tmp and we need to tell Chrome where they are
+    const libraryPath = '/tmp';
+    process.env.LD_LIBRARY_PATH = `${libraryPath}:${process.env.LD_LIBRARY_PATH || ''}`;
     process.env.FONTCONFIG_PATH = '/tmp';
     
-    // Get Chrome executable path - it will extract to /tmp automatically
-    console.log('[Render Chunk] Getting Chrome executable...');
+    // Get Chrome executable - this will extract chrome + libraries to /tmp
     const browserExecutable = await chromium.executablePath();
     console.log('[Render Chunk] Chrome ready at:', browserExecutable);
+    console.log('[Render Chunk] LD_LIBRARY_PATH:', process.env.LD_LIBRARY_PATH);
 
 
     // Render the chunk using StudioChunk composition
