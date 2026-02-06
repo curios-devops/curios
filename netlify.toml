@@ -7,20 +7,23 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
-  # External dependencies for Remotion and Puppeteer
+  # External dependencies for Remotion and Chromium
   external_node_modules = [
     "@remotion/bundler",
     "@remotion/renderer", 
     "@remotion/studio",
     "@remotion/media-parser",
-    "puppeteer",
+    "@sparticuz/chromium",
     "puppeteer-core",
     "react",
     "remotion",
     "source-map"
   ]
-  # Include Remotion source files for render-chunk function
-  included_files = ["remotion/**"]
+  # Include Remotion source files and Chromium binaries
+  included_files = [
+    "remotion/**",
+    "node_modules/@sparticuz/chromium/bin/**"
+  ]
 
 # Dev server settings
 [dev]
