@@ -125,10 +125,10 @@ export const handler = async (event, context) => {
     // Select chunk composition
     const compositionId = `chunk_${chunk.id}`;
     
-    // Get composition dimensions
+    // Get composition dimensions (use 720p for faster rendering on free tier)
     const dimensions = format === 'vertical'
-      ? { width: 1080, height: 1920 } // 9:16 for mobile
-      : { width: 1920, height: 1080 }; // 16:9 for desktop
+      ? { width: 720, height: 1280 } // 720p vertical (9:16)
+      : { width: 1280, height: 720 }; // 720p horizontal (16:9)
 
     // Calculate duration in frames (30 FPS)
     const durationInFrames = Math.ceil(chunk.duration * 30);
@@ -152,35 +152,15 @@ export const handler = async (event, context) => {
 
     // Use @sparticuz/chromium (full version with binary included)
     console.log('[Render Chunk] Getting Chrome executable...');
-    console.log('[Render Chunk] AWS_EXECUTION_ENV:', process.env.AWS_EXECUTION_ENV);
-    console.log('[Render Chunk] Node version:', process.version);
     
     // Get Chrome executable - this will extract chrome + libraries to /tmp
     const browserExecutable = await chromium.executablePath();
     console.log('[Render Chunk] Chrome ready at:', browserExecutable);
     
-    // Debug: Check what files were extracted
-    try {
-      const tmpContents = await fs.readdir('/tmp');
-      console.log('[Render Chunk] /tmp contents:', tmpContents.filter(f => f.includes('al') || f === 'chromium'));
-      
-      // Check if al2 or al2023 directories exist
-      for (const dir of ['/tmp/al2/lib', '/tmp/al2023/lib']) {
-        try {
-          const libs = await fs.readdir(dir);
-          console.log(`[Render Chunk] ${dir} contents:`, libs.slice(0, 10));
-        } catch {
-          console.log(`[Render Chunk] ${dir} does not exist`);
-        }
-      }
-    } catch (error) {
-      console.log('[Render Chunk] Error reading /tmp:', error.message);
-    }
-    
     // Set LD_LIBRARY_PATH to include all possible library locations
     const libPaths = ['/tmp', '/tmp/al2/lib', '/tmp/al2023/lib', '/tmp/lib'];
     process.env.LD_LIBRARY_PATH = `${libPaths.join(':')}:${process.env.LD_LIBRARY_PATH || ''}`;
-    console.log('[Render Chunk] LD_LIBRARY_PATH:', process.env.LD_LIBRARY_PATH);
+
 
 
     // Render the chunk using StudioChunk composition
@@ -209,8 +189,8 @@ export const handler = async (event, context) => {
         format,
         accentColor: accentColor || '#3b82f6'
       },
-      // Quality settings - use CRF 30 for fastest rendering on free tier
-      crf: options?.quality === 'high' ? 23 : options?.quality === 'fast' ? 30 : 28,
+      // Quality settings - use CRF 32 for fastest rendering on free tier (26s timeout)
+      crf: options?.quality === 'high' ? 26 : options?.quality === 'fast' ? 32 : 30,
       // Use the downloaded Chrome executable
       browserExecutable,
       // Increase timeout for browser connection (default is 25s, we need more)
