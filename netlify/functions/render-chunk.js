@@ -10,6 +10,7 @@ import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { createClient } from '@supabase/supabase-js';
 import chromium from '@sparticuz/chromium-min';
+import puppeteer from 'puppeteer-core';
 import path from 'path';
 import fs from 'fs/promises';
 import { createReadStream } from 'fs';
@@ -127,11 +128,13 @@ export const handler = async (event, context) => {
     
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
-    // Use @sparticuz/chromium-min - optimized for bundlers (AWS Lambda/Netlify)
-    // This version has all dependencies bundled and works with esbuild
-    const browserExecutable = await chromium.executablePath();
+    // Download Chrome to /tmp (which IS writable in Netlify Functions)
+    console.log('[Render Chunk] Downloading Chrome to /tmp...');
+    const browserExecutable = await chromium.executablePath('/tmp');
+    console.log('[Render Chunk] Chrome downloaded to:', browserExecutable);
     
-    console.log('[Render Chunk] Chrome path:', browserExecutable);
+    // Pass puppeteerInstance to Remotion instead of browserExecutable
+    // Remotion will use this to launch Chrome with our configuration
 
 
     // Render the chunk using StudioChunk composition
@@ -162,13 +165,14 @@ export const handler = async (event, context) => {
       },
       // Quality settings from options
       crf: options?.quality === 'high' ? 18 : options?.quality === 'fast' ? 28 : 23,
-      // Use chrome-aws-lambda executable
+      // Use the downloaded Chrome executable
       browserExecutable,
       // Increase timeout for browser connection (default is 25s, we need more)
       timeoutInMilliseconds: 120000, // 2 minutes total timeout
       chromiumOptions: {
-        // Use chrome-aws-lambda recommended args for serverless
-        args: chromium.args
+        // Use chromium-min recommended args for serverless
+        args: chromium.args,
+        headless: true,
       },
       onProgress: ({ progress }) => {
         if (progress % 0.2 < 0.01) { // Log every 20%
