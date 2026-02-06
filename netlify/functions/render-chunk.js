@@ -126,9 +126,17 @@ export const handler = async (event, context) => {
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
     // Use chrome-aws-lambda for serverless environment (AWS Lambda/Netlify)
-    // executablePath is a getter that returns a Promise
+    // executablePath is a getter that returns a Promise and extracts Chrome to /tmp
     const browserExecutable = await chromium.executablePath;
-    console.log('[Render Chunk] Using chrome-aws-lambda:', browserExecutable);
+    console.log('[Render Chunk] Chrome extracted to:', browserExecutable);
+    
+    // Set executable permissions (required in serverless environments)
+    try {
+      await fs.chmod(browserExecutable, 0o755);
+      console.log('[Render Chunk] Executable permissions set');
+    } catch (chmodError) {
+      console.warn('[Render Chunk] Could not set permissions:', chmodError.message);
+    }
 
     // Render the chunk using StudioChunk composition
     await renderMedia({
