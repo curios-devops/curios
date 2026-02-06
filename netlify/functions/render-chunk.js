@@ -9,6 +9,7 @@
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { createClient } from '@supabase/supabase-js';
+import chromium from 'chrome-aws-lambda';
 import path from 'path';
 import fs from 'fs/promises';
 import { createReadStream } from 'fs';
@@ -124,9 +125,9 @@ export const handler = async (event, context) => {
     
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
-    // Let Remotion download and manage Chrome automatically
-    // It will download to /tmp via REMOTION_CACHE_DIR env var
-    console.log('[Render Chunk] Using Remotion Chrome Headless Shell (auto-download)');
+    // Use chrome-aws-lambda for serverless environment (AWS Lambda/Netlify)
+    const browserExecutable = await chromium.executablePath;
+    console.log('[Render Chunk] Using chrome-aws-lambda:', browserExecutable);
 
     // Render the chunk using StudioChunk composition
     await renderMedia({
@@ -156,17 +157,13 @@ export const handler = async (event, context) => {
       },
       // Quality settings from options
       crf: options?.quality === 'high' ? 18 : options?.quality === 'fast' ? 28 : 23,
-      // Let Remotion download Chrome automatically (null = auto-download)
-      browserExecutable: null,
+      // Use chrome-aws-lambda executable
+      browserExecutable,
       // Increase timeout for browser connection (default is 25s, we need more)
       timeoutInMilliseconds: 120000, // 2 minutes total timeout
       chromiumOptions: {
-        // Minimal stability flags - let Remotion handle defaults
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage'
-        ]
+        // Use chrome-aws-lambda recommended args for serverless
+        args: chromium.args
       },
       onProgress: ({ progress }) => {
         if (progress % 0.2 < 0.01) { // Log every 20%
