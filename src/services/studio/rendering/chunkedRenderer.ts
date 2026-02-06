@@ -244,6 +244,13 @@ export class ChunkedRenderer {
 
     try {
       // Call Netlify function to render chunk
+      console.log('🚀 CALLING RENDER FUNCTION:', {
+        url: '/.netlify/functions/render-chunk',
+        chunkId: chunk.id,
+        format,
+        videoId
+      });
+      
       const response = await fetch('/.netlify/functions/render-chunk', {
         method: 'POST',
         headers: {
@@ -258,6 +265,13 @@ export class ChunkedRenderer {
             quality: options.quality || 'balanced'
           }
         })
+      });
+
+      console.log('📡 RESPONSE RECEIVED:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
       });
 
       if (!response.ok) {
