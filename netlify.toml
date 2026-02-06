@@ -13,16 +13,15 @@
     "@remotion/renderer", 
     "@remotion/studio",
     "@remotion/media-parser",
-    "@sparticuz/chromium",
+    "@sparticuz/chromium-min",
     "puppeteer-core",
     "react",
     "remotion",
     "source-map"
   ]
-  # Include Remotion source files and Chromium binaries
+  # Include Remotion source files
   included_files = [
-    "remotion/**",
-    "node_modules/@sparticuz/chromium/bin/**"
+    "remotion/**"
   ]
 
 # Dev server settings

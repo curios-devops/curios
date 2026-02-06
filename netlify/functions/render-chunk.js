@@ -9,7 +9,7 @@
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { createClient } from '@supabase/supabase-js';
-import chromium from '@sparticuz/chromium';
+import chromium from '@sparticuz/chromium-min';
 import path from 'path';
 import fs from 'fs/promises';
 import { createReadStream } from 'fs';
@@ -127,22 +127,12 @@ export const handler = async (event, context) => {
     
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
-    // Use @sparticuz/chromium - maintained fork for serverless (AWS Lambda/Netlify)
-    // Set font path for Chrome (required for text rendering)
-    await chromium.font(
-      'https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf'
-    );
-    
-    // Get Chrome executable path (automatically extracts to /tmp with libraries)
+    // Use @sparticuz/chromium-min - optimized for bundlers (AWS Lambda/Netlify)
+    // This version has all dependencies bundled and works with esbuild
     const browserExecutable = await chromium.executablePath();
     
-    // Set LD_LIBRARY_PATH to include @sparticuz/chromium's lib directory
-    // This is where the shared libraries (libnspr4.so, etc.) are located
-    const chromiumPath = path.dirname(browserExecutable);
-    process.env.LD_LIBRARY_PATH = `${chromiumPath}:${process.env.LD_LIBRARY_PATH || ''}`;
-    
     console.log('[Render Chunk] Chrome path:', browserExecutable);
-    console.log('[Render Chunk] LD_LIBRARY_PATH:', process.env.LD_LIBRARY_PATH);
+
 
     // Render the chunk using StudioChunk composition
     await renderMedia({
