@@ -121,6 +121,9 @@ export const handler = async (event, context) => {
     
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
+    // Set Remotion cache directory to /tmp (writable in Netlify)
+    process.env.REMOTION_CACHE_DIR = '/tmp/.remotion';
+    
     // Let Remotion use its own Chrome Headless Shell (officially supported)
     // Do NOT override browserExecutable - let Remotion handle it
     console.log('[Render Chunk] Using Remotion\'s managed Chrome Headless Shell');
