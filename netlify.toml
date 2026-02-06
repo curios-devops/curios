@@ -19,9 +19,10 @@
     "remotion",
     "source-map"
   ]
-  # Include Remotion source files
+  # Include Remotion source files and Chromium binaries
   included_files = [
-    "remotion/**"
+    "remotion/**",
+    "node_modules/@sparticuz/chromium-min/bin/**"
   ]
 
 # Dev server settings
