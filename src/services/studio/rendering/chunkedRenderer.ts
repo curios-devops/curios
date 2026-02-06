@@ -261,7 +261,17 @@ export class ChunkedRenderer {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        // Try to get response text first
+        const responseText = await response.text();
+        console.error('❌ RAW RESPONSE TEXT:', responseText);
+        
+        // Try to parse as JSON
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch (e) {
+          errorData = { error: responseText || response.statusText };
+        }
         
         // Log detailed error to console
         console.error('❌ RENDER FUNCTION ERROR:', {
@@ -271,7 +281,8 @@ export class ChunkedRenderer {
           errorType: errorData.errorType,
           errorCode: errorData.errorCode,
           errorDetails: errorData.details,
-          stack: errorData.stack
+          stack: errorData.stack,
+          rawResponse: responseText
         });
         
         logger.error('[Chunked Renderer] Render function error', {
