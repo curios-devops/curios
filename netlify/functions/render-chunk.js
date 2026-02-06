@@ -135,7 +135,14 @@ export const handler = async (event, context) => {
     
     // Get Chrome executable path (automatically extracts to /tmp with libraries)
     const browserExecutable = await chromium.executablePath();
+    
+    // Set LD_LIBRARY_PATH to include @sparticuz/chromium's lib directory
+    // This is where the shared libraries (libnspr4.so, etc.) are located
+    const chromiumPath = path.dirname(browserExecutable);
+    process.env.LD_LIBRARY_PATH = `${chromiumPath}:${process.env.LD_LIBRARY_PATH || ''}`;
+    
     console.log('[Render Chunk] Chrome path:', browserExecutable);
+    console.log('[Render Chunk] LD_LIBRARY_PATH:', process.env.LD_LIBRARY_PATH);
 
     // Render the chunk using StudioChunk composition
     await renderMedia({
