@@ -19,6 +19,8 @@
     "remotion",
     "source-map"
   ]
+  # Include Remotion source files for render-chunk function
+  included_files = ["remotion/**"]
 
 # Dev server settings
 [dev]
