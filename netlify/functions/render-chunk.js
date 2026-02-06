@@ -30,8 +30,10 @@ const supabase = supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceK
 const webpackOverride = (config) => config;
 
 export const handler = async (event, context) => {
-  // Set Remotion cache directory to /tmp (writable in Netlify Functions)
-  process.env.REMOTION_PUPPETEER_TIMEOUT = '120000';
+  // Set up environment for @sparticuz/chromium
+  // This tells Chrome where to find shared libraries
+  process.env.HOME = '/tmp';
+  process.env.FONTCONFIG_PATH = '/tmp';
   
   console.log('[Render Chunk] Handler invoked', { 
     method: event.httpMethod,
@@ -126,7 +128,12 @@ export const handler = async (event, context) => {
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
     // Use @sparticuz/chromium - maintained fork for serverless (AWS Lambda/Netlify)
-    // This automatically extracts Chrome to /tmp with correct permissions
+    // Set font path for Chrome (required for text rendering)
+    await chromium.font(
+      'https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf'
+    );
+    
+    // Get Chrome executable path (automatically extracts to /tmp with libraries)
     const browserExecutable = await chromium.executablePath();
     console.log('[Render Chunk] Chrome path:', browserExecutable);
 
