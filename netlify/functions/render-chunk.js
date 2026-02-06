@@ -111,8 +111,8 @@ export const handler = async (event, context) => {
       fps: 30
     });
 
-    // Ensure output directory exists
-    const outputDir = path.resolve(process.cwd(), '.netlify/temp-videos');
+    // Use /tmp for output (writable in Netlify Functions)
+    const outputDir = '/tmp/remotion-videos';
     await fs.mkdir(outputDir, { recursive: true });
 
     // Generate output filename
