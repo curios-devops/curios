@@ -9,7 +9,6 @@
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { createClient } from '@supabase/supabase-js';
-import puppeteer from 'puppeteer';
 import path from 'path';
 import fs from 'fs/promises';
 import { createReadStream } from 'fs';
@@ -30,6 +29,9 @@ const supabase = supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceK
 const webpackOverride = (config) => config;
 
 export const handler = async (event, context) => {
+  // Set Remotion cache directory to /tmp (writable in Netlify Functions)
+  process.env.REMOTION_PUPPETEER_TIMEOUT = '120000';
+  
   console.log('[Render Chunk] Handler invoked', { 
     method: event.httpMethod,
     hasSupabase: !!supabase,
@@ -122,9 +124,9 @@ export const handler = async (event, context) => {
     
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
-    // Use Puppeteer's bundled Chrome (standard approach for serverless)
-    const browserExecutable = puppeteer.executablePath();
-    console.log('[Render Chunk] Using Puppeteer Chrome:', browserExecutable);
+    // Let Remotion download and manage Chrome automatically
+    // It will download to /tmp via REMOTION_CACHE_DIR env var
+    console.log('[Render Chunk] Using Remotion Chrome Headless Shell (auto-download)');
 
     // Render the chunk using StudioChunk composition
     await renderMedia({
@@ -154,8 +156,8 @@ export const handler = async (event, context) => {
       },
       // Quality settings from options
       crf: options?.quality === 'high' ? 18 : options?.quality === 'fast' ? 28 : 23,
-      // Use the pre-downloaded Chrome executable
-      browserExecutable,
+      // Let Remotion download Chrome automatically (null = auto-download)
+      browserExecutable: null,
       // Increase timeout for browser connection (default is 25s, we need more)
       timeoutInMilliseconds: 120000, // 2 minutes total timeout
       chromiumOptions: {
