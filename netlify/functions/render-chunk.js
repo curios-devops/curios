@@ -37,10 +37,9 @@ export const handler = async (event, context) => {
   process.env.FONTCONFIG_PATH = '/tmp';
   
   // Force @sparticuz/chromium to extract Node 20+ shared libraries
-  // Netlify Functions run on AWS Lambda with Node 22, so we need AL2023 libraries
-  if (!process.env.AWS_EXECUTION_ENV) {
-    process.env.AWS_EXECUTION_ENV = 'AWS_Lambda_nodejs20.x';
-  }
+  // We need BOTH environment variables to ensure AL2023 libraries are extracted
+  process.env.AWS_EXECUTION_ENV = 'AWS_Lambda_nodejs20.x';
+  process.env.AWS_LAMBDA_JS_RUNTIME = 'nodejs20.x';
   
   console.log('[Render Chunk] Handler invoked', { 
     method: event.httpMethod,
@@ -135,18 +134,35 @@ export const handler = async (event, context) => {
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
     // Use @sparticuz/chromium (full version with binary included)
-    // This package extracts Chrome AND shared libraries to /tmp
     console.log('[Render Chunk] Getting Chrome executable...');
-    
-    // Set environment for Chrome to find shared libraries
-    // The package will extract libraries to /tmp and we need to tell Chrome where they are
-    const libraryPath = '/tmp';
-    process.env.LD_LIBRARY_PATH = `${libraryPath}:${process.env.LD_LIBRARY_PATH || ''}`;
-    process.env.FONTCONFIG_PATH = '/tmp';
+    console.log('[Render Chunk] AWS_EXECUTION_ENV:', process.env.AWS_EXECUTION_ENV);
+    console.log('[Render Chunk] Node version:', process.version);
     
     // Get Chrome executable - this will extract chrome + libraries to /tmp
     const browserExecutable = await chromium.executablePath();
     console.log('[Render Chunk] Chrome ready at:', browserExecutable);
+    
+    // Debug: Check what files were extracted
+    try {
+      const tmpContents = await fs.readdir('/tmp');
+      console.log('[Render Chunk] /tmp contents:', tmpContents.filter(f => f.includes('al') || f === 'chromium'));
+      
+      // Check if al2 or al2023 directories exist
+      for (const dir of ['/tmp/al2/lib', '/tmp/al2023/lib']) {
+        try {
+          const libs = await fs.readdir(dir);
+          console.log(`[Render Chunk] ${dir} contents:`, libs.slice(0, 10));
+        } catch {
+          console.log(`[Render Chunk] ${dir} does not exist`);
+        }
+      }
+    } catch (error) {
+      console.log('[Render Chunk] Error reading /tmp:', error.message);
+    }
+    
+    // Set LD_LIBRARY_PATH to include all possible library locations
+    const libPaths = ['/tmp', '/tmp/al2/lib', '/tmp/al2023/lib', '/tmp/lib'];
+    process.env.LD_LIBRARY_PATH = `${libPaths.join(':')}:${process.env.LD_LIBRARY_PATH || ''}`;
     console.log('[Render Chunk] LD_LIBRARY_PATH:', process.env.LD_LIBRARY_PATH);
 
 
