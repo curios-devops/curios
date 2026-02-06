@@ -94,16 +94,33 @@ export const handler = async (event, context) => {
       duration: chunk.duration
     });
 
-    // Bundle Remotion project (this will be cached by Remotion)
+    // Bundle Remotion project (cache to speed up subsequent renders)
     const remotionRoot = path.resolve(process.cwd(), 'remotion/src/index.ts');
-    console.log('[Render Chunk] Bundling...', { remotionRoot });
+    const cachedBundlePath = '/tmp/remotion-bundle-cached';
+    let bundleLocation;
     
-    const bundleLocation = await bundle({
-      entryPoint: remotionRoot,
-      webpackOverride,
-    });
+    try {
+      await fs.access(cachedBundlePath);
+      console.log('[Render Chunk] Using cached bundle', { cachedBundlePath });
+      bundleLocation = cachedBundlePath;
+    } catch {
+      console.log('[Render Chunk] Bundling...', { remotionRoot });
+      
+      bundleLocation = await bundle({
+        entryPoint: remotionRoot,
+        webpackOverride,
+      });
 
-    console.log('[Render Chunk] Bundle complete', { bundleLocation });
+      console.log('[Render Chunk] Bundle complete', { bundleLocation });
+      
+      // Cache for next invocation
+      try {
+        await fs.cp(bundleLocation, cachedBundlePath, { recursive: true });
+        console.log('[Render Chunk] Bundle cached');
+      } catch (err) {
+        console.log('[Render Chunk] Cache failed:', err.message);
+      }
+    }
 
     // Select chunk composition
     const compositionId = `chunk_${chunk.id}`;
@@ -192,8 +209,8 @@ export const handler = async (event, context) => {
         format,
         accentColor: accentColor || '#3b82f6'
       },
-      // Quality settings from options
-      crf: options?.quality === 'high' ? 18 : options?.quality === 'fast' ? 28 : 23,
+      // Quality settings - use CRF 30 for fastest rendering on free tier
+      crf: options?.quality === 'high' ? 23 : options?.quality === 'fast' ? 30 : 28,
       // Use the downloaded Chrome executable
       browserExecutable,
       // Increase timeout for browser connection (default is 25s, we need more)

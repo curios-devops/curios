@@ -34,20 +34,20 @@ export default function Phase6TestPage() {
     return onFormatChange(setVideoFormat);
   }, []);
 
-  // Mock scene structure for testing
+  // Mock scene structure for testing (2-second chunks for free tier)
   const mockSceneStructure: SceneStructure = {
     scenes: [
       {
-        text: "Welcome to our exploration of artificial intelligence. Today, we'll uncover how AI is transforming our world.",
+        text: "Welcome to AI exploration.",
         style: 'hook',
         from: 0,
-        to: 150, // 5 seconds at 30fps
+        to: 60, // 2 seconds at 30fps
       },
       {
-        text: "Artificial intelligence refers to computer systems that can perform tasks typically requiring human intelligence. These include learning, reasoning, and problem-solving.",
+        text: "AI transforms our world daily.",
         style: 'explain',
-        from: 150,
-        to: 390, // 8 seconds
+        from: 60,
+        to: 120, // 2 seconds
       },
       {
         text: "Machine learning is a subset of AI. It enables computers to learn from data without being explicitly programmed. This technology powers recommendation systems and voice assistants.",
@@ -204,7 +204,7 @@ export default function Phase6TestPage() {
     addResult('Phase 6B: Chunked Rendering', 'running', 'Testing Chunked Renderer (preview mode)...');
 
     try {
-      const planner = new ChunkPlanner(7);
+      const planner = new ChunkPlanner(2); // 2-second chunks for free tier
       const plan = planner.planChunks(mockSceneStructure);
       
       // Use 1 parallel chunk for local dev (Netlify CLI 30s timeout), 3 for production
