@@ -9,7 +9,7 @@
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { createClient } from '@supabase/supabase-js';
-import chromium from '@sparticuz/chromium-min';
+import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import path from 'path';
 import fs from 'fs/promises';
@@ -128,13 +128,14 @@ export const handler = async (event, context) => {
     
     console.log('[Render Chunk] Rendering chunk...', { outputPath });
 
-    // Download Chrome to /tmp (which IS writable in Netlify Functions)
-    console.log('[Render Chunk] Downloading Chrome to /tmp...');
-    const browserExecutable = await chromium.executablePath('/tmp');
-    console.log('[Render Chunk] Chrome downloaded to:', browserExecutable);
+    // Use @sparticuz/chromium (full version with binary included)
+    // Set the font data path to /tmp (writable)
+    process.env.FONTCONFIG_PATH = '/tmp';
     
-    // Pass puppeteerInstance to Remotion instead of browserExecutable
-    // Remotion will use this to launch Chrome with our configuration
+    // Get Chrome executable path - it will extract to /tmp automatically
+    console.log('[Render Chunk] Getting Chrome executable...');
+    const browserExecutable = await chromium.executablePath();
+    console.log('[Render Chunk] Chrome ready at:', browserExecutable);
 
 
     // Render the chunk using StudioChunk composition

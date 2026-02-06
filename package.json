@@ -20,7 +20,7 @@
     "@remotion/bundler": "^4.0.417",
     "@remotion/cli": "^4.0.417",
     "@remotion/renderer": "^4.0.417",
-    "@sparticuz/chromium-min": "126.0.0",
+    "@sparticuz/chromium": "^126.0.0",
     "@stripe/stripe-js": "^8.0.0",
     "@supabase/supabase-js": "^2.58.0",
     "@tailwindcss/typography": "^0.5.19",

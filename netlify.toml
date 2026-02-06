@@ -14,7 +14,7 @@
     "@remotion/studio",
     "@remotion/media-parser",
     "puppeteer-core",
-    "@sparticuz/chromium-min",
+    "@sparticuz/chromium",
     "react",
     "remotion",
     "source-map"
