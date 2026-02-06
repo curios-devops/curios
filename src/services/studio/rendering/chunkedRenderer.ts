@@ -262,6 +262,18 @@ export class ChunkedRenderer {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        
+        // Log detailed error to console
+        console.error('❌ RENDER FUNCTION ERROR:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorMessage: errorData.error,
+          errorType: errorData.errorType,
+          errorCode: errorData.errorCode,
+          errorDetails: errorData.details,
+          stack: errorData.stack
+        });
+        
         logger.error('[Chunked Renderer] Render function error', {
           status: response.status,
           statusText: response.statusText,
