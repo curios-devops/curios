@@ -203,8 +203,6 @@ export const handler = async (event, context) => {
       },
       // Quality settings - use CRF 32 for fastest rendering on free tier (26s timeout)
       crf: options?.quality === 'high' ? 26 : options?.quality === 'fast' ? 32 : 30,
-      // Performance optimizations for free tier
-      concurrency: 1, // Render 1 frame at a time (lower memory, might be faster)
       // Use the downloaded Chrome executable
       browserExecutable,
       // Increase timeout for browser connection (default is 25s, we need more)
