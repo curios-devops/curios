@@ -97,3 +97,97 @@ export const STUDIO_CATEGORIES: StudioCategory[] = [
     ],
   },
 ];
+
+// ============================================
+// CLIENT-SIDE CHAPTER RENDERING TYPES
+// ============================================
+
+/**
+ * Chapter Plan - Output del LLM
+ */
+export interface ChapterPlan {
+  chapters: ChapterInfo[];
+  totalDuration: number;
+  title: string;
+  description: string;
+  videoId?: string;
+}
+
+export interface ChapterInfo {
+  id: string;              // "chapter_001"
+  order: number;           // 1, 2, 3...
+  duration: number;        // 5-10 segundos
+  narration: string;       // Texto para TTS
+  visualCues: string[];    // Qué mostrar visualmente
+  keywords: string[];      // Para búsqueda de imágenes
+}
+
+/**
+ * Chapter Descriptor - Listo para renderizar
+ */
+export interface ChapterDescriptor {
+  id: string;
+  order: number;
+  duration: number;
+  assets: ChapterAssets;
+  timeline: TimelineEntry[];
+  text: string;
+  free: boolean;           // true por ahora (monetización futura)
+}
+
+export interface ChapterAssets {
+  images: ImageAsset[];
+  audio: Blob;             // Audio TTS
+  music?: Blob;            // Música de fondo (opcional)
+}
+
+export interface ImageAsset {
+  url: string;
+  alt?: string;
+  position?: 'full' | 'top' | 'center' | 'bottom';
+}
+
+/**
+ * Timeline - Define qué mostrar y cuándo
+ */
+export interface TimelineEntry {
+  timestamp: number;       // Segundos desde inicio del chapter
+  action: TimelineAction;
+  data: any;              // Depende del action
+  duration?: number;      // Duración de la acción (opcional)
+}
+
+export type TimelineAction = 
+  | 'show-image' 
+  | 'show-text' 
+  | 'fade-in' 
+  | 'fade-out'
+  | 'pan'
+  | 'zoom';
+
+/**
+ * Rendering Progress
+ */
+export interface RenderProgress {
+  chapterId: string;
+  progress: number;        // 0-100
+  status: 'pending' | 'rendering' | 'complete' | 'error';
+  error?: string;
+}
+
+/**
+ * Chapter Metadata (para Supabase)
+ */
+export interface ChapterMetadata {
+  id: string;
+  videoId: string;
+  chapterId: string;
+  order: number;
+  duration: number;
+  storageUrl: string;
+  free: boolean;
+  renderTime?: number;     // ms
+  fileSize?: number;       // bytes
+  userId?: string;         // null = 'curios' guest user
+  createdAt: Date;
+}
