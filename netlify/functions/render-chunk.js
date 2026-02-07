@@ -130,14 +130,15 @@ export const handler = async (event, context) => {
       ? { width: 720, height: 1280 } // 720p vertical (9:16)
       : { width: 1280, height: 720 }; // 720p horizontal (16:9)
 
-    // Calculate duration in frames (30 FPS)
-    const durationInFrames = Math.ceil(chunk.duration * 30);
+    // Calculate duration in frames (15 FPS for faster rendering - smooth enough for image animations)
+    const fps = 15;
+    const durationInFrames = Math.ceil(chunk.duration * fps);
 
     console.log('[Render Chunk] Composition config', {
       compositionId,
       dimensions,
       durationInFrames,
-      fps: 30
+      fps
     });
 
     // Use /tmp for output (writable in Netlify Functions)
@@ -169,7 +170,7 @@ export const handler = async (event, context) => {
         id: 'StudioChunk',
         width: dimensions.width,
         height: dimensions.height,
-        fps: 30,
+        fps, // 15 FPS for faster rendering
         durationInFrames,
       },
       serveUrl: bundleLocation,
@@ -183,14 +184,16 @@ export const handler = async (event, context) => {
         scenes: chunk.scenes.map((scene, index) => ({
           ...scene,
           index,
-          startFrame: scene.from || 0,
-          durationInFrames: (scene.to || scene.duration * 30) - (scene.from || 0)
+          startFrame: Math.floor((scene.from || 0) * fps / 30), // Convert from 30fps to actual fps
+          durationInFrames: Math.ceil(((scene.to || scene.duration * 30) - (scene.from || 0)) * fps / 30)
         })),
         format,
         accentColor: accentColor || '#3b82f6'
       },
       // Quality settings - use CRF 32 for fastest rendering on free tier (26s timeout)
       crf: options?.quality === 'high' ? 26 : options?.quality === 'fast' ? 32 : 30,
+      // Performance optimizations for free tier
+      concurrency: 1, // Render 1 frame at a time (lower memory, might be faster)
       // Use the downloaded Chrome executable
       browserExecutable,
       // Increase timeout for browser connection (default is 25s, we need more)
@@ -201,9 +204,8 @@ export const handler = async (event, context) => {
         headless: true,
       },
       onProgress: ({ progress }) => {
-        if (progress % 0.2 < 0.01) { // Log every 20%
-          console.log(`[Render Chunk] Render progress: ${(progress * 100).toFixed(1)}%`);
-        }
+        // Log every frame to see exactly where we timeout
+        console.log(`[Render Chunk] Frame ${Math.floor(progress * durationInFrames)}/${durationInFrames}`);
       },
     });
 
