@@ -1,97 +1,85 @@
 /**
- * Video Renderer Service (Client-side)
- * PREVIEW MODE: Simulates rendering for development
- * TODO: Implement actual server-side rendering
+ * Video Renderer Agent
+ * Coordinates chapter rendering client-side
+ * NEW: Client-side chapter-based rendering
  */
 
+import { ChapterPlan } from '../types';
+import { BackgroundRenderer } from '../rendering/BackgroundRenderer';
+import { InputManager } from '../managers/InputManager';
 import { logger } from '../../../utils/logger';
-import { SceneStructure } from '../types';
-
-const PREVIEW_MODE = true; // Set to false when server rendering is ready
 
 export class VideoRendererAgent {
+  private inputManager: InputManager;
+  private backgroundRenderer: BackgroundRenderer;
+
+  constructor() {
+    this.inputManager = new InputManager();
+    this.backgroundRenderer = new BackgroundRenderer();
+  }
+
   /**
-   * Render video from scene structure
-   * Currently in PREVIEW MODE - simulates rendering without generating actual video
+   * Renderizar video (por chapters)
    */
   async renderVideo(
-    scenes: SceneStructure,
-    format: 'vertical' | 'horizontal',
+    chapterPlan: ChapterPlan,
     videoId: string,
-    accentColor: string = '#3b82f6',
+    userId: string | null,
+    onChapterComplete?: (chapterIndex: number, url: string) => void,
     onProgress?: (progress: number) => void
-  ): Promise<string> {
-    logger.info('[Video Renderer] Starting render (PREVIEW MODE)', {
-      sceneCount: scenes.scenes.length,
-      format,
-      duration: scenes.duration,
+  ): Promise<Map<string, string>> {
+    logger.info('[VideoRenderer] Iniciando rendering de video', {
       videoId,
-      previewMode: PREVIEW_MODE
+      chapterCount: chapterPlan.chapters.length
     });
 
-    if (PREVIEW_MODE) {
-      return this.generatePreview(scenes, format, videoId, accentColor, onProgress);
+    try {
+      // 1. Preparar chapters con Input Manager
+      const descriptors = await this.inputManager.prepareChapters(chapterPlan);
+
+      logger.info('[VideoRenderer] Chapters preparados', {
+        count: descriptors.length
+      });
+
+      // 2. Iniciar background rendering
+      const chapterUrls = await this.backgroundRenderer.startBackgroundRendering(
+        descriptors,
+        videoId,
+        userId,
+        onChapterComplete,
+        onProgress
+      );
+
+      logger.info('[VideoRenderer] Rendering iniciado', {
+        firstChapterUrl: chapterUrls.get(descriptors[0].id)
+      });
+
+      return chapterUrls;
+
+    } catch (error) {
+      logger.error('[VideoRenderer] Error en rendering', { error });
+      throw error;
     }
-
-    throw new Error('Server-side rendering not yet implemented');
   }
 
   /**
-   * Simulate rendering with progress updates
+   * Verificar si un chapter está listo
    */
-  private async generatePreview(
-    _scenes: SceneStructure,
-    _format: 'vertical' | 'horizontal',
-    _videoId: string,
-    _accentColor: string,
-    onProgress?: (progress: number) => void
-  ): Promise<string> {
-    logger.info('[Video Renderer] Simulating render progress...');
-
-    // Simulate rendering progress
-    const steps = 20;
-    for (let i = 0; i <= steps; i++) {
-      await this.delay(150); // Simulate work
-      const progress = (i / steps) * 100;
-      onProgress?.(progress);
-      
-      if (i % 5 === 0) {
-        logger.debug('[Video Renderer] Progress', { progress: `${progress.toFixed(0)}%` });
-      }
-    }
-
-    logger.info('[Video Renderer] Preview complete (no actual video generated in preview mode)');
-    
-    // Return empty URL - this will show "Video generation complete" message
-    // In production, this would return the actual video URL
-    return '';
+  isChapterReady(chapterId: string): boolean {
+    return this.backgroundRenderer.isChapterReady(chapterId);
   }
 
   /**
-   * Simple delay utility
+   * Obtener URL de un chapter
    */
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  getChapterUrl(chapterId: string): string | undefined {
+    return this.backgroundRenderer.getChapterUrl(chapterId);
   }
 
   /**
-   * Ensure output directory exists (no-op in preview mode)
+   * Limpiar recursos
    */
-  async ensureOutputDirectory(): Promise<void> {
-    // No-op in preview mode
-  }
-
-  /**
-   * Get video file size (returns 0 in preview mode)
-   */
-  async getVideoFileSize(_videoUrl: string): Promise<number> {
-    return 0;
-  }
-
-  /**
-   * Delete video file (no-op in preview mode)
-   */
-  async deleteVideo(_videoUrl: string): Promise<void> {
-    // No-op in preview mode
+  dispose(): void {
+    this.backgroundRenderer.dispose();
   }
 }

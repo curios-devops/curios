@@ -7,8 +7,7 @@
 import { ChapterDescriptor } from '../types';
 import { ChapterRenderer } from './ChapterRenderer';
 import { logger } from '../../../utils/logger';
-// @ts-ignore - supabase client is JS
-import { supabase } from '../../../supabase-client';
+import { supabase } from '../../../lib/supabase';
 
 export class BackgroundRenderer {
   private renderer: ChapterRenderer;
