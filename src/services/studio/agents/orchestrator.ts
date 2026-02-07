@@ -11,9 +11,6 @@ import { VideoRendererAgent } from './videoRenderer';
 import { VideoAssetAgent } from '../assets/videoAssetAgent';
 import { ImageAssetAgent } from '../assets/imageAssetAgent';
 import { AudioAssetAgent } from '../audio/audioAssetAgent';
-// TODO: Integrate ChunkPlanner and ChunkedRenderer into orchestrator workflow
-// import { ChunkPlanner } from '../rendering/chunkPlanner';
-// import { ChunkedRenderer, ChunkRenderResult } from '../rendering/chunkedRenderer';
 import { logger } from '../../../utils/logger';
 
 // Initialize agents

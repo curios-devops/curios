@@ -22,7 +22,7 @@ const TestPage = lazy(() => import('./pages/test.tsx'));
 const ImageTest = lazy(() => import('./pages/ImageTest.tsx'));
 const SerpApiTest = lazy(() => import('./pages/SerpApiTest'));
 const ReverseImageVsTest = lazy(() => import('./pages/ReverseImageVsTest'));
-const Phase6TestPage = lazy(() => import('./pages/Phase6TestPage'));
+// Phase6TestPage removed - obsolete chunk rendering test
 const Policies = lazy(() => import('./mainPages/Policies.tsx'));
 const AuthCallback = lazy(() => import('./components/auth/AuthCallback.tsx'));
 const SubscriptionSuccess = lazy(() => import('./mainPages/SubscriptionSuccess.tsx'));
@@ -73,7 +73,7 @@ const router = createBrowserRouter(
     ,{ path: '/image-test', element: <LazyPageWrapper><ImageTest /></LazyPageWrapper> }
     ,{ path: '/serp-test', element: <LazyPageWrapper><SerpApiTest /></LazyPageWrapper> }
     ,{ path: '/reverse-image-vs', element: <LazyPageWrapper><ReverseImageVsTest /></LazyPageWrapper> }
-    ,{ path: '/phase6-test', element: <LazyPageWrapper><Phase6TestPage /></LazyPageWrapper> }
+    // phase6-test route removed - obsolete chunk rendering test
       ]
     }
   ]
