@@ -1,7 +1,7 @@
 # Netlify Configuration - Force Deploy v2
 [build]
   publish = "dist"
-  command = "npm run build"
+  command = "npm run build && node scripts/prebundle-remotion.js"
 
 # Netlify Functions configuration
 [functions]
@@ -22,7 +22,8 @@
   # Include Remotion source files and Chromium package
   included_files = [
     "remotion/**",
-    "node_modules/@sparticuz/**"
+    "node_modules/@sparticuz/**",
+    ".remotion-bundle/**"
   ]
 
 # Dev server settings

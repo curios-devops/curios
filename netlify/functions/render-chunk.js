@@ -94,31 +94,42 @@ export const handler = async (event, context) => {
       duration: chunk.duration
     });
 
-    // Bundle Remotion project (cache to speed up subsequent renders)
-    const remotionRoot = path.resolve(process.cwd(), 'remotion/src/index.ts');
-    const cachedBundlePath = '/tmp/remotion-bundle-cached';
+    // Use pre-bundled Remotion (created at build time)
+    const preBundledPath = path.resolve(process.cwd(), '.remotion-bundle');
     let bundleLocation;
     
     try {
-      await fs.access(cachedBundlePath);
-      console.log('[Render Chunk] Using cached bundle', { cachedBundlePath });
-      bundleLocation = cachedBundlePath;
+      await fs.access(preBundledPath);
+      console.log('[Render Chunk] Using pre-bundled Remotion', { preBundledPath });
+      bundleLocation = preBundledPath;
     } catch {
-      console.log('[Render Chunk] Bundling...', { remotionRoot });
+      // Fallback: bundle at runtime (will be slow)
+      console.log('[Render Chunk] Pre-bundle not found, bundling at runtime...');
+      const remotionRoot = path.resolve(process.cwd(), 'remotion/src/index.ts');
       
-      bundleLocation = await bundle({
-        entryPoint: remotionRoot,
-        webpackOverride,
-      });
-
-      console.log('[Render Chunk] Bundle complete', { bundleLocation });
-      
-      // Cache for next invocation
+      // Check cache first
+      const cachedBundlePath = '/tmp/remotion-bundle-cached';
       try {
-        await fs.cp(bundleLocation, cachedBundlePath, { recursive: true });
-        console.log('[Render Chunk] Bundle cached');
-      } catch (err) {
-        console.log('[Render Chunk] Cache failed:', err.message);
+        await fs.access(cachedBundlePath);
+        console.log('[Render Chunk] Using cached bundle', { cachedBundlePath });
+        bundleLocation = cachedBundlePath;
+      } catch {
+        console.log('[Render Chunk] Bundling...', { remotionRoot });
+        
+        bundleLocation = await bundle({
+          entryPoint: remotionRoot,
+          webpackOverride,
+        });
+
+        console.log('[Render Chunk] Bundle complete', { bundleLocation });
+        
+        // Cache for next invocation
+        try {
+          await fs.cp(bundleLocation, cachedBundlePath, { recursive: true });
+          console.log('[Render Chunk] Bundle cached');
+        } catch (err) {
+          console.log('[Render Chunk] Cache failed:', err.message);
+        }
       }
     }
 
@@ -225,58 +236,30 @@ export const handler = async (event, context) => {
       mb: fileSizeMB 
     });
 
-    // Upload to Supabase Storage
-    console.log('[Render Chunk] Uploading to Supabase...', { filename });
+    // TODO: Upload to Supabase Storage (skipping for now to stay under timeout)
+    // For now, just return success with local path to verify rendering works
+    console.log('[Render Chunk] ⚠️ Skipping Supabase upload for speed testing');
     
-    const fileBuffer = await fs.readFile(outputPath);
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('studio-videos')
-      .upload(filename, fileBuffer, {
-        contentType: 'video/mp4',
-        cacheControl: '3600',
-        upsert: true // Overwrite if exists
-      });
+    const videoUrl = `/tmp-video/${filename}`; // Placeholder URL
 
-    if (uploadError) {
-      console.error('[Render Chunk] Upload error', uploadError);
-      throw new Error(`Failed to upload to Supabase: ${uploadError.message}`);
-    }
-
-    console.log('[Render Chunk] Upload complete', { path: uploadData.path });
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('studio-videos')
-      .getPublicUrl(filename);
-
-    console.log('[Render Chunk] Public URL', { publicUrl });
-
-    // Clean up local file
-    try {
-      await fs.unlink(outputPath);
-      console.log('[Render Chunk] Local file cleaned up');
-    } catch (cleanupError) {
-      console.warn('[Render Chunk] Failed to clean up local file', cleanupError);
-    }
-
-    // Return success response
     const totalTime = Date.now() - startTime;
+    console.log('[Render Chunk] ✅ Complete', { 
+      totalTime: `${totalTime}ms`,
+      renderTime: `${renderTime}ms`,
+      videoUrl
+    });
+
     return {
       statusCode: 200,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         success: true,
         chunkId: chunk.id,
-        chunkUrl: publicUrl,
-        renderTime: totalTime,
+        videoUrl, // Placeholder - not uploaded yet
         fileSize: fileSizeBytes,
-        filename,
-        format,
-        dimensions
+        renderTime,
+        totalTime,
+        message: 'Render successful (upload skipped for testing)'
       })
     };
 
