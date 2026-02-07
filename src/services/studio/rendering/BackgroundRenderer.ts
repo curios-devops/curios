@@ -1,0 +1,231 @@
+/**
+ * Background Renderer
+ * Renderiza chapters en background mientras usuario ve el anterior
+ * Killer feature del sistema
+ */
+
+import { ChapterDescriptor } from '../types';
+import { ChapterRenderer } from './ChapterRenderer';
+import { logger } from '../../../utils/logger';
+// @ts-ignore - supabase client is JS
+import { supabase } from '../../../supabase-client';
+
+export class BackgroundRenderer {
+  private renderer: ChapterRenderer;
+  private renderQueue: ChapterDescriptor[];
+  private isRendering: boolean;
+  private renderedUrls: Map<string, string>; // chapterId -> URL
+
+  constructor() {
+    this.renderer = new ChapterRenderer();
+    this.renderQueue = [];
+    this.isRendering = false;
+    this.renderedUrls = new Map();
+  }
+
+  /**
+   * Iniciar rendering de todos los chapters
+   */
+  async startBackgroundRendering(
+    chapters: ChapterDescriptor[],
+    videoId: string,
+    userId: string | null,
+    onChapterComplete?: (chapterIndex: number, url: string) => void,
+    onProgress?: (overall: number) => void
+  ): Promise<Map<string, string>> {
+    logger.info('[BackgroundRenderer] Iniciando rendering', {
+      chapterCount: chapters.length,
+      videoId
+    });
+
+    this.renderQueue = [...chapters];
+    this.renderedUrls.clear();
+
+    // Renderizar primer chapter inmediatamente
+    const firstChapter = this.renderQueue.shift();
+    if (firstChapter) {
+      const url = await this.renderAndUpload(
+        firstChapter,
+        videoId,
+        userId,
+        onProgress
+      );
+      this.renderedUrls.set(firstChapter.id, url);
+      onChapterComplete?.(0, url);
+    }
+
+    // Continuar con el resto en background
+    this.renderNextInBackground(videoId, userId, onChapterComplete, onProgress);
+
+    return this.renderedUrls;
+  }
+
+  /**
+   * Renderizar siguiente chapter en background
+   */
+  private async renderNextInBackground(
+    videoId: string,
+    userId: string | null,
+    onChapterComplete?: (chapterIndex: number, url: string) => void,
+    onProgress?: (overall: number) => void
+  ): Promise<void> {
+    if (this.renderQueue.length === 0 || this.isRendering) {
+      return;
+    }
+
+    this.isRendering = true;
+    const chapter = this.renderQueue.shift()!;
+
+    try {
+      const url = await this.renderAndUpload(
+        chapter,
+        videoId,
+        userId,
+        onProgress
+      );
+
+      this.renderedUrls.set(chapter.id, url);
+      onChapterComplete?.(chapter.order, url);
+
+      logger.info('[BackgroundRenderer] Chapter completado', {
+        chapterId: chapter.id,
+        order: chapter.order
+      });
+    } catch (error) {
+      logger.error('[BackgroundRenderer] Error en chapter', {
+        chapterId: chapter.id,
+        error
+      });
+    }
+
+    this.isRendering = false;
+
+    // Continuar con el siguiente
+    if (this.renderQueue.length > 0) {
+      // Pequeño delay para no saturar CPU
+      setTimeout(() => {
+        this.renderNextInBackground(videoId, userId, onChapterComplete, onProgress);
+      }, 500);
+    }
+  }
+
+  /**
+   * Renderizar y subir a Supabase
+   */
+  private async renderAndUpload(
+    chapter: ChapterDescriptor,
+    videoId: string,
+    userId: string | null,
+    _onProgress?: (overall: number) => void
+  ): Promise<string> {
+    const startTime = Date.now();
+
+    // 1. Renderizar chapter
+    const videoBlob = await this.renderer.renderChapter(chapter, (progress) => {
+      // Reportar progreso individual del chapter
+      logger.debug('[BackgroundRenderer] Progreso chapter', {
+        chapterId: chapter.id,
+        progress: progress.progress
+      });
+    });
+
+    const renderTime = Date.now() - startTime;
+
+    // 2. Subir a Supabase Storage
+    const fileName = `videos/${videoId}/${chapter.id}.webm`;
+    const { error } = await supabase.storage
+      .from('videos')
+      .upload(fileName, videoBlob, {
+        contentType: 'video/webm',
+        upsert: true
+      });
+
+    if (error) {
+      throw new Error(`Error subiendo chapter: ${error.message}`);
+    }
+
+    // 3. Obtener URL pública
+    const { data: urlData } = supabase.storage
+      .from('videos')
+      .getPublicUrl(fileName);
+
+    const publicUrl = urlData.publicUrl;
+
+    // 4. Guardar metadata en DB
+    await this.saveChapterMetadata(
+      videoId,
+      chapter,
+      publicUrl,
+      renderTime,
+      videoBlob.size,
+      userId
+    );
+
+    logger.info('[BackgroundRenderer] Chapter subido', {
+      chapterId: chapter.id,
+      url: publicUrl,
+      renderTime: `${renderTime}ms`,
+      size: `${(videoBlob.size / 1024).toFixed(2)}KB`
+    });
+
+    return publicUrl;
+  }
+
+  /**
+   * Guardar metadata del chapter en Supabase
+   */
+  private async saveChapterMetadata(
+    videoId: string,
+    chapter: ChapterDescriptor,
+    storageUrl: string,
+    renderTime: number,
+    fileSize: number,
+    userId: string | null
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('chapters')
+      .upsert({
+        video_id: videoId,
+        chapter_id: chapter.id,
+        order_index: chapter.order,
+        duration: chapter.duration,
+        storage_url: storageUrl,
+        free: chapter.free,
+        render_time: renderTime,
+        file_size: fileSize,
+        user_id: userId || 'curios', // Usuario guest
+        created_at: new Date().toISOString()
+      });
+
+    if (error) {
+      logger.error('[BackgroundRenderer] Error guardando metadata', {
+        chapterId: chapter.id,
+        error
+      });
+    }
+  }
+
+  /**
+   * Obtener URL de un chapter ya renderizado
+   */
+  getChapterUrl(chapterId: string): string | undefined {
+    return this.renderedUrls.get(chapterId);
+  }
+
+  /**
+   * Verificar si un chapter está listo
+   */
+  isChapterReady(chapterId: string): boolean {
+    return this.renderedUrls.has(chapterId);
+  }
+
+  /**
+   * Limpiar recursos
+   */
+  dispose(): void {
+    this.renderer.dispose();
+    this.renderQueue = [];
+    this.renderedUrls.clear();
+    logger.info('[BackgroundRenderer] Recursos liberados');
+  }
+}
