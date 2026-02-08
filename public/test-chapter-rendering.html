@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter Rendering Test</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    h1 {
+      color: #2d3748;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+    }
+    
+    .subtitle {
+      color: #718096;
+      margin-bottom: 30px;
+      font-size: 1.1rem;
+    }
+    
+    .test-section {
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    
+    .test-section h2 {
+      color: #2d3748;
+      margin-bottom: 15px;
+      font-size: 1.5rem;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    #output {
+      background: #1a202c;
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.9rem;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-left: 3px solid #667eea;
+      padding-left: 10px;
+    }
+    
+    .log-success {
+      border-left-color: #48bb78;
+      color: #9ae6b4;
+    }
+    
+    .log-error {
+      border-left-color: #f56565;
+      color: #fc8181;
+    }
+    
+    .log-info {
+      border-left-color: #4299e1;
+      color: #90cdf4;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 30px;
+      background: #e2e8f0;
+      border-radius: 15px;
+      overflow: hidden;
+      margin: 20px 0;
+      display: none;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+    
+    .video-preview {
+      margin-top: 20px;
+      display: none;
+    }
+    
+    .video-preview video {
+      width: 100%;
+      max-width: 400px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      border: 2px solid #e2e8f0;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 5px;
+    }
+    
+    .stat-label {
+      color: #718096;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎬 Chapter Rendering Test</h1>
+    <p class="subtitle">Client-side video rendering con Canvas + MediaRecorder</p>
+    
+    <div class="test-section">
+      <h2>📋 Test Plan</h2>
+      <p><strong>3 chapters</strong> de <strong>5 segundos</strong> cada uno</p>
+      <p>Resolución: <strong>720x1280</strong> (portrait) @ <strong>30fps</strong></p>
+      <p>Formato: <strong>video/webm (VP9)</strong></p>
+      
+      <button id="startBtn" class="btn" style="margin-top: 20px;">
+        🚀 Iniciar Test de Rendering
+      </button>
+      
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill">0%</div>
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h2>📊 Resultados</h2>
+      <div class="stats" id="stats" style="display: none;">
+        <div class="stat-card">
+          <div class="stat-value" id="renderTime">-</div>
+          <div class="stat-label">Tiempo de Render</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="videoSize">-</div>
+          <div class="stat-label">Tamaño del Video</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="fps">30 fps</div>
+          <div class="stat-label">Frames por Segundo</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="resolution">720x1280</div>
+          <div class="stat-label">Resolución</div>
+        </div>
+      </div>
+      
+      <div class="video-preview" id="videoPreview">
+        <h3 style="margin-bottom: 10px; color: #2d3748;">🎥 Preview del Video:</h3>
+        <video id="previewVideo" controls></video>
+        <p style="margin-top: 10px; color: #718096;">
+          <a id="downloadLink" href="#" download="chapter_test.webm" style="color: #667eea;">
+            💾 Descargar Video
+          </a>
+        </p>
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h2>📝 Console Log</h2>
+      <div id="output"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { testChapterRendering } from '/src/services/studio/test/testChapterRendering.ts';
+    
+    const startBtn = document.getElementById('startBtn');
+    const output = document.getElementById('output');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const videoPreview = document.getElementById('videoPreview');
+    const previewVideo = document.getElementById('previewVideo');
+    const downloadLink = document.getElementById('downloadLink');
+    const stats = document.getElementById('stats');
+    const renderTime = document.getElementById('renderTime');
+    const videoSize = document.getElementById('videoSize');
+    
+    function log(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      output.appendChild(entry);
+      output.scrollTop = output.scrollHeight;
+    }
+    
+    function updateProgress(percent) {
+      progressFill.style.width = `${percent}%`;
+      progressFill.textContent = `${Math.round(percent)}%`;
+    }
+    
+    // Override console.log para capturarlo
+    const originalLog = console.log;
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      log(args.join(' '), 'info');
+    };
+    
+    const originalError = console.error;
+    console.error = function(...args) {
+      originalError.apply(console, args);
+      log(args.join(' '), 'error');
+    };
+    
+    startBtn.addEventListener('click', async () => {
+      // Reset UI
+      output.innerHTML = '';
+      progressBar.style.display = 'block';
+      videoPreview.style.display = 'none';
+      stats.style.display = 'none';
+      startBtn.disabled = true;
+      updateProgress(0);
+      
+      log('🧪 Iniciando test de chapter rendering...', 'info');
+      log('📋 Preparando 3 chapters de 5 segundos cada uno', 'info');
+      
+      try {
+        const startTime = Date.now();
+        
+        // Simular progreso durante preparación
+        updateProgress(10);
+        
+        const result = await testChapterRendering();
+        
+        const totalTime = Date.now() - startTime;
+        
+        if (result.success) {
+          log('✅ Test completado exitosamente!', 'success');
+          
+          // Mostrar estadísticas
+          stats.style.display = 'grid';
+          renderTime.textContent = `${(result.renderTime / 1000).toFixed(2)}s`;
+          videoSize.textContent = `${(result.videoBlob.size / 1024).toFixed(2)} KB`;
+          
+          // Mostrar video
+          videoPreview.style.display = 'block';
+          previewVideo.src = result.url;
+          downloadLink.href = result.url;
+          
+          updateProgress(100);
+          
+          log(`📊 Tiempo total: ${(totalTime / 1000).toFixed(2)}s`, 'success');
+          log(`📦 Tamaño: ${(result.videoBlob.size / 1024).toFixed(2)} KB`, 'success');
+          log(`🎥 Video listo para reproducir`, 'success');
+          
+        } else {
+          log('❌ Error en el test', 'error');
+          log(result.error.toString(), 'error');
+        }
+        
+      } catch (error) {
+        log('❌ Error crítico:', 'error');
+        log(error.toString(), 'error');
+        console.error('Error completo:', error);
+      } finally {
+        startBtn.disabled = false;
+      }
+    });
+    
+    log('✅ Test page cargada', 'success');
+    log('👉 Haz clic en "Iniciar Test" para comenzar', 'info');
+  </script>
+</body>
+</html>

@@ -110,7 +110,7 @@ export class ChapterRenderer {
    */
   private async loadImages(imageAssets: Array<{ url: string; alt?: string; position?: string }>): Promise<HTMLImageElement[]> {
     const loadPromises = imageAssets.map(asset => {
-      return new Promise<HTMLImageElement>((resolve, reject) => {
+      return new Promise<HTMLImageElement>((resolve) => {
         const img = new Image();
         img.crossOrigin = 'anonymous'; // Para imágenes externas
         img.onload = () => resolve(img);
@@ -164,7 +164,6 @@ export class ChapterRenderer {
     const frameInterval = 1000 / this.fps;
     
     let currentFrame = 0;
-    const totalFrames = Math.ceil(durationMs / frameInterval);
     
     // Estado de animación
     let currentImageIndex = 0;

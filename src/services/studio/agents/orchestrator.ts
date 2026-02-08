@@ -7,7 +7,8 @@
 import { StudioVideo, StudioOutputType, PlanDetail, StepItem } from '../types';
 import { StudioWriterAgent } from './studioWriterAgent';
 import { SceneGeneratorAgent } from './sceneGenerator';
-import { VideoRendererAgent } from './videoRenderer';
+// TODO: Re-enable when chapter-based rendering is integrated with orchestrator
+// import { VideoRendererAgent } from './videoRenderer';
 import { VideoAssetAgent } from '../assets/videoAssetAgent';
 import { ImageAssetAgent } from '../assets/imageAssetAgent';
 import { AudioAssetAgent } from '../audio/audioAssetAgent';
@@ -16,7 +17,8 @@ import { logger } from '../../../utils/logger';
 // Initialize agents
 const writerAgent = new StudioWriterAgent();
 const sceneGenerator = new SceneGeneratorAgent();
-const videoRenderer = new VideoRendererAgent();
+// TODO: Re-enable when chapter-based rendering is integrated with orchestrator
+// const videoRenderer = new VideoRendererAgent();
 const videoAssetAgent = new VideoAssetAgent();
 const imageAssetAgent = new ImageAssetAgent();
 const audioAssetAgent = new AudioAssetAgent();
@@ -297,40 +299,21 @@ export async function orchestrateArtifact(
   // Step 7: Render video
   await executeStep(steps, 6, onProgress, { type: outputType, content: keyIdeas + '\n\n---\n\n' + script, keyIdeas, script, description, scenes: finalSceneStructure, planDetails, steps });
   
-  // Ensure output directory exists
-  await videoRenderer.ensureOutputDirectory();
-  
   // Generate unique video ID
   const videoId = generateId();
   
-  // Render video with progress updates (using finalSceneStructure with assets)
+  // TODO: Adapt orchestrator to use new ChapterPlan system
+  // For now, video rendering is disabled in orchestrator
+  // Use testChapterRendering() directly for testing
   let videoUrl = '';
-  try {
-    videoUrl = await videoRenderer.renderVideo(
-      finalSceneStructure,
-      format,
-      videoId,
-      '#3b82f6', // Default accent color
-      (progress) => {
-        onProgress({
-          type: outputType,
-          content: keyIdeas + '\n\n---\n\n' + script,
-          keyIdeas,
-          script,
-          description,
-          scenes: finalSceneStructure,
-          planDetails,
-          steps: [...steps],
-          renderProgress: progress,
-        });
-      }
-    );
-    
-    steps[6] = { ...steps[6], status: 'complete' };
-  } catch (error) {
-    logger.error('[Orchestrator] Video rendering failed', { error });
-    steps[6] = { ...steps[6], status: 'complete' }; // Mark complete even if failed
-  }
+  
+  // PREVIEW MODE - No actual rendering yet
+  logger.info('[Orchestrator] Video rendering skipped (use testChapterRendering for now)', {
+    videoId,
+    sceneCount: finalSceneStructure.scenes.length
+  });
+  
+  steps[6] = { ...steps[6], status: 'complete' };
 
   const finalVideo: StudioVideo = {
     id: videoId,
