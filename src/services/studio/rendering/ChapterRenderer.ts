@@ -6,6 +6,7 @@
 
 import { ChapterDescriptor, TimelineEntry, RenderProgress } from '../types';
 import { logger } from '../../../utils/logger';
+import { assetCache } from '../cache/AssetCache';
 
 export class ChapterRenderer {
   private canvas: HTMLCanvasElement;
@@ -109,31 +110,42 @@ export class ChapterRenderer {
   }
 
   /**
-   * Cargar imágenes desde URLs
+   * Cargar imágenes desde URLs (con cache)
    */
   private async loadImages(imageAssets: Array<{ url: string; alt?: string; position?: string }>): Promise<HTMLImageElement[]> {
-    const loadPromises = imageAssets.map((asset, index) => {
-      return new Promise<HTMLImageElement>((resolve) => {
-        const img = new Image();
-        
-        // Si es data URI (SVG), no necesitamos CORS
-        if (asset.url.startsWith('data:')) {
+    const loadPromises = imageAssets.map(async (asset, index) => {
+      // Si es data URI (SVG), no usar cache
+      if (asset.url.startsWith('data:')) {
+        return new Promise<HTMLImageElement>((resolve) => {
+          const img = new Image();
           img.onload = () => {
             logger.debug('[ChapterRenderer] Imagen SVG placeholder cargada', { index });
             resolve(img);
           };
           img.onerror = () => {
             logger.error('[ChapterRenderer] Error cargando SVG placeholder', { index });
-            // Crear imagen vacía como último recurso
             const emptyImg = new Image();
             emptyImg.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"%3E%3Crect fill="%23333333" width="720" height="1280"/%3E%3C/svg%3E';
             emptyImg.onload = () => resolve(emptyImg);
           };
           img.src = asset.url;
-          return;
-        }
+        });
+      }
+      
+      // Para URLs externas, usar cache
+      try {
+        const blob = await assetCache.get(asset.url, 'image');
         
-        // Para URLs externas, intentar con CORS
+        if (blob) {
+          return await this.createImageFromBlob(blob);
+        }
+      } catch (error) {
+        logger.warn('[ChapterRenderer] Error con cache, usando fallback', { error });
+      }
+      
+      // Fallback: cargar directamente (sin cache)
+      return new Promise<HTMLImageElement>((resolve) => {
+        const img = new Image();
         img.crossOrigin = 'anonymous';
         
         img.onload = () => {
@@ -171,6 +183,30 @@ export class ChapterRenderer {
     });
     
     return Promise.all(loadPromises);
+  }
+
+  /**
+   * Crear imagen desde blob (helper para cache)
+   */
+  private async createImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(blob);
+      
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl); // Liberar memoria
+        logger.debug('[ChapterRenderer] Imagen creada desde blob cache');
+        resolve(img);
+      };
+      
+      img.onerror = (error) => {
+        URL.revokeObjectURL(objectUrl);
+        logger.error('[ChapterRenderer] Error creando imagen desde blob', { error });
+        reject(error);
+      };
+      
+      img.src = objectUrl;
+    });
   }
 
   /**

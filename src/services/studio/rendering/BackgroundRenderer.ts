@@ -8,6 +8,7 @@ import { ChapterDescriptor } from '../types';
 import { ChapterRenderer } from './ChapterRenderer';
 import { logger } from '../../../utils/logger';
 import { supabase } from '../../../lib/supabase';
+import { assetCache } from '../cache/AssetCache';
 
 export class BackgroundRenderer {
   private renderer: ChapterRenderer;
@@ -40,6 +41,14 @@ export class BackgroundRenderer {
     this.renderQueue = [...chapters];
     this.renderedUrls.clear();
 
+    // OPTIMIZACIÓN: Preload de assets del primer chapter
+    if (chapters.length > 0) {
+      const firstChapterAssets = this.extractAssetUrls(chapters[0]);
+      assetCache.preload(firstChapterAssets.images, 'image').catch(err => 
+        logger.warn('[BackgroundRenderer] Preload failed', { err })
+      );
+    }
+
     // Renderizar primer chapter inmediatamente
     const firstChapter = this.renderQueue.shift();
     if (firstChapter) {
@@ -51,12 +60,33 @@ export class BackgroundRenderer {
       );
       this.renderedUrls.set(firstChapter.id, url);
       onChapterComplete?.(0, url);
+      
+      // OPTIMIZACIÓN: Preload assets del siguiente chapter
+      if (this.renderQueue.length > 0) {
+        const nextChapterAssets = this.extractAssetUrls(this.renderQueue[0]);
+        assetCache.preload(nextChapterAssets.images, 'image').catch(err => 
+          logger.warn('[BackgroundRenderer] Preload failed', { err })
+        );
+      }
     }
 
     // Continuar con el resto en background
     this.renderNextInBackground(videoId, userId, onChapterComplete, onProgress);
 
     return this.renderedUrls;
+  }
+
+  /**
+   * Extraer URLs de assets para preload
+   */
+  private extractAssetUrls(chapter: ChapterDescriptor): { images: string[]; videos: string[] } {
+    const images = chapter.assets.images
+      .map(img => img.url)
+      .filter(url => !url.startsWith('data:')); // Excluir data URIs
+    
+    const videos = chapter.assets.backgroundVideo ? [chapter.assets.backgroundVideo] : [];
+    
+    return { images, videos };
   }
 
   /**
