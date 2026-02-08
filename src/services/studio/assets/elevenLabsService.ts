@@ -6,7 +6,11 @@
 import { logger } from '../../../utils/logger';
 
 export class ElevenLabsService {
-  private netlifyFunctionUrl = '/.netlify/functions/elevenlabs-tts';
+  // En desarrollo: usar puerto 8888 (Netlify Dev)
+  // En producción: usar URL relativa
+  private netlifyFunctionUrl = import.meta.env.DEV 
+    ? 'http://localhost:8888/.netlify/functions/elevenlabs-tts'
+    : '/.netlify/functions/elevenlabs-tts';
   private defaultVoiceId = '21m00Tcm4TlvDq8ikWAM'; // Rachel
   
   async generateTTS(text: string): Promise<Blob | null> {

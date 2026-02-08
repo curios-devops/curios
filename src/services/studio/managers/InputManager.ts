@@ -242,7 +242,13 @@ export class InputManager {
         textLength: text.length 
       });
 
-      const response = await fetch('/.netlify/functions/openai-tts', {
+      // En desarrollo: usar puerto 8888 (Netlify Dev)
+      // En producción: usar URL relativa
+      const netlifyFunctionUrl = import.meta.env.DEV
+        ? 'http://localhost:8888/.netlify/functions/openai-tts'
+        : '/.netlify/functions/openai-tts';
+
+      const response = await fetch(netlifyFunctionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
