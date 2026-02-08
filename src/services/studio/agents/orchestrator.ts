@@ -6,22 +6,15 @@
 
 import { StudioVideo, StudioOutputType, PlanDetail, StepItem } from '../types';
 import { StudioWriterAgent } from './studioWriterAgent';
-import { SceneGeneratorAgent } from './sceneGenerator';
-// TODO: Re-enable when chapter-based rendering is integrated with orchestrator
-// import { VideoRendererAgent } from './videoRenderer';
-import { VideoAssetAgent } from '../assets/videoAssetAgent';
-import { ImageAssetAgent } from '../assets/imageAssetAgent';
-import { AudioAssetAgent } from '../audio/audioAssetAgent';
+// Chapter-based rendering (replaces old SceneGeneratorAgent)
+import { InputManager } from '../managers/InputManager';
+import { BackgroundRenderer } from '../rendering/BackgroundRenderer';
 import { logger } from '../../../utils/logger';
 
 // Initialize agents
 const writerAgent = new StudioWriterAgent();
-const sceneGenerator = new SceneGeneratorAgent();
-// TODO: Re-enable when chapter-based rendering is integrated with orchestrator
-// const videoRenderer = new VideoRendererAgent();
-const videoAssetAgent = new VideoAssetAgent();
-const imageAssetAgent = new ImageAssetAgent();
-const audioAssetAgent = new AudioAssetAgent();
+const inputManager = new InputManager();
+const backgroundRenderer = new BackgroundRenderer();
 
 /**
  * Main orchestration function for Studio video generation
@@ -158,17 +151,24 @@ export async function orchestrateArtifact(
     steps: [...steps],
   });
 
-  // Step 4: Generate scenes from script
+  // Step 4: Parse script into ChapterPlan
   await executeStep(steps, 3, onProgress, { type: outputType, content: keyIdeas + '\n\n---\n\n' + script, keyIdeas, script, description, planDetails, steps });
   
-  // Generate scene structure from the chaptered script
-  const sceneStructure = sceneGenerator.generateScenes(script, 30); // Default 30 seconds
+  // Generate unique video ID
+  const videoId = generateId();
   
-  // Validate scenes
-  const isValid = sceneGenerator.validateScenes(sceneStructure);
-  if (!isValid) {
-    logger.warn('[Orchestrator] Scene validation failed, but continuing...');
-  }
+  // Parse script into ChapterPlan (native format for chapter-based rendering)
+  const chapterPlan = writerAgent.parseScriptToChapterPlan(
+    script,
+    videoId,
+    prompt,
+    30 // Default 30 seconds
+  );
+  
+  logger.info('[Orchestrator] ChapterPlan created', {
+    videoId,
+    chapterCount: chapterPlan.chapters.length
+  });
   
   steps[3] = { ...steps[3], status: 'complete' };
   onProgress({
@@ -177,164 +177,136 @@ export async function orchestrateArtifact(
     keyIdeas,
     script,
     description,
-    scenes: sceneStructure,
+    chapterPlan, // NEW: Store ChapterPlan instead of SceneStructure
     planDetails,
     steps: [...steps],
   });
 
-  // Map output type to format (used for assets and rendering)
+  // Map output type to format
   const format = outputType === 'video' ? 'horizontal' : 'vertical';
 
-  // Step 5: Fetch assets in parallel (video + images)
-  await executeStep(steps, 4, onProgress, { type: outputType, content: keyIdeas + '\n\n---\n\n' + script, keyIdeas, script, description, scenes: sceneStructure, planDetails, steps });
+  // Step 5: Prepare chapter assets (images, audio, timeline)
+  await executeStep(steps, 4, onProgress, { type: outputType, content: keyIdeas + '\n\n---\n\n' + script, keyIdeas, script, description, chapterPlan, planDetails, steps });
   
-  let finalSceneStructure = sceneStructure;
-  
-  // Fetch video assets and image assets in parallel
-  logger.info('[Orchestrator] Fetching assets in parallel (videos + images)...');
+  logger.info('[Orchestrator] Preparing chapter assets...');
   
   try {
-    const [videoAssets, imageAssets] = await Promise.all([
-      // Video assets (Pexels)
-      videoAssetAgent.isEnabled()
-        ? videoAssetAgent.assignSingleVideo(sceneStructure, format, prompt)
-        : Promise.resolve({ scenes: sceneStructure.scenes, totalVideos: 0, failedScenes: 0 }),
-      
-      // Image assets (Brave Search) - NEW Phase 6A
-      imageAssetAgent.isEnabled()
-        ? imageAssetAgent.assignImageOverlays(sceneStructure, 'key-points')
-        : Promise.resolve({ scenes: sceneStructure.scenes, totalImages: 0, failedScenes: 0 })
-    ]);
+    // InputManager prepares all chapters with assets
+    const chapterDescriptors = await inputManager.prepareChapters(chapterPlan);
     
-    // Merge video and image assets into scenes
-    const enrichedScenes = sceneStructure.scenes.map((scene, index) => ({
-      ...scene,
-      // Add video URL from videoAssets
-      videoUrl: videoAssets.scenes[index]?.videoUrl,
-      videoKeywords: videoAssets.scenes[index]?.videoKeywords,
-      // Add image overlay from imageAssets
-      imageUrl: imageAssets.scenes[index]?.imageUrl,
-      imageKeywords: imageAssets.scenes[index]?.imageKeywords,
-      imageEffect: imageAssets.scenes[index]?.imageEffect,
-      imageDuration: imageAssets.scenes[index]?.imageDuration,
-      imagePosition: imageAssets.scenes[index]?.imagePosition,
-      imageOpacity: imageAssets.scenes[index]?.imageOpacity
-    }));
-    
-    finalSceneStructure = {
-      ...sceneStructure,
-      scenes: enrichedScenes
-    };
-    
-    logger.info('[Orchestrator] Assets fetched', {
-      videos: videoAssets.totalVideos,
-      images: imageAssets.totalImages,
-      failedVideoScenes: videoAssets.failedScenes,
-      failedImageScenes: imageAssets.failedScenes
+    logger.info('[Orchestrator] Chapter assets prepared', {
+      descriptorCount: chapterDescriptors.length
     });
     
+    steps[4] = { ...steps[4], status: 'complete' };
+    onProgress({
+      type: outputType,
+      content: keyIdeas + '\n\n---\n\n' + script,
+      keyIdeas,
+      script,
+      description,
+      chapterPlan,
+      planDetails,
+      steps: [...steps],
+    });
+
+    // Step 6: Generate audio (handled by InputManager, but could add real TTS here)
+    await executeStep(steps, 5, onProgress, { type: outputType, content: keyIdeas + '\n\n---\n\n' + script, keyIdeas, script, description, chapterPlan, planDetails, steps });
+    
+    // TODO: Call OpenAI TTS API here to replace mock audio
+    logger.info('[Orchestrator] Audio generation (using mock for now)');
+    
+    steps[5] = { ...steps[5], status: 'complete' };
+    onProgress({
+      type: outputType,
+      content: keyIdeas + '\n\n---\n\n' + script,
+      keyIdeas,
+      script,
+      description,
+      chapterPlan,
+      planDetails,
+      steps: [...steps],
+    });
+
+    // Step 7: Render video (background rendering)
+    await executeStep(steps, 6, onProgress, { type: outputType, content: keyIdeas + '\n\n---\n\n' + script, keyIdeas, script, description, chapterPlan, planDetails, steps });
+    
+    logger.info('[Orchestrator] Starting chapter-based video rendering...');
+    
+    // Get current user ID (TODO: integrate with auth)
+    const userId = 'curios'; // Default guest user
+    
+    // Start background rendering
+    const chapterUrls = await backgroundRenderer.startBackgroundRendering(
+      chapterDescriptors,
+      videoId,
+      userId,
+      (chapterIndex: number, url: string) => {
+        logger.info('[Orchestrator] Chapter rendered', { chapterIndex, url: url.substring(0, 50) });
+      },
+      (progress: number) => {
+        logger.info('[Orchestrator] Overall rendering progress', { progress });
+      }
+    );
+    
+    // Get first chapter URL (background rendering continues for rest)
+    const firstChapterUrl = chapterUrls.get(chapterDescriptors[0].id);
+    
+    logger.info('[Orchestrator] First chapter ready', {
+      videoId,
+      firstChapterUrl: firstChapterUrl?.substring(0, 50),
+      totalChapters: chapterDescriptors.length
+    });
+    
+    steps[6] = { ...steps[6], status: 'complete' };
+
+    const finalVideo: StudioVideo = {
+      id: videoId,
+      type: outputType,
+      content: keyIdeas + '\n\n---\n\n' + script,
+      keyIdeas,
+      script,
+      description,
+      chapterPlan, // NEW: Store ChapterPlan
+      videoUrl: firstChapterUrl || '', // First chapter URL
+      title: prompt,
+      planDetails,
+      steps,
+      thinkingLog: ['Generation complete!'],
+      createdAt: new Date(),
+      duration: chapterPlan.totalDuration,
+      format,
+    };
+
+    onProgress(finalVideo);
+    return finalVideo;
+    
   } catch (error) {
-    logger.error('[Orchestrator] Asset fetching failed', { error });
-    // Continue with original scenes (no assets)
+    logger.error('[Orchestrator] Chapter rendering failed', { error });
+    
+    // Return error state
+    steps[6] = { ...steps[6], status: 'complete' };
+    const errorVideo: StudioVideo = {
+      id: videoId,
+      type: outputType,
+      content: keyIdeas + '\n\n---\n\n' + script,
+      keyIdeas,
+      script,
+      description,
+      chapterPlan,
+      videoUrl: '',
+      title: prompt,
+      planDetails,
+      steps,
+      thinkingLog: ['Rendering failed. Please try again.'],
+      createdAt: new Date(),
+      duration: 30,
+      format,
+    };
+    
+    onProgress(errorVideo);
+    return errorVideo;
   }
-  
-  steps[4] = { ...steps[4], status: 'complete' };
-  onProgress({
-    type: outputType,
-    content: keyIdeas + '\n\n---\n\n' + script,
-    keyIdeas,
-    script,
-    description,
-    scenes: finalSceneStructure,
-    planDetails,
-    steps: [...steps],
-  });
-
-  // Step 6: Generate voiceover (if enabled)
-  await executeStep(steps, 5, onProgress, { type: outputType, content: keyIdeas + '\n\n---\n\n' + script, keyIdeas, script, description, scenes: finalSceneStructure, planDetails, steps });
-  
-  if (audioAssetAgent.isEnabled()) {
-    logger.info('[Orchestrator] Generating audio narration...');
-    try {
-      // Use full narration strategy for faster generation (single API call)
-      const audioAssets = await audioAssetAgent.generateAudio(
-        finalSceneStructure,
-        'full-narration',
-        'nova', // Default voice
-        (current: number, total: number) => {
-          logger.info(`[Orchestrator] Audio progress: ${current}/${total}`);
-        }
-      );
-      
-      finalSceneStructure = {
-        ...finalSceneStructure,
-        scenes: audioAssets.scenes
-      };
-      
-      logger.info('[Orchestrator] Audio narration generated', {
-        totalSegments: audioAssets.totalAudioSegments,
-        failedSegments: audioAssets.failedSegments,
-        hasFullNarration: !!audioAssets.fullNarrationUrl
-      });
-    } catch (error) {
-      logger.error('[Orchestrator] Audio generation failed', { error });
-      // Continue without audio
-    }
-  } else {
-    logger.info('[Orchestrator] Audio generation disabled (no OpenAI API key)');
-  }
-  
-  steps[5] = { ...steps[5], status: 'complete' };
-  onProgress({
-    type: outputType,
-    content: keyIdeas + '\n\n---\n\n' + script,
-    keyIdeas,
-    script,
-    description,
-    scenes: finalSceneStructure,
-    planDetails,
-    steps: [...steps],
-  });
-
-  // Step 7: Render video
-  await executeStep(steps, 6, onProgress, { type: outputType, content: keyIdeas + '\n\n---\n\n' + script, keyIdeas, script, description, scenes: finalSceneStructure, planDetails, steps });
-  
-  // Generate unique video ID
-  const videoId = generateId();
-  
-  // TODO: Adapt orchestrator to use new ChapterPlan system
-  // For now, video rendering is disabled in orchestrator
-  // Use testChapterRendering() directly for testing
-  let videoUrl = '';
-  
-  // PREVIEW MODE - No actual rendering yet
-  logger.info('[Orchestrator] Video rendering skipped (use testChapterRendering for now)', {
-    videoId,
-    sceneCount: finalSceneStructure.scenes.length
-  });
-  
-  steps[6] = { ...steps[6], status: 'complete' };
-
-  const finalVideo: StudioVideo = {
-    id: videoId,
-    type: outputType,
-    content: keyIdeas + '\n\n---\n\n' + script,
-    keyIdeas,
-    script,
-    description,
-    scenes: finalSceneStructure,
-    videoUrl,
-    title: prompt,
-    planDetails,
-    steps,
-    thinkingLog: ['Generation complete!'],
-    createdAt: new Date(),
-    duration: 30,
-    format,
-  };
-
-  onProgress(finalVideo);
-  return finalVideo;
 }
 
 /**
@@ -380,23 +352,23 @@ function generatePlan(prompt: string, outputType: StudioOutputType): PlanDetail[
     },
     {
       step: 'Create script',
-      detail: `Writing ${outputType} script with hook and clear explanation`,
+      detail: `Writing ${outputType} script with chaptered structure`,
     },
     {
-      step: 'Generate scenes',
-      detail: 'Breaking down into visual scenes with timing',
+      step: 'Parse into chapters',
+      detail: 'Converting script into ChapterPlan for rendering',
     },
     {
-      step: 'Fetch assets',
-      detail: 'Getting videos (Pexels) and images (Brave Search) in parallel',
+      step: 'Prepare assets',
+      detail: 'Searching images (Brave API) and preparing audio (TTS)',
     },
     {
       step: 'Generate voiceover',
-      detail: 'Creating AI narration with text-to-speech',
+      detail: 'Creating AI narration with text-to-speech (OpenAI TTS)',
     },
     {
-      step: 'Render video',
-      detail: 'Creating final video with captions and visuals',
+      step: 'Render chapters',
+      detail: 'Rendering chapters with Canvas + MediaRecorder (client-side)',
     },
   ];
 

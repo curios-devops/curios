@@ -48,8 +48,11 @@ export class ChapterRenderer {
     });
 
     try {
-      // 1. Preparar assets (cargar imágenes)
+      // 1. Preparar assets (cargar imágenes y video de fondo)
       const loadedImages = await this.loadImages(descriptor.assets.images);
+      const backgroundVideoElement = descriptor.assets.backgroundVideo 
+        ? await this.loadVideo(descriptor.assets.backgroundVideo)
+        : undefined;
       
       // 2. Preparar audio
       const audioTrack = await this.prepareAudio(descriptor.assets.audio);
@@ -75,8 +78,8 @@ export class ChapterRenderer {
       // 4. Iniciar grabación
       recorder.start();
       
-      // 5. Renderizar frames según timeline
-      await this.renderTimeline(descriptor, loadedImages, onProgress);
+      // 5. Renderizar frames según timeline (con video de fondo)
+      await this.renderTimeline(descriptor, loadedImages, backgroundVideoElement, onProgress);
       
       // 6. Detener grabación
       recorder.stop();
@@ -171,6 +174,36 @@ export class ChapterRenderer {
   }
 
   /**
+   * Cargar video de fondo
+   */
+  private async loadVideo(videoUrl: string): Promise<HTMLVideoElement | undefined> {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.muted = true; // Mute to avoid audio conflicts
+      video.loop = true;
+      
+      video.onloadeddata = () => {
+        logger.debug('[ChapterRenderer] Video de fondo cargado', { url: videoUrl.substring(0, 50) });
+        video.play().catch(err => {
+          logger.warn('[ChapterRenderer] No se pudo reproducir video', { err });
+        });
+        resolve(video);
+      };
+      
+      video.onerror = () => {
+        logger.warn('[ChapterRenderer] Error cargando video de fondo, continuando sin él', { 
+          url: videoUrl.substring(0, 50) 
+        });
+        resolve(undefined);
+      };
+      
+      video.src = videoUrl;
+      video.load();
+    });
+  }
+
+  /**
    * Preparar audio track
    */
   private async prepareAudio(audioBlob: Blob): Promise<MediaStreamTrack | null> {
@@ -199,6 +232,7 @@ export class ChapterRenderer {
   private async renderTimeline(
     descriptor: ChapterDescriptor,
     images: HTMLImageElement[],
+    backgroundVideo?: HTMLVideoElement,
     onProgress?: (progress: RenderProgress) => void
   ): Promise<void> {
     const startTime = performance.now();
@@ -215,11 +249,18 @@ export class ChapterRenderer {
     while (performance.now() - startTime < durationMs) {
       const elapsed = performance.now() - startTime;
       const currentTime = elapsed / 1000;
-      const progress = (elapsed / durationMs) * 100;
       
       // Limpiar canvas
-      this.ctx.fillStyle = '#000000';
-      this.ctx.fillRect(0, 0, this.width, this.height);
+      this.ctx.clearRect(0, 0, this.width, this.height);
+      
+      // 1. Dibujar video de fondo si existe
+      if (backgroundVideo && backgroundVideo.readyState >= 2) {
+        this.ctx.drawImage(backgroundVideo, 0, 0, this.width, this.height);
+      } else {
+        // Fallback: fondo de color sólido
+        this.ctx.fillStyle = '#000000';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
       
       // Ejecutar acciones del timeline
       const activeActions = this.getActiveActions(descriptor.timeline, currentTime);
@@ -262,6 +303,7 @@ export class ChapterRenderer {
       
       // Reportar progreso
       if (onProgress && currentFrame % 10 === 0) {
+        const progress = (elapsed / durationMs) * 100;
         onProgress({
           chapterId: descriptor.id,
           progress,

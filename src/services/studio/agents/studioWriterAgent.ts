@@ -404,4 +404,125 @@ Generate the chaptered script now:`
       throw error;
     }
   }
+
+  /**
+   * Parse script into ChapterPlan
+   * Converts YouTube-style chaptered script into structured ChapterPlan
+   */
+  parseScriptToChapterPlan(
+    script: string,
+    videoId: string,
+    title: string,
+    totalDuration: number = 30
+  ): import('../types').ChapterPlan {
+    logger.info('[Studio Writer] Parsing script to ChapterPlan', { videoId, totalDuration });
+
+    const lines = script.split('\n').filter(line => line.trim());
+    const chapters: import('../types').ChapterInfo[] = [];
+    
+    let currentChapterTitle = '';
+    let currentNarration: string[] = [];
+    let currentKeywords: string[] = [];
+    let chapterIndex = 1;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Detect chapter title (bold with **)
+      if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+        // Save previous chapter if exists
+        if (currentChapterTitle && currentNarration.length > 0) {
+          chapters.push({
+            id: `chapter_${String(chapterIndex).padStart(3, '0')}`,
+            order: chapterIndex,
+            title: currentChapterTitle,
+            duration: 0, // Will calculate later
+            narration: currentNarration.join(' '),
+            keywords: currentKeywords,
+          });
+          chapterIndex++;
+        }
+
+        // Start new chapter
+        currentChapterTitle = trimmed.replace(/\*\*/g, '').trim();
+        currentNarration = [];
+        currentKeywords = extractKeywords(currentChapterTitle);
+        continue;
+      }
+
+      // Detect timestamp line (MM:SS - Description)
+      const timestampMatch = trimmed.match(/^(\d{1,2}):(\d{2})\s*-\s*(.+)$/);
+      if (timestampMatch) {
+        const [, , , description] = timestampMatch;
+
+        // Add description to narration
+        currentNarration.push(description.trim());
+        
+        // Extract keywords from description
+        const descKeywords = extractKeywords(description);
+        currentKeywords.push(...descKeywords);
+      }
+    }
+
+    // Save last chapter
+    if (currentChapterTitle && currentNarration.length > 0) {
+      chapters.push({
+        id: `chapter_${String(chapterIndex).padStart(3, '0')}`,
+        order: chapterIndex,
+        title: currentChapterTitle,
+        duration: 0, // Will calculate later
+        narration: currentNarration.join(' '),
+        keywords: currentKeywords,
+      });
+    }
+
+    // Calculate durations based on timestamps
+    const durationsPerChapter = calculateChapterDurations(chapters.length, totalDuration);
+    chapters.forEach((chapter, index) => {
+      chapter.duration = durationsPerChapter[index];
+    });
+
+    logger.info('[Studio Writer] ChapterPlan created', {
+      chapterCount: chapters.length,
+      totalDuration
+    });
+
+    return {
+      videoId,
+      title,
+      description: `Video about: ${title}`,
+      chapters,
+      totalDuration
+    };
+  }
+}
+
+/**
+ * Extract keywords from text (simple approach)
+ */
+function extractKeywords(text: string): string[] {
+  const stopWords = new Set(['the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'but', 'in', 'with', 'to', 'for', 'of', 'as', 'by', 'from']);
+  
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ') // Remove punctuation
+    .split(/\s+/)
+    .filter(word => word.length > 3 && !stopWords.has(word))
+    .slice(0, 3); // Max 3 keywords per line
+}
+
+/**
+ * Calculate chapter durations evenly distributed
+ */
+function calculateChapterDurations(chapterCount: number, totalDuration: number): number[] {
+  const baseDuration = Math.floor(totalDuration / chapterCount);
+  const remainder = totalDuration % chapterCount;
+  
+  const durations: number[] = [];
+  for (let i = 0; i < chapterCount; i++) {
+    // Distribute remainder across first chapters
+    durations.push(baseDuration + (i < remainder ? 1 : 0));
+  }
+  
+  return durations;
 }

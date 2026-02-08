@@ -73,7 +73,8 @@ export interface StudioVideo {
   keyIdeas?: string; // Streamed key ideas (bullet points)
   script?: string; // Video script (hook, explanation, takeaway)
   description?: string; // Short plain text summary for YouTube-style description
-  scenes?: SceneStructure; // Structured scenes for video rendering
+  scenes?: SceneStructure; // Structured scenes for video rendering (legacy)
+  chapterPlan?: ChapterPlan; // NEW: Chapter-based plan for rendering
   title?: string;
   planDetails?: PlanDetail[];
   steps?: StepItem[];
@@ -115,11 +116,14 @@ export interface ChapterPlan {
 
 export interface ChapterInfo {
   id: string;              // "chapter_001"
-  order: number;           // 1, 2, 3...
+  order?: number;          // 1, 2, 3... (optional, can be derived from array index)
   duration: number;        // 5-10 segundos
   narration: string;       // Texto para TTS
-  visualCues: string[];    // Qué mostrar visualmente
+  visualCues?: string[];   // Qué mostrar visualmente (optional)
   keywords: string[];      // Para búsqueda de imágenes
+  title?: string;          // Título del capítulo (optional)
+  audioUrl?: string;       // Audio URL si ya existe (optional)
+  images?: string[];       // Image URLs si ya existen (optional)
 }
 
 /**
@@ -139,6 +143,7 @@ export interface ChapterAssets {
   images: ImageAsset[];
   audio: Blob;             // Audio TTS
   music?: Blob;            // Música de fondo (opcional)
+  backgroundVideo?: string; // Video de fondo Pexels (opcional)
 }
 
 export interface ImageAsset {
@@ -160,6 +165,7 @@ export interface TimelineEntry {
 export type TimelineAction = 
   | 'show-image' 
   | 'show-text' 
+  | 'show-video'  // NUEVO: para videos de fondo
   | 'fade-in' 
   | 'fade-out'
   | 'pan'

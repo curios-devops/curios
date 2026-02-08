@@ -1,17 +1,20 @@
 /**
  * Input Manager
- * Prepara chapters con assets (imágenes, audio, timeline)
+ * Prepara chapters con assets (videos Pexels, imágenes Brave, audio, timeline)
  */
 
 import { ChapterPlan, ChapterInfo, ChapterDescriptor, TimelineEntry } from '../types';
 import { BraveImageService } from '../assets/braveImageService';
+import { PexelsService } from '../assets/pexelsService';
 import { logger } from '../../../utils/logger';
 
 export class InputManager {
   private imageService: BraveImageService;
+  private videoService: PexelsService;
   
   constructor() {
     this.imageService = new BraveImageService();
+    this.videoService = new PexelsService();
   }
 
   /**
@@ -50,33 +53,81 @@ export class InputManager {
    * Preparar un chapter individual
    */
   private async prepareChapter(info: ChapterInfo): Promise<ChapterDescriptor> {
-    // 1. Buscar imágenes
+    // 1. Buscar video de fondo (Pexels)
+    const backgroundVideo = await this.searchBackgroundVideo(info.keywords, info.narration);
+    
+    // 2. Buscar imágenes de overlay (Brave)
     const images = await this.searchImages(info.keywords, info.narration);
     
-    // 2. Generar audio TTS (por ahora mock, implementar después)
+    // 3. Generar audio TTS (por ahora mock, implementar después)
     const audioBlob = await this.generateTTS(info.narration);
     
-    // 3. Calcular timeline
-    const timeline = this.calculateTimeline(info, images.length);
+    // 4. Calcular timeline
+    const timeline = this.calculateTimeline(info, images.length, backgroundVideo);
     
-    // 4. Retornar descriptor completo
+    // 5. Retornar descriptor completo
     return {
       id: info.id,
-      order: info.order,
+      order: info.order || 0,
       duration: info.duration,
       assets: {
         images: images.map((url, index) => ({
           url,
-          alt: info.visualCues[index] || '',
+          alt: (info.visualCues && info.visualCues[index]) || '',
           position: this.getImagePosition(index, images.length)
         })),
         audio: audioBlob,
-        music: undefined // Por ahora sin música
+        music: undefined, // Por ahora sin música
+        backgroundVideo // NUEVO: video de fondo de Pexels
       },
       timeline,
       text: info.narration,
-      free: true // Todo gratis por ahora
+      free: true
     };
+  }
+
+  /**
+   * Buscar video de fondo usando Pexels
+   */
+  private async searchBackgroundVideo(keywords: string[], narration: string): Promise<string | undefined> {
+    // Verificar si Pexels está habilitado
+    const pexelsEnabled = !!import.meta.env.VITE_PEXELS_API_KEY;
+    
+    if (!pexelsEnabled) {
+      logger.info('[InputManager] Pexels API no configurada, sin video de fondo');
+      return undefined;
+    }
+    
+    try {
+      // Buscar video vertical (portrait) para shorts/reels
+      const searchQuery = keywords.slice(0, 2).join(' ');
+      const videoUrl = await this.videoService.searchForScene(searchQuery, 'vertical');
+      
+      if (videoUrl) {
+        logger.info('[InputManager] Video de fondo encontrado', { 
+          keywords: searchQuery,
+          url: videoUrl.substring(0, 50) 
+        });
+        return videoUrl;
+      }
+      
+      // Fallback: buscar con narración
+      const fallbackUrl = await this.videoService.searchForScene(narration.slice(0, 30), 'vertical');
+      
+      if (fallbackUrl) {
+        logger.info('[InputManager] Video de fondo encontrado (fallback)', { 
+          url: fallbackUrl.substring(0, 50) 
+        });
+        return fallbackUrl;
+      }
+      
+      logger.warn('[InputManager] No se encontró video de fondo', { keywords });
+      return undefined;
+      
+    } catch (error) {
+      logger.warn('[InputManager] Error buscando video de fondo', { keywords, error });
+      return undefined;
+    }
   }
 
   /**
@@ -160,9 +211,23 @@ export class InputManager {
   /**
    * Calcular timeline de animaciones
    */
-  private calculateTimeline(info: ChapterInfo, imageCount: number): TimelineEntry[] {
+  private calculateTimeline(
+    info: ChapterInfo, 
+    imageCount: number, 
+    backgroundVideo?: string
+  ): TimelineEntry[] {
     const timeline: TimelineEntry[] = [];
     const duration = info.duration;
+    
+    // Si hay video de fondo, agregarlo al timeline
+    if (backgroundVideo) {
+      timeline.push({
+        timestamp: 0,
+        action: 'show-video',
+        data: { url: backgroundVideo, loop: true },
+        duration
+      });
+    }
     
     // Dividir duración entre imágenes
     const timePerImage = duration / Math.max(imageCount, 1);
