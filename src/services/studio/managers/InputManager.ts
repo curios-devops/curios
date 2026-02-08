@@ -234,24 +234,47 @@ export class InputManager {
   }
 
   /**
-   * OpenAI TTS fallback (TODO: implementar)
+   * OpenAI TTS fallback
    */
-  private async generateOpenAITTS(_text: string): Promise<Blob | null> {
+  private async generateOpenAITTS(text: string): Promise<Blob | null> {
     try {
-      const openaiUrl = import.meta.env.VITE_OPENAI_API_URL;
-      if (!openaiUrl) {
-        logger.warn('[InputManager] OpenAI URL not configured');
+      const apiKey = import.meta.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        logger.warn('[InputManager] OpenAI API key not configured');
         return null;
       }
 
-      // TODO: Implementar llamada a OpenAI TTS cuando esté disponible
-      // const response = await fetch(openaiUrl + '/tts', { 
-      //   method: 'POST',
-      //   body: JSON.stringify({ text: _text, voice: 'alloy' })
-      // });
+      logger.debug('[InputManager] Calling OpenAI TTS API', { 
+        textLength: text.length 
+      });
+
+      const response = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'tts-1',
+          input: text,
+          voice: 'alloy',
+          response_format: 'mp3'
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenAI TTS error: ${response.status} - ${errorText}`);
+      }
+
+      const audioBlob = await response.blob();
       
-      logger.debug('[InputManager] OpenAI TTS no implementado aún');
-      return null;
+      logger.info('[InputManager] OpenAI TTS generated successfully', {
+        size: audioBlob.size,
+        sizeKB: (audioBlob.size / 1024).toFixed(2)
+      });
+
+      return audioBlob;
     } catch (error) {
       logger.error('[InputManager] OpenAI TTS error', { error });
       return null;

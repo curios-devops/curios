@@ -111,7 +111,10 @@ export class ChapterRenderer {
         recorderState: recorder.state 
       });
       
-      // 6. Detener grabación y esperar
+      // 6. Esperar un frame extra para asegurar que MediaRecorder tenga tiempo de generar chunks
+      await new Promise(resolve => setTimeout(resolve, 150)); // Wait 150ms for last chunk
+      
+      // 7. Detener grabación y esperar
       recorder.stop();
       await recordingComplete;
       
@@ -249,9 +252,32 @@ export class ChapterRenderer {
    */
   private async prepareAudio(audioBlob: Blob): Promise<MediaStreamTrack | null> {
     try {
-      // Convertir blob a MediaStream
+      logger.debug('[ChapterRenderer] Preparing audio track', { 
+        size: audioBlob.size,
+        type: audioBlob.type 
+      });
+
+      // Convertir blob a ArrayBuffer
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      
+      // Intentar decodificar audio
+      let audioBuffer: AudioBuffer;
+      try {
+        audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      } catch (decodeError) {
+        logger.error('[ChapterRenderer] Failed to decode audio data', { 
+          error: decodeError,
+          blobType: audioBlob.type,
+          blobSize: audioBlob.size
+        });
+        return null;
+      }
+      
+      logger.debug('[ChapterRenderer] Audio decoded successfully', {
+        duration: audioBuffer.duration,
+        channels: audioBuffer.numberOfChannels,
+        sampleRate: audioBuffer.sampleRate
+      });
       
       const source = this.audioContext.createBufferSource();
       source.buffer = audioBuffer;
@@ -260,6 +286,7 @@ export class ChapterRenderer {
       source.connect(destination);
       source.start();
       
+      logger.info('[ChapterRenderer] Audio track prepared successfully');
       return destination.stream.getAudioTracks()[0];
     } catch (error) {
       logger.warn('[ChapterRenderer] Could not prepare audio track', { error });
