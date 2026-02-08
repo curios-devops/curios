@@ -1,84 +1,60 @@
 /**
  * ElevenLabs TTS Service
- * Text-to-Speech usando ElevenLabs API
+ * Text-to-Speech usando Netlify Function (API keys seguras en servidor)
  */
 
 import { logger } from '../../../utils/logger';
 
 export class ElevenLabsService {
-  private apiKey: string;
-  private baseUrl = 'https://api.elevenlabs.io/v1';
-  
-  // Voice IDs de ElevenLabs (Rachel - clara y natural)
+  private netlifyFunctionUrl = '/.netlify/functions/elevenlabs-tts';
   private defaultVoiceId = '21m00Tcm4TlvDq8ikWAM'; // Rachel
   
-  constructor() {
-    this.apiKey = import.meta.env.ELEVEN_LABS_API_KEY || '';
-    
-    if (!this.apiKey) {
-      logger.warn('[ElevenLabs] API key not configured');
-    }
-  }
-
-  /**
-   * Generar audio TTS
-   */
   async generateTTS(text: string): Promise<Blob | null> {
-    if (!this.apiKey) {
-      logger.warn('[ElevenLabs] API key missing, cannot generate TTS');
-      return null;
-    }
-
     try {
-      logger.debug('[ElevenLabs] Generating TTS', { 
+      logger.debug('[ElevenLabs] Generating TTS via Netlify Function', { 
         textLength: text.length,
         voiceId: this.defaultVoiceId 
       });
 
-      const response = await fetch(
-        `${this.baseUrl}/text-to-speech/${this.defaultVoiceId}`,
-        {
-          method: 'POST',
-          headers: {
-            'Accept': 'audio/mpeg',
-            'Content-Type': 'application/json',
-            'xi-api-key': this.apiKey
-          },
-          body: JSON.stringify({
-            text,
-            model_id: 'eleven_monolingual_v1',
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75
-            }
-          })
-        }
-      );
+      const response = await fetch(this.netlifyFunctionUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voiceId: this.defaultVoiceId })
+      });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Netlify function error: ${response.status} - ${JSON.stringify(errorData)}`);
       }
 
-      const audioBlob = await response.blob();
+      const data = await response.json();
+      if (!data.audio) throw new Error('No audio data received');
+
+      const audioBlob = this.base64ToBlob(data.audio, 'audio/mpeg');
       
-      logger.info('[ElevenLabs] TTS generated successfully', { 
+      logger.info('[ElevenLabs] TTS generated via Netlify', { 
         size: audioBlob.size,
         sizeKB: (audioBlob.size / 1024).toFixed(2)
       });
 
       return audioBlob;
-
     } catch (error) {
       logger.error('[ElevenLabs] TTS generation failed', { error });
       return null;
     }
   }
 
-  /**
-   * Verificar si el servicio está configurado
-   */
+  private base64ToBlob(base64: string, mimeType: string): Blob {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mimeType });
+  }
+
   isConfigured(): boolean {
-    return !!this.apiKey;
+    return true; // Netlify function siempre disponible
   }
 }
