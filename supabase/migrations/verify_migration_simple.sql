@@ -1,9 +1,10 @@
 -- ============================================
--- VERIFICACIÓN POST-MIGRACIÓN
+-- VERIFICACIÓN SIMPLE POST-MIGRACIÓN
 -- Ejecuta esto después de aplicar la migración
+-- (Versión simplificada sin storage.policies)
 -- ============================================
 
--- 1. Verificar que las tablas existen
+-- 1. ✅ Verificar que las tablas existen
 SELECT 
   table_name,
   (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as column_count
@@ -16,9 +17,8 @@ ORDER BY table_name;
 -- chapters  | 10
 -- videos    | 9
 
--- ============================================
--- 2. Verificar storage bucket
--- ============================================
+
+-- 2. ✅ Verificar storage bucket
 SELECT 
   id,
   name,
@@ -30,9 +30,8 @@ WHERE id = 'videos';
 -- Resultado esperado:
 -- videos | videos | true | <timestamp>
 
--- ============================================
--- 3. Verificar índices
--- ============================================
+
+-- 3. ✅ Verificar índices
 SELECT 
   indexname,
   tablename
@@ -48,9 +47,8 @@ ORDER BY tablename, indexname;
 -- idx_videos_status        | videos
 -- idx_videos_user_id       | videos
 
--- ============================================
--- 4. Verificar políticas RLS
--- ============================================
+
+-- 4. ✅ Verificar políticas RLS en tablas
 SELECT 
   tablename,
   policyname,
@@ -62,27 +60,8 @@ ORDER BY tablename, policyname;
 
 -- Resultado esperado: 6 políticas (3 para videos, 3 para chapters)
 
--- ============================================
--- 5. Verificar storage policies
--- ============================================
--- Nota: storage.policies no siempre está disponible según versión de Supabase
--- Verificar que las policies existen en la configuración:
-SELECT 
-  schemaname,
-  tablename,
-  policyname
-FROM pg_policies 
-WHERE schemaname = 'storage' 
-AND tablename = 'objects'
-AND policyname LIKE '%video%'
-ORDER BY policyname;
 
--- Resultado esperado: 4 políticas de storage
--- O verifica manualmente en Supabase Dashboard → Storage → videos bucket → Policies
-
--- ============================================
--- 6. Verificar trigger
--- ============================================
+-- 5. ✅ Verificar trigger
 SELECT 
   trigger_name,
   event_object_table as table_name,
@@ -94,8 +73,9 @@ AND trigger_name LIKE '%updated_at%';
 -- Resultado esperado:
 -- update_videos_updated_at | videos | EXECUTE FUNCTION update_updated_at_column()
 
+
 -- ============================================
--- 7. TEST: Insertar datos de prueba
+-- 6. ✅ TEST: Insertar datos de prueba
 -- ============================================
 
 -- Insertar video de prueba
@@ -113,9 +93,13 @@ INSERT INTO videos (
   'rendering'
 ) RETURNING id, title, status, created_at;
 
--- GUARDA EL ID DEL VIDEO PARA EL SIGUIENTE PASO!
+-- ⚠️ IMPORTANTE: Guarda el ID del video que aparece arriba!
+-- Lo necesitarás para el siguiente paso.
 
--- Insertar chapters de prueba (reemplaza <video_id> con el ID de arriba)
+
+-- 7. ✅ Insertar chapters de prueba
+-- ⚠️ REEMPLAZA '<video_id>' CON EL ID REAL DEL PASO ANTERIOR
+
 INSERT INTO chapters (
   video_id, 
   chapter_id, 
@@ -129,11 +113,8 @@ INSERT INTO chapters (
   ('<video_id>', 'chapter_003', 3, 5, 'https://example.com/test/chapter_003.webm', true)
 RETURNING chapter_id, order_index, storage_url;
 
--- ============================================
--- 8. Verificar datos insertados
--- ============================================
 
--- Ver video con todos sus chapters
+-- 8. ✅ Verificar datos insertados con JOIN
 SELECT 
   v.id,
   v.title,
@@ -154,40 +135,58 @@ LEFT JOIN chapters c ON v.id = c.video_id
 WHERE v.title = 'Test Video - Chapter System'
 GROUP BY v.id;
 
--- ============================================
--- 9. Limpiar datos de prueba (opcional)
--- ============================================
 
--- Si quieres eliminar el test:
--- DELETE FROM videos WHERE title = 'Test Video - Chapter System';
--- (Los chapters se eliminan automáticamente por CASCADE)
+-- 9. ✅ Test CASCADE DELETE
+-- Eliminar el video (los chapters se deben eliminar automáticamente)
+DELETE FROM videos WHERE title = 'Test Video - Chapter System';
+
+-- Verificar que los chapters también se eliminaron:
+SELECT COUNT(*) as remaining_test_chapters 
+FROM chapters 
+WHERE chapter_id LIKE 'chapter_00%';
+
+-- Resultado esperado: 0 (todos eliminados por CASCADE)
+
 
 -- ============================================
--- ✅ CHECKLIST DE VERIFICACIÓN
+-- ✅ CHECKLIST DE VERIFICACIÓN FINAL
 -- ============================================
 
 /*
 Marca cada item cuando lo verifiques:
 
-[ ] Tablas 'videos' y 'chapters' existen
-[ ] Bucket 'videos' existe en storage
+[ ] Tabla 'videos' existe con 9 columnas
+[ ] Tabla 'chapters' existe con 10 columnas
+[ ] Bucket 'videos' existe en storage y es público
 [ ] 5 índices creados correctamente
-[ ] 6 políticas RLS creadas
-[ ] 4 políticas de storage creadas
+[ ] 6 políticas RLS creadas (3 videos + 3 chapters)
 [ ] Trigger 'update_videos_updated_at' existe
 [ ] Test de inserción funciona
-[ ] Query con JOIN funciona
-[ ] Cascade delete funciona
+[ ] Query con JOIN retorna JSON correcto
+[ ] Cascade delete funciona (elimina chapters al eliminar video)
 
-Si todos los checks están ✅, ¡la migración fue exitosa!
+Storage Policies - Verificar manualmente en Dashboard:
+[ ] "Videos are publicly accessible" (SELECT)
+[ ] "Authenticated users can upload videos" (INSERT)
+[ ] "Users can update own video files" (UPDATE)
+[ ] "Users can delete own video files" (DELETE)
+
+Si todos los checks están ✅, ¡la migración fue EXITOSA!
 */
 
+
 -- ============================================
--- 🎉 MIGRACIÓN COMPLETADA EXITOSAMENTE
+-- 🎉 PRÓXIMOS PASOS
 -- ============================================
 
--- Próximos pasos:
--- 1. Ejecutar testChapterRendering() en el navegador
--- 2. Verificar que los videos se suben a storage
--- 3. Integrar ChapterPlayer en la UI
--- 4. ¡Disfrutar del nuevo sistema de chapters!
+/*
+1. Ejecutar el test en el navegador:
+   import { testChapterRendering } from './services/studio/test/testChapterRendering';
+   testChapterRendering().then(result => console.log(result));
+
+2. Verificar que los videos se suben a Supabase Storage
+
+3. Integrar ChapterPlayer en la UI
+
+4. ¡Disfrutar del nuevo sistema de chapters! 🎬
+*/
