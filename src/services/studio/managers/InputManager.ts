@@ -83,6 +83,15 @@ export class InputManager {
    * Buscar imágenes usando Brave Image Service
    */
   private async searchImages(keywords: string[], narration: string): Promise<string[]> {
+    // TODO: En producción, habilitar búsqueda real de imágenes
+    // Por ahora, usar placeholders para evitar CORS durante testing
+    const USE_PLACEHOLDERS = true; // Cambiar a false cuando esté en producción
+    
+    if (USE_PLACEHOLDERS) {
+      logger.info('[InputManager] Usando placeholders (modo testing)', { keywords });
+      return this.getPlaceholderImages();
+    }
+    
     try {
       // Buscar hasta 3 imágenes usando Brave
       const searchQuery = keywords.slice(0, 3).join(' ');
@@ -121,10 +130,11 @@ export class InputManager {
    * Obtener imágenes placeholder
    */
   private getPlaceholderImages(): string[] {
+    // Usar data URIs en vez de URLs externas para evitar CORS
     return [
-      'https://via.placeholder.com/720x1280/0095FF/FFFFFF?text=Chapter',
-      'https://via.placeholder.com/720x1280/3b82f6/FFFFFF?text=Image',
-      'https://via.placeholder.com/720x1280/60a5fa/FFFFFF?text=Content'
+      'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"%3E%3Crect fill="%230095FF" width="720" height="1280"/%3E%3Ctext x="360" y="640" font-size="48" fill="white" text-anchor="middle" font-family="Arial"%3EChapter Image 1%3C/text%3E%3C/svg%3E',
+      'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"%3E%3Crect fill="%233b82f6" width="720" height="1280"/%3E%3Ctext x="360" y="640" font-size="48" fill="white" text-anchor="middle" font-family="Arial"%3EChapter Image 2%3C/text%3E%3C/svg%3E',
+      'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"%3E%3Crect fill="%2360a5fa" width="720" height="1280"/%3E%3Ctext x="360" y="640" font-size="48" fill="white" text-anchor="middle" font-family="Arial"%3EChapter Image 3%3C/text%3E%3C/svg%3E'
     ];
   }
 

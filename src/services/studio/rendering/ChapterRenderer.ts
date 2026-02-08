@@ -113,7 +113,24 @@ export class ChapterRenderer {
       return new Promise<HTMLImageElement>((resolve) => {
         const img = new Image();
         
-        // Intentar cargar con crossOrigin primero
+        // Si es data URI (SVG), no necesitamos CORS
+        if (asset.url.startsWith('data:')) {
+          img.onload = () => {
+            logger.debug('[ChapterRenderer] Imagen SVG placeholder cargada', { index });
+            resolve(img);
+          };
+          img.onerror = () => {
+            logger.error('[ChapterRenderer] Error cargando SVG placeholder', { index });
+            // Crear imagen vacía como último recurso
+            const emptyImg = new Image();
+            emptyImg.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"%3E%3Crect fill="%23333333" width="720" height="1280"/%3E%3C/svg%3E';
+            emptyImg.onload = () => resolve(emptyImg);
+          };
+          img.src = asset.url;
+          return;
+        }
+        
+        // Para URLs externas, intentar con CORS
         img.crossOrigin = 'anonymous';
         
         img.onload = () => {
@@ -126,16 +143,22 @@ export class ChapterRenderer {
             url: asset.url.substring(0, 50) 
           });
           
-          // Fallback: Usar placeholder con color según índice
+          // Fallback: Crear placeholder SVG directamente
           const colors = ['0095FF', '3b82f6', '60a5fa', '2563eb', '1e40af'];
           const color = colors[index % colors.length];
           const placeholder = new Image();
-          placeholder.src = `https://via.placeholder.com/720x1280/${color}/FFFFFF?text=Chapter+Image+${index + 1}`;
-          placeholder.onload = () => resolve(placeholder);
+          placeholder.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"%3E%3Crect fill="%23${color}" width="720" height="1280"/%3E%3Ctext x="360" y="640" font-size="48" fill="white" text-anchor="middle" font-family="Arial"%3EImage ${index + 1}%3C/text%3E%3C/svg%3E`;
+          
+          placeholder.onload = () => {
+            logger.debug('[ChapterRenderer] Placeholder SVG cargado', { index });
+            resolve(placeholder);
+          };
+          
           placeholder.onerror = () => {
-            // Si hasta el placeholder falla, crear imagen vacía
+            logger.error('[ChapterRenderer] Error cargando placeholder, usando imagen vacía', { index });
+            // Último recurso: imagen sólida sin texto
             const emptyImg = new Image();
-            emptyImg.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"><rect fill="%230095FF" width="720" height="1280"/></svg>';
+            emptyImg.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"%3E%3Crect fill="%23${color}" width="720" height="1280"/%3E%3C/svg%3E`;
             emptyImg.onload = () => resolve(emptyImg);
           };
         };
