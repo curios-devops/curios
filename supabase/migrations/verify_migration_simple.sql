@@ -98,8 +98,10 @@ INSERT INTO videos (
 
 
 -- 7. ✅ Insertar chapters de prueba
--- ⚠️ REEMPLAZA '<video_id>' CON EL ID REAL DEL PASO ANTERIOR
-
+-- ⚠️ MÉTODO 1: Usa WITH para obtener el ID automáticamente
+WITH test_video AS (
+  SELECT id FROM videos WHERE title = 'Test Video - Chapter System' LIMIT 1
+)
 INSERT INTO chapters (
   video_id, 
   chapter_id, 
@@ -107,11 +109,42 @@ INSERT INTO chapters (
   duration, 
   storage_url, 
   free
-) VALUES 
-  ('<video_id>', 'chapter_001', 1, 5, 'https://example.com/test/chapter_001.webm', true),
-  ('<video_id>', 'chapter_002', 2, 5, 'https://example.com/test/chapter_002.webm', true),
-  ('<video_id>', 'chapter_003', 3, 5, 'https://example.com/test/chapter_003.webm', true)
+) 
+SELECT 
+  test_video.id,
+  'chapter_001',
+  1,
+  5,
+  'https://example.com/test/chapter_001.webm',
+  true
+FROM test_video
+UNION ALL
+SELECT 
+  test_video.id,
+  'chapter_002',
+  2,
+  5,
+  'https://example.com/test/chapter_002.webm',
+  true
+FROM test_video
+UNION ALL
+SELECT 
+  test_video.id,
+  'chapter_003',
+  3,
+  5,
+  'https://example.com/test/chapter_003.webm',
+  true
+FROM test_video
 RETURNING chapter_id, order_index, storage_url;
+
+-- ⚠️ MÉTODO 2 (Alternativo): Reemplaza manualmente el UUID
+-- Si el método de arriba no funciona, copia el UUID del paso 6 y reemplaza aquí:
+-- INSERT INTO chapters (video_id, chapter_id, order_index, duration, storage_url, free) VALUES 
+--   ('PEGA-TU-UUID-AQUI', 'chapter_001', 1, 5, 'https://example.com/test/chapter_001.webm', true),
+--   ('PEGA-TU-UUID-AQUI', 'chapter_002', 2, 5, 'https://example.com/test/chapter_002.webm', true),
+--   ('PEGA-TU-UUID-AQUI', 'chapter_003', 3, 5, 'https://example.com/test/chapter_003.webm', true)
+-- RETURNING chapter_id, order_index, storage_url;
 
 
 -- 8. ✅ Verificar datos insertados con JOIN
