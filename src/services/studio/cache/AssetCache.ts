@@ -63,10 +63,11 @@ export class AssetCache {
   }
 
   /**
-   * Fetch asset from URL
+   * Fetch asset from URL with CORS fallback
    */
   private async fetch(url: string): Promise<Blob | null> {
     try {
+      // Try with CORS first
       const response = await fetch(url, {
         mode: 'cors',
         credentials: 'omit'
@@ -78,7 +79,11 @@ export class AssetCache {
 
       return await response.blob();
     } catch (error) {
-      logger.error('[AssetCache] Fetch error', { url: url.substring(0, 50), error });
+      logger.warn('[AssetCache] CORS fetch failed, will use direct load fallback', { 
+        url: url.substring(0, 50), 
+        error 
+      });
+      // Return null so caller can use direct Image/Video load
       return null;
     }
   }

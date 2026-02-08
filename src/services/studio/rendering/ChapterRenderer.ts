@@ -6,7 +6,6 @@
 
 import { ChapterDescriptor, TimelineEntry, RenderProgress } from '../types';
 import { logger } from '../../../utils/logger';
-import { assetCache } from '../cache/AssetCache';
 
 export class ChapterRenderer {
   private canvas: HTMLCanvasElement;
@@ -69,33 +68,69 @@ export class ChapterRenderer {
         videoBitsPerSecond: 2500000 // 2.5 Mbps
       });
       
-      const chunks: Blob[] = [];
+      const mediaChunks: Blob[] = []; // Datos del MediaRecorder (no confundir con chapters)
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
-          chunks.push(e.data);
+          mediaChunks.push(e.data);
+          logger.debug('[ChapterRenderer] Media chunk received', { 
+            chunkSize: e.data.size,
+            totalMediaChunks: mediaChunks.length 
+          });
         }
       };
       
-      // 4. Iniciar grabación
-      recorder.start();
-      
-      // 5. Renderizar frames según timeline (con video de fondo)
-      await this.renderTimeline(descriptor, loadedImages, backgroundVideoElement, onProgress);
-      
-      // 6. Detener grabación
-      recorder.stop();
-      
-      // 7. Esperar a que termine
-      await new Promise((resolve) => {
-        recorder.onstop = resolve;
+      // Esperar a que termine la grabación
+      const recordingComplete = new Promise<void>((resolve) => {
+        recorder.onstop = () => {
+          logger.debug('[ChapterRenderer] MediaRecorder stopped', { 
+            totalMediaChunks: mediaChunks.length,
+            totalSize: mediaChunks.reduce((sum, c) => sum + c.size, 0)
+          });
+          resolve();
+        };
       });
       
-      // 8. Retornar video blob
-      const videoBlob = new Blob(chunks, { type: 'video/webm' });
+      // 4. Iniciar grabación (emit chunks every 100ms)
+      recorder.start(100);
+      
+      logger.debug('[ChapterRenderer] MediaRecorder started', { 
+        state: recorder.state,
+        mimeType: recorder.mimeType 
+      });
+      
+      // 5. Renderizar frames según timeline (con video de fondo)
+      logger.debug('[ChapterRenderer] Starting timeline render', { 
+        chapterId: descriptor.id,
+        duration: descriptor.duration 
+      });
+      
+      await this.renderTimeline(descriptor, loadedImages, backgroundVideoElement, onProgress);
+      
+      logger.debug('[ChapterRenderer] Timeline render complete, stopping recorder', { 
+        chapterId: descriptor.id,
+        recorderState: recorder.state 
+      });
+      
+      // 6. Detener grabación y esperar
+      recorder.stop();
+      await recordingComplete;
+      
+      // 8. Crear video blob
+      if (mediaChunks.length === 0) {
+        logger.error('[ChapterRenderer] No media chunks received from MediaRecorder!', {
+          chapterId: descriptor.id,
+          recorderState: recorder.state
+        });
+        throw new Error('No video data recorded');
+      }
+      
+      const videoBlob = new Blob(mediaChunks, { type: 'video/webm' });
       
       logger.info('[ChapterRenderer] Render completo', { 
         chapterId: descriptor.id,
-        size: videoBlob.size 
+        mediaChunks: mediaChunks.length,
+        size: videoBlob.size,
+        sizeKB: (videoBlob.size / 1024).toFixed(2)
       });
       
       return videoBlob;
@@ -114,12 +149,12 @@ export class ChapterRenderer {
    */
   private async loadImages(imageAssets: Array<{ url: string; alt?: string; position?: string }>): Promise<HTMLImageElement[]> {
     const loadPromises = imageAssets.map(async (asset, index) => {
-      // Si es data URI (SVG), no usar cache
+      // Si es data URI (SVG placeholder), cargar directamente
       if (asset.url.startsWith('data:')) {
         return new Promise<HTMLImageElement>((resolve) => {
           const img = new Image();
           img.onload = () => {
-            logger.debug('[ChapterRenderer] Imagen SVG placeholder cargada', { index });
+            logger.debug('[ChapterRenderer] SVG placeholder cargado', { index });
             resolve(img);
           };
           img.onerror = () => {
@@ -132,46 +167,40 @@ export class ChapterRenderer {
         });
       }
       
-      // Para URLs externas, usar cache
-      try {
-        const blob = await assetCache.get(asset.url, 'image');
-        
-        if (blob) {
-          return await this.createImageFromBlob(blob);
-        }
-      } catch (error) {
-        logger.warn('[ChapterRenderer] Error con cache, usando fallback', { error });
-      }
-      
-      // Fallback: cargar directamente (sin cache)
+      // Para URLs externas: cargar directamente SIN crossOrigin (evita CORS)
+      // NO usar cache para imágenes externas por problemas de CORS
       return new Promise<HTMLImageElement>((resolve) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
+        // NO usar crossOrigin - causa problemas CORS con muchos sitios
+        // img.crossOrigin = 'anonymous';
         
         img.onload = () => {
-          logger.debug('[ChapterRenderer] Imagen cargada exitosamente', { url: asset.url.substring(0, 50) });
+          logger.debug('[ChapterRenderer] Imagen externa cargada', { 
+            url: asset.url.substring(0, 50),
+            size: `${img.width}x${img.height}`
+          });
           resolve(img);
         };
         
         img.onerror = () => {
-          logger.warn('[ChapterRenderer] Error CORS con imagen externa, usando placeholder', { 
+          logger.warn('[ChapterRenderer] Error cargando imagen, usando placeholder SVG', { 
             url: asset.url.substring(0, 50) 
           });
           
-          // Fallback: Crear placeholder SVG directamente
+          // Fallback: Placeholder SVG coloreado
           const colors = ['0095FF', '3b82f6', '60a5fa', '2563eb', '1e40af'];
           const color = colors[index % colors.length];
           const placeholder = new Image();
           placeholder.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"%3E%3Crect fill="%23${color}" width="720" height="1280"/%3E%3Ctext x="360" y="640" font-size="48" fill="white" text-anchor="middle" font-family="Arial"%3EImage ${index + 1}%3C/text%3E%3C/svg%3E`;
           
           placeholder.onload = () => {
-            logger.debug('[ChapterRenderer] Placeholder SVG cargado', { index });
+            logger.debug('[ChapterRenderer] Placeholder SVG usado como fallback', { index });
             resolve(placeholder);
           };
           
           placeholder.onerror = () => {
             logger.error('[ChapterRenderer] Error cargando placeholder, usando imagen vacía', { index });
-            // Último recurso: imagen sólida sin texto
+            // Último recurso: imagen sólida
             const emptyImg = new Image();
             emptyImg.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"%3E%3Crect fill="%23${color}" width="720" height="1280"/%3E%3C/svg%3E`;
             emptyImg.onload = () => resolve(emptyImg);
@@ -183,30 +212,6 @@ export class ChapterRenderer {
     });
     
     return Promise.all(loadPromises);
-  }
-
-  /**
-   * Crear imagen desde blob (helper para cache)
-   */
-  private async createImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(blob);
-      
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl); // Liberar memoria
-        logger.debug('[ChapterRenderer] Imagen creada desde blob cache');
-        resolve(img);
-      };
-      
-      img.onerror = (error) => {
-        URL.revokeObjectURL(objectUrl);
-        logger.error('[ChapterRenderer] Error creando imagen desde blob', { error });
-        reject(error);
-      };
-      
-      img.src = objectUrl;
-    });
   }
 
   /**
@@ -257,7 +262,7 @@ export class ChapterRenderer {
       
       return destination.stream.getAudioTracks()[0];
     } catch (error) {
-      logger.warn('[ChapterRenderer] No se pudo preparar audio', { error });
+      logger.warn('[ChapterRenderer] Could not prepare audio track', { error });
       return null;
     }
   }

@@ -6,15 +6,18 @@
 import { ChapterPlan, ChapterInfo, ChapterDescriptor, TimelineEntry } from '../types';
 import { BraveImageService } from '../assets/braveImageService';
 import { PexelsService } from '../assets/pexelsService';
+import { ElevenLabsService } from '../assets/elevenLabsService';
 import { logger } from '../../../utils/logger';
 
 export class InputManager {
   private imageService: BraveImageService;
   private videoService: PexelsService;
+  private ttsService: ElevenLabsService;
   
   constructor() {
     this.imageService = new BraveImageService();
     this.videoService = new PexelsService();
+    this.ttsService = new ElevenLabsService();
   }
 
   /**
@@ -190,21 +193,77 @@ export class InputManager {
   }
 
   /**
-   * Generar audio TTS (mock por ahora)
+   * Generar audio TTS con ElevenLabs (primario) y OpenAI (fallback)
    */
   private async generateTTS(text: string): Promise<Blob> {
-    // TODO: Implementar con OpenAI TTS o Web Speech API
-    // Por ahora retornamos un blob vacío
-    logger.info('[InputManager] Generando TTS (mock)', { textLength: text.length });
+    logger.info('[InputManager] Generando TTS', { 
+      textLength: text.length,
+      words: text.split(' ').length 
+    });
     
-    // Crear audio context silencioso de la duración correcta
+    // 1. Intentar con ElevenLabs (primario)
+    if (this.ttsService.isConfigured()) {
+      logger.debug('[InputManager] Usando ElevenLabs TTS');
+      const audioBlob = await this.ttsService.generateTTS(text);
+      
+      if (audioBlob) {
+        logger.info('[InputManager] ElevenLabs TTS exitoso');
+        return audioBlob;
+      } else {
+        logger.warn('[InputManager] ElevenLabs TTS falló, intentando fallback');
+      }
+    } else {
+      logger.debug('[InputManager] ElevenLabs no configurado, usando fallback');
+    }
+    
+    // 2. Fallback: OpenAI TTS
+    try {
+      logger.debug('[InputManager] Intentando OpenAI TTS fallback');
+      const audioBlob = await this.generateOpenAITTS(text);
+      if (audioBlob) {
+        logger.info('[InputManager] OpenAI TTS fallback exitoso');
+        return audioBlob;
+      }
+    } catch (error) {
+      logger.warn('[InputManager] OpenAI TTS fallback falló', { error });
+    }
+    
+    // 3. Último recurso: Audio silencioso
+    logger.warn('[InputManager] Usando audio silencioso como último recurso');
+    return this.generateSilentAudio(text);
+  }
+
+  /**
+   * OpenAI TTS fallback
+   */
+  private async generateOpenAITTS(text: string): Promise<Blob | null> {
+    try {
+      const openaiUrl = import.meta.env.VITE_OPENAI_API_URL;
+      if (!openaiUrl) {
+        logger.warn('[InputManager] OpenAI URL not configured');
+        return null;
+      }
+
+      // TODO: Implementar llamada a OpenAI TTS cuando esté disponible
+      // const response = await fetch(openaiUrl + '/tts', { ... });
+      
+      logger.debug('[InputManager] OpenAI TTS no implementado aún');
+      return null;
+    } catch (error) {
+      logger.error('[InputManager] OpenAI TTS error', { error });
+      return null;
+    }
+  }
+
+  /**
+   * Generar audio silencioso (último recurso)
+   */
+  private generateSilentAudio(text: string): Blob {
     const audioContext = new AudioContext();
     const duration = Math.max(3, text.split(' ').length * 0.3); // ~0.3s por palabra
     const buffer = audioContext.createBuffer(1, audioContext.sampleRate * duration, audioContext.sampleRate);
     
-    // TODO: Aquí iría la llamada real a TTS
-    // const response = await openai.audio.speech.create({ ... });
-    
+    // Crear blob silencioso
     return new Blob([buffer.getChannelData(0)], { type: 'audio/wav' });
   }
 
