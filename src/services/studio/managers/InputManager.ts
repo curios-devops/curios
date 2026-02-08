@@ -83,9 +83,9 @@ export class InputManager {
    * Buscar imágenes usando Brave Image Service
    */
   private async searchImages(keywords: string[], narration: string): Promise<string[]> {
-    // TODO: En producción, habilitar búsqueda real de imágenes
-    // Por ahora, usar placeholders para evitar CORS durante testing
-    const USE_PLACEHOLDERS = true; // Cambiar a false cuando esté en producción
+    // En producción: buscar imágenes reales con Brave API
+    // Si falla la búsqueda, usa placeholders como fallback
+    const USE_PLACEHOLDERS = false; // true = testing con placeholders, false = producción con imágenes reales
     
     if (USE_PLACEHOLDERS) {
       logger.info('[InputManager] Usando placeholders (modo testing)', { keywords });
