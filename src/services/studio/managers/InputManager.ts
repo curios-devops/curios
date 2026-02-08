@@ -234,9 +234,9 @@ export class InputManager {
   }
 
   /**
-   * OpenAI TTS fallback
+   * OpenAI TTS fallback (TODO: implementar)
    */
-  private async generateOpenAITTS(text: string): Promise<Blob | null> {
+  private async generateOpenAITTS(_text: string): Promise<Blob | null> {
     try {
       const openaiUrl = import.meta.env.VITE_OPENAI_API_URL;
       if (!openaiUrl) {
@@ -245,7 +245,10 @@ export class InputManager {
       }
 
       // TODO: Implementar llamada a OpenAI TTS cuando esté disponible
-      // const response = await fetch(openaiUrl + '/tts', { ... });
+      // const response = await fetch(openaiUrl + '/tts', { 
+      //   method: 'POST',
+      //   body: JSON.stringify({ text: _text, voice: 'alloy' })
+      // });
       
       logger.debug('[InputManager] OpenAI TTS no implementado aún');
       return null;
