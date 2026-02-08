@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "netlify dev",
+    "dev": "NODE_OPTIONS='--no-deprecation' netlify dev",
+    "dev:quiet": "NODE_OPTIONS='--no-deprecation --no-warnings' netlify dev",
+    "dev:fast": "vite --port 5173",
     "dev:vite": "vite --port 5173",
     "dev:full": "concurrently \"npm run supabase:dev\" \"npm run vite:dev\"",
     "dev:supabase": "supabase start",

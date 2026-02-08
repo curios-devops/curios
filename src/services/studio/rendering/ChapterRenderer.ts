@@ -109,18 +109,37 @@ export class ChapterRenderer {
    * Cargar imágenes desde URLs
    */
   private async loadImages(imageAssets: Array<{ url: string; alt?: string; position?: string }>): Promise<HTMLImageElement[]> {
-    const loadPromises = imageAssets.map(asset => {
+    const loadPromises = imageAssets.map((asset, index) => {
       return new Promise<HTMLImageElement>((resolve) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous'; // Para imágenes externas
-        img.onload = () => resolve(img);
-        img.onerror = () => {
-          logger.warn('[ChapterRenderer] Error cargando imagen', { url: asset.url });
-          // Usar imagen placeholder
-          const placeholder = new Image();
-          placeholder.src = 'https://via.placeholder.com/720x1280/0095FF/FFFFFF?text=Image';
-          placeholder.onload = () => resolve(placeholder);
+        
+        // Intentar cargar con crossOrigin primero
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+          logger.debug('[ChapterRenderer] Imagen cargada exitosamente', { url: asset.url.substring(0, 50) });
+          resolve(img);
         };
+        
+        img.onerror = () => {
+          logger.warn('[ChapterRenderer] Error CORS con imagen externa, usando placeholder', { 
+            url: asset.url.substring(0, 50) 
+          });
+          
+          // Fallback: Usar placeholder con color según índice
+          const colors = ['0095FF', '3b82f6', '60a5fa', '2563eb', '1e40af'];
+          const color = colors[index % colors.length];
+          const placeholder = new Image();
+          placeholder.src = `https://via.placeholder.com/720x1280/${color}/FFFFFF?text=Chapter+Image+${index + 1}`;
+          placeholder.onload = () => resolve(placeholder);
+          placeholder.onerror = () => {
+            // Si hasta el placeholder falla, crear imagen vacía
+            const emptyImg = new Image();
+            emptyImg.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1280"><rect fill="%230095FF" width="720" height="1280"/></svg>';
+            emptyImg.onload = () => resolve(emptyImg);
+          };
+        };
+        
         img.src = asset.url;
       });
     });
