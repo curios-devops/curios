@@ -1,13 +1,13 @@
 /**
  * Pexels Video Service
- * Searches for stock videos using Pexels API
+ * Searches for stock videos using Pexels API via Supabase Edge Function
+ * API key is securely stored in Supabase, not exposed to client
  */
 
 import { logger } from '../../../utils/logger';
 
-const PEXELS_API_KEY = import.meta.env.VITE_PEXELS_API_KEY || '';
-const PEXELS_VIDEO_API_URL = 'https://api.pexels.com/videos';
-const PEXELS_PHOTO_API_URL = 'https://api.pexels.com/v1';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const PEXELS_EDGE_FUNCTION = `${SUPABASE_URL}/functions/v1/pexels-search`;
 
 export interface PexelsPhoto {
   id: number;
@@ -67,18 +67,14 @@ export interface PexelsSearchResult {
 }
 
 export class PexelsService {
-  private apiKey: string;
-  private videoBaseUrl: string;
-  private photoBaseUrl: string;
+  private edgeFunction: string;
 
   constructor() {
-    this.apiKey = PEXELS_API_KEY;
-    this.videoBaseUrl = PEXELS_VIDEO_API_URL;
-    this.photoBaseUrl = PEXELS_PHOTO_API_URL;
+    this.edgeFunction = PEXELS_EDGE_FUNCTION;
   }
 
   /**
-   * Search for photos by query
+   * Search for photos by query using Supabase Edge Function
    */
   async searchPhotos(
     query: string,
@@ -89,32 +85,31 @@ export class PexelsService {
   ): Promise<PexelsPhotoSearchResult> {
     const { perPage = 5, orientation = 'portrait' } = options;
 
-    if (!this.apiKey) {
-      logger.warn('[Pexels] API key not configured');
-      return { total_results: 0, page: 1, per_page: 0, photos: [] };
-    }
-
     try {
-      const params = new URLSearchParams({
-        query,
-        per_page: perPage.toString(),
-        orientation,
-      });
+      logger.info('[Pexels Photos] Searching via Edge Function', { query, perPage, orientation });
 
-      const response = await fetch(`${this.photoBaseUrl}/search?${params}`, {
+      const response = await fetch(this.edgeFunction, {
+        method: 'POST',
         headers: {
-          Authorization: this.apiKey,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          query,
+          type: 'photos',
+          perPage,
+          orientation
+        }),
       });
 
       if (!response.ok) {
-        throw new Error(`Pexels Photo API error: ${response.statusText}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Pexels Photo API error: ${response.statusText}`);
       }
 
       const data = await response.json();
       logger.info('[Pexels Photos] Search complete', {
         query,
-        results: data.photos.length,
+        results: data.photos?.length || 0,
       });
 
       return data;
@@ -125,7 +120,7 @@ export class PexelsService {
   }
 
   /**
-   * Search for videos by query
+   * Search for videos by query using Supabase Edge Function
    */
   async searchVideos(
     query: string,
@@ -135,35 +130,33 @@ export class PexelsService {
       size?: 'large' | 'medium' | 'small';
     } = {}
   ): Promise<PexelsSearchResult> {
-    const { perPage = 5, orientation = 'landscape', size = 'medium' } = options;
-
-    if (!this.apiKey) {
-      logger.warn('[Pexels] API key not configured');
-      return { total_results: 0, page: 1, per_page: 0, videos: [] };
-    }
+    const { perPage = 5, orientation = 'landscape' } = options;
 
     try {
-      const params = new URLSearchParams({
-        query,
-        per_page: perPage.toString(),
-        orientation,
-        size,
-      });
+      logger.info('[Pexels] Searching via Edge Function', { query, perPage, orientation });
 
-      const response = await fetch(`${this.videoBaseUrl}/search?${params}`, {
+      const response = await fetch(this.edgeFunction, {
+        method: 'POST',
         headers: {
-          Authorization: this.apiKey,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          query,
+          type: 'videos',
+          perPage,
+          orientation
+        }),
       });
 
       if (!response.ok) {
-        throw new Error(`Pexels API error: ${response.statusText}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Pexels API error: ${response.statusText}`);
       }
 
       const data = await response.json();
       logger.info('[Pexels] Search complete', {
         query,
-        results: data.videos.length,
+        results: data.videos?.length || 0,
       });
 
       return data;
@@ -266,38 +259,14 @@ export class PexelsService {
   }
 
   /**
-   * Get popular videos for generic scenes
+   * Get popular videos for generic scenes (NOT IMPLEMENTED via Edge Function)
+   * Returns empty result. Use searchVideos with generic queries instead.
    */
   async getPopularVideos(
-    format: 'vertical' | 'horizontal',
-    page: number = 1
+    _format: 'vertical' | 'horizontal',
+    _page: number = 1
   ): Promise<PexelsSearchResult> {
-    if (!this.apiKey) {
-      return { total_results: 0, page: 1, per_page: 0, videos: [] };
-    }
-
-    try {
-      const orientation = format === 'vertical' ? 'portrait' : 'landscape';
-      const params = new URLSearchParams({
-        per_page: '10',
-        page: page.toString(),
-        orientation,
-      });
-
-      const response = await fetch(`${this.videoBaseUrl}/popular?${params}`, {
-        headers: {
-          Authorization: this.apiKey,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Pexels API error: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      logger.error('[Pexels] Popular videos fetch failed', { error });
-      return { total_results: 0, page: 1, per_page: 0, videos: [] };
-    }
+    logger.warn('[Pexels] getPopularVideos not implemented. Use searchVideos with generic query instead.');
+    return { total_results: 0, page: 1, per_page: 0, videos: [] };
   }
 }

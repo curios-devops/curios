@@ -287,6 +287,33 @@ if (import.meta.env.DEV) {
     const { testNoAudio } = await import('./services/studio/test/testNoAudio');
     return testNoAudio();
   };
+
+  // 🌍 Tests de Global Image Search (NUEVO)
+  // @ts-ignore
+  window.testGlobalSearch_Level1 = async () => {
+    const { testGlobalSearch_Level1 } = await import('./services/studio/test/testGlobalImageSearch');
+    return testGlobalSearch_Level1();
+  };
+  // @ts-ignore
+  window.testGlobalSearch_Level2 = async () => {
+    const { testGlobalSearch_Level2 } = await import('./services/studio/test/testGlobalImageSearch');
+    return testGlobalSearch_Level2();
+  };
+  // @ts-ignore
+  window.testGlobalSearch_Level3 = async () => {
+    const { testGlobalSearch_Level3 } = await import('./services/studio/test/testGlobalImageSearch');
+    return testGlobalSearch_Level3();
+  };
+  // @ts-ignore
+  window.testGlobalSearch_Level4 = async () => {
+    const { testGlobalSearch_Level4 } = await import('./services/studio/test/testGlobalImageSearch');
+    return testGlobalSearch_Level4();
+  };
+  // @ts-ignore
+  window.testAllGlobalSearch = async () => {
+    const { testAllGlobalSearch } = await import('./services/studio/test/testGlobalImageSearch');
+    return testAllGlobalSearch();
+  };
   
   console.log('🧪 Tests disponibles:');
   console.log('   testLevel1()     - Canvas puro (sin imágenes)');
@@ -297,4 +324,11 @@ if (import.meta.env.DEV) {
   console.log('   testLevel6()     - Flujo real + Audio + Video ✨');
   console.log('   testAllLevels()  - Ejecutar todos en secuencia');
   console.log('   testNoAudio()    - Test original');
+  console.log('');
+  console.log('🌍 Tests de Global Image Search (NUEVO):');
+  console.log('   testGlobalSearch_Level1() - Búsqueda simple');
+  console.log('   testGlobalSearch_Level2() - Asignación a capítulos');
+  console.log('   testGlobalSearch_Level3() - Flujo completo (1 capítulo)');
+  console.log('   testGlobalSearch_Level4() - Flujo completo (3 capítulos)');
+  console.log('   testAllGlobalSearch()     - Ejecutar todos (Global Search)');
 }

@@ -112,6 +112,7 @@ export interface ChapterPlan {
   title: string;
   description: string;
   videoId?: string;
+  query?: string;  // Query original del usuario para búsqueda global
 }
 
 export interface ChapterInfo {

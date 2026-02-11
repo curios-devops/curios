@@ -8,6 +8,7 @@ import { BraveImageService } from '../assets/braveImageService';
 import { GoogleImageService } from '../assets/googleImageService';
 import { PexelsService } from '../assets/pexelsService';
 import { ElevenLabsService } from '../assets/elevenLabsService';
+import { GlobalImageSearchAgent } from '../agents/GlobalImageSearchAgent';
 import { logger } from '../../../utils/logger';
 
 export class InputManager {
@@ -15,36 +16,71 @@ export class InputManager {
   private googleImageService: GoogleImageService;
   private videoService: PexelsService;
   private ttsService: ElevenLabsService;
+  private globalImageAgent: GlobalImageSearchAgent;
   
   constructor() {
     this.imageService = new BraveImageService();
     this.googleImageService = new GoogleImageService();
     this.videoService = new PexelsService();
     this.ttsService = new ElevenLabsService();
+    this.globalImageAgent = new GlobalImageSearchAgent();
   }
 
   /**
    * Preparar todos los chapters del plan
+   * NUEVA ESTRATEGIA: 1 búsqueda global de Brave para todas las imágenes de contenido
    */
   async prepareChapters(plan: ChapterPlan): Promise<ChapterDescriptor[]> {
-    logger.info('[InputManager] Preparando chapters', { 
+    logger.info('[InputManager] 🎬 Preparando chapters', { 
       count: plan.chapters.length,
       videoId: plan.videoId 
+    });
+
+    // ✨ NUEVO: Construir query global concatenando keywords de TODOS los capítulos
+    const allKeywords = plan.chapters
+      .flatMap(ch => ch.keywords)
+      .filter((keyword, index, self) => self.indexOf(keyword) === index) // Eliminar duplicados
+      .slice(0, 10); // Top 10 keywords únicos
+    
+    const globalQuery = allKeywords.join(' ') || plan.query || '';
+    
+    logger.info('[InputManager] 🌍 Búsqueda GLOBAL de imágenes Brave', {
+      query: globalQuery.substring(0, 100),
+      keywordsCount: allKeywords.length
+    });
+
+    // Búsqueda GLOBAL (1 sola vez con keywords de todos los capítulos)
+    const globalImages = await this.globalImageAgent.searchGlobalImages(globalQuery);
+    
+    // Asignar imágenes a capítulos (0-2 por capítulo) - método async con LLM
+    const imageAssignments = await this.globalImageAgent.assignImagesToChapters(
+      plan.chapters.map(ch => ({ id: ch.id, text: ch.narration })),
+      globalImages
+    );
+
+    logger.info('[InputManager] 📊 Imágenes Brave asignadas', {
+      total: globalImages.length,
+      chapters: plan.chapters.length,
+      avgPerChapter: (globalImages.length / plan.chapters.length).toFixed(1)
     });
 
     const descriptors: ChapterDescriptor[] = [];
 
     for (const chapterInfo of plan.chapters) {
       try {
-        const descriptor = await this.prepareChapter(chapterInfo);
+        // Obtener imágenes Brave pre-asignadas para este capítulo
+        const braveImages = imageAssignments.find(a => a.chapterId === chapterInfo.id)?.braveImages || [];
+        
+        const descriptor = await this.prepareChapter(chapterInfo, braveImages);
         descriptors.push(descriptor);
         
-        logger.info('[InputManager] Chapter preparado', { 
+        logger.info('[InputManager] ✅ Chapter preparado', { 
           id: descriptor.id, 
-          order: descriptor.order 
+          order: descriptor.order,
+          braveImages: braveImages.length
         });
       } catch (error) {
-        logger.error('[InputManager] Error preparando chapter', { 
+        logger.error('[InputManager] ❌ Error preparando chapter', { 
           chapterId: chapterInfo.id, 
           error 
         });
@@ -57,30 +93,40 @@ export class InputManager {
 
   /**
    * Preparar un chapter individual
+   * @param braveImages - Imágenes Brave pre-asignadas desde búsqueda global (0-2 imágenes)
    */
-  private async prepareChapter(info: ChapterInfo): Promise<ChapterDescriptor> {
+  private async prepareChapter(info: ChapterInfo, braveImages: string[]): Promise<ChapterDescriptor> {
     // 1. Buscar video de fondo (Pexels)
     const backgroundVideo = await this.searchBackgroundVideo(info.keywords, info.narration);
     
-    // 2. Buscar imágenes de overlay - MIX de Brave (específicas) + Pexels (stock profesional)
-    const images = await this.searchMixedImages(info.keywords);
+    // 2. Buscar imágenes Pexels (stock profesional) - 2-3 imágenes
+    const pexelsImages = await this.getPexelsPhotos(info.keywords.join(' '), 3);
     
-    // 3. Generar audio TTS
+    // 3. Combinar: Pexels (base) + Brave (contexto específico)
+    const allImages = [...pexelsImages, ...braveImages].slice(0, 3); // Max 3 imágenes
+    
+    logger.debug('[InputManager] Imágenes combinadas', {
+      pexels: pexelsImages.length,
+      brave: braveImages.length,
+      total: allImages.length
+    });
+    
+    // 4. Generar audio TTS
     const audioBlob = await this.generateTTS(info.narration);
     
-    // 4. Calcular timeline
-    const timeline = this.calculateTimeline(info, images.length, backgroundVideo);
+    // 5. Calcular timeline
+    const timeline = this.calculateTimeline(info, allImages.length, backgroundVideo);
     
-    // 5. Retornar descriptor completo
+    // 6. Retornar descriptor completo
     return {
       id: info.id,
       order: info.order || 0,
       duration: info.duration,
       assets: {
-        images: images.map((url, index) => ({
+        images: allImages.map((url, index) => ({
           url,
           alt: (info.visualCues && info.visualCues[index]) || '',
-          position: this.getImagePosition(index, images.length)
+          position: this.getImagePosition(index, allImages.length)
         })),
         audio: audioBlob,
         music: undefined, // Por ahora sin música
@@ -93,11 +139,11 @@ export class InputManager {
   }
 
   /**
-   * Buscar video de fondo usando Pexels
+   * Buscar video de fondo usando Pexels (via Supabase Edge Function)
    */
   private async searchBackgroundVideo(keywords: string[], narration: string): Promise<string | undefined> {
-    // Verificar si Pexels está habilitado
-    const pexelsEnabled = !!import.meta.env.VITE_PEXELS_API_KEY;
+    // Pexels now uses secure Edge Function (no exposed API key)
+    const pexelsEnabled = true;
     
     if (!pexelsEnabled) {
       logger.info('[InputManager] Pexels API no configurada, sin video de fondo');
@@ -139,7 +185,10 @@ export class InputManager {
   /**
    * Buscar MIX de imágenes: Brave (específicas) + Pexels (stock profesional)
    * Estrategia: 60% Brave + 40% Pexels para balance entre relevancia y calidad
+   * 
+   * @deprecated Ya no se usa. Reemplazado por búsqueda global en prepareChapters()
    */
+  // @ts-expect-error - Método deprecado, mantenido para referencia
   private async searchMixedImages(keywords: string[]): Promise<string[]> {
     const searchQuery = keywords.slice(0, 3).join(' ');
     const mixedImages: string[] = [];
@@ -484,13 +533,14 @@ export class InputManager {
    */
   /**
    * Obtener fotos de Pexels (stock profesional con CORS habilitado)
+   * Now uses Supabase Edge Function for security
    */
   private async getPexelsPhotos(query: string, count: number = 3): Promise<string[]> {
     try {
       logger.info('[InputManager] Buscando en Pexels Stock Photos', { query, count });
       
-      // Verificar si Pexels está habilitado
-      const pexelsEnabled = !!import.meta.env.VITE_PEXELS_API_KEY;
+      // Pexels now uses secure Edge Function (no exposed API key)
+      const pexelsEnabled = true;
       if (!pexelsEnabled) {
         logger.warn('[InputManager] Pexels no configurado');
         return [];

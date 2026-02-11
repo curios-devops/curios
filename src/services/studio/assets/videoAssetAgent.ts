@@ -27,7 +27,10 @@ export class VideoAssetAgent {
   constructor() {
     this.pexelsService = new PexelsService();
     this.assetManager = new AssetManager();
-    this.enabled = !!import.meta.env.VITE_PEXELS_API_KEY;
+    // TEMPORARILY DISABLED: API key security issue
+    // TODO: Move to Supabase Edge Function
+    // Pexels now uses secure Edge Function (no exposed API key)
+    this.enabled = true;
   }
 
   /**
