@@ -8,7 +8,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 console.log("Pexels Search function up and running!")
 
-// @ts-ignore
+// @ts-ignore: Deno runtime
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -28,7 +28,7 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // @ts-ignore
+    // @ts-ignore: Deno environment variable
     const PEXELS_API_KEY = Deno.env.get('PEXELS_API_KEY')
     console.log('🔑 API Key check:', {
       hasKey: !!PEXELS_API_KEY,
@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('Error in pexels-search:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

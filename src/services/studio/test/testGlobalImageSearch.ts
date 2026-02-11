@@ -3,7 +3,7 @@
  * Tests incrementales de menos a más complejos
  */
 
-import { GlobalImageSearchAgent } from '../agents/GlobalImageSearchAgent';
+import { GlobalImageSearchAgent, type ChapterImageAssignment } from '../agents/GlobalImageSearchAgent';
 import { InputManager } from '../managers/InputManager';
 import { ChapterPlan } from '../types';
 import { logger } from '../../../utils/logger';
@@ -76,11 +76,11 @@ export async function testGlobalSearch_Level2() {
     
     console.log(`📚 Capítulos: ${chapters.length}`);
     
-    // Asignación
-    const assignments = agent.assignImagesToChapters(chapters, images);
+    // Asignación (ahora es async con LLM)
+    const assignments = await agent.assignImagesToChapters(chapters, images);
     
     console.log('📊 Asignaciones:');
-    assignments.forEach(a => {
+    assignments.forEach((a: ChapterImageAssignment) => {
       console.log(`   ${a.chapterId}: ${a.braveImages.length} imágenes`);
       if (a.braveImages.length > 0) {
         console.log(`      → ${a.braveImages[0].substring(0, 60)}...`);
@@ -88,7 +88,7 @@ export async function testGlobalSearch_Level2() {
     });
     
     // Validaciones
-    const totalAssigned = assignments.reduce((sum, a) => sum + a.braveImages.length, 0);
+    const totalAssigned = assignments.reduce((sum: number, a: ChapterImageAssignment) => sum + a.braveImages.length, 0);
     console.log(`\n📈 Total asignado: ${totalAssigned} imágenes`);
     
     if (totalAssigned === 0) {

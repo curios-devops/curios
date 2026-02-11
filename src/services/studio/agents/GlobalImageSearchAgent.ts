@@ -16,7 +16,7 @@ interface ImageCandidate {
   height?: number;
 }
 
-interface ChapterImageAssignment {
+export interface ChapterImageAssignment {
   chapterId: string;
   braveImages: string[]; // 0-2 imágenes asignadas
 }
