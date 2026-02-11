@@ -74,6 +74,8 @@ export class BraveImageService {
 
   /**
    * Search for images using Brave Search API
+   * Excludes premium stock sites that ALWAYS fail CORS (Freepik, etc.)
+   * Uses same parsing format as regular search (which works perfectly)
    */
   async searchImages(
     query: string,
@@ -87,19 +89,30 @@ export class BraveImageService {
     const {
       count = 10,
       safesearch = 'strict',
-      // country and language are available but not used yet in Supabase function
-      // country = 'us',
-      // language = 'en'
     } = options;
 
-    logger.info('[Brave Image Service] Searching images', {
+    // Exclude ONLY premium stock sites that consistently fail CORS
+    // These sites waste API calls and never work
+    const excludedSites = [
+      'freepik.com',        // Premium stock, ALWAYS fails CORS
+      'istockphoto.com',    // Getty Images, ALWAYS fails CORS
+      'gettyimages.com',    // Getty Images, ALWAYS fails CORS
+      'shutterstock.com',   // Premium stock, ALWAYS fails CORS
+    ];
+    
+    // Add exclusions to query using Brave's -site: operator
+    const exclusions = excludedSites.map(site => `-site:${site}`).join(' ');
+    const enhancedQuery = `${query} ${exclusions}`;
+
+    logger.info('[Brave Image Service] Searching images (excluding premium stock)', {
       query,
+      excludedSites: excludedSites.length,
       count,
       safesearch
     });
 
     try {
-      // Call Supabase Edge Function through rate limit queue to prevent 429 errors
+      // Call Supabase Edge Function - same format as regular search
       const response = await rateLimitQueue.add(async () => {
         logger.info('[Brave Image Service] Executing API call (rate limited)');
         return fetch(`${SUPABASE_URL}/functions/v1/brave-images-search`, {
@@ -108,7 +121,7 @@ export class BraveImageService {
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ query })
+          body: JSON.stringify({ query: enhancedQuery })
         });
       });
 
@@ -123,16 +136,19 @@ export class BraveImageService {
 
       const data: BraveImageSearchResponse = await response.json();
 
-      // Transform results to our format
-      const images: BraveImage[] = data.results.map(result => ({
-        url: result.properties.url,
-        title: result.title,
-        source: result.url, // Source page URL
-        thumbnail: result.thumbnail.src,
-        width: result.properties.width,
-        height: result.properties.height,
-        age: result.page_age
-      }));
+      // Transform results - EXACT same format as regular search (which works)
+      const images: BraveImage[] = (data.results || [])
+        .slice(0, count)
+        .map((item: any) => ({
+          url: item.properties?.url || item.thumbnail?.src || '', // SAME fallback as regular search
+          title: item.title || '',
+          source: item.url || '', // Source page URL
+          thumbnail: item.thumbnail?.src || '',
+          width: item.properties?.width || 0,
+          height: item.properties?.height || 0,
+          age: item.page_age
+        }))
+        .filter((img: BraveImage) => img.url !== ''); // Filter out empty URLs
 
       logger.info('[Brave Image Service] Search complete', {
         query,

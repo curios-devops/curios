@@ -1,6 +1,25 @@
 /**
- * Amazon Product Search Service
- * Integrates with Amazon Product Advertising API to fetch products
+ * Amazon Product Searcexport async function searchAmazonProducts(
+  query: string,
+  maxResults: number = 4
+): Promise<AmazonSearchResult> {
+  try {
+    console.log(`🛍️ [Amazon API] Searching for: "${query}"`);
+
+    // Call Supabase Edge Function to search via SerpAPI
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const functionUrl = `${supabaseUrl}/functions/v1/search-amazon-products`;
+
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'apikey': supabaseAnonKey
+      },
+      body: JSON.stringify({ query, maxResults })
+    });tegrates with Amazon Product Advertising API to fetch products
  */
 
 export interface AmazonProduct {

@@ -242,3 +242,59 @@ root.render(
     </AuthProvider>
   </ErrorBoundary>
 );
+// 🧪 Exponer tests de diagnóstico en desarrollo
+if (import.meta.env.DEV) {
+  // Test granulares (recomendados)
+  // @ts-ignore
+  window.testLevel1 = async () => {
+    const { testLevel1_CanvasPuro } = await import('./services/studio/test/testGranular');
+    return testLevel1_CanvasPuro();
+  };
+  // @ts-ignore
+  window.testLevel2 = async () => {
+    const { testLevel2_ConDataURI } = await import('./services/studio/test/testGranular');
+    return testLevel2_ConDataURI();
+  };
+  // @ts-ignore
+  window.testLevel3 = async () => {
+    const { testLevel3_ImagenExterna } = await import('./services/studio/test/testGranular');
+    return testLevel3_ImagenExterna();
+  };
+  // @ts-ignore
+  window.testLevel4 = async () => {
+    const { testLevel4_FlujoRealConDataURI } = await import('./services/studio/test/testGranular');
+    return testLevel4_FlujoRealConDataURI();
+  };
+  // @ts-ignore
+  window.testLevel5 = async () => {
+    const { testLevel5_FlujoRealConBrave } = await import('./services/studio/test/testGranular');
+    return testLevel5_FlujoRealConBrave();
+  };
+  // @ts-ignore
+  window.testLevel6 = async () => {
+    const { testLevel6_VideoConAudio } = await import('./services/studio/test/testGranular');
+    return testLevel6_VideoConAudio();
+  };
+  // @ts-ignore
+  window.testAllLevels = async () => {
+    const { testAllLevels } = await import('./services/studio/test/testGranular');
+    return testAllLevels();
+  };
+  
+  // Test original
+  // @ts-ignore
+  window.testNoAudio = async () => {
+    const { testNoAudio } = await import('./services/studio/test/testNoAudio');
+    return testNoAudio();
+  };
+  
+  console.log('🧪 Tests disponibles:');
+  console.log('   testLevel1()     - Canvas puro (sin imágenes)');
+  console.log('   testLevel2()     - Con imágenes Data URI');
+  console.log('   testLevel3()     - Con imagen externa');
+  console.log('   testLevel4()     - Flujo real + Data URI');
+  console.log('   testLevel5()     - Flujo real + Brave');
+  console.log('   testLevel6()     - Flujo real + Audio + Video ✨');
+  console.log('   testAllLevels()  - Ejecutar todos en secuencia');
+  console.log('   testNoAudio()    - Test original');
+}

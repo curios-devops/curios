@@ -5,17 +5,20 @@
 
 import { ChapterPlan, ChapterInfo, ChapterDescriptor, TimelineEntry } from '../types';
 import { BraveImageService } from '../assets/braveImageService';
+import { GoogleImageService } from '../assets/googleImageService';
 import { PexelsService } from '../assets/pexelsService';
 import { ElevenLabsService } from '../assets/elevenLabsService';
 import { logger } from '../../../utils/logger';
 
 export class InputManager {
   private imageService: BraveImageService;
+  private googleImageService: GoogleImageService;
   private videoService: PexelsService;
   private ttsService: ElevenLabsService;
   
   constructor() {
     this.imageService = new BraveImageService();
+    this.googleImageService = new GoogleImageService();
     this.videoService = new PexelsService();
     this.ttsService = new ElevenLabsService();
   }
@@ -59,10 +62,10 @@ export class InputManager {
     // 1. Buscar video de fondo (Pexels)
     const backgroundVideo = await this.searchBackgroundVideo(info.keywords, info.narration);
     
-    // 2. Buscar imágenes de overlay (Brave)
-    const images = await this.searchImages(info.keywords, info.narration);
+    // 2. Buscar imágenes de overlay - MIX de Brave (específicas) + Pexels (stock profesional)
+    const images = await this.searchMixedImages(info.keywords);
     
-    // 3. Generar audio TTS (por ahora mock, implementar después)
+    // 3. Generar audio TTS
     const audioBlob = await this.generateTTS(info.narration);
     
     // 4. Calcular timeline
@@ -81,7 +84,7 @@ export class InputManager {
         })),
         audio: audioBlob,
         music: undefined, // Por ahora sin música
-        backgroundVideo // NUEVO: video de fondo de Pexels
+        backgroundVideo // Video de fondo de Pexels
       },
       timeline,
       text: info.narration,
@@ -134,11 +137,99 @@ export class InputManager {
   }
 
   /**
-   * Buscar imágenes usando Brave Image Service
+   * Buscar MIX de imágenes: Brave (específicas) + Pexels (stock profesional)
+   * Estrategia: 60% Brave + 40% Pexels para balance entre relevancia y calidad
    */
-  private async searchImages(keywords: string[], narration: string): Promise<string[]> {
+  private async searchMixedImages(keywords: string[]): Promise<string[]> {
+    const searchQuery = keywords.slice(0, 3).join(' ');
+    const mixedImages: string[] = [];
+    
+    logger.info('[InputManager] 🎬 Buscando MIX de imágenes (Brave + Pexels)', { 
+      query: searchQuery,
+      target: '~2 Brave + ~1 Pexels' 
+    });
+    
+    try {
+      // PASO 1: Buscar con Brave (imágenes específicas al tema)
+      logger.info('[InputManager] 📸 Paso 1: Brave (imágenes específicas)');
+      const braveResults = await this.imageService.searchForScene(
+        searchQuery,
+        'neutral',
+        { count: 4 } // Buscamos 4, esperamos ~2 válidas
+      );
+      
+      if (braveResults.length > 0) {
+        const braveUrls = braveResults.map(img => img.url);
+        const validatedBrave = await this.validateAndSanitizeImages(braveUrls);
+        
+        logger.info('[InputManager] Brave resultado', { 
+          found: braveUrls.length,
+          valid: validatedBrave.length 
+        });
+        
+        // Agregar hasta 2 imágenes de Brave
+        mixedImages.push(...validatedBrave.slice(0, 2));
+      }
+      
+      // PASO 2: Buscar con Pexels (stock profesional, siempre CORS-safe)
+      logger.info('[InputManager] 🎨 Paso 2: Pexels (stock profesional)');
+      const pexelsUrls = await this.getPexelsPhotos(searchQuery, 2);
+      
+      if (pexelsUrls.length > 0) {
+        logger.info('[InputManager] Pexels resultado', { 
+          found: pexelsUrls.length 
+        });
+        
+        // Agregar hasta 1 imagen de Pexels
+        mixedImages.push(...pexelsUrls.slice(0, 1));
+      }
+      
+      // PASO 3: Verificar si tenemos suficientes imágenes (mínimo 3)
+      if (mixedImages.length >= 3) {
+        logger.info('[InputManager] ✅ Mix exitoso', { 
+          total: mixedImages.length,
+          sources: 'Brave + Pexels' 
+        });
+        return mixedImages.slice(0, 3);
+      }
+      
+      // PASO 4: Si no tenemos suficientes, completar con Google Images
+      logger.warn('[InputManager] ⚠️ Mix insuficiente, completando con Google', { 
+        current: mixedImages.length,
+        needed: 3 
+      });
+      
+      const googleUrls = await this.getGoogleImages(searchQuery);
+      mixedImages.push(...googleUrls);
+      
+      if (mixedImages.length >= 3) {
+        logger.info('[InputManager] ✅ Mix completado con Google', { 
+          total: mixedImages.length 
+        });
+        return mixedImages.slice(0, 3);
+      }
+      
+      // PASO 5: Último recurso - placeholders
+      logger.warn('[InputManager] ⚠️ Todas las fuentes insuficientes, usando placeholders');
+      const placeholders = this.getPlaceholderImages();
+      mixedImages.push(...placeholders);
+      
+      return mixedImages.slice(0, 3);
+      
+    } catch (error) {
+      logger.error('[InputManager] Error crítico en búsqueda mixta', { error });
+      return this.getPlaceholderImages();
+    }
+  }
+
+  /**
+   * Buscar imágenes usando Brave Image Service con fallback inteligente
+   * @deprecated - Usar searchMixedImages en su lugar
+   */
+  // @ts-expect-error - Deprecated method kept for reference
+  private async searchImages(keywords: string[]): Promise<string[]> {
     // En producción: buscar imágenes reales con Brave API
-    // Si falla la búsqueda, usa placeholders como fallback
+    // Si falla la búsqueda, usa Google Images y luego Pexels como fallback
     const USE_PLACEHOLDERS = false; // true = testing con placeholders, false = producción con imágenes reales
     
     if (USE_PLACEHOLDERS) {
@@ -146,36 +237,299 @@ export class InputManager {
       return this.getPlaceholderImages();
     }
     
+    const searchQuery = keywords.slice(0, 3).join(' ');
+    
     try {
-      // Buscar hasta 3 imágenes usando Brave
-      const searchQuery = keywords.slice(0, 3).join(' ');
-      const results = await this.imageService.searchForScene(
+      // Paso 1: Intentar con Brave (primario)
+      // Brave ahora excluye automáticamente sitios problemáticos (Freepik, iStock, etc.)
+      logger.info('[InputManager] 🔍 Paso 1: Buscando con Brave (CORS-safe sources)...', { query: searchQuery });
+      const braveResults = await this.imageService.searchForScene(
         searchQuery,
         'neutral',
-        { count: 3 }
+        { count: 6 } // Reducimos a 6 ya que ahora filtramos en origen
+      );
+      
+      if (braveResults.length > 0) {
+        const urls = braveResults.map(img => img.url);
+        logger.info('[InputManager] Imágenes Brave encontradas, validando...', { count: urls.length });
+        
+        // Validar y sanitizar imágenes (esto descarta las que causan CORS)
+        const validatedUrls = await this.validateAndSanitizeImages(urls);
+        const failureRate = urls.length > 0 
+          ? ((urls.length - validatedUrls.length) / urls.length) * 100 
+          : 0;
+        
+        logger.info('[InputManager] Resultado validación Brave', { 
+          original: urls.length,
+          valid: validatedUrls.length,
+          failed: urls.length - validatedUrls.length,
+          failureRate: `${failureRate.toFixed(1)}%`
+        });
+        
+        // Con sitios problemáticos excluidos, deberíamos tener mejor tasa de éxito
+        // Umbral más relajado: 40% (antes era 60%)
+        if (validatedUrls.length >= 3 && failureRate < 40) {
+          logger.info('[InputManager] ✅ Brave exitoso (baja tasa de fallo)', { 
+            count: validatedUrls.length,
+            failureRate: `${failureRate.toFixed(1)}%`
+          });
+          return validatedUrls.slice(0, 3);
+        }
+        
+        // Si tasa moderada de fallo (40-70%), advertir pero continuar si tenemos suficientes
+        if (validatedUrls.length >= 3 && failureRate < 70) {
+          logger.warn('[InputManager] ⚠️ Tasa moderada de fallo CORS', { 
+            failureRate: `${failureRate.toFixed(1)}%`,
+            valid: validatedUrls.length,
+            action: 'Usando imágenes válidas de Brave'
+          });
+          return validatedUrls.slice(0, 3);
+        }
+        
+        // Si alta tasa de fallo (>70%), ir directo a Google
+        if (failureRate >= 70) {
+          logger.warn('[InputManager] ⚠️ Alta tasa de fallo CORS en Brave', { 
+            failureRate: `${failureRate.toFixed(1)}%`,
+            action: 'Saltando a Google Images'
+          });
+        } else {
+          logger.warn('[InputManager] ⚠️ Pocas imágenes Brave válidas', { 
+            valid: validatedUrls.length,
+            needed: 3
+          });
+        }
+      } else {
+        logger.debug('[InputManager] Brave no retornó imágenes, usando fallback');
+      }
+      
+      // Paso 2: Fallback a Google Images (SERPAPI)
+      logger.debug('[InputManager] Intentando Google Images...', { query: searchQuery });
+      const googleImages = await this.getGoogleImages(searchQuery);
+      
+      if (googleImages.length >= 3) {
+        return googleImages.slice(0, 3);
+      }
+      
+      // Paso 3: Fallback final a Pexels (stock photos, siempre tienen CORS)
+      logger.debug('[InputManager] Intentando Pexels...', { query: searchQuery });
+      const pexelsImages = await this.getPexelsPhotos(searchQuery, 3);
+      
+      if (pexelsImages.length >= 3) {
+        return pexelsImages.slice(0, 3);
+      }
+      
+      // Si llegamos aquí, retornar lo que tengamos (aunque sean menos de 3)
+      if (pexelsImages.length === 0) {
+        logger.warn('[InputManager] ⚠️ No se encontraron imágenes en ninguna fuente', { query: searchQuery });
+      }
+      return pexelsImages.length > 0 ? pexelsImages : this.getPlaceholderImages();
+      
+    } catch (error) {
+      logger.error('[InputManager] Error crítico buscando imágenes', { keywords, error });
+      
+      // Último recurso: Pexels directo
+      try {
+        logger.info('[InputManager] 🆘 Último recurso: Pexels directo');
+        return await this.getPexelsPhotos(searchQuery, 3);
+      } catch (pexelsError) {
+        logger.error('[InputManager] Pexels también falló', { error: pexelsError });
+        return this.getPlaceholderImages(); // Placeholders como última opción
+      }
+    }
+  }
+
+  /**
+   * Validar y sanitizar imágenes para evitar problemas de CORS/tainted canvas
+   * Convierte imágenes válidas a Data URIs
+   */
+  private async validateAndSanitizeImages(urls: string[]): Promise<string[]> {
+    const validatedUrls: string[] = [];
+    const testCanvas = document.createElement('canvas');
+    const testCtx = testCanvas.getContext('2d');
+    
+    if (!testCtx) {
+      logger.error('[InputManager] No se pudo crear contexto de canvas para validación');
+      return [];
+    }
+
+    testCanvas.width = 720;
+    testCanvas.height = 1280;
+
+    logger.debug('[InputManager] Validando imágenes', { total: urls.length });
+
+    for (const url of urls) {
+      try {
+        // Intentar cargar imagen
+        const img = await this.loadImage(url);
+        
+        // Validar dimensiones mínimas
+        if (img.width < 400 || img.height < 400) {
+          // Silencioso: imagen muy pequeña
+          continue;
+        }
+
+        // Intentar dibujar en canvas para detectar taint
+        testCtx.clearRect(0, 0, testCanvas.width, testCanvas.height);
+        testCtx.drawImage(img, 0, 0, testCanvas.width, testCanvas.height);
+        
+        // Intentar leer datos - si falla, el canvas está tainted (CORS issue)
+        try {
+          const dataUrl = testCanvas.toDataURL('image/jpeg', 0.85);
+          
+          // Validar que el dataURL no esté vacío
+          if (dataUrl && dataUrl.length > 1000) {
+            validatedUrls.push(dataUrl);
+          }
+        } catch (securityError) {
+          // Silencioso: CORS issue común, no es error crítico
+        }
+        
+      } catch (loadError) {
+        // Silencioso: error de carga común
+      }
+    }
+
+    const successRate = urls.length > 0 ? (validatedUrls.length / urls.length * 100).toFixed(0) : 0;
+    
+    // Solo mostrar warning si la tasa de éxito es muy baja
+    if (validatedUrls.length < urls.length * 0.3) {
+      logger.warn('[InputManager] ⚠️ Muchas imágenes descartadas por CORS', { 
+        original: urls.length,
+        validated: validatedUrls.length,
+        successRate: `${successRate}%`
+      });
+    } else {
+      logger.debug('[InputManager] Validación completa', { 
+        validated: validatedUrls.length,
+        successRate: `${successRate}%`
+      });
+    }
+
+    return validatedUrls;
+  }
+
+  /**
+   * Cargar imagen como promesa
+   */
+  private loadImage(url: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous'; // Intentar CORS
+      
+      img.onload = () => resolve(img);
+      img.onerror = (error) => reject(error);
+      
+      // Timeout de 10 segundos
+      setTimeout(() => {
+        if (!img.complete) {
+          reject(new Error('Image load timeout'));
+        }
+      }, 10000);
+      
+      img.src = url;
+    });
+  }
+
+  /**
+   * Obtener imágenes de Google Images como fallback (usando SERPAPI)
+   */
+  private async getGoogleImages(query: string): Promise<string[]> {
+    try {
+      logger.info('[InputManager] Buscando imágenes en Google Images (SERPAPI)', { query });
+      
+      // Verificar si Google Images está habilitado
+      if (!this.googleImageService.isEnabled()) {
+        logger.warn('[InputManager] Google Images no configurado, usando Pexels');
+        return this.getPexelsPhotos(query, 3);
+      }
+      
+      // Buscar hasta 6 imágenes (intentamos más porque algunas pueden fallar validación)
+      const results = await this.googleImageService.searchForScene(
+        query,
+        'neutral',
+        { count: 6, hl: 'en', gl: 'us' }
       );
       
       if (results.length > 0) {
-        return results.map(img => img.url);
+        const urls = results.map(img => img.url);
+        logger.info('[InputManager] Imágenes Google encontradas, validando...', { count: urls.length });
+        
+        // Validar y sanitizar imágenes (esto descarta las que causan CORS)
+        const validatedUrls = await this.validateAndSanitizeImages(urls);
+        
+        if (validatedUrls.length >= 3) {
+          logger.info('[InputManager] ✅ Imágenes Google validadas exitosamente', { count: validatedUrls.length });
+          return validatedUrls.slice(0, 3);
+        }
+        
+        logger.warn('[InputManager] Pocas imágenes Google válidas', { 
+          original: urls.length,
+          valid: validatedUrls.length 
+        });
       }
       
-      // Fallback: intentar con narración
-      const fallbackResults = await this.imageService.searchForScene(
-        narration.slice(0, 50),
-        'neutral',
-        { count: 3 }
-      );
+      // Si Google también falla, usar Pexels
+      logger.warn('[InputManager] Google Images insuficientes, usando Pexels fallback');
+      return this.getPexelsPhotos(query, 3);
       
-      if (fallbackResults.length > 0) {
-        return fallbackResults.map(img => img.url);
+    } catch (error) {
+      logger.error('[InputManager] Error obteniendo imágenes Google', { error });
+      return this.getPexelsPhotos(query, 3);
+    }
+  }
+
+  /**
+   * Obtener imágenes de Pexels como último fallback (siempre tienen CORS habilitado)
+   * Usa fotos de stock profesionales, genéricas pero hermosas
+   */
+  /**
+   * Obtener fotos de Pexels (stock profesional con CORS habilitado)
+   */
+  private async getPexelsPhotos(query: string, count: number = 3): Promise<string[]> {
+    try {
+      logger.info('[InputManager] Buscando en Pexels Stock Photos', { query, count });
+      
+      // Verificar si Pexels está habilitado
+      const pexelsEnabled = !!import.meta.env.VITE_PEXELS_API_KEY;
+      if (!pexelsEnabled) {
+        logger.warn('[InputManager] Pexels no configurado');
+        return [];
       }
       
-      // Si no hay resultados, usar placeholders
-      logger.warn('[InputManager] No se encontraron imágenes, usando placeholders', { keywords });
+      // Buscar fotos verticales (portrait) para shorts/reels
+      const results = await this.videoService.searchPhotos(query, {
+        perPage: count + 2, // Pedir más por si alguna falla validación
+        orientation: 'portrait'
+      });
+      
+      if (results.photos && results.photos.length > 0) {
+        // Usar URLs large (alta calidad) que tienen CORS habilitado
+        const urls = results.photos.map(photo => photo.src.large);
+        
+        logger.info('[InputManager] Fotos Pexels encontradas, validando...', { count: urls.length });
+        
+        // Pexels SIEMPRE tiene CORS, pero validamos por consistencia
+        const validatedUrls = await this.validateAndSanitizeImages(urls);
+        
+        if (validatedUrls.length >= 3) {
+          logger.info('[InputManager] ✅ Pexels Stock exitoso', { 
+            count: validatedUrls.length,
+            type: 'professional stock photos'
+          });
+          return validatedUrls.slice(0, 3);
+        }
+        
+        // Si no tenemos suficientes, usar placeholders para completar
+        logger.warn('[InputManager] Pocas fotos Pexels, completando con placeholders');
+        const placeholders = this.getPlaceholderImages();
+        return [...validatedUrls, ...placeholders].slice(0, 3);
+      }
+      
+      logger.warn('[InputManager] Pexels no retornó fotos, usando placeholders');
       return this.getPlaceholderImages();
       
     } catch (error) {
-      logger.warn('[InputManager] Error buscando imágenes', { keywords, error });
+      logger.error('[InputManager] Error obteniendo fotos Pexels', { error });
       return this.getPlaceholderImages();
     }
   }
@@ -193,7 +547,8 @@ export class InputManager {
   }
 
   /**
-   * Generar audio TTS con ElevenLabs (primario) y OpenAI (fallback)
+   * Generar audio TTS con OpenAI (primario) y ElevenLabs (fallback)
+   * OpenAI es primario porque ElevenLabs free tier fue deshabilitado por actividad inusual
    */
   private async generateTTS(text: string): Promise<Blob> {
     logger.info('[InputManager] Generando TTS', { 
@@ -201,31 +556,29 @@ export class InputManager {
       words: text.split(' ').length 
     });
     
-    // 1. Intentar con ElevenLabs (primario)
-    if (this.ttsService.isConfigured()) {
-      logger.debug('[InputManager] Usando ElevenLabs TTS');
-      const audioBlob = await this.ttsService.generateTTS(text);
-      
-      if (audioBlob) {
-        logger.info('[InputManager] ElevenLabs TTS exitoso');
-        return audioBlob;
-      } else {
-        logger.warn('[InputManager] ElevenLabs TTS falló, intentando fallback');
-      }
-    } else {
-      logger.debug('[InputManager] ElevenLabs no configurado, usando fallback');
-    }
-    
-    // 2. Fallback: OpenAI TTS
+    // 1. Intentar con OpenAI TTS (primario - más confiable y sin límites free tier)
     try {
-      logger.debug('[InputManager] Intentando OpenAI TTS fallback');
+      logger.debug('[InputManager] Usando OpenAI TTS (primario)');
       const audioBlob = await this.generateOpenAITTS(text);
       if (audioBlob) {
-        logger.info('[InputManager] OpenAI TTS fallback exitoso');
+        logger.info('[InputManager] OpenAI TTS exitoso');
         return audioBlob;
       }
     } catch (error) {
-      logger.warn('[InputManager] OpenAI TTS fallback falló', { error });
+      logger.warn('[InputManager] OpenAI TTS falló, intentando fallback', { error });
+    }
+    
+    // 2. Fallback: ElevenLabs TTS (requiere paid plan)
+    if (this.ttsService.isConfigured()) {
+      logger.debug('[InputManager] Intentando ElevenLabs TTS fallback');
+      const audioBlob = await this.ttsService.generateTTS(text);
+      
+      if (audioBlob) {
+        logger.info('[InputManager] ElevenLabs TTS fallback exitoso');
+        return audioBlob;
+      } else {
+        logger.warn('[InputManager] ElevenLabs TTS fallback falló');
+      }
     }
     
     // 3. Último recurso: Audio silencioso
@@ -234,69 +587,65 @@ export class InputManager {
   }
 
   /**
-   * OpenAI TTS fallback (via Netlify Function)
+   * OpenAI TTS fallback (via existing fetch-openai Supabase Edge Function)
    */
   private async generateOpenAITTS(text: string): Promise<Blob | null> {
     try {
-      logger.debug('[InputManager] Calling OpenAI TTS via Netlify Function', { 
+      logger.debug('[InputManager] Calling OpenAI TTS via fetch-openai', { 
         textLength: text.length 
       });
 
-      // En desarrollo: usar puerto 8888 (Netlify Dev)
-      // En producción: usar URL relativa
-      const netlifyFunctionUrl = import.meta.env.DEV
-        ? 'http://localhost:8888/.netlify/functions/openai-tts'
-        : '/.netlify/functions/openai-tts';
+      const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const response = await fetch(netlifyFunctionUrl, {
+      if (!supabaseEdgeUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration missing');
+      }
+
+      // Use fetch-openai edge function with TTS-specific payload
+      const payload = {
+        prompt: JSON.stringify({
+          model: 'tts-1',
+          input: text,
+          voice: 'alloy',
+          response_format: 'mp3'
+        }),
+        tts: true // Flag to indicate this is a TTS request
+      };
+
+      const response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
         },
-        body: JSON.stringify({
-          text,
-          voice: 'alloy'
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Netlify function error: ${response.status} - ${JSON.stringify(errorData)}`);
+        const errorText = await response.text();
+        logger.error('[InputManager] OpenAI TTS error response', { 
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Supabase function error: ${response.status} - ${errorText}`);
       }
 
-      const data = await response.json();
-      if (!data.audio) {
-        throw new Error('No audio data received from Netlify function');
-      }
-
-      // Convertir base64 a Blob
-      const audioBlob = this.base64ToBlob(data.audio, 'audio/mpeg');
+      // Response is audio blob directly
+      const audioBlob = await response.blob();
       
-      logger.info('[InputManager] OpenAI TTS generated via Netlify', {
-        size: audioBlob.size,
-        sizeKB: (audioBlob.size / 1024).toFixed(2)
-      });
+      if (!audioBlob || audioBlob.size === 0) {
+        throw new Error('No audio data received from OpenAI');
+      }
+
+      logger.info('[InputManager] OpenAI TTS exitoso', { size: audioBlob.size });
 
       return audioBlob;
     } catch (error) {
       logger.error('[InputManager] OpenAI TTS error', { error });
       return null;
     }
-  }
-
-  /**
-   * Convertir base64 a Blob
-   */
-  private base64ToBlob(base64: string, mimeType: string): Blob {
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    
-    const byteArray = new Uint8Array(byteNumbers);
-    return new Blob([byteArray], { type: mimeType });
   }
 
   /**

@@ -1,0 +1,194 @@
+🎯 Principio rector (muy importante)
+
+Un chapter = un video completo, independiente y reproducible
+
+El usuario percibe un solo video largo,
+el sistema maneja una secuencia de videos cortos.
+
+No hay concatenación.
+No hay streaming raro.
+No hay MSE.
+No hay hacks.
+
+⸻
+
+🧠 Conceptos clave del nuevo sistema
+
+Chapter
+	•	Duración: 5–10 s (definido por el LLM, no arbitrario)
+	•	Contiene:
+	•	Imágenes
+	•	Texto
+	•	Audio TTS
+	•	Música (opcional)
+	•	Se renderiza como video completo (MP4/WebM)
+
+Video lógico (lo que ve el usuario)
+	•	Conjunto ordenado de chapters
+	•	Tiene:
+	•	duración total
+	•	progreso global
+	•	transcripción completa
+
+⸻
+
+🧱 Tech stack (confirmado)
+Capa
+Tech
+Frontend
+Remix + React + TypeScript
+Render
+Canvas + Web Audio API + MediaRecorder
+Player
+HTML5 <video> (secuencial)
+Storage
+Supabase Storage
+Metadata
+Supabase Database
+IA
+LLM (chapters + script) + OpenAI TTS
+IDE
+VS Code
+❌ Netlify Functions
+❌ Server-side rendering de video
+❌ FFmpeg (por ahora)
+
+⸻
+
+🧩 FLUJO END-TO-END (alto nivel del refactor)
+Mantén lo que ya tenemos desde el user query hasta la generación de chapters es decir:
+LLM → Chapters (ya está Ok)
+   ↓
+Input Manager
+   ↓
+Chapter Renderer (1 video)
+   ↓
+Chapter Player (autoplay secuencial)
+   ↓
+Background Renderer (next chapter)
+   ↓
+Supabase
+🔹 1️⃣ LLM – Definición de chapters (cerebro del sistema, ya lo tenemos)
+🔹 2️⃣ Input Manager (por chapter)
+
+Responsabilidad
+	•	Tomar la salida del LLM
+	•	Para cada chapter:
+	•	Asignar imágenes
+	•	Asociar audio TTS
+	•	Preparar timeline interno (0 → duración chapter)
+
+Salida
+	•	ChapterDescriptor[]
+	•	id
+	•	orden
+	•	duración
+	•	assets
+	•	audio
+	•	texto
+
+⸻
+
+🔹 3️⃣ Chapter Renderer (corazón del refactor)
+
+⚠️ Aquí está el reemplazo total de Netlify + chunks
+
+Responsabilidad
+	•	Renderizar UN chapter → UN video
+	•	Siempre client-side
+
+Pipeline por chapter
+	1.	Crear canvas (portrait, baja resolución)
+	2.	Crear AudioContext
+	3.	Dibujar imágenes + texto (timeline local)
+	4.	Reproducir TTS (+ música opcional)
+	5.	MediaRecorder graba solo este chapter
+	6.	Resultado: chapter_X.mp4
+
+⏱️ Tiempo típico:
+	•	Chapter de 6 s → listo en ~6–7 s
+
+⸻
+
+🔹 4️⃣ Chapter Player (UX clave)
+
+Este módulo define si la experiencia se siente premium o amateur.
+
+Responsabilidades
+	•	Reproducir chapters en secuencia
+	•	Autoplay inmediato del siguiente
+	•	Preload del siguiente chapter
+	•	Mostrar progreso global, no por chapter
+	•	Transiciones suaves (fade-in/out)
+
+UX mental del usuario
+
+“Estoy viendo un solo video que avanza”
+
+UX real
+	•	<video> cambia de source
+	•	pero el usuario no lo percibe
+
+⸻
+
+🔹 5️⃣ Render en background (magia de velocidad)
+
+Este es el killer feature.
+
+Flujo
+	1.	Renderizas chapter 1
+	2.	Empieza playback
+	3.	Mientras el usuario ve chapter 1:
+	•	Renderizas chapter 2 en background
+	4.	Termina chapter 1:
+	•	Chapter 2 ya está listo → autoplay
+	5.	Repetir
+
+🔥 Resultado:
+	•	Tiempo hasta ver algo: ~5 s
+	•	CPU distribuido
+	•	Mobile feliz
+
+⸻
+
+🔹 6️⃣ Supabase – Persistencia por chapter
+
+Storage
+	•	Cada chapter se guarda como archivo independiente
+/videos/{videoId}/chapter_01.mp4
+/videos/{videoId}/chapter_02.mp4
+Database
+	•	Tabla videos
+	•	Tabla chapters
+
+Cada chapter tiene:
+	•	order
+	•	duration
+	•	storage path
+	•	free / paid (💰)
+
+(Para el save per chapter, si no tenemos usuario logged in es decir estamos en usuario  guess , el video lo guarda la casa  - tipo usuario comodín llamado curios - si está logged in  obvio se almacena el id del usuario que lo creó ( así  para cada chapter)
+🔹 7️⃣ Monetización (nativa, sin hacks a futuro pero creando ya el campo free/paid dejemos todo free por ahora paid se incorpora luego)
+
+Tu arquitectura ya la permite 👇
+	•	Chapters 1–2 → free
+	•	Chapter 3+ → locked
+	•	Paywall antes de continuar
+	•	Ads entre chapters
+	•	“Unlock next chapter”
+
+Esto NO sería posible con un solo video.
+
+⸻
+
+🔹 8️⃣ Export final (opcional por ahora no MVP)
+
+Cuando el usuario quiere:
+
+“Descargar el video completo”
+
+Opciones futuras:
+	•	Render completo en un solo pass
+	•	O ensamblar chapters (FFmpeg, opcional)
+
+⚠️ No necesario para MVP

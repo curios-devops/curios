@@ -177,8 +177,10 @@ export type TimelineAction =
 export interface RenderProgress {
   chapterId: string;
   progress: number;        // 0-100
-  status: 'pending' | 'rendering' | 'complete' | 'error';
+  status?: 'pending' | 'rendering' | 'complete' | 'error';
   error?: string;
+  currentFrame?: number;   // Frame actual (opcional)
+  totalFrames?: number;    // Total de frames (opcional)
 }
 
 /**

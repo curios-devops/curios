@@ -16,10 +16,18 @@ export class ChapterRenderer {
   private fps: number = 30;
   
   constructor() {
-    // Crear canvas offscreen
+    // Crear canvas Y AGREGARLO AL DOM (hidden)
+    // CRÍTICO: captureStream() necesita que el canvas esté en el DOM para generar frames
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.width;
     this.canvas.height = this.height;
+    
+    // Ocultar canvas pero mantenerlo en el DOM
+    this.canvas.style.position = 'fixed';
+    this.canvas.style.top = '-9999px';
+    this.canvas.style.left = '-9999px';
+    this.canvas.style.pointerEvents = 'none';
+    document.body.appendChild(this.canvas);
     
     const context = this.canvas.getContext('2d');
     if (!context) {
@@ -31,12 +39,243 @@ export class ChapterRenderer {
     
     logger.info('[ChapterRenderer] Inicializado', { 
       resolution: `${this.width}x${this.height}`,
-      fps: this.fps 
+      fps: this.fps,
+      canvasInDOM: true
     });
   }
 
   /**
-   * Renderizar un chapter completo
+   * 🎯 VERSIÓN SIMPLE - Happy Path
+   * Renderiza chapter con lógica mínima y directa
+   * Sin: timeline compleja, video de fondo, audio, efectos complejos
+   * Solo: imágenes + texto + loop básico
+   */
+  async renderChapterSimple(
+    descriptor: ChapterDescriptor,
+    onProgress?: (progress: RenderProgress) => void
+  ): Promise<Blob> {
+    logger.info('[ChapterRenderer] 🎯 Renderizando SIMPLE', { 
+      chapterId: descriptor.id,
+      duration: descriptor.duration 
+    });
+
+    try {
+      // 1. Cargar solo imágenes (sin video de fondo)
+      const images = await this.loadImages(descriptor.assets.images);
+      logger.debug('[ChapterRenderer] Imágenes cargadas', { count: images.length });
+      
+      // 2. Preparar audio si está disponible
+      let audioTrack: MediaStreamTrack | null = null;
+      if (descriptor.assets.audio) {
+        logger.debug('[ChapterRenderer] Preparando audio track');
+        audioTrack = await this.prepareAudio(descriptor.assets.audio);
+        if (audioTrack) {
+          logger.info('[ChapterRenderer] ✅ Audio track preparado exitosamente', {
+            duration: audioTrack.getSettings().sampleRate,
+            label: audioTrack.label
+          });
+        } else {
+          logger.warn('[ChapterRenderer] ⚠️ No se pudo preparar el audio track');
+        }
+      }
+      
+      // 3. Crear stream del canvas
+      const stream = this.canvas.captureStream(this.fps);
+      
+      // Agregar audio track si está disponible
+      if (audioTrack) {
+        stream.addTrack(audioTrack);
+        logger.info('[ChapterRenderer] ✅ Audio track agregado al stream');
+      }
+      
+      // Verificar estado del track
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTracks = stream.getAudioTracks();
+      logger.debug('[ChapterRenderer] Canvas stream creado', { 
+        fps: this.fps,
+        videoTracks: stream.getVideoTracks().length,
+        audioTracks: audioTracks.length,
+        trackReadyState: videoTrack?.readyState,
+        trackEnabled: videoTrack?.enabled,
+        trackMuted: videoTrack?.muted,
+        hasAudio: audioTracks.length > 0
+      });
+      
+      // 4. Verificar soporte de MediaRecorder
+      const mimeTypes = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
+      const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+      
+      if (!supportedMimeType) {
+        logger.error('[ChapterRenderer] Ningún mimeType soportado', { 
+          tried: mimeTypes,
+          isTypeSupported: mimeTypes.map(t => ({ type: t, supported: MediaRecorder.isTypeSupported(t) }))
+        });
+        throw new Error('MediaRecorder no soporta video/webm ni video/mp4');
+      }
+      
+      logger.info('[ChapterRenderer] MimeType seleccionado', { 
+        mimeType: supportedMimeType,
+        allSupported: mimeTypes.filter(t => MediaRecorder.isTypeSupported(t))
+      });
+      
+      const recorder = new MediaRecorder(stream, {
+        mimeType: supportedMimeType,
+        videoBitsPerSecond: 2500000
+      });
+      
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+          logger.debug('[ChapterRenderer] Chunk recibido', { size: e.data.size });
+        }
+      };
+      
+      const recordingComplete = new Promise<void>((resolve) => {
+        recorder.onstop = () => {
+          logger.info('[ChapterRenderer] Grabación completa', { 
+            chunks: chunks.length,
+            totalSize: chunks.reduce((sum, c) => sum + c.size, 0)
+          });
+          resolve();
+        };
+      });
+      
+      // 4. Iniciar grabación
+      recorder.start(1000); // 1 chunk por segundo
+      logger.debug('[ChapterRenderer] Grabación iniciada');
+      
+      // 5. Renderizar frames con loop simple
+      // CRÍTICO: Usar requestAnimationFrame para sincronizar con el browser
+      const totalFrames = Math.floor(descriptor.duration * this.fps);
+      const frameDuration = 1000 / this.fps; // ms por frame
+      
+      logger.debug('[ChapterRenderer] Iniciando loop de rendering', { totalFrames });
+      
+      let frame = 0;
+      const startTime = performance.now();
+      
+      const renderFrame = () => {
+        if (frame >= totalFrames) {
+          // Loop completado
+          if (onProgress) {
+            onProgress({
+              chapterId: descriptor.id,
+              progress: 100,
+              currentFrame: totalFrames,
+              totalFrames: totalFrames
+            });
+          }
+          return;
+        }
+        
+        const progress = (frame / totalFrames) * 100;
+        
+        // Progress callback
+        if (onProgress && frame % 10 === 0) {
+          onProgress({
+            chapterId: descriptor.id,
+            progress: progress,
+            currentFrame: frame,
+            totalFrames: totalFrames
+          });
+        }
+        
+        // Seleccionar imagen (ciclar entre las disponibles)
+        const imageIndex = Math.floor((frame / totalFrames) * images.length);
+        const image = images[Math.min(imageIndex, images.length - 1)];
+        
+        // Limpiar canvas (fondo negro)
+        this.ctx.fillStyle = '#000000';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        
+        // Dibujar imagen centrada y escalada
+        this.ctx.drawImage(image, 0, 0, this.width, this.height);
+        
+        // Dibujar texto de narración (simple, en la parte inferior)
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 32px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.shadowBlur = 10;
+        
+        // Word wrap simple para el texto
+        const words = descriptor.text.split(' ');
+        const maxWidth = this.width - 100;
+        let line = '';
+        let y = this.height - 150;
+        
+        for (const word of words) {
+          const testLine = line + word + ' ';
+          const metrics = this.ctx.measureText(testLine);
+          
+          if (metrics.width > maxWidth && line.length > 0) {
+            this.ctx.fillText(line, this.width / 2, y);
+            line = word + ' ';
+            y += 40;
+          } else {
+            line = testLine;
+          }
+        }
+        this.ctx.fillText(line, this.width / 2, y);
+        
+        // Resetear shadow para no afectar próximo frame
+        this.ctx.shadowBlur = 0;
+        
+        frame++;
+        
+        // Calcular tiempo para siguiente frame
+        const elapsed = performance.now() - startTime;
+        const targetTime = frame * frameDuration;
+        const delay = Math.max(0, targetTime - elapsed);
+        
+        // Programar siguiente frame
+        setTimeout(() => requestAnimationFrame(renderFrame), delay);
+      };
+      
+      // Iniciar rendering
+      await new Promise<void>((resolve) => {
+        const checkComplete = () => {
+          if (frame >= totalFrames) {
+            resolve();
+          } else {
+            requestAnimationFrame(checkComplete);
+          }
+        };
+        
+        requestAnimationFrame(renderFrame);
+        requestAnimationFrame(checkComplete);
+      });
+      
+      logger.debug('[ChapterRenderer] Loop completado, deteniendo grabación');
+      
+      // 6. Esperar un poco y detener
+      await new Promise(resolve => setTimeout(resolve, 150));
+      recorder.stop();
+      await recordingComplete;
+      
+      // 7. Crear blob final
+      if (chunks.length === 0) {
+        throw new Error('No se generaron chunks de video');
+      }
+      
+      const videoBlob = new Blob(chunks, { type: 'video/webm' });
+      
+      logger.info('[ChapterRenderer] ✅ Video generado exitosamente', { 
+        size: videoBlob.size,
+        sizeKB: (videoBlob.size / 1024).toFixed(2)
+      });
+      
+      return videoBlob;
+      
+    } catch (error) {
+      logger.error('[ChapterRenderer] Error en renderizado simple', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Renderizar un chapter completo (VERSIÓN COMPLEJA - DEPRECADA POR AHORA)
    */
   async renderChapter(
     descriptor: ChapterDescriptor,
@@ -63,19 +302,52 @@ export class ChapterRenderer {
         stream.addTrack(audioTrack);
       }
       
+      // Verificar tracks del stream
+      const videoTracks = stream.getVideoTracks();
+      const audioTracks = stream.getAudioTracks();
+      logger.debug('[ChapterRenderer] Stream configuration', {
+        videoTracks: videoTracks.length,
+        audioTracks: audioTracks.length,
+        videoEnabled: videoTracks[0]?.enabled,
+        videoReadyState: videoTracks[0]?.readyState,
+        audioEnabled: audioTracks[0]?.enabled,
+        audioReadyState: audioTracks[0]?.readyState
+      });
+      
+      // Detectar mimeType soportado
+      const mimeTypes = [
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm'
+      ];
+      const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+      
+      if (!supportedMimeType) {
+        logger.error('[ChapterRenderer] No hay mimeType soportado para video/webm');
+        throw new Error('MediaRecorder no soporta video/webm en este navegador');
+      }
+      
+      logger.debug('[ChapterRenderer] Using mimeType', { mimeType: supportedMimeType });
+      
       const recorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9',
+        mimeType: supportedMimeType,
         videoBitsPerSecond: 2500000 // 2.5 Mbps
       });
       
       const mediaChunks: Blob[] = []; // Datos del MediaRecorder (no confundir con chapters)
       recorder.ondataavailable = (e) => {
+        logger.debug('[ChapterRenderer] ondataavailable fired', {
+          dataSize: e.data.size,
+          hasData: e.data.size > 0
+        });
         if (e.data.size > 0) {
           mediaChunks.push(e.data);
           logger.debug('[ChapterRenderer] Media chunk received', { 
             chunkSize: e.data.size,
             totalMediaChunks: mediaChunks.length 
           });
+        } else {
+          logger.warn('[ChapterRenderer] ondataavailable fired but data.size is 0');
         }
       };
       
@@ -90,8 +362,8 @@ export class ChapterRenderer {
         };
       });
       
-      // 4. Iniciar grabación (emit chunks every 100ms)
-      recorder.start(100);
+      // 4. Iniciar grabación (emit chunks every 1 second - más tiempo = chunks más estables)
+      recorder.start(1000); // Cambiar de 100ms a 1000ms
       
       logger.debug('[ChapterRenderer] MediaRecorder started', { 
         state: recorder.state,
@@ -245,6 +517,110 @@ export class ChapterRenderer {
       video.src = videoUrl;
       video.load();
     });
+  }
+
+  /**
+   * 🧪 TEST: Renderizar sin audio para diagnóstico
+   */
+  async testRenderNoAudio(
+    descriptor: ChapterDescriptor,
+    onProgress?: (progress: RenderProgress) => void
+  ): Promise<Blob> {
+    logger.info('[ChapterRenderer] 🧪 TEST: Renderizando SIN audio', { 
+      chapterId: descriptor.id,
+      duration: descriptor.duration 
+    });
+
+    try {
+      // 1. Preparar assets (solo imágenes, sin video de fondo)
+      const loadedImages = await this.loadImages(descriptor.assets.images);
+      
+      // 2. Configurar MediaRecorder SIN audio track
+      const stream = this.canvas.captureStream(this.fps);
+      
+      logger.debug('[ChapterRenderer] 🧪 Stream configuration (NO AUDIO)', {
+        videoTracks: stream.getVideoTracks().length,
+        audioTracks: stream.getAudioTracks().length
+      });
+      
+      // Detectar mimeType soportado
+      const mimeTypes = [
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm'
+      ];
+      const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+      
+      if (!supportedMimeType) {
+        logger.error('[ChapterRenderer] 🧪 TEST: No hay mimeType soportado');
+        throw new Error('MediaRecorder no soporta video/webm');
+      }
+      
+      logger.debug('[ChapterRenderer] 🧪 Using mimeType', { mimeType: supportedMimeType });
+      
+      const recorder = new MediaRecorder(stream, {
+        mimeType: supportedMimeType,
+        videoBitsPerSecond: 2500000
+      });
+      
+      const mediaChunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        logger.debug('[ChapterRenderer] 🧪 ondataavailable fired', {
+          dataSize: e.data.size,
+          hasData: e.data.size > 0
+        });
+        if (e.data.size > 0) {
+          mediaChunks.push(e.data);
+        }
+      };
+      
+      const recordingComplete = new Promise<void>((resolve) => {
+        recorder.onstop = () => {
+          logger.info('[ChapterRenderer] 🧪 MediaRecorder stopped', { 
+            totalMediaChunks: mediaChunks.length,
+            totalSize: mediaChunks.reduce((sum, c) => sum + c.size, 0)
+          });
+          resolve();
+        };
+      });
+      
+      // 3. Iniciar grabación (1 segundo de timeslice)
+      recorder.start(1000); // Cambiar de 100ms a 1000ms
+      logger.debug('[ChapterRenderer] 🧪 MediaRecorder started', { 
+        state: recorder.state,
+        mimeType: recorder.mimeType
+      });
+      
+      // 4. Renderizar frames (sin video de fondo, sin audio)
+      await this.renderTimeline(descriptor, loadedImages, undefined, onProgress);
+      
+      logger.debug('[ChapterRenderer] 🧪 Timeline complete, stopping recorder');
+      
+      // 5. Esperar y detener
+      await new Promise(resolve => setTimeout(resolve, 150));
+      recorder.stop();
+      await recordingComplete;
+      
+      // 6. Crear video blob
+      if (mediaChunks.length === 0) {
+        logger.error('[ChapterRenderer] 🧪 TEST FAILED: No chunks received!');
+        throw new Error('Test failed: No video data recorded');
+      }
+      
+      const videoBlob = new Blob(mediaChunks, { type: 'video/webm' });
+      
+      logger.info('[ChapterRenderer] 🧪 TEST SUCCESS!', { 
+        mediaChunks: mediaChunks.length,
+        size: videoBlob.size,
+        sizeKB: (videoBlob.size / 1024).toFixed(2)
+      });
+      
+      return videoBlob;
+      
+    } catch (error) {
+      logger.error('[ChapterRenderer] 🧪 TEST ERROR', { error });
+      throw error;
+    }
   }
 
   /**
@@ -502,6 +878,10 @@ export class ChapterRenderer {
    * Limpiar recursos
    */
   dispose(): void {
+    // Remover canvas del DOM
+    if (this.canvas.parentNode) {
+      this.canvas.parentNode.removeChild(this.canvas);
+    }
     this.audioContext.close();
     logger.info('[ChapterRenderer] Recursos liberados');
   }

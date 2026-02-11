@@ -6,7 +6,36 @@
 import { logger } from '../../../utils/logger';
 
 const PEXELS_API_KEY = import.meta.env.VITE_PEXELS_API_KEY || '';
-const PEXELS_API_URL = 'https://api.pexels.com/videos';
+const PEXELS_VIDEO_API_URL = 'https://api.pexels.com/videos';
+const PEXELS_PHOTO_API_URL = 'https://api.pexels.com/v1';
+
+export interface PexelsPhoto {
+  id: number;
+  width: number;
+  height: number;
+  url: string;
+  photographer: string;
+  photographer_url: string;
+  src: {
+    original: string;
+    large2x: string;
+    large: string;
+    medium: string;
+    small: string;
+    portrait: string;
+    landscape: string;
+    tiny: string;
+  };
+  alt: string;
+}
+
+export interface PexelsPhotoSearchResult {
+  total_results: number;
+  page: number;
+  per_page: number;
+  photos: PexelsPhoto[];
+  next_page?: string;
+}
 
 export interface PexelsVideo {
   id: number;
@@ -39,11 +68,60 @@ export interface PexelsSearchResult {
 
 export class PexelsService {
   private apiKey: string;
-  private baseUrl: string;
+  private videoBaseUrl: string;
+  private photoBaseUrl: string;
 
   constructor() {
     this.apiKey = PEXELS_API_KEY;
-    this.baseUrl = PEXELS_API_URL;
+    this.videoBaseUrl = PEXELS_VIDEO_API_URL;
+    this.photoBaseUrl = PEXELS_PHOTO_API_URL;
+  }
+
+  /**
+   * Search for photos by query
+   */
+  async searchPhotos(
+    query: string,
+    options: {
+      perPage?: number;
+      orientation?: 'landscape' | 'portrait' | 'square';
+    } = {}
+  ): Promise<PexelsPhotoSearchResult> {
+    const { perPage = 5, orientation = 'portrait' } = options;
+
+    if (!this.apiKey) {
+      logger.warn('[Pexels] API key not configured');
+      return { total_results: 0, page: 1, per_page: 0, photos: [] };
+    }
+
+    try {
+      const params = new URLSearchParams({
+        query,
+        per_page: perPage.toString(),
+        orientation,
+      });
+
+      const response = await fetch(`${this.photoBaseUrl}/search?${params}`, {
+        headers: {
+          Authorization: this.apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Pexels Photo API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.info('[Pexels Photos] Search complete', {
+        query,
+        results: data.photos.length,
+      });
+
+      return data;
+    } catch (error) {
+      logger.error('[Pexels Photos] Search failed', { error, query });
+      return { total_results: 0, page: 1, per_page: 0, photos: [] };
+    }
   }
 
   /**
@@ -72,7 +150,7 @@ export class PexelsService {
         size,
       });
 
-      const response = await fetch(`${this.baseUrl}/search?${params}`, {
+      const response = await fetch(`${this.videoBaseUrl}/search?${params}`, {
         headers: {
           Authorization: this.apiKey,
         },
@@ -206,7 +284,7 @@ export class PexelsService {
         orientation,
       });
 
-      const response = await fetch(`${this.baseUrl}/popular?${params}`, {
+      const response = await fetch(`${this.videoBaseUrl}/popular?${params}`, {
         headers: {
           Authorization: this.apiKey,
         },

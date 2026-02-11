@@ -111,6 +111,73 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Check if this is a TTS request
+    if (body.tts) {
+      console.log('🔊 TTS request received');
+      
+      // Parse TTS parameters from prompt
+      let ttsParams;
+      try {
+        ttsParams = typeof body.prompt === 'string' ? JSON.parse(body.prompt) : body.prompt;
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid TTS parameters' }), {
+          status: 400,
+          headers: corsHeaders
+        });
+      }
+
+      const ttsPayload = {
+        model: ttsParams.model || 'tts-1',
+        input: ttsParams.input,
+        voice: ttsParams.voice || 'alloy',
+        response_format: ttsParams.response_format || 'mp3'
+      };
+
+      console.log('📝 TTS payload:', { model: ttsPayload.model, voice: ttsPayload.voice, inputLength: ttsPayload.input?.length });
+
+      // Call OpenAI TTS API
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
+      };
+      
+      if (OPENAI_ORG_ID) {
+        headers["OpenAI-Organization"] = OPENAI_ORG_ID;
+      }
+
+      const response = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: "POST",
+        headers,
+        body: JSON.stringify(ttsPayload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('OpenAI TTS API error:', { status: response.status, error });
+        return new Response(JSON.stringify({ error: `OpenAI TTS error: ${response.status}`, details: error }), {
+          status: response.status,
+          headers: corsHeaders
+        });
+      }
+
+      // Return audio blob directly
+      const audioBlob = await response.blob();
+      console.log('🎵 TTS audio generated:', { size: audioBlob.size });
+      
+      return new Response(audioBlob, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "audio/mpeg"
+        }
+      });
+    }
+
     // Otherwise, handle as chat completion request
     const { prompt, stream: enableStreaming } = body;
     
