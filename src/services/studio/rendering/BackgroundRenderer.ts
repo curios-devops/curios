@@ -133,7 +133,15 @@ export class BackgroundRenderer {
     // 2. Subir a Supabase Storage
     // Path: {videoId}/{chapterId}.webm (bucket 'videos' already in .from())
     const fileName = `${videoId}/${chapter.id}.webm`;
-    const { error } = await supabase.storage
+    
+    logger.debug('[BackgroundRenderer] Intentando upload', {
+      bucket: 'videos',
+      fileName,
+      size: videoBlob.size,
+      type: videoBlob.type
+    });
+
+    const { data, error } = await supabase.storage
       .from('videos')
       .upload(fileName, videoBlob, {
         contentType: 'video/webm',
@@ -141,8 +149,20 @@ export class BackgroundRenderer {
       });
 
     if (error) {
+      logger.error('[BackgroundRenderer] Error en upload', {
+        message: error.message,
+        statusCode: (error as any).statusCode,
+        error: JSON.stringify(error),
+        fileName,
+        blobSize: videoBlob.size
+      });
       throw new Error(`Error subiendo chapter: ${error.message}`);
     }
+
+    logger.debug('[BackgroundRenderer] Upload exitoso', {
+      fileName,
+      data
+    });
 
     // 3. Obtener URL pública
     const { data: urlData } = supabase.storage
