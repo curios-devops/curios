@@ -41,7 +41,7 @@ FOR DELETE
 TO authenticated
 USING (
   bucket_id = 'videos' 
-  AND (auth.uid())::text = owner
+  AND auth.uid() = owner::uuid
 );
 
 -- 5. Allow authenticated users to update/overwrite videos (upsert)
