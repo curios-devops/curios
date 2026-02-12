@@ -155,7 +155,7 @@ export class GlobalImageSearchAgent {
 
     try {
       // Construir prompt para GPT-4o-mini
-      const prompt = this.buildAssignmentPrompt(chapters, globalImages);
+      const promptText = this.buildAssignmentPrompt(chapters, globalImages);
 
       // Obtener configuración de Supabase
       const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
@@ -165,17 +165,9 @@ export class GlobalImageSearchAgent {
         throw new Error('Supabase configuration missing for OpenAI API');
       }
 
-      // Llamar a GPT-4o-mini via fetch-openai edge function
-      const response = await fetch(supabaseEdgeUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          temperature: 0.3,
-          response_format: { type: 'json_object' },
+      // Preparar payload en el formato que espera fetch-openai edge function
+      const payload = {
+        prompt: JSON.stringify({
           messages: [
             {
               role: 'system',
@@ -183,18 +175,58 @@ export class GlobalImageSearchAgent {
             },
             {
               role: 'user',
-              content: prompt
+              content: promptText
             }
-          ]
+          ],
+          model: 'gpt-4o-mini',
+          temperature: 0.3,
+          response_format: { type: 'json_object' }
         })
+      };
+
+      logger.debug('[GlobalImageSearch] Llamando a GPT-4o-mini para asignación', {
+        promptLength: promptText.length
+      });
+
+      // Llamar a GPT-4o-mini via fetch-openai edge function
+      const response = await fetch(supabaseEdgeUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('[GlobalImageSearch] OpenAI API error', { 
+          status: response.status, 
+          error: errorText.substring(0, 200) 
+        });
         throw new Error(`OpenAI API error: ${response.status}`);
       }
 
       const data = await response.json();
-      const result = JSON.parse(data.choices[0].message.content);
+      
+      if (!data.text) {
+        throw new Error('No content in OpenAI response');
+      }
+
+      // Parse response (puede venir como objeto o string)
+      let result;
+      if (typeof data.text === 'object') {
+        result = data.text;
+      } else if (typeof data.text === 'string') {
+        const cleanText = data.text.trim().replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '');
+        result = JSON.parse(cleanText);
+      } else {
+        throw new Error('Unexpected response format from OpenAI');
+      }
+
+      logger.debug('[GlobalImageSearch] LLM response received', {
+        hasAssignments: !!result.assignments
+      });
 
       return this.parseAssignmentResult(result, chapters, globalImages);
       
