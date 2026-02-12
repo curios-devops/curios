@@ -17,6 +17,7 @@ serve(async (req: Request) => {
     const query = url.searchParams.get('query') || 'CuriosAI - AI-Powered Search';
     const snippet = url.searchParams.get('snippet') || 'Get comprehensive AI-powered search results with insights, analysis, and curated information from multiple sources.';
     const image = url.searchParams.get('image') || '';
+    const forcePreview = url.searchParams.get('preview') === 'true'; // Force preview mode
 
     // Enhanced bot detection - LinkedIn, Twitter, Facebook, WhatsApp crawlers
     const userAgent = req.headers.get('user-agent') || '';
@@ -35,10 +36,12 @@ serve(async (req: Request) => {
     console.log('- Query:', query);
     console.log('- Snippet length:', snippet.length);
     console.log('- Image provided:', !!image);
+    console.log('- Force Preview:', forcePreview);
 
     // For human users with real browsers, redirect to actual search results
+    // UNLESS preview mode is forced (for testing/debugging)
     // Bots and tools get the HTML with meta tags for previews
-    if (!isBot && userAgent.includes('Mozilla') && acceptHeader.includes('text/html')) {
+    if (!forcePreview && !isBot && userAgent.includes('Mozilla') && acceptHeader.includes('text/html')) {
       console.log('- Redirecting human browser to search page');
       return new Response(null, {
         status: 302,
@@ -96,21 +99,20 @@ serve(async (req: Request) => {
     const baseUrl = 'https://curiosai.com';
 
     // OPEN GRAPH IMAGE (used by LinkedIn and Facebook)
-    // Priority: 1) Provided search result image (PNG/JPG - works everywhere)
-    //           2) Dynamic SVG (works for LinkedIn, not Facebook)
-    // LinkedIn supports SVG, Facebook does NOT - so prefer PNG/JPG when available
+    // LinkedIn is VERY picky about images - ALWAYS use PNG/JPG, never SVG
+    // Priority: 1) Provided search result image (PNG/JPG)
+    //           2) Static fallback PNG (reliable for LinkedIn)
     let ogImage: string;
     let ogImageType: string;
     if (image && image.startsWith('http')) {
       // Use provided image from search results (usually PNG/JPG from the article)
-      // This works for both LinkedIn AND Facebook
       ogImage = image;
-      ogImageType = 'image/jpeg'; // Assume JPG for article images
+      ogImageType = 'image/jpeg';
     } else {
-      // Fallback to dynamic SVG - works great for LinkedIn
-      // Facebook may not render this well, but will show title/description
-      ogImage = `${baseUrl}/functions/v1/social-og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
-      ogImageType = 'image/svg+xml';
+      // FALLBACK: Use static PNG - LinkedIn hates dynamic/SVG images
+      // This ensures LinkedIn ALWAYS gets a valid image
+      ogImage = `${baseUrl}/curiosai-og-image-1200x627.png`;
+      ogImageType = 'image/png';
     }
     
     // TWITTER: Uses separate proxy to ensure reliable image loading
