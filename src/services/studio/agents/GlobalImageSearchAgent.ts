@@ -157,10 +157,21 @@ export class GlobalImageSearchAgent {
       // Construir prompt para GPT-4o-mini
       const prompt = this.buildAssignmentPrompt(chapters, globalImages);
 
-      // Llamar a GPT-4o-mini
-      const response = await fetch('/functions/v1/fetch-openai', {
+      // Obtener configuración de Supabase
+      const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseEdgeUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration missing for OpenAI API');
+      }
+
+      // Llamar a GPT-4o-mini via fetch-openai edge function
+      const response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           temperature: 0.3,

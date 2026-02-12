@@ -1,3 +1,16 @@
+/**
+ * DEPRECATED: This Supabase Edge Function has been replaced by Netlify Function
+ * 
+ * Reason: LinkedIn requires Content-Type: text/html; charset=utf-8
+ * Netlify proxy was overriding Supabase's Content-Type to text/plain
+ * 
+ * Current implementation: netlify/functions/social-share.js
+ * Active since: Feb 12, 2026
+ * 
+ * This file is kept for reference only.
+ */
+
+/*
 // @ts-ignore - Deno import
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
@@ -152,3 +165,9 @@ serve(async (req: Request) => {
     );
   }
 });
+*/
+
+// Placeholder export to avoid Deno deploy errors
+export default {
+  fetch: () => new Response('This function has been moved to Netlify', { status: 410 })
+};
