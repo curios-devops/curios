@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Video Upload to Supabase</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Test Video Upload</h1>
+  <button id="testBtn">Test Upload Video Blob</button>
+  <pre id="output"></pre>
+
+  <script>
+    const output = document.getElementById('output');
+    const testBtn = document.getElementById('testBtn');
+
+    // Your Supabase credentials (from .env)
+    const SUPABASE_URL = 'https://gpfccicfqynahflehpqo.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZmNjaWNmcXluYWhmbGVocHFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxNDIyMDYsImV4cCI6MjA1MDcxODIwNn0.wLnIXxThhq144sQpUFzLd_ifimgr1oetMwvchDmMF84';
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function testUpload() {
+      output.textContent = 'Creating test video blob...\n';
+
+      // Create a simple test video blob (black screen)
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 480;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, 640, 480);
+      ctx.fillStyle = 'white';
+      ctx.font = '30px Arial';
+      ctx.fillText('Test Video', 200, 240);
+
+      // Convert to blob
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      
+      // Create a fake video blob (for testing structure)
+      const videoBlob = new Blob([blob], { type: 'video/webm' });
+      
+      output.textContent += `Blob created: ${videoBlob.size} bytes, type: ${videoBlob.type}\n\n`;
+
+      // Test different paths
+      const testCases = [
+        { bucket: 'videos', path: 'test_upload/test.webm', desc: 'Correct path' },
+        { bucket: 'videos', path: 'videos/test_upload/test.webm', desc: 'With videos/ prefix (wrong?)' }
+      ];
+
+      for (const test of testCases) {
+        output.textContent += `\n📋 Testing: ${test.desc}\n`;
+        output.textContent += `   Bucket: "${test.bucket}"\n`;
+        output.textContent += `   Path: "${test.path}"\n`;
+
+        const { data, error } = await supabaseClient.storage
+          .from(test.bucket)
+          .upload(test.path, videoBlob, {
+            contentType: 'video/webm',
+            upsert: true
+          });
+
+        if (error) {
+          output.textContent += `   ❌ ERROR:\n`;
+          output.textContent += `      Message: ${error.message}\n`;
+          output.textContent += `      Status: ${error.statusCode || 'N/A'}\n`;
+          output.textContent += `      Full error: ${JSON.stringify(error, null, 2)}\n`;
+        } else {
+          output.textContent += `   ✅ SUCCESS!\n`;
+          output.textContent += `      Path: ${data.path}\n`;
+          output.textContent += `      Full path: ${data.fullPath}\n`;
+        }
+      }
+
+      output.textContent += '\n\n🔍 Checking bucket configuration...\n';
+      
+      // Try to list files in bucket
+      const { data: files, error: listError } = await supabaseClient.storage
+        .from('videos')
+        .list('', { limit: 5 });
+
+      if (listError) {
+        output.textContent += `❌ List error: ${listError.message}\n`;
+      } else {
+        output.textContent += `✅ Bucket accessible, ${files.length} files found\n`;
+      }
+    }
+
+    testBtn.addEventListener('click', testUpload);
+  </script>
+</body>
+</html>

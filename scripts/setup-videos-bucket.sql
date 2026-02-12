@@ -17,12 +17,22 @@ DROP POLICY IF EXISTS "Allow authenticated video uploads" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public video read" ON storage.objects;
 DROP POLICY IF EXISTS "Allow user delete own videos" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated video updates" ON storage.objects;
+DROP POLICY IF EXISTS "Allow anonymous video uploads" ON storage.objects;
 
 -- 2. Allow authenticated users to upload videos
 CREATE POLICY "Allow authenticated video uploads"
 ON storage.objects
 FOR INSERT
 TO authenticated
+WITH CHECK (
+  bucket_id = 'videos'
+);
+
+-- 2b. Allow anonymous users to upload videos (for Studio without login)
+CREATE POLICY "Allow anonymous video uploads"
+ON storage.objects
+FOR INSERT
+TO anon
 WITH CHECK (
   bucket_id = 'videos'
 );
