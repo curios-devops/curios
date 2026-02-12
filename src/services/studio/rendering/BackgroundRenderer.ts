@@ -131,7 +131,8 @@ export class BackgroundRenderer {
     const renderTime = Date.now() - startTime;
 
     // 2. Subir a Supabase Storage
-    const fileName = `videos/${videoId}/${chapter.id}.webm`;
+    // Path: {videoId}/{chapterId}.webm (bucket 'videos' already in .from())
+    const fileName = `${videoId}/${chapter.id}.webm`;
     const { error } = await supabase.storage
       .from('videos')
       .upload(fileName, videoBlob, {

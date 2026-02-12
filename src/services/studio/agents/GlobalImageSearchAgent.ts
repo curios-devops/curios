@@ -68,7 +68,7 @@ export class GlobalImageSearchAgent {
       // 4. Si quedan menos de 6, usar Google como fallback
       if (filtered.length < 6) {
         logger.warn('[GlobalImageSearch] ⚠️ Brave insuficiente, usando Google fallback');
-        const googleResults = await this.googleService.searchImages(query, { count: 10 }); // ✅ Corregido: count en lugar de perPage
+        const googleResults = await this.googleService.searchImages(query, { count: 20 }); // Máximo 20 imágenes
         
         const googleCandidates: ImageCandidate[] = googleResults.map(img => ({
           url: img.url,
