@@ -3,7 +3,7 @@
  * Reproduce chapters secuencialmente como un solo video
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChapterDescriptor } from '../types';
 import { logger } from '../../../utils/logger';
 
@@ -40,24 +40,26 @@ export const ChapterPlayer: React.FC<ChapterPlayerProps> = ({
   }, [currentChapterIndex, elapsedTime, totalDuration]);
 
   // Handler cuando termina un chapter
-  const handleChapterEnd = () => {
-    logger.info('[ChapterPlayer] Chapter terminado', {
+  const handleChapterEnd = useCallback(async () => {
+    logger.info('[ChapterPlayer] Chapter ended', {
       index: currentChapterIndex,
-      chapterId: currentChapter.id
+      chapterId: currentChapter?.id,
+      totalChapters: chapters.length
     });
 
     const nextIndex = currentChapterIndex + 1;
 
     if (nextIndex < chapters.length) {
-      // Ir al siguiente chapter
+      // Small delay before starting next chapter
+      await new Promise(resolve => setTimeout(resolve, 100));
+      logger.debug('[ChapterPlayer] Moving to next chapter', { nextIndex });
       setCurrentChapterIndex(nextIndex);
     } else {
-      // Video completo
-      logger.info('[ChapterPlayer] Video completo', { videoId });
+      logger.info('[ChapterPlayer] All chapters completed', { videoId });
       setIsPlaying(false);
       onComplete?.();
     }
-  };
+  }, [currentChapterIndex, chapters.length, videoId, onComplete, currentChapter?.id]);
 
   // Preload del siguiente chapter
   useEffect(() => {
@@ -81,14 +83,41 @@ export const ChapterPlayer: React.FC<ChapterPlayerProps> = ({
     }
   }, [currentChapterIndex, chapters, chapterUrls]);
 
-  // Autoplay cuando cambia el video source
+  // Handle autoplay when video source changes
   useEffect(() => {
-    if (videoRef.current && currentUrl && isPlaying) {
-      videoRef.current.play().catch(err => {
-        logger.warn('[ChapterPlayer] Error en autoplay', { err });
-      });
-    }
-  }, [currentUrl, isPlaying]);
+    if (!videoRef.current || !currentUrl) return;
+
+    const playVideo = async () => {
+      if (!isPlaying) return;
+      
+      try {
+        logger.debug('[ChapterPlayer] Attempting to play video', {
+          chapterId: currentChapter?.id,
+          currentTime: videoRef.current?.currentTime
+        });
+        
+        await videoRef.current.play();
+        logger.debug('[ChapterPlayer] Video playback started');
+      } catch (err) {
+        logger.warn('[ChapterPlayer] Autoplay was prevented', { 
+          error: err,
+          chapterId: currentChapter?.id 
+        });
+        setIsPlaying(false);
+      }
+    };
+
+    playVideo();
+    
+    // Cleanup function
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
+      }
+    };
+  }, [currentUrl, isPlaying, currentChapter?.id]);
 
   // Formatear tiempo
   const formatTime = (seconds: number): string => {
@@ -130,16 +159,59 @@ export const ChapterPlayer: React.FC<ChapterPlayerProps> = ({
       </div>
 
       {/* Video player */}
-      <video
-        ref={videoRef}
-        src={currentUrl}
-        className="w-full h-full object-contain"
-        autoPlay
-        playsInline
-        onEnded={handleChapterEnd}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-      />
+      <div className="relative w-full h-full">
+        <video
+          key={`video-${currentChapter?.id || 'loading'}`}
+          ref={videoRef}
+          src={currentUrl}
+          className="w-full h-full object-contain"
+          autoPlay
+          playsInline
+          muted={true} // Helps with autoplay restrictions
+          onEnded={handleChapterEnd}
+          onPlay={() => {
+            logger.debug('[ChapterPlayer] Video play event');
+            setIsPlaying(true);
+          }}
+          onPause={() => {
+            logger.debug('[ChapterPlayer] Video pause event');
+            setIsPlaying(false);
+          }}
+          onError={(e) => {
+            logger.error('[ChapterPlayer] Video playback error', { 
+              error: e, 
+              chapterId: currentChapter?.id,
+              currentTime: videoRef.current?.currentTime,
+              readyState: videoRef.current?.readyState,
+              errorState: videoRef.current?.error
+            });
+          }}
+        />
+        
+        {/* Play button overlay when paused */}
+        {!isPlaying && (
+          <button
+            onClick={async () => {
+              try {
+                logger.debug('[ChapterPlayer] Manual play button clicked');
+                await videoRef.current?.play();
+                setIsPlaying(true);
+              } catch (err) {
+                logger.error('[ChapterPlayer] Failed to play video', { 
+                  error: err,
+                  chapterId: currentChapter?.id 
+                });
+              }
+            }}
+            className="absolute inset-0 m-auto bg-black bg-opacity-50 text-white rounded-full w-16 h-16 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Play video"
+          >
+            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
+      </div>
 
       {/* Indicador de chapter (opcional) */}
       <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded-lg text-sm">
