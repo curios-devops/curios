@@ -286,16 +286,29 @@ export class BackgroundRenderer {
       .select();
 
     if (error) {
-      logger.error('[BackgroundRenderer] Error creando video', {
+      logger.error('[BackgroundRenderer] ❌ Error creando video', {
         videoId,
         error: error,
         message: error.message,
         code: error.code,
+        details: error.details,
+        hint: error.hint,
         payload
       });
-      // Don't throw, allow rendering to continue
+      
+      // Show error in console for debugging
+      console.error('❌ VIDEO INSERT ERROR:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        payload
+      });
+      
+      // Throw error to stop rendering if video creation fails
+      throw new Error(`Failed to create video record: ${error.message}`);
     } else {
-      logger.info('[BackgroundRenderer] Video creado exitosamente', {
+      logger.info('[BackgroundRenderer] ✅ Video creado exitosamente', {
         videoId,
         data
       });
