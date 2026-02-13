@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Chapters Table</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Test Chapters Table</h1>
+  <button id="testBtn">Test Insert Chapter</button>
+  <pre id="output"></pre>
+
+  <script>
+    const output = document.getElementById('output');
+    const testBtn = document.getElementById('testBtn');
+
+    // Supabase credentials (from .env)
+    const SUPABASE_URL = 'https://gpfccicfqynahflehpqo.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZmNjaWNmcXluYWhmbGVocHFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxNDIyMDYsImV4cCI6MjA1MDcxODIwNn0.wLnIXxThhq144sQpUFzLd_ifimgr1oetMwvchDmMF84';
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function testChaptersTable() {
+      output.textContent = '🧪 Testing chapters table...\n\n';
+
+      // Test data (same structure as BackgroundRenderer)
+      const testChapter = {
+        video_id: 'test_video_' + Date.now(),
+        chapter_id: 'chapter_001',
+        order_index: 0,
+        duration: 6.5,
+        storage_url: 'https://gpfccicfqynahflehpqo.supabase.co/storage/v1/object/public/videos/test/chapter_001.webm',
+        free: true,
+        render_time: 6200,
+        file_size: 325955,
+        user_id: 'test_user',
+        created_at: new Date().toISOString()
+      };
+
+      output.textContent += '📋 Test data:\n';
+      output.textContent += JSON.stringify(testChapter, null, 2) + '\n\n';
+
+      // Test 1: Insert chapter
+      output.textContent += '1️⃣ Testing INSERT...\n';
+      const { data: insertData, error: insertError } = await supabaseClient
+        .from('chapters')
+        .insert(testChapter)
+        .select();
+
+      if (insertError) {
+        output.textContent += '   ❌ INSERT ERROR:\n';
+        output.textContent += `      Message: ${insertError.message}\n`;
+        output.textContent += `      Code: ${insertError.code}\n`;
+        output.textContent += `      Details: ${insertError.details}\n`;
+        output.textContent += `      Hint: ${insertError.hint}\n`;
+        output.textContent += `      Full error: ${JSON.stringify(insertError, null, 2)}\n\n`;
+        return; // Stop if insert fails
+      } else {
+        output.textContent += '   ✅ INSERT SUCCESS!\n';
+        output.textContent += `      Inserted ID: ${insertData[0]?.id}\n\n`;
+      }
+
+      // Test 2: Select chapter
+      output.textContent += '2️⃣ Testing SELECT...\n';
+      const { data: selectData, error: selectError } = await supabaseClient
+        .from('chapters')
+        .select('*')
+        .eq('video_id', testChapter.video_id);
+
+      if (selectError) {
+        output.textContent += '   ❌ SELECT ERROR:\n';
+        output.textContent += `      Message: ${selectError.message}\n`;
+        output.textContent += `      Full error: ${JSON.stringify(selectError, null, 2)}\n\n`;
+      } else {
+        output.textContent += '   ✅ SELECT SUCCESS!\n';
+        output.textContent += `      Found ${selectData.length} chapter(s)\n\n`;
+      }
+
+      // Test 3: Update chapter
+      output.textContent += '3️⃣ Testing UPDATE (upsert)...\n';
+      const updatedChapter = {
+        ...testChapter,
+        render_time: 7000, // Changed value
+        file_size: 400000
+      };
+
+      const { data: updateData, error: updateError } = await supabaseClient
+        .from('chapters')
+        .upsert(updatedChapter)
+        .select();
+
+      if (updateError) {
+        output.textContent += '   ❌ UPDATE ERROR:\n';
+        output.textContent += `      Message: ${updateError.message}\n`;
+        output.textContent += `      Full error: ${JSON.stringify(updateError, null, 2)}\n\n`;
+      } else {
+        output.textContent += '   ✅ UPDATE SUCCESS!\n';
+        output.textContent += `      Updated render_time: ${updateData[0]?.render_time}\n\n`;
+      }
+
+      // Test 4: Check table structure
+      output.textContent += '4️⃣ Checking table structure...\n';
+      const { data: structureData, error: structureError } = await supabaseClient
+        .from('chapters')
+        .select('*')
+        .limit(1);
+
+      if (structureError) {
+        output.textContent += '   ❌ STRUCTURE ERROR:\n';
+        output.textContent += `      Message: ${structureError.message}\n`;
+      } else {
+        output.textContent += '   ✅ Table accessible!\n';
+        if (structureData && structureData.length > 0) {
+          output.textContent += '   Columns: ' + Object.keys(structureData[0]).join(', ') + '\n\n';
+        }
+      }
+
+      // Test 5: Delete test data (cleanup)
+      output.textContent += '5️⃣ Cleaning up test data...\n';
+      const { error: deleteError } = await supabaseClient
+        .from('chapters')
+        .delete()
+        .eq('video_id', testChapter.video_id);
+
+      if (deleteError) {
+        output.textContent += '   ⚠️ DELETE ERROR (test data not cleaned):\n';
+        output.textContent += `      Message: ${deleteError.message}\n`;
+      } else {
+        output.textContent += '   ✅ Test data deleted\n\n';
+      }
+
+      output.textContent += '\n✅ ALL TESTS COMPLETED!\n';
+      output.textContent += 'If all tests passed, the chapters table is ready for production.\n';
+    }
+
+    testBtn.addEventListener('click', testChaptersTable);
+  </script>
+</body>
+</html>

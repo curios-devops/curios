@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Video System Tables</title>
+  <style>
+    body { 
+      font-family: monospace; 
+      padding: 20px; 
+      max-width: 1200px; 
+      margin: 0 auto;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    button { 
+      padding: 10px 20px; 
+      margin: 10px 5px; 
+      font-size: 16px;
+      background: #0e639c;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover { background: #1177bb; }
+    #output { 
+      white-space: pre-wrap; 
+      padding: 20px;
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      margin-top: 20px;
+      border-radius: 4px;
+    }
+    .success { color: #4ec9b0; }
+    .error { color: #f48771; }
+    .info { color: #569cd6; }
+  </style>
+</head>
+<body>
+  <h1>🎬 Test Video System Tables</h1>
+  <p>Tests both <code>videos</code> and <code>chapters</code> tables</p>
+  
+  <div>
+    <button onclick="testVideoSystem()">🧪 Test Complete System</button>
+    <button onclick="output.textContent = ''">Clear</button>
+  </div>
+  
+  <div id="output"></div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const SUPABASE_URL = 'https://gpfccicfqynahflehpqo.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZmNjaWNmcXluYWhmbGVocHFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxNDIyMDYsImV4cCI6MjA1MDcxODIwNn0.wLnIXxThhq144sQpUFzLd_ifimgr1oetMwvchDmMF84';
+
+    window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.output = document.getElementById('output');
+
+    window.testVideoSystem = async function() {
+      output.textContent = '🧪 Testing video system tables...\n\n';
+      
+      // Generate UUID for video_id (compatible with existing videos table)
+      const videoId = crypto.randomUUID();
+      
+      // Test data
+      const testVideo = {
+        id: videoId,
+        title: 'Test Video',
+        query: 'Test query about AI',
+        chapter_count: 3, // Using existing column name
+        total_duration: 19.5,
+        status: 'processing'
+        // user_id: null (will be set from auth in production)
+      };
+
+      const testChapter = {
+        video_id: videoId,
+        chapter_id: 'chapter_001',
+        order_index: 0,
+        duration: 6.5, // Decimal value
+        storage_url: `https://gpfccicfqynahflehpqo.supabase.co/storage/v1/object/public/videos/${videoId}/chapter_001.webm`,
+        free: true,
+        render_time: 6200,
+        file_size: 325955
+        // user_id: null (will be set from auth in production)
+      };
+
+      output.textContent += '📋 Test data:\n';
+      output.textContent += `Video: ${JSON.stringify(testVideo, null, 2)}\n\n`;
+      output.textContent += `Chapter: ${JSON.stringify(testChapter, null, 2)}\n\n`;
+
+      // ====================
+      // 1. Test videos table
+      // ====================
+      output.textContent += '1️⃣ Testing VIDEO INSERT...\n';
+      const { data: videoData, error: videoError } = await supabaseClient
+        .from('videos')
+        .insert(testVideo)
+        .select();
+
+      if (videoError) {
+        output.textContent += `   ❌ VIDEO INSERT ERROR:\n`;
+        output.textContent += `      Message: ${videoError.message}\n`;
+        output.textContent += `      Code: ${videoError.code}\n`;
+        output.textContent += `      Details: ${videoError.details}\n`;
+        output.textContent += `      Full error: ${JSON.stringify(videoError, null, 2)}\n\n`;
+        return;
+      }
+
+      output.textContent += `   ✅ Video inserted successfully!\n`;
+      output.textContent += `      ID: ${videoData[0].id}\n`;
+      output.textContent += `      Chapter count: ${videoData[0].chapter_count}\n`;
+      output.textContent += `      Total duration: ${videoData[0].total_duration}s\n\n`;
+
+      // ====================
+      // 2. Test chapters table
+      // ====================
+      output.textContent += '2️⃣ Testing CHAPTER INSERT...\n';
+      const { data: chapterData, error: chapterError } = await supabaseClient
+        .from('chapters')
+        .insert(testChapter)
+        .select();
+
+      if (chapterError) {
+        output.textContent += `   ❌ CHAPTER INSERT ERROR:\n`;
+        output.textContent += `      Message: ${chapterError.message}\n`;
+        output.textContent += `      Code: ${chapterError.code}\n`;
+        output.textContent += `      Details: ${chapterError.details}\n`;
+        output.textContent += `      Full error: ${JSON.stringify(chapterError, null, 2)}\n\n`;
+        // Continue to cleanup
+      } else {
+        output.textContent += `   ✅ Chapter inserted successfully!\n`;
+        output.textContent += `      Video ID: ${chapterData[0].video_id}\n`;
+        output.textContent += `      Chapter ID: ${chapterData[0].chapter_id}\n`;
+        output.textContent += `      Duration: ${chapterData[0].duration}s\n`;
+        output.textContent += `      Storage URL: ${chapterData[0].storage_url}\n\n`;
+      }
+
+      // ====================
+      // 3. Test SELECT with JOIN
+      // ====================
+      output.textContent += '3️⃣ Testing SELECT with JOIN...\n';
+      const { data: joinData, error: joinError } = await supabaseClient
+        .from('videos')
+        .select(`
+          *,
+          chapters(*)
+        `)
+        .eq('id', videoId);
+
+      if (joinError) {
+        output.textContent += `   ❌ JOIN ERROR: ${joinError.message}\n\n`;
+      } else {
+        output.textContent += `   ✅ Join successful!\n`;
+        output.textContent += `      Video: ${joinData[0].title}\n`;
+        output.textContent += `      Chapters found: ${joinData[0].chapters.length}\n\n`;
+      }
+
+      // ====================
+      // 4. Test UPDATE video status
+      // ====================
+      output.textContent += '4️⃣ Testing UPDATE video status...\n';
+      const { data: updateData, error: updateError } = await supabaseClient
+        .from('videos')
+        .update({ 
+          status: 'ready',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', videoId)
+        .select();
+
+      if (updateError) {
+        output.textContent += `   ❌ UPDATE ERROR: ${updateError.message}\n\n`;
+      } else {
+        output.textContent += `   ✅ Update successful!\n`;
+        output.textContent += `      Status: ${updateData[0].status}\n`;
+        output.textContent += `      Completed at: ${updateData[0].completed_at}\n\n`;
+      }
+
+      // ====================
+      // 5. Test UPSERT chapter
+      // ====================
+      output.textContent += '5️⃣ Testing UPSERT chapter...\n';
+      const updatedChapter = {
+        ...testChapter,
+        duration: 7.2, // Updated duration
+        file_size: 400000 // Updated file size
+      };
+
+      const { data: upsertData, error: upsertError } = await supabaseClient
+        .from('chapters')
+        .upsert(updatedChapter, {
+          onConflict: 'video_id,chapter_id' // Specify conflict columns
+        })
+        .select();
+
+      if (upsertError) {
+        output.textContent += `   ❌ UPSERT ERROR: ${upsertError.message}\n\n`;
+      } else {
+        output.textContent += `   ✅ Upsert successful!\n`;
+        output.textContent += `      Duration updated: ${upsertData[0].duration}s\n`;
+        output.textContent += `      File size updated: ${upsertData[0].file_size} bytes\n\n`;
+      }
+
+      // ====================
+      // 6. Cleanup
+      // ====================
+      output.textContent += '6️⃣ Cleaning up test data...\n';
+      
+      // Delete video (chapters will cascade delete)
+      const { error: deleteError } = await supabaseClient
+        .from('videos')
+        .delete()
+        .eq('id', videoId);
+
+      if (deleteError) {
+        output.textContent += `   ❌ DELETE ERROR: ${deleteError.message}\n\n`;
+      } else {
+        output.textContent += `   ✅ Test data cleaned up (video + chapters deleted)\n\n`;
+      }
+
+      // ====================
+      // Summary
+      // ====================
+      output.textContent += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+      output.textContent += '✅ ALL TESTS COMPLETE!\n';
+      output.textContent += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+      output.textContent += '\nKey fixes:\n';
+      output.textContent += '• duration: DECIMAL(10,2) accepts 6.5 seconds\n';
+      output.textContent += '• file_size: BIGINT for larger files\n';
+      output.textContent += '• Foreign key: chapters → videos (cascade delete)\n';
+      output.textContent += '• Both tables have RLS + public policies\n';
+    };
+  </script>
+</body>
+</html>

@@ -37,6 +37,9 @@ export class BackgroundRenderer {
       videoId
     });
 
+    // Create video record in database
+    await this.createVideoRecord(videoId, chapters, userId);
+
     this.renderQueue = [...chapters];
     this.renderedUrls.clear();
 
@@ -105,6 +108,10 @@ export class BackgroundRenderer {
       setTimeout(() => {
         this.renderNextInBackground(videoId, userId, onChapterComplete, onProgress);
       }, 500);
+    } else {
+      // All chapters rendered, update video status to ready
+      await this.updateVideoStatus(videoId, 'ready');
+      logger.info('[BackgroundRenderer] Todos los chapters completados', { videoId });
     }
   }
 
@@ -202,25 +209,127 @@ export class BackgroundRenderer {
     fileSize: number,
     userId: string | null
   ): Promise<void> {
-    const { error } = await supabase
+    const payload = {
+      video_id: videoId,
+      chapter_id: chapter.id,
+      order_index: chapter.order,
+      duration: chapter.duration,
+      storage_url: storageUrl,
+      free: chapter.free,
+      render_time: renderTime,
+      file_size: fileSize,
+      user_id: userId || null // UUID or null, no guest string
+    };
+
+    logger.debug('[BackgroundRenderer] Guardando metadata en DB', {
+      table: 'chapters',
+      payload
+    });
+
+    const { data, error } = await supabase
       .from('chapters')
-      .upsert({
-        video_id: videoId,
-        chapter_id: chapter.id,
-        order_index: chapter.order,
-        duration: chapter.duration,
-        storage_url: storageUrl,
-        free: chapter.free,
-        render_time: renderTime,
-        file_size: fileSize,
-        user_id: userId || 'curios', // Usuario guest
-        created_at: new Date().toISOString()
-      });
+      .upsert(payload, {
+        onConflict: 'video_id,chapter_id' // Specify conflict columns for upsert
+      })
+      .select();
 
     if (error) {
       logger.error('[BackgroundRenderer] Error guardando metadata', {
         chapterId: chapter.id,
+        error: error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        payload
+      });
+      // No lanzar error, solo loggearlo para no detener el proceso
+    } else {
+      logger.info('[BackgroundRenderer] Metadata guardada exitosamente', {
+        chapterId: chapter.id,
+        data
+      });
+    }
+  }
+
+  /**
+   * Crear registro del video en la tabla videos
+   */
+  private async createVideoRecord(
+    videoId: string,
+    chapters: ChapterDescriptor[],
+    userId: string | null
+  ): Promise<void> {
+    const totalDuration = chapters.reduce((sum, ch) => sum + ch.duration, 0);
+    
+    // Generate title from first chapter text (first 50 chars)
+    const firstText = chapters[0]?.text || 'Untitled Video';
+    const title = firstText.length > 50 
+      ? firstText.substring(0, 50) + '...' 
+      : firstText;
+    
+    const payload = {
+      id: videoId,
+      title: title,
+      query: null, // Can be added later if needed
+      chapter_count: chapters.length,
+      total_duration: totalDuration,
+      status: 'processing' as const,
+      user_id: userId || null
+    };
+
+    logger.debug('[BackgroundRenderer] Creando video en DB', { payload });
+
+    const { data, error } = await supabase
+      .from('videos')
+      .insert(payload)
+      .select();
+
+    if (error) {
+      logger.error('[BackgroundRenderer] Error creando video', {
+        videoId,
+        error: error,
+        message: error.message,
+        code: error.code,
+        payload
+      });
+      // Don't throw, allow rendering to continue
+    } else {
+      logger.info('[BackgroundRenderer] Video creado exitosamente', {
+        videoId,
+        data
+      });
+    }
+  }
+
+  /**
+   * Actualizar estado del video
+   */
+  private async updateVideoStatus(
+    videoId: string,
+    status: 'processing' | 'ready' | 'failed'
+  ): Promise<void> {
+    const payload: any = { status };
+    
+    if (status === 'ready') {
+      payload.completed_at = new Date().toISOString();
+    }
+
+    const { error } = await supabase
+      .from('videos')
+      .update(payload)
+      .eq('id', videoId);
+
+    if (error) {
+      logger.error('[BackgroundRenderer] Error actualizando status del video', {
+        videoId,
+        status,
         error
+      });
+    } else {
+      logger.info('[BackgroundRenderer] Status del video actualizado', {
+        videoId,
+        status
       });
     }
   }
