@@ -272,7 +272,8 @@ export class BackgroundRenderer {
       id: videoId,
       title: title,
       query: null, // Can be added later if needed
-      chapter_count: chapters.length,
+      chapter_count: chapters.length, // NOT NULL column
+      total_chapters: chapters.length, // Nullable column with default
       total_duration: totalDuration,
       status: 'processing' as const,
       user_id: userId || null
