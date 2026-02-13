@@ -275,7 +275,7 @@ export class BackgroundRenderer {
       chapter_count: chapters.length, // NOT NULL column
       total_chapters: chapters.length, // Nullable column with default
       total_duration: totalDuration,
-      status: 'processing' as const,
+      status: 'rendering' as const, // Match DB default
       user_id: userId || null
     };
 

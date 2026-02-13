@@ -234,7 +234,7 @@ export async function orchestrateArtifact(
     logger.info('[Orchestrator] Starting chapter-based video rendering...');
     
     // Get current user ID (TODO: integrate with auth)
-    const userId = 'curios'; // Default guest user
+    const userId = null; // Will be set when auth is integrated
     
     // Start background rendering
     const chapterUrls = await backgroundRenderer.startBackgroundRendering(
@@ -386,5 +386,6 @@ function delay(ms: number): Promise<void> {
  * Generate a simple unique ID
  */
 function generateId(): string {
-  return `studio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // Generate UUID v4 compatible ID for Supabase videos table
+  return crypto.randomUUID();
 }
