@@ -25,6 +25,7 @@ export class VideoRendererAgent {
     chapterPlan: ChapterPlan,
     videoId: string,
     userId: string | null,
+    format: 'vertical' | 'horizontal' = 'vertical',
     onChapterComplete?: (chapterIndex: number, url: string) => void,
     onProgress?: (progress: number) => void
   ): Promise<Map<string, string>> {
@@ -46,6 +47,7 @@ export class VideoRendererAgent {
         descriptors,
         videoId,
         userId,
+        format,
         onChapterComplete,
         onProgress
       );

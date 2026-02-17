@@ -126,6 +126,7 @@ export async function orchestrateArtifact(
   keyIdeas = result.keyIdeas;
   script = result.script;
   description = result.description || '';
+  const title = result.title || '';
 
   // Mark key ideas step as complete
   steps[1] = { ...steps[1], status: 'complete' };
@@ -135,6 +136,7 @@ export async function orchestrateArtifact(
     keyIdeas,
     script,
     description,
+    title,
     planDetails,
     steps: [...steps],
   });
@@ -147,6 +149,7 @@ export async function orchestrateArtifact(
     keyIdeas,
     script,
     description,
+    title,
     planDetails,
     steps: [...steps],
   });
@@ -161,7 +164,7 @@ export async function orchestrateArtifact(
   const chapterPlan = writerAgent.parseScriptToChapterPlan(
     script,
     videoId,
-    prompt,
+    title || prompt,
     30 // Default 30 seconds
   );
   
@@ -177,6 +180,7 @@ export async function orchestrateArtifact(
     keyIdeas,
     script,
     description,
+    title,
     chapterPlan, // NEW: Store ChapterPlan instead of SceneStructure
     planDetails,
     steps: [...steps],
@@ -236,13 +240,41 @@ export async function orchestrateArtifact(
     // Get current user ID (TODO: integrate with auth)
     const userId = null; // Will be set when auth is integrated
     
+    const chapterUrlsRecord: Record<string, string> = {};
+
     // Start background rendering
     const chapterUrls = await backgroundRenderer.startBackgroundRendering(
       chapterDescriptors,
       videoId,
       userId,
+      format,
       (chapterIndex: number, url: string) => {
-        logger.info('[Orchestrator] Chapter rendered', { chapterIndex, url: url.substring(0, 50) });
+        const chapterId = chapterDescriptors[chapterIndex]?.id;
+        logger.info('[Orchestrator] Chapter rendered', {
+          chapterIndex,
+          chapterId,
+          url: url.substring(0, 50)
+        });
+
+        if (chapterId) {
+          chapterUrlsRecord[chapterId] = url;
+        }
+
+        onProgress({
+          id: videoId,
+          type: outputType,
+          content: keyIdeas + '\n\n---\n\n' + script,
+          keyIdeas,
+          script,
+          description,
+          title,
+          chapterPlan,
+          chapterUrls: { ...chapterUrlsRecord },
+          duration: chapterPlan.totalDuration,
+          format,
+          planDetails,
+          steps: [...steps],
+        });
       },
       (progress: number) => {
         logger.info('[Orchestrator] Overall rendering progress', { progress });
@@ -268,8 +300,9 @@ export async function orchestrateArtifact(
       script,
       description,
       chapterPlan, // NEW: Store ChapterPlan
+      chapterUrls: { ...chapterUrlsRecord },
       videoUrl: firstChapterUrl || '', // First chapter URL
-      title: prompt,
+      title: title || chapterPlan.title || prompt,
       planDetails,
       steps,
       thinkingLog: ['Generation complete!'],
@@ -295,7 +328,7 @@ export async function orchestrateArtifact(
       description,
       chapterPlan,
       videoUrl: '',
-      title: prompt,
+      title: title || chapterPlan.title || prompt,
       planDetails,
       steps,
       thinkingLog: ['Rendering failed. Please try again.'],

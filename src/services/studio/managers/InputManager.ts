@@ -66,12 +66,18 @@ export class InputManager {
 
     const descriptors: ChapterDescriptor[] = [];
 
-    for (const chapterInfo of plan.chapters) {
+    for (const [index, chapterInfo] of plan.chapters.entries()) {
       try {
+        const chapterInfoWithOrder = {
+          ...chapterInfo,
+          // Canonicalize order: always use 0-based index to keep rendering + callbacks consistent
+          order: index,
+        };
+
         // Obtener imágenes Brave pre-asignadas para este capítulo
         const braveImages = imageAssignments.find(a => a.chapterId === chapterInfo.id)?.braveImages || [];
         
-        const descriptor = await this.prepareChapter(chapterInfo, braveImages);
+        const descriptor = await this.prepareChapter(chapterInfoWithOrder, braveImages);
         descriptors.push(descriptor);
         
         logger.info('[InputManager] ✅ Chapter preparado', { 
@@ -120,7 +126,7 @@ export class InputManager {
     // 6. Retornar descriptor completo
     return {
       id: info.id,
-      order: info.order || 0,
+      order: info.order ?? 0,
       duration: info.duration,
       assets: {
         images: allImages.map((url, index) => ({

@@ -6,6 +6,7 @@ import { StudioVideo, StudioOutputType, StepItem } from '../types';
 import { formatTimeAgo } from '../../../utils/time';
 import StudioTopBar from '../components/StudioTopBar';
 import VideoPlayer from '../components/VideoPlayer';
+import { ChapterPlayer } from '../components/ChapterPlayer';
 import TimestampedScript from '../components/TimestampedScript';
 import SceneVisualizer from '../components/SceneVisualizer';
 import LightMarkdown from '../../../components/LightMarkdown';
@@ -65,8 +66,18 @@ export default function StudioResults() {
             setCurrentStage(inProgress.name);
           }
         }
-        
-        setVideo(partial as StudioVideo);
+        setVideo((prev) => {
+          if (!prev) return partial as StudioVideo;
+
+          return {
+            ...prev,
+            ...partial,
+            chapterPlan: partial.chapterPlan ?? prev.chapterPlan,
+            chapterUrls: partial.chapterUrls ?? prev.chapterUrls,
+            steps: partial.steps ?? prev.steps,
+            planDetails: partial.planDetails ?? prev.planDetails,
+          } as StudioVideo;
+        });
       },
       outputType
     )
@@ -145,29 +156,80 @@ export default function StudioResults() {
           <>
             {/* Video Player with Controls Inside */}
             <div className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden mb-6">
-              <VideoPlayer 
-                videoUrl={video?.videoUrl}
-                isLoading={loading}
-                renderProgress={video?.renderProgress}
-                duration={video?.duration || 30}
-                onTimeUpdate={handleVideoTimeUpdate}
-                seekToTime={currentVideoTime}
-              />
+              {video?.chapterPlan && video?.chapterUrls && Object.keys(video.chapterUrls).length > 0 ? (
+                <div
+                  className="relative w-full bg-black"
+                  style={{ aspectRatio: video.format === 'horizontal' ? '16/9' : '9/16' }}
+                >
+                  <ChapterPlayer
+                    videoId={video.id || 'unknown'}
+                    chapters={video.chapterPlan.chapters.map((ch) => ({
+                      id: ch.id,
+                      duration: ch.duration,
+                      text: ch.narration,
+                      free: true,
+                    }))}
+                    chapterUrls={new Map(Object.entries(video.chapterUrls))}
+                    onComplete={() => {
+                      // Keep behavior consistent with the single-video player
+                    }}
+                  />
+                </div>
+              ) : (
+                <VideoPlayer 
+                  videoUrl={video?.videoUrl}
+                  isLoading={loading}
+                  renderProgress={video?.renderProgress}
+                  duration={video?.duration || 30}
+                  onTimeUpdate={handleVideoTimeUpdate}
+                  seekToTime={currentVideoTime}
+                />
+              )}
               
               {/* Video Title and Info - Show immediately even while loading */}
               <div className="p-4 space-y-4">
                 {/* Video Title */}
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                    {query}
-                  </h2>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <span>{video?.duration || 30}s</span>
-                    <span className="mx-1">•</span>
-                    <span className="capitalize">{video?.format || 'Vertical'} Format</span>
-                    <span className="mx-1">•</span>
-                    <span>{timeAgo}</span>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 break-words">
+                      {video?.title || video?.chapterPlan?.title || query}
+                    </h2>
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <span>{video?.duration || 30}s</span>
+                      <span className="mx-1">•</span>
+                      <span>{timeAgo}</span>
+                    </div>
                   </div>
+
+                  {/* Action Buttons - Only show when not loading */}
+                  {!loading && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={handleRegenerate}
+                        className="h-10 w-10 inline-flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        aria-label="Regenerate"
+                        title="Regenerate"
+                      >
+                        <RefreshCw size={18} />
+                      </button>
+                      <button
+                        onClick={handleShareSocial}
+                        className="h-10 w-10 inline-flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        aria-label="Share"
+                        title="Share"
+                      >
+                        <Share2 size={18} />
+                      </button>
+                      <button
+                        onClick={handleDownload}
+                        className="h-10 w-10 inline-flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        aria-label="Download"
+                        title="Download"
+                      >
+                        <Download size={18} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Video Description (YouTube-style) - Show as it streams in */}
@@ -179,32 +241,7 @@ export default function StudioResults() {
                   </div>
                 )}
 
-                {/* Action Buttons - Only show when not loading */}
-                {!loading && (
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleRegenerate}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
-                    >
-                      <RefreshCw size={18} />
-                      Regenerate
-                    </button>
-                    <button
-                      onClick={handleShareSocial}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                    >
-                      <Share2 size={18} />
-                      Share to socials
-                    </button>
-                    <button
-                      onClick={handleDownload}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <Download size={18} />
-                      Download Video
-                    </button>
-                  </div>
-                )}
+                
               </div>
             </div>
           </>

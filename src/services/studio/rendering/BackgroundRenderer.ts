@@ -29,6 +29,7 @@ export class BackgroundRenderer {
     chapters: ChapterDescriptor[],
     videoId: string,
     userId: string | null,
+    format: 'vertical' | 'horizontal' = 'vertical',
     onChapterComplete?: (chapterIndex: number, url: string) => void,
     onProgress?: (overall: number) => void
   ): Promise<Map<string, string>> {
@@ -50,14 +51,20 @@ export class BackgroundRenderer {
         firstChapter,
         videoId,
         userId,
+        format,
         onProgress
       );
       this.renderedUrls.set(firstChapter.id, url);
+      logger.debug('[BackgroundRenderer] Emitting onChapterComplete (first)', {
+        chapterId: firstChapter.id,
+        order: firstChapter.order,
+        emittedIndex: 0
+      });
       onChapterComplete?.(0, url);
     }
 
     // Continuar con el resto en background
-    this.renderNextInBackground(videoId, userId, onChapterComplete, onProgress);
+    this.renderNextInBackground(videoId, userId, format, onChapterComplete, onProgress);
 
     return this.renderedUrls;
   }
@@ -68,6 +75,7 @@ export class BackgroundRenderer {
   private async renderNextInBackground(
     videoId: string,
     userId: string | null,
+    format: 'vertical' | 'horizontal',
     onChapterComplete?: (chapterIndex: number, url: string) => void,
     onProgress?: (overall: number) => void
   ): Promise<void> {
@@ -83,10 +91,16 @@ export class BackgroundRenderer {
         chapter,
         videoId,
         userId,
+        format,
         onProgress
       );
 
       this.renderedUrls.set(chapter.id, url);
+      logger.debug('[BackgroundRenderer] Emitting onChapterComplete', {
+        chapterId: chapter.id,
+        order: chapter.order,
+        emittedIndex: chapter.order
+      });
       onChapterComplete?.(chapter.order, url);
 
       logger.info('[BackgroundRenderer] Chapter completado', {
@@ -106,7 +120,7 @@ export class BackgroundRenderer {
     if (this.renderQueue.length > 0) {
       // Pequeño delay para no saturar CPU
       setTimeout(() => {
-        this.renderNextInBackground(videoId, userId, onChapterComplete, onProgress);
+        this.renderNextInBackground(videoId, userId, format, onChapterComplete, onProgress);
       }, 500);
     } else {
       // All chapters rendered, update video status to ready
@@ -122,6 +136,7 @@ export class BackgroundRenderer {
     chapter: ChapterDescriptor,
     videoId: string,
     userId: string | null,
+    format: 'vertical' | 'horizontal',
     _onProgress?: (overall: number) => void
   ): Promise<string> {
     const startTime = Date.now();
@@ -133,7 +148,7 @@ export class BackgroundRenderer {
         chapterId: chapter.id,
         progress: progress.progress
       });
-    });
+    }, format);
 
     const renderTime = Date.now() - startTime;
 

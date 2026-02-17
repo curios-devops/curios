@@ -6,16 +6,21 @@
 
 import { ChapterDescriptor, TimelineEntry, RenderProgress } from '../types';
 import { logger } from '../../../utils/logger';
+import { STUDIO_CONFIG } from '../config';
 
 export class ChapterRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private audioContext: AudioContext;
-  private width: number = 720;   // Portrait HD
-  private height: number = 1280;
+  private width: number;
+  private height: number;
   private fps: number = 30;
   
   constructor() {
+    const initial = STUDIO_CONFIG.video.formats.vertical;
+    this.width = initial.width;
+    this.height = initial.height;
+
     // Crear canvas Y AGREGARLO AL DOM (hidden)
     // CRÍTICO: captureStream() necesita que el canvas esté en el DOM para generar frames
     this.canvas = document.createElement('canvas');
@@ -44,6 +49,24 @@ export class ChapterRenderer {
     });
   }
 
+  setFormat(format: 'vertical' | 'horizontal'): void {
+    const dims = STUDIO_CONFIG.video.formats[format];
+    if (!dims) return;
+
+    // Only update when changed to avoid extra work
+    if (this.width === dims.width && this.height === dims.height) return;
+
+    this.width = dims.width;
+    this.height = dims.height;
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
+
+    logger.info('[ChapterRenderer] Canvas resized', {
+      format,
+      resolution: `${this.width}x${this.height}`
+    });
+  }
+
   /**
    * 🎯 VERSIÓN SIMPLE - Happy Path
    * Renderiza chapter con lógica mínima y directa
@@ -52,8 +75,10 @@ export class ChapterRenderer {
    */
   async renderChapterSimple(
     descriptor: ChapterDescriptor,
-    onProgress?: (progress: RenderProgress) => void
+    onProgress?: (progress: RenderProgress) => void,
+    format: 'vertical' | 'horizontal' = 'vertical'
   ): Promise<Blob> {
+    this.setFormat(format);
     logger.info('[ChapterRenderer] 🎯 Renderizando SIMPLE', { 
       chapterId: descriptor.id,
       duration: descriptor.duration 
@@ -192,36 +217,6 @@ export class ChapterRenderer {
         // Dibujar imagen centrada y escalada
         this.ctx.drawImage(image, 0, 0, this.width, this.height);
         
-        // Dibujar texto de narración (simple, en la parte inferior)
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = 'bold 32px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        this.ctx.shadowBlur = 10;
-        
-        // Word wrap simple para el texto
-        const words = descriptor.text.split(' ');
-        const maxWidth = this.width - 100;
-        let line = '';
-        let y = this.height - 150;
-        
-        for (const word of words) {
-          const testLine = line + word + ' ';
-          const metrics = this.ctx.measureText(testLine);
-          
-          if (metrics.width > maxWidth && line.length > 0) {
-            this.ctx.fillText(line, this.width / 2, y);
-            line = word + ' ';
-            y += 40;
-          } else {
-            line = testLine;
-          }
-        }
-        this.ctx.fillText(line, this.width / 2, y);
-        
-        // Resetear shadow para no afectar próximo frame
-        this.ctx.shadowBlur = 0;
-        
         frame++;
         
         // Calcular tiempo para siguiente frame
@@ -279,8 +274,10 @@ export class ChapterRenderer {
    */
   async renderChapter(
     descriptor: ChapterDescriptor,
-    onProgress?: (progress: RenderProgress) => void
+    onProgress?: (progress: RenderProgress) => void,
+    format: 'vertical' | 'horizontal' = 'vertical'
   ): Promise<Blob> {
+    this.setFormat(format);
     logger.info('[ChapterRenderer] Iniciando render', { 
       chapterId: descriptor.id,
       duration: descriptor.duration 
@@ -739,15 +736,9 @@ export class ChapterRenderer {
         );
       }
       
-      // Dibujar texto (si hay acción show-text activa)
-      const textAction = activeActions.find(a => a.action === 'show-text');
-      if (textAction) {
-        this.drawText(textAction.data.text, textAction.data.position);
-      }
-      
       // Reportar progreso
-      if (onProgress && currentFrame % 10 === 0) {
-        const progress = (elapsed / durationMs) * 100;
+      if (onProgress) {
+        const progress = Math.min(100, (elapsed / durationMs) * 100);
         onProgress({
           chapterId: descriptor.id,
           progress,

@@ -75,6 +75,7 @@ export interface StudioVideo {
   description?: string; // Short plain text summary for YouTube-style description
   scenes?: SceneStructure; // Structured scenes for video rendering (legacy)
   chapterPlan?: ChapterPlan; // NEW: Chapter-based plan for rendering
+  chapterUrls?: Record<string, string>; // chapterId -> public storage URL (serializable)
   title?: string;
   planDetails?: PlanDetail[];
   steps?: StepItem[];

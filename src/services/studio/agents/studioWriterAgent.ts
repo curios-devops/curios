@@ -21,11 +21,12 @@ export interface StudioWriterOutput {
   keyIdeas: string;
   script: string;
   description?: string;
+  title?: string;
   error?: string;
 }
 
 export class StudioWriterAgent {
-  private defaultModel = 'gpt-4o-mini';
+  private defaultModel = 'gpt-4.1-mini-2025-04-14';
 
   /**
    * Execute with streaming support
@@ -78,11 +79,22 @@ export class StudioWriterAgent {
         }
       }
 
+      // Step 4: Generate a strong, descriptive video title (not a raw copy of the query)
+      let title = '';
+      try {
+        title = await this.generateTitle(query, keyIdeas, script);
+        logger.info('[Studio Writer] Title generated', { length: title.length });
+      } catch (error) {
+        logger.warn('[Studio Writer] Title generation failed (non-fatal)', { error });
+        title = '';
+      }
+
       return {
         success: true,
         keyIdeas,
         script,
         description,
+        title,
       };
     } catch (error) {
       logger.error('[Studio Writer] Generation failed', { error });
@@ -91,9 +103,46 @@ export class StudioWriterAgent {
         keyIdeas: '',
         script: '',
         description: '',
+        title: '',
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  /**
+   * Generate a concise, compelling title suitable for UI display.
+   */
+  private async generateTitle(query: string, keyIdeas: string, script: string): Promise<string> {
+    const system = `You write short, compelling video titles.
+
+Return ONE title that:
+- Is descriptive and specific (not just repeating the user query)
+- Sounds like a real video headline
+- Is 5-10 words (max 60 characters)
+- Is NOT a question
+- Has NO quotes, NO emojis, NO hashtags`;
+
+    const user = `User query:
+"${query}"
+
+Key ideas:
+${keyIdeas || '(none)'}
+
+Script:
+${script || '(none)'}
+
+Title:`;
+
+    const messages = [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ];
+
+    // Use streaming so the edge function does NOT force JSON response_format.
+    // Non-streaming requests default to JSON mode in the edge function, which causes OpenAI 400
+    // when we want a plain text title.
+    const raw = await this.callOpenAIStreaming(messages, this.defaultModel, () => {});
+    return (raw || '').trim().replace(/^"|"$/g, '');
   }
 
   /**
@@ -283,6 +332,12 @@ Generate the chaptered script now:`
           retry: retryCount
         });
 
+        console.error('[Studio Writer] Streaming API error body:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+
         // Retry on 500 errors (server issues) up to 2 times
         if (response.status === 500 && retryCount < 2) {
           logger.info('[Studio Writer] Retrying after 500 error', { retryCount: retryCount + 1 });
@@ -290,7 +345,7 @@ Generate the chaptered script now:`
           return this.callOpenAIStreaming(messages, model, onChunk, retryCount + 1);
         }
 
-        throw new Error(`API error ${response.status}: ${errorText.substring(0, 200)}`);
+        throw new Error(`API error ${response.status}: ${errorText.substring(0, 1200)}`);
       }
 
       if (!response.body) {
@@ -367,8 +422,7 @@ Generate the chaptered script now:`
         temperature: 0.7,
         max_output_tokens: 800
         // NO response_format - plain text is default
-      }),
-      stream: false
+      })
     };
 
     const controller = new AbortController();
@@ -389,8 +443,15 @@ Generate the chaptered script now:`
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error('[Studio Writer] API error', { status: response.status, error: errorText.substring(0, 200) });
-        throw new Error(`API error: ${response.status}`);
+        logger.error('[Studio Writer] API error', { status: response.status, error: errorText.substring(0, 500) });
+
+        console.error('[Studio Writer] API error body:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+
+        throw new Error(`API error ${response.status}: ${errorText.substring(0, 1200)}`);
       }
 
       const data = await response.json();
