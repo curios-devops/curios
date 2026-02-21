@@ -83,32 +83,51 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
 
   const handleShare = async (platform: SharePlatform) => {
     try {
-      const cleanQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
-      const canonicalSearchUrl = `https://curiosai.com/search?q=${encodeURIComponent(cleanQuery)}`;
-
-      let shareSnippet = '';
-      if (text && text.length > 20) {
-        const cleanText = text.replace(/\*\*/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
-        const firstSentence = cleanText.split(/[.!?]/)[0].trim();
-        if (firstSentence.length > 15 && firstSentence.length < 150) {
-          shareSnippet = firstSentence + '.';
-        }
-      }
-      if (!shareSnippet) {
-        shareSnippet = `AI-powered insights for "${cleanQuery}" with CuriosAI.`;
-      }
-
-      if (shareSnippet.length > 160) {
-        shareSnippet = shareSnippet.substring(0, 157) + '...';
-      }
-
-      const shareImage = getBestImageUrl(images, validImageIndices);
-      const socialMetaUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(cleanQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
-
       switch (platform) {
         case 'linkedin':
-          // Share metadata URL for rich preview; social-share sets og:url to canonical search URL for click-through.
-          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(socialMetaUrl)}&title=${encodeURIComponent(cleanQuery)}&text=${encodeURIComponent(cleanQuery)}&summary=${encodeURIComponent(shareSnippet)}&source=${encodeURIComponent('CuriosAI')}`;
+          // Clean query extraction
+          const shareQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          
+          // Simple first sentence extraction (much shorter and safer)
+          let shareSnippet = '';
+          if (text && text.length > 20) {
+            // Clean text and get first sentence only
+            const cleanText = text.replace(/\*\*/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+            const firstSentence = cleanText.split(/[.!?]/)[0].trim();
+            
+            // Use first sentence if it's substantial and not too long
+            if (firstSentence.length > 15 && firstSentence.length < 150) {
+              shareSnippet = firstSentence + '.';
+            }
+          }
+          
+          // Enhanced fallback to simple description
+          if (!shareSnippet) {
+            shareSnippet = `Get AI-powered insights and comprehensive analysis for "${shareQuery}" with CuriosAI.`;
+          }
+          
+          // Ensure snippet is within LinkedIn's optimal length (70-160 chars for best display)
+          if (shareSnippet.length > 160) {
+            shareSnippet = shareSnippet.substring(0, 157) + '...';
+          } else if (shareSnippet.length < 70 && shareSnippet.length > 0) {
+            // If snippet is too short, enhance it slightly
+            shareSnippet = `${shareSnippet} Discover comprehensive AI insights with CuriosAI.`;
+            if (shareSnippet.length > 160) {
+              shareSnippet = shareSnippet.substring(0, 157) + '...';
+            }
+          }
+          
+          
+          // Get best available image (with fallback to second image if first fails)
+          const shareImage = getBestImageUrl(images, validImageIndices);
+          
+          // Use curiosai.com domain for better LinkedIn compatibility
+          // LinkedIn Post Inspector has issues with *.supabase.co domains
+          const shareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
+          
+          // LinkedIn sharing URL - use the actual query as title for post text area
+          const postTitle = shareQuery; // This will appear in the post composition box
+          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(postTitle)}&text=${encodeURIComponent(postTitle)}&summary=${encodeURIComponent(shareSnippet)}&source=${encodeURIComponent('CuriosAI')}`;
           
           // Open LinkedIn sharing dialog
           window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
@@ -118,14 +137,53 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
           window.open(`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}%0A%0A${encodeURIComponent(url)}`, '_blank');
           break;
         case 'whatsapp':
-          window.open(`https://wa.me/?text=${encodeURIComponent(cleanQuery)}%0A${encodeURIComponent(canonicalSearchUrl)}`, '_blank');
+          window.open(`https://wa.me/?text=${encodeURIComponent(title)}%0A${encodeURIComponent(url)}`, '_blank');
           break;
         case 'facebook':
-          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(socialMetaUrl)}`, '_blank');
+          // Facebook uses social-share URL for proper Open Graph meta tags (isolated from LinkedIn/Twitter)
+          const fbQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          let fbSnippet = '';
+          if (text && text.length > 20) {
+            const cleanText = text.replace(/\*\*/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+            const firstSentence = cleanText.split(/[.!?]/)[0].trim();
+            if (firstSentence.length > 15 && firstSentence.length < 150) {
+              fbSnippet = firstSentence + '.';
+            }
+          }
+          if (!fbSnippet) {
+            fbSnippet = `AI-powered insights for "${fbQuery}" with CuriosAI.`;
+          }
+          const fbImage = getBestImageUrl(images, validImageIndices);
+          const fbShareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(fbQuery)}&snippet=${encodeURIComponent(fbSnippet)}${fbImage ? `&image=${encodeURIComponent(fbImage)}` : ''}`;
+          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fbShareUrl)}`, '_blank');
           setIsOpen(false);
           break;
         case 'twitter':
-          window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(socialMetaUrl)}&text=${encodeURIComponent(cleanQuery)}`, '_blank');
+          // Build Twitter share URL using social-share function (isolated from LinkedIn)
+          // This ensures Twitter gets the proper meta tags including the image
+          const twitterQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          
+          // Get snippet for Twitter (isolated logic)
+          let twitterSnippet = '';
+          if (text && text.length > 20) {
+            const cleanText = text.replace(/\*\*/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+            const firstSentence = cleanText.split(/[.!?]/)[0].trim();
+            if (firstSentence.length > 15 && firstSentence.length < 150) {
+              twitterSnippet = firstSentence + '.';
+            }
+          }
+          if (!twitterSnippet) {
+            twitterSnippet = `AI-powered insights for "${twitterQuery}" with CuriosAI.`;
+          }
+          
+          // Get best available image for Twitter (with fallback to second image)
+          const twitterImage = getBestImageUrl(images, validImageIndices);
+          
+          // Use social-share function URL so Twitter crawler gets proper meta tags with image
+          const twitterShareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(twitterQuery)}&snippet=${encodeURIComponent(twitterSnippet)}${twitterImage ? `&image=${encodeURIComponent(twitterImage)}` : ''}`;
+          
+          // Open Twitter sharing dialog with the social-share URL
+          window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(twitterShareUrl)}&text=${encodeURIComponent(twitterQuery)}`, '_blank');
           setIsOpen(false);
           break;
         case 'copy':
