@@ -51,56 +51,42 @@ const getHeader = (headers = {}, name) => {
   return headers[name] || headers[lower] || '';
 };
 
-const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, query }) => {
-  // encodeURIComponent produces only URL-safe chars (no quotes), safe to embed in JS string literals
-  const searchUrl = `https://curiosai.com/search?q=${encodeURIComponent(query)}`;
-  return `<!DOCTYPE html>
+const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, shareUrl, query }) => `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Layer 1: meta-refresh redirect for browsers (bots ignore this) -->
-  <meta http-equiv="refresh" content="0; url=${searchUrl}" />
-
-  <!-- Layer 2: JS redirect for browsers (bots do not execute JS) -->
-  <script>window.location.href='${searchUrl}';</script>
-
-  <!-- Open Graph tags - read by social crawlers (LinkedIn, Facebook, Twitter) -->
   <title>${title}</title>
   <meta name="description" content="${description}" />
+  <meta name="title" property="og:title" content="${title}" />
+  <meta name="description" property="og:description" content="${description}" />
+  <meta name="image" property="og:image" content="${ogImage}" />
   <meta property="og:title" content="${title}" />
   <meta property="og:description" content="${description}" />
   <meta property="og:image" content="${ogImage}" />
   <meta property="og:image:secure_url" content="${ogImage}" />
-  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:alt" content="CuriosAI preview image for: ${title}" />
   <meta property="og:image:width" content="${imageWidth}" />
   <meta property="og:image:height" content="${imageHeight}" />
-  <meta property="og:image:alt" content="${title}" />
-  <meta property="og:url" content="${searchUrl}" />
+  <meta property="og:url" content="${shareUrl}" />
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="CuriosAI" />
-
-  <!-- Twitter Card tags -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${title}" />
   <meta name="twitter:description" content="${description}" />
   <meta name="twitter:image" content="${ogImage}" />
-  <meta name="twitter:url" content="${searchUrl}" />
-
-  <link rel="canonical" href="${searchUrl}" />
+  <link rel="canonical" href="${shareUrl}" />
 </head>
 <body>
-  <!-- Layer 3: fallback link for any browser that ignores meta-refresh and JS -->
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center;">
     <h1 style="color: #0095FF; margin-bottom: 20px;">CuriosAI</h1>
     <h2 style="color: #333; margin-bottom: 16px;">${title}</h2>
     <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">${description}</p>
-    <a href="${searchUrl}" style="background: #0095FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 500;">Explore More with CuriosAI</a>
+    <a href="https://curiosai.com/search?q=${encodeURIComponent(query)}" style="background: #0095FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 500;">Explore More with CuriosAI</a>
   </div>
 </body>
 </html>`;
-};
 
 exports.handler = async (event) => {
   const params = event.queryStringParameters || {};
@@ -117,6 +103,7 @@ exports.handler = async (event) => {
   const ogImage = image && image.startsWith('http') ? image : FALLBACK_IMAGE;
   const imageWidth = '1200';
   const imageHeight = '627';
+  const shareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
 
   if (!isBot && userAgent && userAgent.includes('Mozilla') && (acceptHeader || '').includes('text/html')) {
     return {
@@ -132,8 +119,8 @@ exports.handler = async (event) => {
     statusCode: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store, must-revalidate'
+      'Cache-Control': 'public, max-age=300'
     },
-    body: buildShareHtml({ title, description, ogImage, imageWidth, imageHeight, query })
+    body: buildShareHtml({ title, description, ogImage, imageWidth, imageHeight, shareUrl, query })
   };
 };

@@ -125,13 +125,12 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
           // LinkedIn Post Inspector has issues with *.supabase.co domains
           const shareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
           
-          // LinkedIn Official API (sharing/share-offsite - current standard)
-          // LinkedIn scrapes shareUrl for OG tags (image/title/description)
-          // og:url in the proxy page points to search page → that becomes the post's click destination
-          const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+          // LinkedIn sharing URL - use the actual query as title for post text area
+          const postTitle = shareQuery; // This will appear in the post composition box
+          const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(postTitle)}&text=${encodeURIComponent(postTitle)}&summary=${encodeURIComponent(shareSnippet)}&source=${encodeURIComponent('CuriosAI')}`;
           
           // Open LinkedIn sharing dialog
-          window.open(linkedInUrl, '_blank', 'width=600,height=600,noopener,noreferrer');
+          window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
           setIsOpen(false);
           break;
         case 'email':
