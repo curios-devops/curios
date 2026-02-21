@@ -136,9 +136,14 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
         case 'email':
           window.open(`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}%0A%0A${encodeURIComponent(url)}`, '_blank');
           break;
-        case 'whatsapp':
-          window.open(`https://wa.me/?text=${encodeURIComponent(title)}%0A${encodeURIComponent(url)}`, '_blank');
+        case 'whatsapp': {
+          // Use social-share URL so WhatsApp scraper picks up the OG image
+          const waQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          const waImage = getBestImageUrl(images, validImageIndices);
+          const waShareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(waQuery)}${waImage ? `&image=${encodeURIComponent(waImage)}` : ''}`;
+          window.open(`https://wa.me/?text=${encodeURIComponent(waQuery)}%0A${encodeURIComponent(waShareUrl)}`, '_blank');
           break;
+        }
         case 'facebook':
           // Facebook uses social-share URL for proper Open Graph meta tags (isolated from LinkedIn/Twitter)
           const fbQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
