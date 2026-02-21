@@ -79,6 +79,7 @@ const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, 
   <link rel="canonical" href="${shareUrl}" />
 </head>
 <body>
+  <script>window.location.replace('https://curiosai.com/search?q=' + encodeURIComponent('${query.replace(/'/g, "\\'")}'));</script>
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center;">
     <h1 style="color: #0095FF; margin-bottom: 20px;">CuriosAI</h1>
     <h2 style="color: #333; margin-bottom: 16px;">${title}</h2>
