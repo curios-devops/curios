@@ -69,14 +69,15 @@ const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, 
   <meta property="og:image:alt" content="CuriosAI preview image for: ${title}" />
   <meta property="og:image:width" content="${imageWidth}" />
   <meta property="og:image:height" content="${imageHeight}" />
-  <meta property="og:url" content="${shareUrl}" />
+  <meta property="og:url" content="https://curiosai.com/search?q=${encodeURIComponent(query)}" />
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="CuriosAI" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${title}" />
   <meta name="twitter:description" content="${description}" />
   <meta name="twitter:image" content="${ogImage}" />
-  <link rel="canonical" href="${shareUrl}" />
+  <meta name="twitter:url" content="https://curiosai.com/search?q=${encodeURIComponent(query)}" />
+  <link rel="canonical" href="https://curiosai.com/search?q=${encodeURIComponent(query)}" />
 </head>
 <body>
   <script>window.location.replace('https://curiosai.com/search?q=' + encodeURIComponent('${query.replace(/'/g, "\\'")}'));</script>
