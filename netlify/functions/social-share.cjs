@@ -77,6 +77,9 @@ const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, 
   <meta name="twitter:description" content="${description}" />
   <meta name="twitter:image" content="${ogImage}" />
   <link rel="canonical" href="${shareUrl}" />
+  <!-- Redirect humans to the actual search page -->
+  <meta http-equiv="refresh" content="0;url=https://curiosai.com/search?q=${encodeURIComponent(query)}" />
+  <script>window.location.replace("https://curiosai.com/search?q=${encodeURIComponent(query)}");</script>
 </head>
 <body>
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center;">
@@ -106,12 +109,15 @@ exports.handler = async (event) => {
   const shareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
 
   if (!isBot && userAgent && userAgent.includes('Mozilla') && (acceptHeader || '').includes('text/html')) {
+    // For human users: serve the HTML which has meta-refresh + JS redirect to the search page
+    // (302 redirect doesn't work because Netlify rewrites intercept it at the proxy level)
     return {
-      statusCode: 302,
+      statusCode: 200,
       headers: {
-        Location: `https://curiosai.com/search?q=${encodeURIComponent(query)}`,
+        'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-cache, no-store, must-revalidate'
-      }
+      },
+      body: buildShareHtml({ title, description, ogImage, imageWidth, imageHeight, shareUrl, query })
     };
   }
 
