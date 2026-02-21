@@ -123,7 +123,7 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
           
           // Use curiosai.com domain for better LinkedIn compatibility
           // LinkedIn Post Inspector has issues with *.supabase.co domains
-          const shareUrl = `https://curiosai.com/.netlify/functions/social-share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
+          const shareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(shareQuery)}&snippet=${encodeURIComponent(shareSnippet)}${shareImage ? `&image=${encodeURIComponent(shareImage)}` : ''}`;
           
           // LinkedIn sharing URL - use the actual query as title for post text area
           const postTitle = shareQuery; // This will appear in the post composition box
@@ -154,7 +154,7 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
             fbSnippet = `AI-powered insights for "${fbQuery}" with CuriosAI.`;
           }
           const fbImage = getBestImageUrl(images, validImageIndices);
-          const fbShareUrl = `https://curiosai.com/.netlify/functions/social-share?query=${encodeURIComponent(fbQuery)}&snippet=${encodeURIComponent(fbSnippet)}${fbImage ? `&image=${encodeURIComponent(fbImage)}` : ''}`;
+          const fbShareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(fbQuery)}&snippet=${encodeURIComponent(fbSnippet)}${fbImage ? `&image=${encodeURIComponent(fbImage)}` : ''}`;
           window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fbShareUrl)}`, '_blank');
           setIsOpen(false);
           break;
@@ -180,7 +180,7 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
           const twitterImage = getBestImageUrl(images, validImageIndices);
           
           // Use social-share function URL so Twitter crawler gets proper meta tags with image
-          const twitterShareUrl = `https://curiosai.com/.netlify/functions/social-share?query=${encodeURIComponent(twitterQuery)}&snippet=${encodeURIComponent(twitterSnippet)}${twitterImage ? `&image=${encodeURIComponent(twitterImage)}` : ''}`;
+          const twitterShareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(twitterQuery)}&snippet=${encodeURIComponent(twitterSnippet)}${twitterImage ? `&image=${encodeURIComponent(twitterImage)}` : ''}`;
           
           // Open Twitter sharing dialog with the social-share URL
           window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(twitterShareUrl)}&text=${encodeURIComponent(twitterQuery)}`, '_blank');

@@ -1,16 +1,3 @@
-/**
- * DEPRECATED: This Supabase Edge Function has been replaced by Netlify Function
- * 
- * Reason: LinkedIn requires Content-Type: text/html; charset=utf-8
- * Netlify proxy was overriding Supabase's Content-Type to text/plain
- * 
- * Current implementation: netlify/functions/social-share.js
- * Active since: Feb 12, 2026
- * 
- * This file is kept for reference only.
- */
-
-/*
 // @ts-ignore - Deno import
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
@@ -66,13 +53,12 @@ const buildDescription = (query: string, snippet: string) => {
   return escapeHtml(desc);
 };
 
-const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, shareUrl, query }: {
+const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, query }: {
   title: string;
   description: string;
   ogImage: string;
   imageWidth: string;
   imageHeight: string;
-  shareUrl: string;
   query: string;
 }) => `<!DOCTYPE html>
 <html lang="en">
@@ -92,14 +78,14 @@ const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, 
   <meta property="og:image:alt" content="CuriosAI preview image for: ${title}" />
   <meta property="og:image:width" content="${imageWidth}" />
   <meta property="og:image:height" content="${imageHeight}" />
-  <meta property="og:url" content="${shareUrl}" />
+  <meta property="og:url" content="https://curiosai.com/search?q=${encodeURIComponent(query)}" />
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="CuriosAI" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${title}" />
   <meta name="twitter:description" content="${description}" />
   <meta name="twitter:image" content="${ogImage}" />
-  <link rel="canonical" href="${shareUrl}" />
+  <link rel="canonical" href="https://curiosai.com/search?q=${encodeURIComponent(query)}" />
 </head>
 <body>
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center;">
@@ -111,8 +97,7 @@ const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, 
 </body>
 </html>`;
 
-serve(async (req: Request) => {
-  // Handle CORS preflight requests
+serve((req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -132,42 +117,32 @@ serve(async (req: Request) => {
     const ogImage = image && image.startsWith('http') ? image : FALLBACK_IMAGE;
     const imageWidth = '1200';
     const imageHeight = '627';
-    const shareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
 
     // Redirect real browsers to search page
     if (!isBot && userAgent && userAgent.includes('Mozilla') && (acceptHeader || '').includes('text/html')) {
       return new Response(null, {
-        statusCode: 302,
+        status: 302,
         headers: {
+          ...corsHeaders,
           'Location': `https://curiosai.com/search?q=${encodeURIComponent(query)}`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate'
-        }
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
       });
     }
 
-    // Return HTML with meta tags for bots/crawlers
-    return new Response(buildShareHtml({ title, description, ogImage, imageWidth, imageHeight, shareUrl, query }), {
+    return new Response(buildShareHtml({ title, description, ogImage, imageWidth, imageHeight, query }), {
       status: 200,
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=300'
-      }
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
     });
   } catch (error) {
     console.error('Share function error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
-*/
-
-// Placeholder export to avoid Deno deploy errors
-export default {
-  fetch: () => new Response('This function has been moved to Netlify', { status: 410 })
-};
