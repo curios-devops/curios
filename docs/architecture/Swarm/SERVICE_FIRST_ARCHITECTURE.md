@@ -248,8 +248,8 @@ Function Called	Supabase Function	Status
 OpenAI API	fetch-openai ✅ Available
 Brave Web Search	brave-web-search ✅ Available
 Brave Images	brave-images-search ✅ Available
-Social Sharing	social-share ✅ Available
-OG Image Gen	social-og-image ✅ Available
+Social Sharing	social-share (Netlify function) ✅ Available
+OG Image Gen	public/curiosai-og-image-1200x627.png (static fallback) ✅ Available
 Subscriptions	check-subscription ✅ Available
 Stripe Checkout	create-checkout ✅ Available
 

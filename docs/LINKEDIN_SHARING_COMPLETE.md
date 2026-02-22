@@ -6,7 +6,7 @@ LinkedIn sharing has been successfully implemented for CuriosAI. All technical r
 ## What Works ✅
 
 ### 1. **Technical Implementation**
-- ✅ Supabase Edge Functions deployed (`social-share`, `social-og-image`)
+- ✅ Netlify function deployed (`social-share`) — Supabase `social-share` and `social-og-image` have been deprecated and removed
 - ✅ Netlify proxy configured correctly
 - ✅ Bot detection working (serves HTML to crawlers, redirects humans)
 - ✅ All required Open Graph meta tags present
@@ -87,7 +87,7 @@ URL: curiosai.com/functions/v1/social-share?query=...&snippet=...&image=...
            ↓
 Netlify proxy (public/_redirects)
            ↓
-Supabase Edge Function (social-share)
+Netlify function (social-share) — canonical
            ↓
 Bot detection: LinkedIn crawler detected
            ↓
@@ -98,24 +98,17 @@ LinkedIn scrapes and shows preview
 
 ## Files Modified
 
-1. **`/supabase/functions/social-share/index.ts`**
-   - Main edge function
-   - Bot detection
-   - Meta tag generation
-   - Image handling
+1. **`/netlify/functions/social-share.cjs`**
+   - Canonical function: bot detection, meta tag generation, and redirect for browser users
 
-2. **`/supabase/functions/social-og-image/index.ts`**
-   - Dynamic SVG generation (not used for LinkedIn due to format limitations)
-
-3. **`/src/components/ShareMenu.tsx`**
+2. **`/src/components/ShareMenu.tsx`**
    - Frontend share button
    - Generates share URLs with query, snippet, and image
 
-4. **`/public/_redirects`**
-   - Netlify proxy configuration
-   - Routes `/functions/v1/*` to Supabase
+3. **`/public/_redirects`**
+   - Netlify proxy configuration (routes `/functions/v1/social-share` to the Netlify function)
 
-5. **`/netlify.toml`**
+4. **`/netlify.toml`**
    - Build configuration
 
 ## Known Limitations
@@ -145,10 +138,11 @@ LinkedIn scrapes and shows preview
    - Wait 24 hours, or
    - Add a version parameter: `&v=2`, `&v=3`, etc.
 
-4. **Check Supabase function logs:**
-   ```bash
-   supabase functions logs social-share
-   ```
+4. **Check function logs / deployment logs:**
+```bash
+# Netlify functions: check the Netlify site deploy and function logs in the Netlify dashboard
+# If you have a separate backend deploy for other functions (fetch-openai, brave-*), check those logs in their respective dashboards
+```
 
 ## Future Improvements
 
@@ -169,9 +163,10 @@ LinkedIn scrapes and shows preview
 ## Deployment Commands
 
 ```bash
-# Deploy edge functions
-supabase functions deploy social-share --no-verify-jwt
-supabase functions deploy social-og-image --no-verify-jwt
+# Deploy edge functions (note: `social-share` and `social-og-image` have been deprecated/removed from Supabase)
+# Deploy other backend functions as needed, for example:
+# supabase functions deploy fetch-openai --no-verify-jwt
+# supabase functions deploy brave-web-search --no-verify-jwt
 
 # Deploy frontend
 git add .
