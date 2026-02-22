@@ -79,10 +79,9 @@ exports.handler = async (event) => {
 
   const safeDescription = escapeHtml(desc);
 
-  // Build absolute base URL from the incoming request
-  const proto = event.headers['x-forwarded-proto'] || 'https';
-  const host = event.headers['x-forwarded-host'] || event.headers['host'] || 'curiosai.com';
-  const base = `${proto}://${host}`;
+  // Use canonical site base to avoid malformed Host headers from proxies.
+  // Keep this hard-coded to ensure scrapers always receive a valid absolute URL.
+  const base = 'https://curiosai.com';
 
   // Use provided image or fall back to a static site asset (Supabase OG image removed)
   // Static fallback ensures crawlers still see an image after Supabase removal.
