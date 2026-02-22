@@ -257,14 +257,7 @@ verify_jwt = false
 [functions.fetch-openai]
 enabled = true
 verify_jwt = false
-
-[functions.social-share]
-enabled = true
-verify_jwt = false
-
-[functions.social-og-image]
-enabled = true
-verify_jwt = false
+...existing code...
 
 [analytics]
 enabled = true

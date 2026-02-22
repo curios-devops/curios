@@ -2,13 +2,13 @@
 
 This repository historically included two implementations of the social-share endpoint: a Netlify function (canonical) and a Supabase Edge Function (deprecated). The Supabase implementation has been removed from active deployment and replaced with a lightweight 410 placeholder in the repository to avoid accidental scraping of stale content.
 
-This document explains the recommended flow and quick verification steps.
+Additionally, the Supabase `social-og-image` function has been removed from the repository and from local deploy config — OG image generation now relies on other assets or Netlify-handled endpoints. This document explains the recommended flow and quick verification steps.
 
 ## Key points
 
 - The Netlify function at `netlify/functions/social-share.cjs` is the canonical implementation and must remain deployed to Netlify.
-- The repository still includes `supabase/functions/social-share/index.ts` but it is intentionally a 410 placeholder (deprecated). Do not deploy that function; it's kept only to avoid accidental scrapers hitting old code.
-- Other related functions (such as `social-og-image`) remain in the Supabase functions list and can be deployed there if you use Supabase for that service.
+- The repository previously included `supabase/functions/social-share/index.ts` (now removed) and `supabase/functions/social-og-image/index.ts` (now removed). These Supabase functions are deprecated and should not be deployed.
+- If you rely on OG images, ensure your system points to the static fallback at `public/curiosai-og-image-1200x627.png` or to the Netlify function that produces OG HTML; the Supabase OG image function is no longer present.
 
 ---
 
@@ -31,15 +31,15 @@ Local dev: `npm run dev` will start the local Vite/Netlify dev environment used 
 
 ---
 
-## Why we removed the Supabase social-share
+## Why we removed the Supabase social-share and social-og-image
 
 Having the same endpoint deployed in two places caused inconsistent scraper behaviour (CDN/proxy rewrites and stale Supabase deployment caused platforms like LinkedIn to fetch the wrong OG HTML). To prevent future regressions we:
 
-- Made Netlify the canonical runtime.
-- Replaced the Supabase `social-share` function source in the repo with an explicit 410 placeholder.
-- Removed `social-share` from local deploy scripts and local Supabase config so it is not accidentally deployed.
+- Made Netlify the canonical runtime for social-share.
+- Removed the Supabase `social-share` and `social-og-image` function sources from the repository.
+- Removed `social-share` and `social-og-image` from local deploy scripts and local Supabase config so they are not accidentally deployed.
 
-If you maintain Supabase production deployments manually, ensure the hosted Supabase function has been updated/removed there as well (dashboard or CI).
+If you maintain Supabase production deployments manually, ensure any hosted Supabase functions for `social-share` or `social-og-image` are removed there as well (dashboard or CI).
 
 ---
 
@@ -98,8 +98,8 @@ curl -s 'http://localhost:8888/.netlify/functions/social-share?query=test' | hea
 
 ## Notes and next steps
 
-- If you rely on CI that deploys Supabase functions, ensure it no longer targets `social-share` (we updated `scripts/fresh-start.sh` and `supabase/config.toml` in the repo to reflect this).
-- If you'd like, I can update `docs/DEPLOY_SOCIAL_SHARE_MANUAL.md` further to include Netlify-specific troubleshooting, or remove the Supabase file entirely from the repo (the placeholder is intentionally present to avoid accidental scrapers). Tell me which you'd prefer.
+- If you rely on CI that deploys Supabase functions, ensure it no longer targets `social-share` or `social-og-image` (we updated `scripts/fresh-start.sh` and `supabase/config.toml` in the repo to reflect this).
+- If you'd like, I can update other docs that reference `social-og-image` (e.g., `docs/LINKEDIN_SHARING_COMPLETE.md` and `docs/deployment/DEPLOY.md`) to avoid stale instructions. Tell me which you'd prefer.
 
 ---
 
