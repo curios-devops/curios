@@ -84,8 +84,9 @@ exports.handler = async (event) => {
   const host = event.headers['x-forwarded-host'] || event.headers['host'] || 'curiosai.com';
   const base = `${proto}://${host}`;
 
-  // Use provided image or generate dynamic SVG image with Supabase Edge Function
-  const ogImage = image || `${base}/functions/v1/social-og-image?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s.slice(0, 100))}`;
+  // Use provided image or fall back to a static site asset (Supabase OG image removed)
+  // Static fallback ensures crawlers still see an image after Supabase removal.
+  const ogImage = image || `${base}/curiosai-og-image-1200x627.png`;
 
   // Generate share URL (canonical for crawlers)
   const shareUrl = `${base}/functions/v1/social-share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
