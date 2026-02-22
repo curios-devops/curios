@@ -1,7 +1,6 @@
 # Proxy Supabase Edge Functions directly (no Netlify proxy needed)
 # EXCEPT social-share which needs Netlify to force correct Content-Type
 /functions/v1/social-share /.netlify/functions/social-share 200
-/functions/v1/* https://gpfccicfqynahflehpqo.supabase.co/functions/v1/:splat 200
 
 # SPA fallback - must be last
 /* /index.html 200
