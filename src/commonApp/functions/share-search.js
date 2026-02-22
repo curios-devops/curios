@@ -20,7 +20,8 @@ exports.handler = async (event, context) => {
 
     // If it's a bot and we have a query, redirect to share function
     if (isBot && query) {
-      const shareUrl = `/functions/v1/social-share?query=${encodeURIComponent(query)}${snippet ? `&snippet=${encodeURIComponent(snippet)}` : ''}`;
+      // Hotfix: point crawlers directly to Netlify function to avoid Supabase proxy/stale content.
+      const shareUrl = `/.netlify/functions/social-share?query=${encodeURIComponent(query)}${snippet ? `&snippet=${encodeURIComponent(snippet)}` : ''}`;
       
       return {
         statusCode: 302,

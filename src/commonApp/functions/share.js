@@ -88,7 +88,8 @@ exports.handler = async (event) => {
   const ogImage = image || `${base}/curiosai-og-image-1200x627.png`;
 
   // Generate share URL (canonical for crawlers)
-  const shareUrl = `${base}/functions/v1/social-share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
+  // Use direct Netlify function path (hotfix) to avoid accidental Supabase proxy/stale responses.
+  const shareUrl = `${base}/.netlify/functions/social-share?query=${encodeURIComponent(q)}&snippet=${encodeURIComponent(s)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">

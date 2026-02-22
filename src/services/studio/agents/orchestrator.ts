@@ -196,7 +196,7 @@ export async function orchestrateArtifact(
   
   try {
     // InputManager prepares all chapters with assets
-    const chapterDescriptors = await inputManager.prepareChapters(chapterPlan);
+    const chapterDescriptors = await inputManager.prepareChapters(chapterPlan, format);
     
     logger.info('[Orchestrator] Chapter assets prepared', {
       descriptorCount: chapterDescriptors.length

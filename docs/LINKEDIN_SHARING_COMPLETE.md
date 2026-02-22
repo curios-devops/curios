@@ -8,18 +8,26 @@ LinkedIn sharing has been successfully implemented for CuriosAI. All technical r
 ### 1. **Technical Implementation**
 - ✅ Netlify function deployed (`social-share`) — Supabase `social-share` and `social-og-image` have been deprecated and removed
 - ✅ Netlify proxy configured correctly
+```bash
+# Test command that proves it works (prefer direct Netlify function):
+curl -s -A "LinkedInBot/1.0" \
+   "https://curiosai.com/.netlify/functions/social-share?query=test&image=https://curiosai.com/iphone17.jpg" \
+   | grep "og:image"
+
+# Returns: All meta tags correctly formatted ✅
+```
 - ✅ Bot detection working (serves HTML to crawlers, redirects humans)
 - ✅ All required Open Graph meta tags present
 - ✅ Image support with proper JPEG format
 - ✅ Dynamic title, description, and image from search results
 
 ### 2. **Meta Tags Generated**
-```html
+3. Click "Debug" - should show meta tags correctly
 <meta name="image" property="og:image" content="[IMAGE_URL]" />
 <meta property="og:title" content="[SEARCH_QUERY]" />
 <meta property="og:description" content="[SNIPPET]" />
 <meta property="og:image" content="[IMAGE_URL]" />
-<meta property="og:image:secure_url" content="[IMAGE_URL]" />
+2. Paste: `https://curiosai.com/.netlify/functions/social-share?query=AI%20news&snippet=Latest%20developments&image=https://curiosai.com/iphone17.jpg`
 <meta property="og:image:type" content="image/jpeg" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="627" />
@@ -27,7 +35,7 @@ LinkedIn sharing has been successfully implemented for CuriosAI. All technical r
 <meta property="og:type" content="article" />
 ```
 
-### 3. **Verified Working**
+URL: curiosai.com/.netlify/functions/social-share?query=...&snippet=...&image=...
 ```bash
 # Test command that proves it works:
 curl -s -A "LinkedInBot/1.0" \
@@ -77,7 +85,6 @@ The most accurate test:
 4. LinkedIn will fetch and display the preview
 
 ## Technical Architecture
-
 ```
 User clicks "Share to LinkedIn" in CuriosAI
            ↓

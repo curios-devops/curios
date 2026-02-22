@@ -47,19 +47,19 @@ If you maintain Supabase production deployments manually, ensure any hosted Supa
 
 1. Verify Netlify function returns OG HTML when requested as a bot:
 
-   - Direct Netlify function path (canonical):
+    - Direct Netlify function path (canonical):
 
-     curl -I 'https://curiosai.com/.netlify/functions/social-share?query=test'
+       curl -I 'https://curiosai.com/.netlify/functions/social-share?query=test' -A "LinkedInBot/1.0"
 
-     Expect: `content-type: text/html; charset=utf-8` and a 200 response when using a bot UA.
+       Expect: `content-type: text/html; charset=utf-8` and a 200 response when using a bot UA.
 
-2. Verify the proxied path (site path) returns the correct OG HTML for scrapers:
+2. (Optional) Verify the proxied path (site path) — if you keep the pretty URL — returns the correct OG HTML for scrapers:
 
-   - Proxy path used by frontend and social platforms:
+    - The repository historically used `/functions/v1/social-share` as a pretty path routed to Netlify. We recommend testing the direct Netlify function instead (above). If you still use the proxied path, test with:
 
-     curl -I 'https://curiosai.com/functions/v1/social-share?query=test' -A "LinkedInBot/1.0"
+       curl -I 'https://curiosai.com/functions/v1/social-share?query=test' -A "LinkedInBot/1.0"
 
-     Expect: `content-type: text/html; charset=utf-8` and the `og:url` meta pointing to `https://curiosai.com/search?q=test`.
+       Expect: `content-type: text/html; charset=utf-8` and the `og:url` meta pointing to `https://curiosai.com/search?q=test`.
 
 3. Confirm browsers still redirect to the search results (users should be routed to the live search rather than staying on the OG page):
 

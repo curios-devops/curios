@@ -69,14 +69,14 @@ const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, 
   <meta property="og:image:alt" content="CuriosAI preview image for: ${title}" />
   <meta property="og:image:width" content="${imageWidth}" />
   <meta property="og:image:height" content="${imageHeight}" />
-  <meta property="og:url" content="https://curiosai.com/search?q=${encodeURIComponent(query)}" />
+  <meta property="og:url" content="${shareUrl}" />
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="CuriosAI" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${title}" />
   <meta name="twitter:description" content="${description}" />
   <meta name="twitter:image" content="${ogImage}" />
-  <link rel="canonical" href="https://curiosai.com/search?q=${encodeURIComponent(query)}" />
+  <link rel="canonical" href="${shareUrl}" />
 </head>
 <body>
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center;">
@@ -103,7 +103,8 @@ exports.handler = async (event) => {
   const ogImage = image && image.startsWith('http') ? image : FALLBACK_IMAGE;
   const imageWidth = '1200';
   const imageHeight = '627';
-  const shareUrl = `https://curiosai.com/functions/v1/social-share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
+  // Prefer the direct Netlify function path to avoid hitting any Supabase proxy or stale endpoints.
+  const shareUrl = `https://curiosai.com/.netlify/functions/social-share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
 
   if (!isBot && userAgent && userAgent.includes('Mozilla') && (acceptHeader || '').includes('text/html')) {
     return {

@@ -4,12 +4,16 @@
 export default async (request) => {
   const url = new URL(request.url);
   
-  // Forward to Supabase function
-  const supabaseUrl = `https://gpfccicfqynahflehpqo.supabase.co/functions/v1/social-share${url.search}`;
-  
-  const response = await fetch(supabaseUrl, {
+  // Forward to the canonical Netlify function instead of Supabase (Supabase social-share is deprecated).
+  const netlifyFnUrl = `https://curiosai.com/.netlify/functions/social-share${url.search}`;
+
+  const response = await fetch(netlifyFnUrl, {
     method: request.method,
-    headers: request.headers,
+    // forward a reduced set of headers to avoid leaking internal headers
+    headers: {
+      'User-Agent': request.headers.get('user-agent') || '',
+      'Accept': request.headers.get('accept') || '*/*'
+    },
   });
 
   // Get the HTML body

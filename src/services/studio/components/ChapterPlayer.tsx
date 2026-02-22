@@ -34,7 +34,7 @@ export const ChapterPlayer: React.FC<ChapterPlayerProps> = ({
   const [pendingSeek, setPendingSeek] = useState<{ chapterIndex: number; time: number } | null>(null);
   const [chapterDurations, setChapterDurations] = useState<Record<string, number>>({});
   const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const chapterUrlsRef = useRef<Map<string, string>>(chapterUrls);
@@ -540,7 +540,7 @@ export const ChapterPlayer: React.FC<ChapterPlayerProps> = ({
           className="w-full h-full object-contain"
           autoPlay
           playsInline
-          muted={true} // Helps with autoplay restrictions
+          muted={isMuted}
           onTimeUpdate={() => {
             const v = videoRef.current;
             if (!v) return;
@@ -626,7 +626,15 @@ export const ChapterPlayer: React.FC<ChapterPlayerProps> = ({
 
                 <div className="group flex items-center">
                   <button
-                    onClick={() => setIsMuted((v) => !v)}
+                    onClick={() => {
+                      setIsMuted((v) => {
+                        const next = !v;
+                        if (next === false && volume === 0) {
+                          setVolume(0.8);
+                        }
+                        return next;
+                      });
+                    }}
                     className="text-white hover:scale-110 transition-transform"
                     aria-label={isMuted || volume === 0 ? 'Unmute' : 'Mute'}
                   >

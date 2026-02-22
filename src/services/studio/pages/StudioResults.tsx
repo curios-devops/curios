@@ -23,11 +23,33 @@ export default function StudioResults() {
   const [loading, setLoading] = useState(true);
   const [video, setVideo] = useState<StudioVideo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [outputType] = useState<StudioOutputType>('video');
+  const [outputType, setOutputType] = useState<StudioOutputType>(() => {
+    // Desktop generates horizontal; mobile generates vertical.
+    // This drives the orchestrator's format selection.
+    if (typeof window === 'undefined') return 'video';
+    return window.matchMedia('(min-width: 768px)').matches ? 'video' : 'short';
+  });
   const [progress, setProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState('Initializing...');
   const [workflowStarted, setWorkflowStarted] = useState(false);
   const [currentVideoTime, setCurrentVideoTime] = useState(0); // Track current video playback time
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    const handler = () => {
+      setOutputType(mq.matches ? 'video' : 'short');
+    };
+    handler();
+    try {
+      mq.addEventListener('change', handler);
+      return () => mq.removeEventListener('change', handler);
+    } catch {
+      // Safari fallback
+      mq.addListener(handler);
+      return () => mq.removeListener(handler);
+    }
+  }, []);
 
   // Scroll to top on mount
   useEffect(() => {

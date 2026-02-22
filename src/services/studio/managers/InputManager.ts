@@ -7,7 +7,6 @@ import { ChapterPlan, ChapterInfo, ChapterDescriptor, TimelineEntry } from '../t
 import { BraveImageService } from '../assets/braveImageService';
 import { GoogleImageService } from '../assets/googleImageService';
 import { PexelsService } from '../assets/pexelsService';
-import { ElevenLabsService } from '../assets/elevenLabsService';
 import { GlobalImageSearchAgent } from '../agents/GlobalImageSearchAgent';
 import { logger } from '../../../utils/logger';
 
@@ -15,14 +14,12 @@ export class InputManager {
   private imageService: BraveImageService;
   private googleImageService: GoogleImageService;
   private videoService: PexelsService;
-  private ttsService: ElevenLabsService;
   private globalImageAgent: GlobalImageSearchAgent;
   
   constructor() {
     this.imageService = new BraveImageService();
     this.googleImageService = new GoogleImageService();
     this.videoService = new PexelsService();
-    this.ttsService = new ElevenLabsService();
     this.globalImageAgent = new GlobalImageSearchAgent();
   }
 
@@ -30,19 +27,19 @@ export class InputManager {
    * Preparar todos los chapters del plan
    * NUEVA ESTRATEGIA: 1 búsqueda global de Brave para todas las imágenes de contenido
    */
-  async prepareChapters(plan: ChapterPlan): Promise<ChapterDescriptor[]> {
+  async prepareChapters(plan: ChapterPlan, format: 'vertical' | 'horizontal' = 'vertical'): Promise<ChapterDescriptor[]> {
     logger.info('[InputManager] 🎬 Preparando chapters', { 
       count: plan.chapters.length,
       videoId: plan.videoId 
     });
 
-    // ✨ NUEVO: Construir query global concatenando keywords de TODOS los capítulos
+    // ✨ NUEVO: Construir query global corta y directamente relacionada a la query del usuario
     const allKeywords = plan.chapters
       .flatMap(ch => ch.keywords)
       .filter((keyword, index, self) => self.indexOf(keyword) === index) // Eliminar duplicados
       .slice(0, 10); // Top 10 keywords únicos
-    
-    const globalQuery = allKeywords.join(' ') || plan.query || '';
+
+    const globalQuery = this.buildSearchQuery(plan.query || '', allKeywords, 360);
     
     logger.info('[InputManager] 🌍 Búsqueda GLOBAL de imágenes Brave', {
       query: globalQuery.substring(0, 100),
@@ -77,7 +74,7 @@ export class InputManager {
         // Obtener imágenes Brave pre-asignadas para este capítulo
         const braveImages = imageAssignments.find(a => a.chapterId === chapterInfo.id)?.braveImages || [];
         
-        const descriptor = await this.prepareChapter(chapterInfoWithOrder, braveImages);
+        const descriptor = await this.prepareChapter(chapterInfoWithOrder, braveImages, format);
         descriptors.push(descriptor);
         
         logger.info('[InputManager] ✅ Chapter preparado', { 
@@ -101,20 +98,38 @@ export class InputManager {
    * Preparar un chapter individual
    * @param braveImages - Imágenes Brave pre-asignadas desde búsqueda global (0-2 imágenes)
    */
-  private async prepareChapter(info: ChapterInfo, braveImages: string[]): Promise<ChapterDescriptor> {
-    // 1. Buscar video de fondo (Pexels)
-    const backgroundVideo = await this.searchBackgroundVideo(info.keywords, info.narration);
-    
-    // 2. Buscar imágenes Pexels (stock profesional) - 2-3 imágenes
-    const pexelsImages = await this.getPexelsPhotos(info.keywords.join(' '), 3);
-    
-    // 3. Combinar: Pexels (base) + Brave (contexto específico)
-    const allImages = [...pexelsImages, ...braveImages].slice(0, 3); // Max 3 imágenes
-    
-    logger.debug('[InputManager] Imágenes combinadas', {
-      pexels: pexelsImages.length,
-      brave: braveImages.length,
-      total: allImages.length
+  private async prepareChapter(
+    info: ChapterInfo,
+    braveImages: string[],
+    format: 'vertical' | 'horizontal'
+  ): Promise<ChapterDescriptor> {
+    const backgroundVideoPromise = this.searchBackgroundVideo(info.keywords, info.narration, format);
+    const braveValidatedPromise = this.validateAndSanitizeImages(braveImages);
+    const pexelsImagesPromise = this.getPexelsPhotos(info.keywords.join(' '), 2, format);
+
+    const [backgroundVideo, braveValidated, pexelsImages] = await Promise.all([
+      backgroundVideoPromise,
+      braveValidatedPromise,
+      pexelsImagesPromise,
+    ]);
+
+    const braveSelected = braveValidated.slice(0, 2);
+    const pexelsSelected = pexelsImages.slice(0, Math.max(0, 3 - braveSelected.length));
+    const combined = [...braveSelected, ...pexelsSelected];
+    const placeholdersNeeded = Math.max(0, 3 - combined.length);
+    const allImages = placeholdersNeeded > 0
+      ? [...combined, ...this.getPlaceholderImages().slice(0, placeholdersNeeded)]
+      : combined;
+
+    logger.info('[InputManager] 📸 Final chapter images', {
+      chapterId: info.id,
+      braveAssigned: braveImages.length,
+      braveValidated: braveValidated.length,
+      braveUsed: braveSelected.length,
+      pexelsFetched: pexelsImages.length,
+      pexelsUsed: pexelsSelected.length,
+      placeholdersUsed: placeholdersNeeded,
+      totalUsed: allImages.length,
     });
     
     // 4. Generar audio TTS
@@ -144,10 +159,35 @@ export class InputManager {
     };
   }
 
+  private buildSearchQuery(baseQuery: string, keywords: string[], maxChars: number): string {
+    const base = (baseQuery || '').trim();
+    const kw = keywords
+      .map(k => String(k || '').trim())
+      .filter(Boolean)
+      .slice(0, 6);
+
+    const combined = [base, ...kw].filter(Boolean).join(' ');
+    const normalized = combined
+      .replace(/[\n\r\t]+/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    if (!normalized) return '';
+    if (normalized.length <= maxChars) return normalized;
+
+    const cut = normalized.slice(0, maxChars);
+    const lastSpace = cut.lastIndexOf(' ');
+    return (lastSpace > Math.floor(maxChars * 0.8) ? cut.slice(0, lastSpace) : cut).trim();
+  }
+
   /**
    * Buscar video de fondo usando Pexels (via Supabase Edge Function)
    */
-  private async searchBackgroundVideo(keywords: string[], narration: string): Promise<string | undefined> {
+  private async searchBackgroundVideo(
+    keywords: string[],
+    narration: string,
+    format: 'vertical' | 'horizontal'
+  ): Promise<string | undefined> {
     // Pexels now uses secure Edge Function (no exposed API key)
     const pexelsEnabled = true;
     
@@ -157,9 +197,8 @@ export class InputManager {
     }
     
     try {
-      // Buscar video vertical (portrait) para shorts/reels
       const searchQuery = keywords.slice(0, 2).join(' ');
-      const videoUrl = await this.videoService.searchForScene(searchQuery, 'vertical');
+      const videoUrl = await this.videoService.searchForScene(searchQuery, format);
       
       if (videoUrl) {
         logger.info('[InputManager] Video de fondo encontrado', { 
@@ -170,7 +209,7 @@ export class InputManager {
       }
       
       // Fallback: buscar con narración
-      const fallbackUrl = await this.videoService.searchForScene(narration.slice(0, 30), 'vertical');
+      const fallbackUrl = await this.videoService.searchForScene(narration.slice(0, 30), format);
       
       if (fallbackUrl) {
         logger.info('[InputManager] Video de fondo encontrado (fallback)', { 
@@ -541,7 +580,11 @@ export class InputManager {
    * Obtener fotos de Pexels (stock profesional con CORS habilitado)
    * Now uses Supabase Edge Function for security
    */
-  private async getPexelsPhotos(query: string, count: number = 3): Promise<string[]> {
+  private async getPexelsPhotos(
+    query: string,
+    count: number = 3,
+    format: 'vertical' | 'horizontal' = 'vertical'
+  ): Promise<string[]> {
     try {
       logger.info('[InputManager] Buscando en Pexels Stock Photos', { query, count });
       
@@ -552,10 +595,11 @@ export class InputManager {
         return [];
       }
       
-      // Buscar fotos verticales (portrait) para shorts/reels
+      const orientation = format === 'vertical' ? 'portrait' : 'landscape';
+
       const results = await this.videoService.searchPhotos(query, {
         perPage: count + 2, // Pedir más por si alguna falla validación
-        orientation: 'portrait'
+        orientation
       });
       
       if (results.photos && results.photos.length > 0) {
@@ -603,16 +647,15 @@ export class InputManager {
   }
 
   /**
-   * Generar audio TTS con OpenAI (primario) y ElevenLabs (fallback)
-   * OpenAI es primario porque ElevenLabs free tier fue deshabilitado por actividad inusual
+   * Generar audio TTS con OpenAI (primario) y audio silencioso (fallback)
    */
   private async generateTTS(text: string): Promise<Blob> {
-    logger.info('[InputManager] Generando TTS', { 
+    logger.info('[InputManager] Generando TTS', {
       textLength: text.length,
-      words: text.split(' ').length 
+      words: text.split(' ').length
     });
-    
-    // 1. Intentar con OpenAI TTS (primario - más confiable y sin límites free tier)
+
+    // 1. OpenAI TTS (primario)
     try {
       logger.debug('[InputManager] Usando OpenAI TTS (primario)');
       const audioBlob = await this.generateOpenAITTS(text);
@@ -621,23 +664,10 @@ export class InputManager {
         return audioBlob;
       }
     } catch (error) {
-      logger.warn('[InputManager] OpenAI TTS falló, intentando fallback', { error });
+      logger.warn('[InputManager] OpenAI TTS falló', { error });
     }
-    
-    // 2. Fallback: ElevenLabs TTS (requiere paid plan)
-    if (this.ttsService.isConfigured()) {
-      logger.debug('[InputManager] Intentando ElevenLabs TTS fallback');
-      const audioBlob = await this.ttsService.generateTTS(text);
-      
-      if (audioBlob) {
-        logger.info('[InputManager] ElevenLabs TTS fallback exitoso');
-        return audioBlob;
-      } else {
-        logger.warn('[InputManager] ElevenLabs TTS fallback falló');
-      }
-    }
-    
-    // 3. Último recurso: Audio silencioso
+
+    // 2. Último recurso: Audio silencioso
     logger.warn('[InputManager] Usando audio silencioso como último recurso');
     return this.generateSilentAudio(text);
   }
@@ -647,8 +677,8 @@ export class InputManager {
    */
   private async generateOpenAITTS(text: string): Promise<Blob | null> {
     try {
-      logger.debug('[InputManager] Calling OpenAI TTS via fetch-openai', { 
-        textLength: text.length 
+      logger.debug('[InputManager] Calling OpenAI TTS via fetch-openai', {
+        textLength: text.length
       });
 
       const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
@@ -680,7 +710,7 @@ export class InputManager {
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error('[InputManager] OpenAI TTS error response', { 
+        logger.error('[InputManager] OpenAI TTS error response', {
           status: response.status,
           statusText: response.statusText,
           body: errorText
@@ -690,7 +720,7 @@ export class InputManager {
 
       // Response is audio blob directly
       const audioBlob = await response.blob();
-      
+
       if (!audioBlob || audioBlob.size === 0) {
         throw new Error('No audio data received from OpenAI');
       }
@@ -711,7 +741,7 @@ export class InputManager {
     const audioContext = new AudioContext();
     const duration = Math.max(3, text.split(' ').length * 0.3); // ~0.3s por palabra
     const buffer = audioContext.createBuffer(1, audioContext.sampleRate * duration, audioContext.sampleRate);
-    
+
     // Crear blob silencioso
     return new Blob([buffer.getChannelData(0)], { type: 'audio/wav' });
   }
