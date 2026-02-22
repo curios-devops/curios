@@ -1,134 +1,106 @@
-# 🚀 Deploy social-share a Supabase (Manual)
+# social-share: deployment & verification (Netlify is canonical)
 
-## Opción 1: Dashboard Web (Más Fácil) ✅
+This repository historically included two implementations of the social-share endpoint: a Netlify function (canonical) and a Supabase Edge Function (deprecated). The Supabase implementation has been removed from active deployment and replaced with a lightweight 410 placeholder in the repository to avoid accidental scraping of stale content.
 
-### Paso 1: Ir al Dashboard
-1. Abre: https://supabase.com/dashboard/project/gpfccicfqynahflehpqo/functions
-2. Login si es necesario
+This document explains the recommended flow and quick verification steps.
 
-### Paso 2: Editar la Función
-1. Busca la función **`social-share`** en la lista
-2. Click en el nombre para abrirla
-3. Click en **"Edit function"** (arriba a la derecha)
+## Key points
 
-### Paso 3: Copiar el Código Nuevo
-1. Abre en VS Code: `supabase/functions/social-share/index.ts`
-2. **Selecciona TODO** el contenido (Cmd+A)
-3. **Copia** (Cmd+C)
-
-### Paso 4: Pegar y Desplegar
-1. En el Dashboard, **borra todo** el código existente
-2. **Pega** el nuevo código (Cmd+V)
-3. **IMPORTANTE:** Asegúrate que "Verify JWT" esté **DESMARCADO** ❌
-4. Click en **"Deploy function"** (botón azul)
-5. Espera ~30 segundos a que termine el deploy
-
-### Paso 5: Verificar
-Ejecuta en terminal:
-```bash
-curl -I 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/social-share?query=test'
-```
-
-Deberías ver: `content-type: text/html; charset=utf-8`
+- The Netlify function at `netlify/functions/social-share.cjs` is the canonical implementation and must remain deployed to Netlify.
+- The repository still includes `supabase/functions/social-share/index.ts` but it is intentionally a 410 placeholder (deprecated). Do not deploy that function; it's kept only to avoid accidental scrapers hitting old code.
+- Other related functions (such as `social-og-image`) remain in the Supabase functions list and can be deployed there if you use Supabase for that service.
 
 ---
 
-## Opción 2: API de Supabase (Avanzado)
+## Deploying the Netlify social-share function
 
-Si prefieres usar la API directamente:
+Netlify will automatically build and deploy functions from the repository when you push to the branch connected to your site (or use the Netlify dashboard). There is no special Supabase step required for the canonical social-share endpoint.
 
-```bash
-# 1. Obtener el código
-CODE=$(cat supabase/functions/social-share/index.ts)
+If you need to deploy manually via the Netlify dashboard:
 
-# 2. Deploy via API
-curl -X POST 'https://api.supabase.com/v1/projects/gpfccicfqynahflehpqo/functions/social-share' \
-  -H "Authorization: Bearer YOUR_SUPABASE_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"slug\": \"social-share\",
-    \"verify_jwt\": false,
-    \"body\": $(jq -Rs . supabase/functions/social-share/index.ts)
-  }"
-```
+1. Open your site in Netlify.
+2. Go to Site settings → Functions (or the new functions UI).
+3. Confirm that `social-share` exists and is set to run on Node (or CJS) as configured by the repo build.
+4. Deploy the site (trigger a new site deploy) or push a commit that touches the function file.
 
-Necesitas el access token de: https://supabase.com/dashboard/account/tokens
+Local dev: `npm run dev` will start the local Vite/Netlify dev environment used by this repo. The local dev server maps the Netlify function at:
+
+- Local (dev): `http://localhost:8888/.netlify/functions/social-share?query=...`
+
+(Your local port may vary depending on `netlify dev`/`npm run dev` config.)
 
 ---
 
-## ✅ Verificación Post-Deploy
+## Why we removed the Supabase social-share
 
-### Test 1: Verificar Content-Type
-```bash
-curl -I 'https://curiosai.com/functions/v1/social-share?query=test'
-```
-✅ Debe mostrar: `content-type: text/html; charset=utf-8`
+Having the same endpoint deployed in two places caused inconsistent scraper behaviour (CDN/proxy rewrites and stale Supabase deployment caused platforms like LinkedIn to fetch the wrong OG HTML). To prevent future regressions we:
 
-### Test 2: Verificar HTML
-```bash
-curl -s 'https://curiosai.com/functions/v1/social-share?query=test' | head -20
-```
-✅ Debe mostrar HTML válido con meta tags
+- Made Netlify the canonical runtime.
+- Replaced the Supabase `social-share` function source in the repo with an explicit 410 placeholder.
+- Removed `social-share` from local deploy scripts and local Supabase config so it is not accidentally deployed.
 
-### Test 3: Verificar Imagen PNG
-```bash
-curl -s 'https://curiosai.com/functions/v1/social-share?query=test' | grep -o 'curiosai-og-image.*\.png'
-```
-✅ Debe mostrar: `curiosai-og-image-1200x627.png`
-
-### Test 4: LinkedIn Post Inspector
-1. Ve a: https://www.linkedin.com/post-inspector/
-2. Pega: `https://curiosai.com/functions/v1/social-share?query=test%20query&snippet=test%20snippet`
-3. Click "Inspect"
-✅ Debe mostrar preview correctamente (sin error "cannot display preview")
+If you maintain Supabase production deployments manually, ensure the hosted Supabase function has been updated/removed there as well (dashboard or CI).
 
 ---
 
-## 🐛 Troubleshooting
+## Verification steps (recommended)
 
-### Error: "Cannot display preview" en LinkedIn
-**Causa:** LinkedIn no puede cargar la imagen o el HTML
-**Solución:**
-1. Verifica que `curiosai-og-image-1200x627.png` exista en `public/`
-2. Verifica que el Content-Type sea `text/html; charset=utf-8`
-3. Usa LinkedIn Post Inspector para ver el error específico
+1. Verify Netlify function returns OG HTML when requested as a bot:
 
-### Error: La función no responde
-**Causa:** Deploy no completado
-**Solución:**
-1. Ve al Dashboard > Edge Functions > social-share > Logs
-2. Verifica que no haya errores de sintaxis
-3. Reintenta el deploy
+   - Direct Netlify function path (canonical):
 
-### Error: Redirect en lugar de HTML
-**Causa:** Bot detection fallando
-**Solución:**
-1. Agrega `&preview=true` a la URL para forzar preview mode
-2. Ejemplo: `...social-share?query=test&preview=true`
+     curl -I 'https://curiosai.com/.netlify/functions/social-share?query=test'
 
----
+     Expect: `content-type: text/html; charset=utf-8` and a 200 response when using a bot UA.
 
-## 📊 Cambios en esta Versión
+2. Verify the proxied path (site path) returns the correct OG HTML for scrapers:
 
-✅ **LinkedIn Fix:**
-- Cambio de SVG dinámico → PNG estático como fallback
-- `og:image:type` ahora es `image/png` en lugar de `image/svg+xml`
-- Usa `/curiosai-og-image-1200x627.png` cuando no hay imagen del artículo
+   - Proxy path used by frontend and social platforms:
 
-✅ **Preview Mode:**
-- Nuevo parámetro `preview=true` para testing
-- Fuerza mostrar HTML sin redirect
+     curl -I 'https://curiosai.com/functions/v1/social-share?query=test' -A "LinkedInBot/1.0"
 
-✅ **Headers Correctos:**
-- `Content-Type: text/html; charset=utf-8` explícito
-- `Cache-Control: public, max-age=300` para performance
+     Expect: `content-type: text/html; charset=utf-8` and the `og:url` meta pointing to `https://curiosai.com/search?q=test`.
+
+3. Confirm browsers still redirect to the search results (users should be routed to the live search rather than staying on the OG page):
+
+   - In a normal browser user-agent the endpoint should respond with a 302 redirect to the search page.
+
+4. Use LinkedIn Post Inspector to force LinkedIn to re-scrape (helpful for testing after changes):
+
+   - https://www.linkedin.com/post-inspector/
+   - Paste: `https://curiosai.com/functions/v1/social-share?query=unique-test-123` and click Inspect.
+
+5. If you see stale content from a Supabase URL (`gpfccicfqynahflehpqo.supabase.co/functions/v1/social-share`), ensure the Supabase deployment has been updated or removed in the Supabase dashboard.
 
 ---
 
-## 🎯 Siguiente Paso
+## Commands you may find useful
 
-Una vez desplegado, prueba compartir en LinkedIn:
-1. Ve a https://curiosai.com
-2. Haz una búsqueda
-3. Click en compartir → LinkedIn
-4. LinkedIn debe mostrar el preview correctamente ✅
+Trigger a Netlify site deploy (via git push):
+
+```bash
+# from repo root
+git add netlify/functions/social-share.cjs
+git commit -m "Update social-share Netlify function"
+git push origin main
+```
+
+Quick local test using Netlify dev (if you have Netlify CLI set up):
+
+```bash
+# Start local dev (project configured with netlify dev or npm run dev)
+npm run dev
+# In another terminal, test the local function
+curl -s 'http://localhost:8888/.netlify/functions/social-share?query=test' | head -n 30
+```
+
+---
+
+## Notes and next steps
+
+- If you rely on CI that deploys Supabase functions, ensure it no longer targets `social-share` (we updated `scripts/fresh-start.sh` and `supabase/config.toml` in the repo to reflect this).
+- If you'd like, I can update `docs/DEPLOY_SOCIAL_SHARE_MANUAL.md` further to include Netlify-specific troubleshooting, or remove the Supabase file entirely from the repo (the placeholder is intentionally present to avoid accidental scrapers). Tell me which you'd prefer.
+
+---
+
+Last updated: consolidated Feb 22, 2026
