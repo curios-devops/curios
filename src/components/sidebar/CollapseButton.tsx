@@ -19,20 +19,17 @@ export default function CollapseButton(
       onClick={onClick}
       className={`
         w-full
-        flex 
-        items-center 
-        justify-center 
+        flex
+        items-center
+        justify-center
         p-2.5
-        text-gray-600 
-        hover:text-[#007BFF] 
-        transition-colors 
-        rounded-md 
+        text-gray-600
+        hover:text-[#007BFF]
+        transition-colors
+        rounded-md
         hover:bg-gray-100
         dark:hover:bg-[#1a1a1a]
         dark:text-gray-400
-        whitespace-normal
-        text-wrap
-        break-words
       `}
       aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
@@ -45,7 +42,7 @@ export default function CollapseButton(
     return (
       <div className="relative group">
         {button}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words">
+        <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-nowrap">
           {t('expand')}
         </div>
       </div>
@@ -57,7 +54,7 @@ export default function CollapseButton(
     return (
       <div className="relative group">
         {button}
-        <div className="absolute left-1/2 -translate-x-1/2 -bottom-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words">
+        <div className="absolute left-1/2 -translate-x-1/2 -bottom-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-nowrap">
           {t('collapse')}
         </div>
       </div>
