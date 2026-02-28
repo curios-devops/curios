@@ -1,6 +1,5 @@
-import { signInWithMagicLink } from './core';
-import type { AuthResponse } from './types';
+import { signInWithMagicLink, signUpWithMagicLink } from './core';
 
 // Use magic link for both signin and signup flows
 export const signInWithEmail = signInWithMagicLink;
-export const signUpWithEmail = signInWithMagicLink;
+export const signUpWithEmail = signUpWithMagicLink;

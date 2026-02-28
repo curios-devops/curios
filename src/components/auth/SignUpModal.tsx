@@ -4,7 +4,7 @@ import GoogleButton from './buttons/GoogleButton.tsx';
 import EmailForm from './components/EmailForm.tsx';
 import Divider from './components/Divider.tsx';
 import VerificationModal from './components/VerificationModal.tsx';
-import { Language } from '../../types/language.ts';
+import { useLanguage } from '../../contexts/LanguageContext.tsx';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import SignInModal from './SignInModal.tsx';
@@ -12,10 +12,10 @@ import SignInModal from './SignInModal.tsx';
 interface SignUpModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentLanguage: Language;
 }
 
 export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
+  const { currentLanguage } = useLanguage();
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
 
@@ -31,7 +31,7 @@ export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
     return <VerificationModal email={verificationEmail} onClose={onClose} />;
   }
   if (showSignIn) {
-    return <SignInModal isOpen={true} onClose={() => { setShowSignIn(false); onClose(); }} currentLanguage={{ code: 'en', name: 'English', flag: '🇺🇸' }} />;
+    return <SignInModal isOpen={true} onClose={() => { setShowSignIn(false); onClose(); }} currentLanguage={currentLanguage} />;
   }
 
   return (
