@@ -173,6 +173,11 @@ export default function Results() {
             timestamp: new Date().toISOString()
           });
 
+          console.log('🔍 [SearchResults] Checking error message:', {
+            errorMessage,
+            isRateLimitExceeded: errorMessage === 'RATE_LIMIT_EXCEEDED'
+          });
+
           logger.error('Search failed', {
             error: errorMessage,
             query
@@ -180,6 +185,7 @@ export default function Results() {
 
           // Handle 429 rate limit error - show friendly message and redirect to home
           if (errorMessage === 'RATE_LIMIT_EXCEEDED') {
+            console.log('🚫 [SearchResults] RATE LIMIT DETECTED - Showing friendly message and redirecting');
             setIsStreaming(false);
             setSearchState({
               isLoading: false,
@@ -189,6 +195,7 @@ export default function Results() {
 
             // Redirect to home after 3 seconds
             setTimeout(() => {
+              console.log('🏠 [SearchResults] Redirecting to home page...');
               navigate('/');
             }, 3000);
             return;

@@ -352,12 +352,14 @@ export async function performRegularSearchWithStreaming(
       }
 
       if (!writerResponse?.success || !writerResponse?.data?.content) {
+        const errorMsg = writerResponse?.error || 'Writer failed to generate content';
         console.error('❌ [STREAMING SEARCH] Writer failed to generate content', {
-          error: writerResponse?.error,
+          error: errorMsg,
           hasData: !!writerResponse?.data
         });
+        console.log('❌ [STREAMING SEARCH] Throwing error:', errorMsg);
         // Preserve the original error message if available
-        throw new Error(writerResponse?.error || 'Writer failed to generate content');
+        throw new Error(errorMsg);
       }
       
       // Step 3: Wait for shopping products (if any)

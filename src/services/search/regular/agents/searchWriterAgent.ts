@@ -186,13 +186,15 @@ export class SearchWriterAgent {
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error('OpenAI streaming API error', { status: response.status, error: errorText.substring(0, 200) });
 
         // Handle 429 rate limit error with friendly message
         if (response.status === 429) {
+          console.log('🚫 [WRITER STREAMING] Detected 429 rate limit, throwing RATE_LIMIT_EXCEEDED');
+          logger.error('OpenAI API rate limit exceeded (429)', { status: 429 });
           throw new Error('RATE_LIMIT_EXCEEDED');
         }
 
+        logger.error('OpenAI streaming API error', { status: response.status, error: errorText.substring(0, 200) });
         throw new Error(`API error: ${response.status}`);
       }
 
@@ -472,13 +474,15 @@ Based on these search results, write a comprehensive article addressing the quer
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+
+      console.log('❌ [WRITER] Caught error in executeWithStreaming:', errorMessage);
+
       logger.error('SearchWriterAgent: Streaming execution failed', {
         query,
         error: errorMessage
       });
 
-      // Return fallback data
+      // Return fallback data with original error message
       return {
         success: false,
         error: errorMessage,
