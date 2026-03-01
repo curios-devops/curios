@@ -187,11 +187,10 @@ export class SearchWriterAgent {
 
       // Check for rate limit BEFORE consuming response body
       console.log('🔍 [WRITER STREAMING] Checking status code:', statusCode, 'is429?', statusCode === 429);
-      if (statusCode === 429) {
-        console.error('🚫🚫🚫 RATE LIMIT DETECTED - RETURNING STRING 🚫🚫🚫');
-        logger.error('OpenAI API rate limit exceeded (429)', { status: 429 });
-        return 'RATE_LIMIT_EXCEEDED';
-      }
+
+      // Immediate return for rate limits - no logging to avoid any issues
+      if (statusCode === 429) return 'RATE_LIMIT_EXCEEDED';
+
       console.log('🔍 [WRITER STREAMING] Not 429, continuing...');
 
       if (!response.ok) {
@@ -456,9 +455,11 @@ Based on these search results, write a comprehensive article addressing the quer
       // Call OpenAI with streaming
       const fullContent = await this.callOpenAIStreaming(messages, modelToUse, onContentChunk);
 
+      console.log('🔍 [WRITER executeWithStreaming] Received from streaming:', typeof fullContent, fullContent === 'RATE_LIMIT_EXCEEDED' ? 'RATE_LIMIT_EXCEEDED' : `${fullContent.length} chars`);
+
       // Check if rate limit error was returned
       if (fullContent === 'RATE_LIMIT_EXCEEDED') {
-        console.error('🚫 [WRITER executeWithStreaming] Rate limit detected, returning error response');
+        console.error('🚫🚫🚫 [WRITER executeWithStreaming] RATE LIMIT - RETURNING ERROR RESPONSE 🚫🚫🚫');
         return {
           success: false,
           error: 'RATE_LIMIT_EXCEEDED',
