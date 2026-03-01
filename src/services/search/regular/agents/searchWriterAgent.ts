@@ -190,6 +190,7 @@ export class SearchWriterAgent {
         // Handle 429 rate limit error with friendly message
         if (response.status === 429) {
           console.log('🚫 [WRITER STREAMING] Detected 429 rate limit, throwing RATE_LIMIT_EXCEEDED');
+          console.error('🚫🚫🚫 ABOUT TO THROW RATE_LIMIT_EXCEEDED 🚫🚫🚫');
           logger.error('OpenAI API rate limit exceeded (429)', { status: 429 });
           throw new Error('RATE_LIMIT_EXCEEDED');
         }
@@ -263,9 +264,11 @@ export class SearchWriterAgent {
     } catch (error) {
       clearTimeout(timeoutId);
 
+      console.error('🔴🔴🔴 CATCH BLOCK IN callOpenAIStreaming ENTERED 🔴🔴🔴');
       console.log('❌ [WRITER STREAMING] Caught error in callOpenAIStreaming catch block:', error);
 
       if (error instanceof Error) {
+        console.error('🔴 Error is Error instance, message:', error.message);
         console.log('❌ [WRITER STREAMING] Error message:', error.message);
 
         if (error.name === 'AbortError') {
