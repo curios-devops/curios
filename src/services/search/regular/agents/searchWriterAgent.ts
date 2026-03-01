@@ -263,8 +263,10 @@ export class SearchWriterAgent {
     } catch (error) {
       clearTimeout(timeoutId);
 
+      console.log('❌ [WRITER STREAMING] Caught error in callOpenAIStreaming catch block:', error);
+
       if (error instanceof Error) {
-        console.log('❌ [WRITER STREAMING] Caught error in callOpenAIStreaming:', error.message);
+        console.log('❌ [WRITER STREAMING] Error message:', error.message);
 
         if (error.name === 'AbortError') {
           logger.error('Streaming request timeout after 60s');
@@ -272,6 +274,8 @@ export class SearchWriterAgent {
         }
         logger.error('OpenAI streaming call failed', { error: error.message });
         console.log('❌ [WRITER STREAMING] Re-throwing error:', error.message);
+      } else {
+        console.log('❌ [WRITER STREAMING] Error is not an Error instance:', typeof error);
       }
       throw error;
     }
