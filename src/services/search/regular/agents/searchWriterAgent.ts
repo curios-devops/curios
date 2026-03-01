@@ -462,7 +462,7 @@ Based on these search results, write a comprehensive article addressing the quer
       // Call OpenAI with streaming
       const fullContent = await this.callOpenAIStreaming(messages, modelToUse, onContentChunk);
 
-      console.log('✅ [WRITER] Streaming complete, content length:', fullContent.length);
+      console.log('✅ [WRITER executeWithStreaming] Streaming complete, content length:', fullContent.length);
       logger.info('SearchWriterAgent: Successfully generated article (streaming)', {
         contentLength: fullContent.length
       });
@@ -482,7 +482,7 @@ Based on these search results, write a comprehensive article addressing the quer
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
-      console.log('❌ [WRITER] Caught error in executeWithStreaming:', errorMessage);
+      console.log('❌ [WRITER executeWithStreaming] CATCH BLOCK ENTERED - error:', errorMessage);
 
       logger.error('SearchWriterAgent: Streaming execution failed', {
         query,
@@ -491,9 +491,11 @@ Based on these search results, write a comprehensive article addressing the quer
 
       // Re-throw rate limit errors so they can be handled by UI with redirect
       if (errorMessage === 'RATE_LIMIT_EXCEEDED') {
-        console.log('🚫 [WRITER] Re-throwing RATE_LIMIT_EXCEEDED to propagate to UI');
+        console.log('🚫 [WRITER executeWithStreaming] RATE_LIMIT_EXCEEDED detected, RE-THROWING to UI');
         throw error;
       }
+
+      console.log('❌ [WRITER executeWithStreaming] Not a rate limit error, returning fallback data');
 
       // Return fallback data for other errors
       return {
