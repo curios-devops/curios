@@ -184,16 +184,16 @@ export class SearchWriterAgent {
         hasBody: !!response.body
       });
 
+      // Check for rate limit BEFORE consuming response body
+      if (response.status === 429) {
+        console.error('🚫 [WRITER STREAMING] 429 detected - returning RATE_LIMIT_EXCEEDED');
+        logger.error('OpenAI API rate limit exceeded (429)', { status: 429 });
+        return 'RATE_LIMIT_EXCEEDED';
+      }
+
       if (!response.ok) {
         const errorText = await response.text();
         logger.error('OpenAI streaming API error', { status: response.status, error: errorText.substring(0, 200) });
-
-        // Return specific error for rate limits
-        if (response.status === 429) {
-          console.error('🚫 [WRITER STREAMING] 429 detected - returning RATE_LIMIT_EXCEEDED');
-          return 'RATE_LIMIT_EXCEEDED';
-        }
-
         throw new Error(`API error: ${response.status}`);
       }
 
