@@ -52,6 +52,7 @@ export default function Results() {
   useEffect(() => {
     let isCurrentRequest = true;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let redirectTimeoutId: ReturnType<typeof setTimeout> | null = null;
     
     const fetchResults = async () => {
       if (!query.trim() && imageUrls.length === 0) {
@@ -166,6 +167,10 @@ export default function Results() {
         
         if (isCurrentRequest) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          const isRateLimitError =
+            errorMessage === 'RATE_LIMIT_EXCEEDED' ||
+            errorMessage === 'API error: 429' ||
+            /\b429\b/.test(errorMessage);
 
           console.error('❌ [SearchResults] Search failed:', {
             error: errorMessage,
@@ -175,7 +180,7 @@ export default function Results() {
 
           console.log('🔍 [SearchResults] Checking error message:', {
             errorMessage,
-            isRateLimitExceeded: errorMessage === 'RATE_LIMIT_EXCEEDED'
+            isRateLimitExceeded: isRateLimitError
           });
 
           logger.error('Search failed', {
@@ -184,9 +189,10 @@ export default function Results() {
           });
 
           // Handle 429 rate limit error - show friendly message and redirect to home
-          if (errorMessage === 'RATE_LIMIT_EXCEEDED') {
+          if (isRateLimitError) {
             console.log('🚫 [SearchResults] RATE LIMIT DETECTED - Showing friendly message and redirecting');
             setIsStreaming(false);
+            setStatusMessage('Too many requests right now. Please try again in a moment.');
             setSearchState({
               isLoading: false,
               error: 'We are experiencing high traffic right now. Please try again in a few moments.',
@@ -194,7 +200,7 @@ export default function Results() {
             });
 
             // Redirect to home after 3 seconds
-            setTimeout(() => {
+            redirectTimeoutId = setTimeout(() => {
               console.log('🏠 [SearchResults] Redirecting to home page...');
               navigate('/');
             }, 3000);
@@ -220,6 +226,9 @@ export default function Results() {
       setIsStreaming(false);
       if (timeoutId) {
         clearTimeout(timeoutId);
+      }
+      if (redirectTimeoutId) {
+        clearTimeout(redirectTimeoutId);
       }
     };
   }, [query, imageUrls.join(',')]); // Re-run when query or images change

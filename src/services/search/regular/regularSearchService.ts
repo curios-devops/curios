@@ -414,6 +414,17 @@ export async function performRegularSearchWithStreaming(
       timestamp: new Date().toISOString(),
     });
 
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isRateLimitError =
+      errorMessage === 'RATE_LIMIT_EXCEEDED' ||
+      errorMessage === 'API error: 429' ||
+      errorMessage.includes('429');
+
+    // Important: propagate rate-limit errors so UI can show friendly message and redirect.
+    if (isRateLimitError) {
+      throw new SearchError('RATE_LIMIT_EXCEEDED');
+    }
+
     return {
       answer: 'We apologize, but we could not process your search at this time. Please try again in a moment.',
       sources: [],
