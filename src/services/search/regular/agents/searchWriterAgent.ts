@@ -489,7 +489,13 @@ Based on these search results, write a comprehensive article addressing the quer
         error: errorMessage
       });
 
-      // Return fallback data with original error message
+      // Re-throw rate limit errors so they can be handled by UI with redirect
+      if (errorMessage === 'RATE_LIMIT_EXCEEDED') {
+        console.log('🚫 [WRITER] Re-throwing RATE_LIMIT_EXCEEDED to propagate to UI');
+        throw error;
+      }
+
+      // Return fallback data for other errors
       return {
         success: false,
         error: errorMessage,
