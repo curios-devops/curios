@@ -186,16 +186,14 @@ export class SearchWriterAgent {
 
       if (!response.ok) {
         const errorText = await response.text();
+        logger.error('OpenAI streaming API error', { status: response.status, error: errorText.substring(0, 200) });
 
-        // Handle 429 rate limit error with friendly message
+        // Return specific error for rate limits
         if (response.status === 429) {
-          console.log('🚫 [WRITER STREAMING] Detected 429 rate limit, throwing RATE_LIMIT_EXCEEDED');
-          console.error('🚫🚫🚫 ABOUT TO THROW RATE_LIMIT_EXCEEDED 🚫🚫🚫');
-          logger.error('OpenAI API rate limit exceeded (429)', { status: 429 });
-          throw new Error('RATE_LIMIT_EXCEEDED');
+          console.error('🚫 [WRITER STREAMING] 429 detected - returning RATE_LIMIT_EXCEEDED');
+          return 'RATE_LIMIT_EXCEEDED';
         }
 
-        logger.error('OpenAI streaming API error', { status: response.status, error: errorText.substring(0, 200) });
         throw new Error(`API error: ${response.status}`);
       }
 
@@ -264,22 +262,12 @@ export class SearchWriterAgent {
     } catch (error) {
       clearTimeout(timeoutId);
 
-      console.error('🔴🔴🔴 CATCH BLOCK IN callOpenAIStreaming ENTERED 🔴🔴🔴');
-      console.log('❌ [WRITER STREAMING] Caught error in callOpenAIStreaming catch block:', error);
-
-      if (error instanceof Error) {
-        console.error('🔴 Error is Error instance, message:', error.message);
-        console.log('❌ [WRITER STREAMING] Error message:', error.message);
-
-        if (error.name === 'AbortError') {
-          logger.error('Streaming request timeout after 60s');
-          throw new Error('Request timeout - please try again');
-        }
-        logger.error('OpenAI streaming call failed', { error: error.message });
-        console.log('❌ [WRITER STREAMING] Re-throwing error:', error.message);
-      } else {
-        console.log('❌ [WRITER STREAMING] Error is not an Error instance:', typeof error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        logger.error('Streaming request timeout after 60s');
+        throw new Error('Request timeout - please try again');
       }
+
+      logger.error('OpenAI streaming call failed', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -465,6 +453,16 @@ Based on these search results, write a comprehensive article addressing the quer
       // Call OpenAI with streaming
       const fullContent = await this.callOpenAIStreaming(messages, modelToUse, onContentChunk);
 
+      // Check if rate limit error was returned
+      if (fullContent === 'RATE_LIMIT_EXCEEDED') {
+        console.error('🚫 [WRITER executeWithStreaming] Rate limit detected, returning error response');
+        return {
+          success: false,
+          error: 'RATE_LIMIT_EXCEEDED',
+          data: this.getFallbackData(query)
+        };
+      }
+
       console.log('✅ [WRITER executeWithStreaming] Streaming complete, content length:', fullContent.length);
       logger.info('SearchWriterAgent: Successfully generated article (streaming)', {
         contentLength: fullContent.length
@@ -484,23 +482,14 @@ Based on these search results, write a comprehensive article addressing the quer
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-
-      console.log('❌ [WRITER executeWithStreaming] CATCH BLOCK ENTERED - error:', errorMessage);
+      console.error('❌ [WRITER executeWithStreaming] Error caught:', errorMessage);
 
       logger.error('SearchWriterAgent: Streaming execution failed', {
         query,
         error: errorMessage
       });
 
-      // Re-throw rate limit errors so they can be handled by UI with redirect
-      if (errorMessage === 'RATE_LIMIT_EXCEEDED') {
-        console.log('🚫 [WRITER executeWithStreaming] RATE_LIMIT_EXCEEDED detected, RE-THROWING to UI');
-        throw error;
-      }
-
-      console.log('❌ [WRITER executeWithStreaming] Not a rate limit error, returning fallback data');
-
-      // Return fallback data for other errors
+      // Return fallback data for all errors
       return {
         success: false,
         error: errorMessage,
