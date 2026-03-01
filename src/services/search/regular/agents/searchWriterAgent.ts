@@ -187,6 +187,12 @@ export class SearchWriterAgent {
       if (!response.ok) {
         const errorText = await response.text();
         logger.error('OpenAI streaming API error', { status: response.status, error: errorText.substring(0, 200) });
+
+        // Handle 429 rate limit error with friendly message
+        if (response.status === 429) {
+          throw new Error('RATE_LIMIT_EXCEEDED');
+        }
+
         throw new Error(`API error: ${response.status}`);
       }
 

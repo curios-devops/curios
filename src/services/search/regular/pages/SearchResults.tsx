@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { performSearchWithStreaming } from '../searchRegularIndex.ts';
 import { formatTimeAgo } from '../../../../utils/time.ts';
 import TopBar from '../../../../components/results/TopBar.tsx';
@@ -9,6 +9,7 @@ import { logger } from '../../../../utils/logger.ts';
 
 export default function Results() {
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
   const imageUrlsParam = searchParams.get('images') || '';
@@ -164,21 +165,39 @@ export default function Results() {
         }
         
         if (isCurrentRequest) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
           console.error('❌ [SearchResults] Search failed:', {
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: errorMessage,
             query,
             timestamp: new Date().toISOString()
           });
-          
+
           logger.error('Search failed', {
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: errorMessage,
             query
           });
-          
+
+          // Handle 429 rate limit error - show friendly message and redirect to home
+          if (errorMessage === 'RATE_LIMIT_EXCEEDED') {
+            setIsStreaming(false);
+            setSearchState({
+              isLoading: false,
+              error: 'We are experiencing high traffic right now. Please try again in a few moments.',
+              data: null
+            });
+
+            // Redirect to home after 3 seconds
+            setTimeout(() => {
+              navigate('/');
+            }, 3000);
+            return;
+          }
+
           setIsStreaming(false);
           setSearchState({
             isLoading: false,
-            error: error instanceof Error ? error.message : 'Search services are currently unavailable',
+            error: errorMessage === 'API error: 429' ? 'We are experiencing high traffic right now. Please try again in a few moments.' : (errorMessage || 'Search services are currently unavailable'),
             data: null
           });
         }
