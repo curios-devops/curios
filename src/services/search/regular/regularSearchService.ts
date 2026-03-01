@@ -145,18 +145,22 @@ export async function performRegularSearch(
         researchResult: researchData,
         isImageSearch: researchData.isReverseImageSearch
       });
-      
+
       console.log('🔍 [REGULAR SEARCH] WriterAgent.execute() completed');
-      
+
       console.log('✅ [REGULAR SEARCH] WriterAgent complete:', {
         success: writerResponse?.success,
         hasContent: !!writerResponse?.data?.content,
         contentLength: writerResponse?.data?.content?.length || 0
       });
-      
+
       if (!writerResponse?.success || !writerResponse?.data?.content) {
-        console.error('❌ [REGULAR SEARCH] Writer failed to generate content');
-        throw new Error('Writer failed to generate content');
+        console.error('❌ [REGULAR SEARCH] Writer failed to generate content', {
+          error: writerResponse?.error,
+          hasData: !!writerResponse?.data
+        });
+        // Preserve the original error message if available
+        throw new Error(writerResponse?.error || 'Writer failed to generate content');
       }
       
       console.log('✅ [REGULAR SEARCH] Writer SUCCESS');
@@ -346,10 +350,14 @@ export async function performRegularSearchWithStreaming(
           isImageSearch: researchData.isReverseImageSearch
         });
       }
-      
+
       if (!writerResponse?.success || !writerResponse?.data?.content) {
-        console.error('❌ [STREAMING SEARCH] Writer failed to generate content');
-        throw new Error('Writer failed to generate content');
+        console.error('❌ [STREAMING SEARCH] Writer failed to generate content', {
+          error: writerResponse?.error,
+          hasData: !!writerResponse?.data
+        });
+        // Preserve the original error message if available
+        throw new Error(writerResponse?.error || 'Writer failed to generate content');
       }
       
       // Step 3: Wait for shopping products (if any)
