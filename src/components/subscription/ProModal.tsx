@@ -5,7 +5,6 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useAccentColor } from '../../hooks/useAccentColor';
 import { useTheme } from '../theme/ThemeContext';
 import CheckoutButton from './CheckoutButton';
-import PromoBanner from './PromoBanner';
 
 interface ProModalProps {
   isOpen: boolean;
@@ -40,12 +39,7 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
           <X size={20} />
         </button>
 
-        {/* Promo Banner - Easily removable */}
-        <div className="mt-6">
-          <PromoBanner />
-        </div>
-
-        <div className="text-center mb-4">
+        <div className="text-center mb-4 mt-6">
           <h2 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-1`}>{t('upgradeToPremium')}</h2>
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('unlockPremiumFeatures')}</p>
           {error && <p className="mt-2 text-red-500 text-sm">{error}</p>}
