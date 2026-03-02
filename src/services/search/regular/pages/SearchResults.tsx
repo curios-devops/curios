@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { performSearchWithStreaming } from '../searchRegularIndex.ts';
 import { formatTimeAgo } from '../../../../utils/time.ts';
@@ -32,6 +32,7 @@ export default function Results() {
     error: null,
     data: null
   });
+  const isRedirectingRef = useRef(false);
 
 
   // Scroll to top on mount to ensure page starts at top position
@@ -63,6 +64,11 @@ export default function Results() {
     };
 
     const handleRateLimit = () => {
+      if (isRedirectingRef.current) {
+        return;
+      }
+
+      isRedirectingRef.current = true;
       console.log('🚫 [SearchResults] RATE LIMIT DETECTED - Showing message and redirecting home');
       setIsStreaming(false);
       setStatusMessage('Too many requests right now. Please try again in a moment.');
@@ -77,7 +83,14 @@ export default function Results() {
       }
 
       redirectTimeoutId = setTimeout(() => {
-        navigate('/');
+        navigate('/', { replace: true });
+
+        // Hard fallback redirect in case Router navigation gets blocked by pending async work.
+        setTimeout(() => {
+          if (globalThis.location.pathname !== '/') {
+            globalThis.location.assign('/');
+          }
+        }, 400);
       }, 1200);
     };
 
@@ -287,6 +300,7 @@ export default function Results() {
       if (typeof window !== 'undefined') {
         window.removeEventListener('curios:rate-limit', handleRateLimitEvent as EventListener);
       }
+      isRedirectingRef.current = false;
     };
   }, [query, imageUrls.join(',')]); // Re-run when query or images change
 
