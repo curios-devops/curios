@@ -53,6 +53,33 @@ export default function Results() {
     let isCurrentRequest = true;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let redirectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const isRateLimitError = (message: string): boolean => {
+      return (
+        message === 'RATE_LIMIT_EXCEEDED' ||
+        message === 'API error: 429' ||
+        /\b429\b/.test(message)
+      );
+    };
+
+    const handleRateLimit = () => {
+      console.log('🚫 [SearchResults] RATE LIMIT DETECTED - Showing message and redirecting home');
+      setIsStreaming(false);
+      setStatusMessage('Too many requests right now. Please try again in a moment.');
+      setSearchState({
+        isLoading: false,
+        error: 'We are experiencing high traffic right now. Please try again in a few moments.',
+        data: null
+      });
+
+      if (redirectTimeoutId) {
+        clearTimeout(redirectTimeoutId);
+      }
+
+      redirectTimeoutId = setTimeout(() => {
+        navigate('/');
+      }, 1200);
+    };
     
     const fetchResults = async () => {
       if (!query.trim() && imageUrls.length === 0) {
@@ -167,10 +194,7 @@ export default function Results() {
         
         if (isCurrentRequest) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          const isRateLimitError =
-            errorMessage === 'RATE_LIMIT_EXCEEDED' ||
-            errorMessage === 'API error: 429' ||
-            /\b429\b/.test(errorMessage);
+          const hasRateLimitError = isRateLimitError(errorMessage);
 
           console.error('❌ [SearchResults] Search failed:', {
             error: errorMessage,
@@ -180,7 +204,7 @@ export default function Results() {
 
           console.log('🔍 [SearchResults] Checking error message:', {
             errorMessage,
-            isRateLimitExceeded: isRateLimitError
+            isRateLimitExceeded: hasRateLimitError
           });
 
           logger.error('Search failed', {
@@ -189,21 +213,8 @@ export default function Results() {
           });
 
           // Handle 429 rate limit error - show friendly message and redirect to home
-          if (isRateLimitError) {
-            console.log('🚫 [SearchResults] RATE LIMIT DETECTED - Showing friendly message and redirecting');
-            setIsStreaming(false);
-            setStatusMessage('Too many requests right now. Please try again in a moment.');
-            setSearchState({
-              isLoading: false,
-              error: 'We are experiencing high traffic right now. Please try again in a few moments.',
-              data: null
-            });
-
-            // Redirect to home after 3 seconds
-            redirectTimeoutId = setTimeout(() => {
-              console.log('🏠 [SearchResults] Redirecting to home page...');
-              navigate('/');
-            }, 3000);
+          if (hasRateLimitError) {
+            handleRateLimit();
             return;
           }
 
@@ -228,33 +239,21 @@ export default function Results() {
       }
 
       const errorMessage = unhandledError instanceof Error ? unhandledError.message : String(unhandledError);
-      const isRateLimitError =
-        errorMessage === 'RATE_LIMIT_EXCEEDED' ||
-        errorMessage === 'API error: 429' ||
-        /\b429\b/.test(errorMessage);
+      const hasRateLimitError = isRateLimitError(errorMessage);
 
       console.error('❌ [SearchResults] Unhandled rejection in fetchResults:', {
         error: errorMessage,
         query,
-        isRateLimitError,
+        isRateLimitError: hasRateLimitError,
         timestamp: new Date().toISOString()
       });
 
-      setIsStreaming(false);
-
-      if (isRateLimitError) {
-        setStatusMessage('Too many requests right now. Please try again in a moment.');
-        setSearchState({
-          isLoading: false,
-          error: 'We are experiencing high traffic right now. Please try again in a few moments.',
-          data: null
-        });
-
-        redirectTimeoutId = setTimeout(() => {
-          navigate('/');
-        }, 3000);
+      if (hasRateLimitError) {
+        handleRateLimit();
         return;
       }
+
+      setIsStreaming(false);
 
       setSearchState({
         isLoading: false,

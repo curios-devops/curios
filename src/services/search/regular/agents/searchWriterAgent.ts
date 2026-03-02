@@ -459,30 +459,7 @@ Based on these search results, write a comprehensive article addressing the quer
       // Call OpenAI with streaming
       const fullContent = await this.callOpenAIStreaming(messages, modelToUse, onContentChunk);
 
-      const normalizedContent = String(fullContent)
-        .replace(/[\u200B-\u200D\uFEFF]/g, '')
-        .trim();
-
-      const isRateLimitMarker =
-        normalizedContent === 'RATE_LIMIT_EXCEEDED' ||
-        normalizedContent.startsWith('RATE_LIMIT_EXCEEDED');
-
-      console.log(
-        '🔍 [WRITER executeWithStreaming] Received from streaming:',
-        typeof fullContent,
-        isRateLimitMarker ? 'RATE_LIMIT_EXCEEDED' : `${normalizedContent.length} chars`
-      );
-      console.log('🔍 [WRITER executeWithStreaming] Raw value:', JSON.stringify(fullContent));
-      console.log('🔍 [WRITER executeWithStreaming] Normalized value:', JSON.stringify(normalizedContent));
-      console.log('🔍 [WRITER executeWithStreaming] String comparison:', isRateLimitMarker);
-
-      // Check if rate limit error was returned
-      if (isRateLimitMarker) {
-        console.error('🚫🚫🚫 [WRITER executeWithStreaming] RATE LIMIT - RETURNING ERROR RESPONSE 🚫🚫🚫');
-        throw new Error('RATE_LIMIT_EXCEEDED');
-      }
-
-      console.log('🔍 [WRITER executeWithStreaming] Rate limit check passed, continuing...');
+      console.log('🔍 [WRITER executeWithStreaming] Received from streaming:', typeof fullContent, `${fullContent.length} chars`);
 
       console.log('✅ [WRITER executeWithStreaming] Streaming complete, content length:', fullContent.length);
       logger.info('SearchWriterAgent: Successfully generated article (streaming)', {
