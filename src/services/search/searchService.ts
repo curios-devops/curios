@@ -8,6 +8,10 @@ import type { StreamingCallback } from './regular/agents/searchWriterAgent.ts';
 export { SearchError };
 export type { StreamingCallback };
 
+// Single-flight map to avoid duplicate concurrent streaming searches
+// (e.g. StrictMode double invocation or duplicated route effects)
+const inFlightRegularStreamingSearches = new Map<string, Promise<SearchResponse>>();
+
 interface SearchOptions {
   isPro?: boolean;
   onStatusUpdate?: (status: string) => void;
@@ -104,7 +108,27 @@ export async function performSearchWithStreaming(
     } else {
       // Use streaming for regular search
       logger.info('Routing to Regular Search service (streaming)', { query, isPro });
-      return await performRegularSearchWithStreaming(query, { onStatusUpdate, imageUrls, onContentChunk });
+
+      const normalizedQuery = (query || '').trim();
+      const normalizedImages = (imageUrls || []).map((url) => url.trim()).filter(Boolean).sort();
+      const requestKey = `${normalizedQuery}::${normalizedImages.join(',')}`;
+
+      const existingRequest = inFlightRegularStreamingSearches.get(requestKey);
+      if (existingRequest) {
+        logger.warn('Reusing in-flight regular streaming search request', {
+          query: normalizedQuery,
+          imageCount: normalizedImages.length
+        });
+        return await existingRequest;
+      }
+
+      const requestPromise = performRegularSearchWithStreaming(query, { onStatusUpdate, imageUrls, onContentChunk })
+        .finally(() => {
+          inFlightRegularStreamingSearches.delete(requestKey);
+        });
+
+      inFlightRegularStreamingSearches.set(requestKey, requestPromise);
+      return await requestPromise;
     }
   } catch (error) {
     logger.error('Streaming search error:', {

@@ -31,7 +31,7 @@ export default function Results() {
     error: null,
     data: null
   });
-  const isRedirectingRef = useRef(false);
+  const hasHandledRateLimitRef = useRef(false);
 
 
   // Scroll to top on mount to ensure page starts at top position
@@ -62,12 +62,12 @@ export default function Results() {
     };
 
     const handleRateLimit = () => {
-      if (isRedirectingRef.current) {
+      if (hasHandledRateLimitRef.current) {
         return;
       }
 
-      isRedirectingRef.current = true;
-      console.log('🚫 [SearchResults] RATE LIMIT DETECTED - Showing message and redirecting home');
+      hasHandledRateLimitRef.current = true;
+      console.log('🚫 [SearchResults] RATE LIMIT DETECTED - Showing message immediately');
       setIsStreaming(false);
       setStatusMessage('Too many requests right now. Please try again in a moment.');
       setSearchState({
@@ -75,9 +75,6 @@ export default function Results() {
         error: 'We are experiencing high traffic right now. Please try again in a few moments.',
         data: null
       });
-
-      // Force immediate hard redirect to avoid any pending promise/router state blocking navigation.
-      globalThis.location.replace('/');
     };
 
     const handleRateLimitEvent = () => {
@@ -283,7 +280,7 @@ export default function Results() {
       if (typeof window !== 'undefined') {
         window.removeEventListener('curios:rate-limit', handleRateLimitEvent as EventListener);
       }
-      isRedirectingRef.current = false;
+      hasHandledRateLimitRef.current = false;
     };
   }, [query, imageUrls.join(',')]); // Re-run when query or images change
 
