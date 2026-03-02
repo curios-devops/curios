@@ -188,8 +188,12 @@ export class SearchWriterAgent {
       // Check for rate limit BEFORE consuming response body
       console.log('🔍 [WRITER STREAMING] Checking status code:', statusCode, 'is429?', statusCode === 429);
 
-      // Immediate return for rate limits - no logging to avoid any issues
-      if (statusCode === 429) return 'RATE_LIMIT_EXCEEDED';
+      // Deterministic handling for rate limits: propagate as an error signal.
+      // This avoids relying on marker-string comparisons later in the flow.
+      if (statusCode === 429) {
+        logger.warn('OpenAI streaming rate limit hit', { status: statusCode });
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
 
       console.log('🔍 [WRITER STREAMING] Not 429, continuing...');
 
@@ -455,17 +459,30 @@ Based on these search results, write a comprehensive article addressing the quer
       // Call OpenAI with streaming
       const fullContent = await this.callOpenAIStreaming(messages, modelToUse, onContentChunk);
 
-      console.log('🔍 [WRITER executeWithStreaming] Received from streaming:', typeof fullContent, fullContent === 'RATE_LIMIT_EXCEEDED' ? 'RATE_LIMIT_EXCEEDED' : `${fullContent.length} chars`);
+      const normalizedContent = String(fullContent)
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .trim();
+
+      const isRateLimitMarker =
+        normalizedContent === 'RATE_LIMIT_EXCEEDED' ||
+        normalizedContent.startsWith('RATE_LIMIT_EXCEEDED');
+
+      console.log(
+        '🔍 [WRITER executeWithStreaming] Received from streaming:',
+        typeof fullContent,
+        isRateLimitMarker ? 'RATE_LIMIT_EXCEEDED' : `${normalizedContent.length} chars`
+      );
+      console.log('🔍 [WRITER executeWithStreaming] Raw value:', JSON.stringify(fullContent));
+      console.log('🔍 [WRITER executeWithStreaming] Normalized value:', JSON.stringify(normalizedContent));
+      console.log('🔍 [WRITER executeWithStreaming] String comparison:', isRateLimitMarker);
 
       // Check if rate limit error was returned
-      if (fullContent === 'RATE_LIMIT_EXCEEDED') {
+      if (isRateLimitMarker) {
         console.error('🚫🚫🚫 [WRITER executeWithStreaming] RATE LIMIT - RETURNING ERROR RESPONSE 🚫🚫🚫');
-        return {
-          success: false,
-          error: 'RATE_LIMIT_EXCEEDED',
-          data: this.getFallbackData(query)
-        };
+        throw new Error('RATE_LIMIT_EXCEEDED');
       }
+
+      console.log('🔍 [WRITER executeWithStreaming] Rate limit check passed, continuing...');
 
       console.log('✅ [WRITER executeWithStreaming] Streaming complete, content length:', fullContent.length);
       logger.info('SearchWriterAgent: Successfully generated article (streaming)', {
@@ -487,6 +504,10 @@ Based on these search results, write a comprehensive article addressing the quer
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('❌ [WRITER executeWithStreaming] Error caught:', errorMessage);
+
+      if (errorMessage === 'RATE_LIMIT_EXCEEDED' || /\b429\b/.test(errorMessage)) {
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
 
       logger.error('SearchWriterAgent: Streaming execution failed', {
         query,
