@@ -192,6 +192,11 @@ export class SearchWriterAgent {
       // This avoids relying on marker-string comparisons later in the flow.
       if (statusCode === 429) {
         logger.warn('OpenAI streaming rate limit hit', { status: statusCode });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('curios:rate-limit', {
+            detail: { source: 'search-writer-streaming', status: 429 }
+          }));
+        }
         throw new Error('RATE_LIMIT_EXCEEDED');
       }
 

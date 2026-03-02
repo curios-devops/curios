@@ -80,6 +80,17 @@ export default function Results() {
         navigate('/');
       }, 1200);
     };
+
+    const handleRateLimitEvent = () => {
+      if (!isCurrentRequest) {
+        return;
+      }
+      handleRateLimit();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('curios:rate-limit', handleRateLimitEvent as EventListener);
+    }
     
     const fetchResults = async () => {
       if (!query.trim() && imageUrls.length === 0) {
@@ -272,6 +283,9 @@ export default function Results() {
       }
       if (redirectTimeoutId) {
         clearTimeout(redirectTimeoutId);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('curios:rate-limit', handleRateLimitEvent as EventListener);
       }
     };
   }, [query, imageUrls.join(',')]); // Re-run when query or images change
