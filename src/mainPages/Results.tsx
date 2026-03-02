@@ -89,14 +89,34 @@ export default function Results() {
           data: response
         });
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const isRateLimitError =
+          errorMessage === 'RATE_LIMIT_EXCEEDED' ||
+          errorMessage === 'API error: 429' ||
+          /\b429\b/.test(errorMessage);
+
         logger.error('Search failed', {
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errorMessage,
           query
         });
 
+        if (isRateLimitError) {
+          setStatusMessage('Too many requests right now. Please try again in a moment.');
+          setSearchState({
+            isLoading: false,
+            error: 'We are experiencing high traffic right now. Please try again in a few moments.',
+            data: null
+          });
+
+          setTimeout(() => {
+            navigate('/');
+          }, 3000);
+          return;
+        }
+
         setSearchState({
           isLoading: false,
-          error: error instanceof Error ? error.message : 'Search services are currently unavailable',
+          error: errorMessage || 'Search services are currently unavailable',
           data: null
         });
       }

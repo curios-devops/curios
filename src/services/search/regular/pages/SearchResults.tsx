@@ -217,7 +217,51 @@ export default function Results() {
       }
     };
 
-    fetchResults();
+    fetchResults().catch((unhandledError) => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+
+      if (!isCurrentRequest) {
+        return;
+      }
+
+      const errorMessage = unhandledError instanceof Error ? unhandledError.message : String(unhandledError);
+      const isRateLimitError =
+        errorMessage === 'RATE_LIMIT_EXCEEDED' ||
+        errorMessage === 'API error: 429' ||
+        /\b429\b/.test(errorMessage);
+
+      console.error('❌ [SearchResults] Unhandled rejection in fetchResults:', {
+        error: errorMessage,
+        query,
+        isRateLimitError,
+        timestamp: new Date().toISOString()
+      });
+
+      setIsStreaming(false);
+
+      if (isRateLimitError) {
+        setStatusMessage('Too many requests right now. Please try again in a moment.');
+        setSearchState({
+          isLoading: false,
+          error: 'We are experiencing high traffic right now. Please try again in a few moments.',
+          data: null
+        });
+
+        redirectTimeoutId = setTimeout(() => {
+          navigate('/');
+        }, 3000);
+        return;
+      }
+
+      setSearchState({
+        isLoading: false,
+        error: errorMessage || 'Search services are currently unavailable',
+        data: null
+      });
+    });
     
     // Cleanup function to cancel the request
     return () => {
