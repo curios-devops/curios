@@ -161,126 +161,146 @@ export class SearchWriterAgent {
 
     console.log('🔄 [WRITER STREAMING] Payload prepared with stream: true');
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for streaming
+    const MAX_429_RETRIES = 2;
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const getRetryDelayMs = (response: Response, retryIndex: number): number => {
+      const retryAfter = response.headers.get('retry-after');
+      const parsedSeconds = retryAfter ? Number(retryAfter) : NaN;
+      if (Number.isFinite(parsedSeconds) && parsedSeconds > 0) {
+        return parsedSeconds * 1000;
+      }
+      return Math.min(1000 * Math.pow(2, retryIndex), 8000);
+    };
+    for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for streaming
 
-    try {
-      console.log('🔄 [WRITER STREAMING] Fetching from edge function...');
-      const response = await fetch(supabaseEdgeUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
+      try {
+        console.log('🔄 [WRITER STREAMING] Fetching from edge function...');
+        const response = await fetch(supabaseEdgeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseAnonKey}`
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      const statusCode = response.status;
-      console.log('🔄 [WRITER STREAMING] Response received:', {
-        status: statusCode,
-        contentType: response.headers.get('content-type'),
-        hasBody: !!response.body
-      });
+        const statusCode = response.status;
+        console.log('🔄 [WRITER STREAMING] Response received:', {
+          status: statusCode,
+          contentType: response.headers.get('content-type'),
+          hasBody: !!response.body,
+          attempt: `${attempt + 1}/${MAX_429_RETRIES + 1}`
+        });
 
-      // Check for rate limit BEFORE consuming response body
-      console.log('🔍 [WRITER STREAMING] Checking status code:', statusCode, 'is429?', statusCode === 429);
+        // Check for rate limit BEFORE consuming response body
+        console.log('🔍 [WRITER STREAMING] Checking status code:', statusCode, 'is429?', statusCode === 429);
 
-      // Deterministic handling for rate limits: propagate as an error signal.
-      // This avoids relying on marker-string comparisons later in the flow.
-      if (statusCode === 429) {
-        logger.warn('OpenAI streaming rate limit hit', { status: statusCode });
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('curios:rate-limit', {
-            detail: { source: 'search-writer-streaming', status: 429 }
-          }));
+        if (statusCode === 429) {
+          logger.warn('OpenAI streaming rate limit hit', {
+            status: statusCode,
+            attempt: attempt + 1,
+            maxRetries: MAX_429_RETRIES
+          });
+
+          if (attempt < MAX_429_RETRIES) {
+            const delayMs = getRetryDelayMs(response, attempt);
+            console.log(`⏳ [WRITER STREAMING] 429 retry in ${delayMs}ms (attempt ${attempt + 2}/${MAX_429_RETRIES + 1})`);
+            await wait(delayMs);
+            continue;
+          }
+
+          throw new Error('RATE_LIMIT_EXCEEDED');
         }
-        throw new Error('RATE_LIMIT_EXCEEDED');
-      }
 
-      console.log('🔍 [WRITER STREAMING] Not 429, continuing...');
+        console.log('🔍 [WRITER STREAMING] Not 429, continuing...');
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('OpenAI streaming API error', { status: response.status, error: errorText.substring(0, 200) });
-        throw new Error(`API error: ${response.status}`);
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          logger.error('OpenAI streaming API error', { status: response.status, error: errorText.substring(0, 200) });
+          throw new Error(`API error: ${response.status}`);
+        }
 
-      if (!response.body) {
-        throw new Error('No response body for streaming');
-      }
+        if (!response.body) {
+          throw new Error('No response body for streaming');
+        }
 
-      // Process the SSE stream
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = '';
-      let buffer = '';
-      let chunkCount = 0;
+        // Process the SSE stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = '';
+        let buffer = '';
+        let chunkCount = 0;
 
-      console.log('🔄 [WRITER STREAMING] Starting to read stream...');
+        console.log('🔄 [WRITER STREAMING] Starting to read stream...');
 
-      while (true) {
-        const { done, value } = await reader.read();
+        while (true) {
+          const { done, value } = await reader.read();
         
-        if (done) {
-          console.log('🔄 [WRITER STREAMING] Stream done, total chunks:', chunkCount);
-          break;
-        }
+          if (done) {
+            console.log('🔄 [WRITER STREAMING] Stream done, total chunks:', chunkCount);
+            break;
+          }
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
             
-            if (data === '[DONE]') {
-              console.log('🔄 [WRITER STREAMING] Received [DONE] signal');
-              onChunk('', true);
-              continue;
-            }
-
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.content || '';
-              if (content) {
-                chunkCount++;
-                fullContent += content;
-                onChunk(content, false);
-                
-                // Log first few chunks for debugging
-                if (chunkCount <= 3) {
-                  console.log(`🔄 [WRITER STREAMING] Chunk ${chunkCount}:`, content.substring(0, 50));
-                }
+              if (data === '[DONE]') {
+                console.log('🔄 [WRITER STREAMING] Received [DONE] signal');
+                onChunk('', true);
+                continue;
               }
-            } catch {
-              // Ignore parse errors for incomplete chunks
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.content || '';
+                if (content) {
+                  chunkCount++;
+                  fullContent += content;
+                  onChunk(content, false);
+                
+                  // Log first few chunks for debugging
+                  if (chunkCount <= 3) {
+                    console.log(`🔄 [WRITER STREAMING] Chunk ${chunkCount}:`, content.substring(0, 50));
+                  }
+                }
+              } catch {
+                // Ignore parse errors for incomplete chunks
+              }
             }
           }
         }
+
+        console.log('✅ [WRITER STREAMING] Streaming completed', {
+          contentLength: fullContent.length,
+          totalChunks: chunkCount
+        });
+        logger.debug('Streaming completed', { contentLength: fullContent.length });
+        return fullContent;
+
+      } catch (error) {
+        clearTimeout(timeoutId);
+
+        if (error instanceof Error && error.name === 'AbortError') {
+          logger.error('Streaming request timeout after 60s');
+          throw new Error('Request timeout - please try again');
+        }
+
+        logger.error('OpenAI streaming call failed', { error: error instanceof Error ? error.message : String(error) });
+        throw error;
       }
-
-      console.log('✅ [WRITER STREAMING] Streaming completed', { 
-        contentLength: fullContent.length,
-        totalChunks: chunkCount 
-      });
-      logger.debug('Streaming completed', { contentLength: fullContent.length });
-      return fullContent;
-
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('Streaming request timeout after 60s');
-        throw new Error('Request timeout - please try again');
-      }
-
-      logger.error('OpenAI streaming call failed', { error: error instanceof Error ? error.message : String(error) });
-      throw error;
     }
+
+    throw new Error('RATE_LIMIT_EXCEEDED');
   }
 
   /**

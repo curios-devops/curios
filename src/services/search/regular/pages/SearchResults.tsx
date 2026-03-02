@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { performSearchWithStreaming } from '../searchRegularIndex.ts';
 import { formatTimeAgo } from '../../../../utils/time.ts';
 import TopBar from '../../../../components/results/TopBar.tsx';
@@ -9,6 +9,7 @@ import { logger } from '../../../../utils/logger.ts';
 
 export default function Results() {
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
   const imageUrlsParam = searchParams.get('images') || '';
@@ -67,7 +68,7 @@ export default function Results() {
       }
 
       hasHandledRateLimitRef.current = true;
-      console.log('🚫 [SearchResults] RATE LIMIT DETECTED - Showing message immediately');
+      console.log('🚫 [SearchResults] RATE LIMIT DETECTED - Showing message and redirecting home');
       setIsStreaming(false);
       setStatusMessage('Too many requests right now. Please try again in a moment.');
       setSearchState({
@@ -75,18 +76,11 @@ export default function Results() {
         error: 'We are experiencing high traffic right now. Please try again in a few moments.',
         data: null
       });
-    };
 
-    const handleRateLimitEvent = () => {
-      if (!isCurrentRequest) {
-        return;
-      }
-      handleRateLimit();
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 1500);
     };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('curios:rate-limit', handleRateLimitEvent as EventListener);
-    }
     
     const fetchResults = async () => {
       if (!query.trim() && imageUrls.length === 0) {
@@ -277,12 +271,9 @@ export default function Results() {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('curios:rate-limit', handleRateLimitEvent as EventListener);
-      }
       hasHandledRateLimitRef.current = false;
     };
-  }, [query, imageUrls.join(',')]); // Re-run when query or images change
+  }, [query, imageUrls.join(','), navigate]); // Re-run when query or images change
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200 overflow-x-hidden">
