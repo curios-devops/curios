@@ -161,17 +161,6 @@ export class SearchWriterAgent {
 
     console.log('🔄 [WRITER STREAMING] Payload prepared with stream: true');
 
-    const MAX_429_RETRIES = 2;
-    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-    const getRetryDelayMs = (response: Response, retryIndex: number): number => {
-      const retryAfter = response.headers.get('retry-after');
-      const parsedSeconds = retryAfter ? Number(retryAfter) : NaN;
-      if (Number.isFinite(parsedSeconds) && parsedSeconds > 0) {
-        return parsedSeconds * 1000;
-      }
-      return Math.min(1000 * Math.pow(2, retryIndex), 8000);
-    };
-    for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for streaming
 
@@ -298,9 +287,6 @@ export class SearchWriterAgent {
         logger.error('OpenAI streaming call failed', { error: error instanceof Error ? error.message : String(error) });
         throw error;
       }
-    }
-
-    throw new Error('RATE_LIMIT_EXCEEDED');
   }
 
   /**
