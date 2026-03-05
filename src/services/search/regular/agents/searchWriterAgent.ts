@@ -161,50 +161,37 @@ export class SearchWriterAgent {
 
     console.log('🔄 [WRITER STREAMING] Payload prepared with stream: true');
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for streaming
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for streaming
 
-      try {
-        console.log('🔄 [WRITER STREAMING] Fetching from edge function...');
-        const response = await fetch(supabaseEdgeUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseAnonKey}`
-          },
-          body: JSON.stringify(payload),
-          signal: controller.signal
-        });
+    try {
+      console.log('🔄 [WRITER STREAMING] Fetching from edge function...');
+      const response = await fetch(supabaseEdgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
 
         clearTimeout(timeoutId);
 
-        const statusCode = response.status;
-        console.log('🔄 [WRITER STREAMING] Response received:', {
-          status: statusCode,
-          contentType: response.headers.get('content-type'),
-          hasBody: !!response.body,
-          attempt: `${attempt + 1}/${MAX_429_RETRIES + 1}`
-        });
+      const statusCode = response.status;
+      console.log('🔄 [WRITER STREAMING] Response received:', {
+        status: statusCode,
+        contentType: response.headers.get('content-type'),
+        hasBody: !!response.body
+      });
 
-        // Check for rate limit BEFORE consuming response body
-        console.log('🔍 [WRITER STREAMING] Checking status code:', statusCode, 'is429?', statusCode === 429);
+      // Check for rate limit BEFORE consuming response body
+      console.log('🔍 [WRITER STREAMING] Checking status code:', statusCode, 'is429?', statusCode === 429);
 
-        if (statusCode === 429) {
-          logger.warn('OpenAI streaming rate limit hit', {
-            status: statusCode,
-            attempt: attempt + 1,
-            maxRetries: MAX_429_RETRIES
-          });
-
-          if (attempt < MAX_429_RETRIES) {
-            const delayMs = getRetryDelayMs(response, attempt);
-            console.log(`⏳ [WRITER STREAMING] 429 retry in ${delayMs}ms (attempt ${attempt + 2}/${MAX_429_RETRIES + 1})`);
-            await wait(delayMs);
-            continue;
-          }
-
-          throw new Error('RATE_LIMIT_EXCEEDED');
-        }
+      if (statusCode === 429) {
+        logger.warn('OpenAI streaming rate limit hit', { status: statusCode });
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
 
         console.log('🔍 [WRITER STREAMING] Not 429, continuing...');
 
