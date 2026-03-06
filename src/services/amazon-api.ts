@@ -22,6 +22,61 @@ export interface AmazonSearchResult {
 }
 
 /**
+ * Optimize query for Amazon product search
+ * Extracts product names and removes unnecessary words
+ */
+function optimizeAmazonQuery(query: string): string {
+  // Remove common question words and phrases
+  let optimized = query
+    .replace(/^(what|how|where|when|why|which|who|is|are|the|a|an)\s+/gi, '')
+    .replace(/\s+(is|are|the|a|an|at|for|in|on|under|over|best|top|cheapest|most affordable)\s+/gi, ' ')
+    .replace(/\s+(ever|made|available|laptop|phone|product|device|company|has|have)\s*$/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Extract brand + product patterns (e.g., "MacBook Neo", "Galaxy S24", "iPhone 15")
+  const brandProductPatterns = [
+    // Apple products
+    /\b(MacBook|iPhone|iPad|AirPods|Apple Watch|iMac|Mac|HomePod)\s+[A-Z][a-z]*(\s+[A-Z0-9][a-z0-9]*)?/gi,
+    // Samsung products
+    /\b(Galaxy|Samsung)\s+[A-Z][a-z0-9]*(\s+[A-Z0-9][a-z0-9]*)?/gi,
+    // Other brands
+    /\b(Google|Sony|Microsoft|Dell|HP|Lenovo|Asus|Acer)\s+[A-Z][a-z0-9]*(\s+[A-Z0-9][a-z0-9]*)?/gi,
+  ];
+
+  for (const pattern of brandProductPatterns) {
+    const match = query.match(pattern);
+    if (match && match[0]) {
+      console.log(`🛍️ [Amazon API] Extracted product: "${match[0]}" from "${query}"`);
+      return match[0].trim();
+    }
+  }
+
+  // If no specific pattern found, clean up the query
+  // Remove sentences longer than 6 words (likely descriptive text, not product names)
+  const words = optimized.split(' ');
+  if (words.length > 6) {
+    // Try to find product-like phrases (brand name + model)
+    const productWords = words.filter(word =>
+      /^[A-Z]/.test(word) || // Capitalized words (brand names)
+      /\d/.test(word) || // Words with numbers (model numbers)
+      ['pro', 'max', 'ultra', 'plus', 'mini', 'air', 'neo'].includes(word.toLowerCase())
+    );
+
+    if (productWords.length >= 2) {
+      optimized = productWords.slice(0, 4).join(' '); // Take first 4 relevant words
+      console.log(`🛍️ [Amazon API] Simplified to: "${optimized}" from "${query}"`);
+    } else {
+      // Fallback: take first 4 words
+      optimized = words.slice(0, 4).join(' ');
+      console.log(`🛍️ [Amazon API] Using first 4 words: "${optimized}" from "${query}"`);
+    }
+  }
+
+  return optimized;
+}
+
+/**
  * Search for products on Amazon via SerpAPI (Supabase Edge Function)
  * Replaces mock implementation with real product data
  */
@@ -30,7 +85,14 @@ export async function searchAmazonProducts(
   maxResults: number = 4
 ): Promise<AmazonSearchResult> {
   try {
-    console.log(`🛍️ [Amazon API] Searching for: "${query}"`);
+    console.log(`\n🛒🛒🛒 [AMAZON API CALLED] 🛒🛒🛒`);
+    console.log(`📥 ORIGINAL QUERY FROM USER: "${query}"`);
+
+    // Optimize query for better Amazon product results
+    const optimizedQuery = optimizeAmazonQuery(query);
+
+    console.log(`📤 OPTIMIZED QUERY FOR AMAZON: "${optimizedQuery}"`);
+    console.log(`🛒🛒🛒 [AMAZON API] 🛒🛒🛒\n`);
 
     // Call Supabase Edge Function to search via SerpAPI
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -48,6 +110,10 @@ export async function searchAmazonProducts(
 
     const functionUrl = `${supabaseUrl}/functions/v1/search-amazon-products`;
 
+    // Log what we're sending to Amazon
+    console.log(`🛍️ [Amazon API] ⚡ SENDING TO AMAZON: "${optimizedQuery}"`);
+    console.log(`🛍️ [Amazon API] 📦 Request payload:`, { query: optimizedQuery, maxResults });
+
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
@@ -55,7 +121,7 @@ export async function searchAmazonProducts(
         'Authorization': `Bearer ${supabaseAnonKey}`,
         'apikey': supabaseAnonKey
       },
-      body: JSON.stringify({ query, maxResults }),
+      body: JSON.stringify({ query: optimizedQuery, maxResults }),
       signal: AbortSignal.timeout(10000) // 10 second timeout
     });
 

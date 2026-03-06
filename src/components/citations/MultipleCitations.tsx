@@ -36,47 +36,27 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
   useEffect(() => {
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     if (isTouchDevice !== isMobile) {
-      console.log('🔄 Updating mobile detection', { was: isMobile, now: isTouchDevice });
       setIsMobile(isTouchDevice);
     }
-    console.log('🔍 MultipleCitations: Touch detection', { 
-      isTouchDevice, 
-      ontouchstart: 'ontouchstart' in window,
-      maxTouchPoints: navigator.maxTouchPoints,
-      userAgent: navigator.userAgent
-    });
   }, []);
 
   const handleClick = (url: string) => {
-    console.log('🔗 handleClick called', { url });
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
-      console.log('✅ Window opened');
-    } else {
-      console.warn('⚠️ No URL provided');
     }
   };
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('🔘 Button clicked', { 
-      isMobile, 
-      citationCount: uniqueCitations.length,
-      showTooltip 
-    });
-    
+
     if (isMobile && uniqueCitations.length > 1) {
       // On mobile with multiple citations, toggle tooltip
-      const newState = !showTooltip;
-      setShowTooltip(newState);
-      console.log('📱 Mobile: Toggling tooltip to', newState);
+      setShowTooltip(!showTooltip);
     } else if (!isMobile && uniqueCitations.length > 1) {
       // On desktop with multiple citations, do nothing (hover handles it)
-      console.log('🖥️ Desktop: Hover handles tooltip');
       return;
     } else {
       // Single citation, open directly
-      console.log('🔗 Opening single citation:', uniqueCitations[0]?.url);
       handleClick(uniqueCitations[0]?.url);
     }
   };
