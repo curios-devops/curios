@@ -1,25 +1,6 @@
 /**
- * Amazon Product Searcexport async function searchAmazonProducts(
-  query: string,
-  maxResults: number = 4
-): Promise<AmazonSearchResult> {
-  try {
-    console.log(`🛍️ [Amazon API] Searching for: "${query}"`);
-
-    // Call Supabase Edge Function to search via SerpAPI
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    const functionUrl = `${supabaseUrl}/functions/v1/search-amazon-products`;
-
-    const response = await fetch(functionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-        'apikey': supabaseAnonKey
-      },
-      body: JSON.stringify({ query, maxResults })
-    });tegrates with Amazon Product Advertising API to fetch products
+ * Amazon Product Search Service
+ * Integrates with Amazon Product Advertising API to fetch products
  */
 
 export interface AmazonProduct {
@@ -41,7 +22,7 @@ export interface AmazonSearchResult {
 }
 
 /**
- * Search for products on Amazon via SerpAPI (Netlify Function)
+ * Search for products on Amazon via SerpAPI (Supabase Edge Function)
  * Replaces mock implementation with real product data
  */
 export async function searchAmazonProducts(
@@ -49,15 +30,33 @@ export async function searchAmazonProducts(
   maxResults: number = 4
 ): Promise<AmazonSearchResult> {
   try {
-    console.log(`�️ [Amazon API] Searching for: "${query}"`);
+    console.log(`🛍️ [Amazon API] Searching for: "${query}"`);
 
-    // Call Netlify function to search via SerpAPI
-    const response = await fetch('/.netlify/functions/search-amazon-products', {
+    // Call Supabase Edge Function to search via SerpAPI
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('❌ [Amazon API] Supabase credentials missing');
+      return {
+        success: false,
+        products: [],
+        query,
+        error: 'Configuration error'
+      };
+    }
+
+    const functionUrl = `${supabaseUrl}/functions/v1/search-amazon-products`;
+
+    const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'apikey': supabaseAnonKey
       },
-      body: JSON.stringify({ query, maxResults })
+      body: JSON.stringify({ query, maxResults }),
+      signal: AbortSignal.timeout(10000) // 10 second timeout
     });
 
     // Handle HTTP errors gracefully
@@ -65,7 +64,7 @@ export async function searchAmazonProducts(
       const errorText = await response.text();
       console.error('❌ [Amazon API] HTTP error:', response.status, response.statusText);
       console.error('❌ [Amazon API] Error details:', errorText);
-      
+
       // Return empty result to fallback gracefully
       return {
         success: false,
@@ -76,7 +75,7 @@ export async function searchAmazonProducts(
     }
 
     const data = await response.json();
-    
+
     // Check if API returned an error
     if (!data.success) {
       console.warn('⚠️ [Amazon API] API returned error:', data.error);
@@ -87,18 +86,24 @@ export async function searchAmazonProducts(
         error: data.error || 'API returned no products'
       };
     }
-    
+
     console.log(`✅ [Amazon API] Success! Found ${data.products?.length || 0} products`);
+
+    // Validate product URLs before returning
+    const validatedProducts = (data.products || []).map((product: AmazonProduct) => ({
+      ...product,
+      productUrl: validateAmazonUrl(product.productUrl, product.asin)
+    }));
 
     return {
       success: true,
-      products: data.products || [],
+      products: validatedProducts,
       query: data.query || query,
       error: data.error
     };
   } catch (error) {
     console.error('❌ [Amazon API] Unexpected error:', error);
-    
+
     // Return empty result on error (graceful degradation)
     return {
       success: false,
@@ -110,13 +115,40 @@ export async function searchAmazonProducts(
 }
 
 /**
+ * Validate and sanitize Amazon product URLs
+ */
+function validateAmazonUrl(url: string, asin: string): string {
+  try {
+    // If URL is empty or invalid, build default Amazon URL
+    if (!url || typeof url !== 'string' || url.trim().length === 0) {
+      return `https://www.amazon.com/dp/${asin}`;
+    }
+
+    // Parse URL to validate it
+    const parsedUrl = new URL(url);
+
+    // Ensure it's an Amazon domain
+    if (!parsedUrl.hostname.includes('amazon.com')) {
+      console.warn('⚠️ [Amazon API] Non-Amazon URL detected, using default:', url);
+      return `https://www.amazon.com/dp/${asin}`;
+    }
+
+    return url;
+  } catch (error) {
+    // If URL parsing fails, return default Amazon URL
+    console.warn('⚠️ [Amazon API] Invalid URL detected, using default:', url);
+    return `https://www.amazon.com/dp/${asin}`;
+  }
+}
+
+/**
  * Format price for display
  */
 export function formatPrice(price: string): string {
   // Handle various price formats
   const numericPrice = parseFloat(price.replace(/[^0-9.]/g, ''));
   if (isNaN(numericPrice)) return price;
-  
+
   return `$${numericPrice.toFixed(2)}`;
 }
 
@@ -125,10 +157,10 @@ export function formatPrice(price: string): string {
  */
 export function truncateDescription(description: string, maxLength: number = 120): string {
   if (description.length <= maxLength) return description;
-  
+
   // Find last space before maxLength
   const truncated = description.substring(0, maxLength);
   const lastSpace = truncated.lastIndexOf(' ');
-  
+
   return truncated.substring(0, lastSpace) + '...';
 }

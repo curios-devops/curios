@@ -12,11 +12,22 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, onClick }: ProductCardProps) {
   const handleClick = () => {
-    if (onClick) {
-      onClick();
+    try {
+      if (onClick) {
+        onClick();
+      }
+
+      // Validate URL before opening
+      if (!product.productUrl || product.productUrl.trim().length === 0) {
+        console.error('❌ [ProductCard] Invalid product URL:', product);
+        return;
+      }
+
+      // Open product in new tab
+      window.open(product.productUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('❌ [ProductCard] Error opening product:', error);
     }
-    // Open product in new tab
-    window.open(product.productUrl, '_blank', 'noopener,noreferrer');
   };
 
   const formatRating = (rating?: number) => {
