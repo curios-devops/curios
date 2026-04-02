@@ -19,10 +19,168 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 // @ts-ignore
 const OPENAI_ORG_ID = Deno.env.get("OPENAI_ORG_ID");
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
 const DEFAULT_MODEL = "gpt-4.1-mini-2025-04-14";
 const TIMEOUT_MS = 28000; // 28 seconds (leave buffer for edge function)
 const STREAMING_TIMEOUT_MS = 60000; // 60 seconds for streaming (longer to allow full response)
+
+function isGpt5Model(model: string): boolean {
+  return /^gpt-5(?:-|_|$)/i.test(model);
+}
+
+function normalizeResponsesInput(messages: Array<{ role?: string; content?: unknown }>): Array<{ role: string; content: string }> {
+  return messages.map((message) => {
+    const role = typeof message?.role === 'string' ? message.role : 'user';
+    const rawContent = message?.content;
+
+    if (typeof rawContent === 'string') {
+      return { role, content: rawContent };
+    }
+
+    if (Array.isArray(rawContent)) {
+      const joined = rawContent
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object' && 'text' in item) {
+            const textValue = (item as { text?: unknown }).text;
+            return typeof textValue === 'string' ? textValue : '';
+          }
+          return '';
+        })
+        .filter(Boolean)
+        .join('\n');
+      return { role, content: joined };
+    }
+
+    return { role, content: String(rawContent ?? '') };
+  });
+}
+
+function extractResponsesSSEContent(event: Record<string, unknown>): string {
+  if (event.type === 'response.output_text.delta' && typeof event.delta === 'string') {
+    return event.delta;
+  }
+
+  if (event.type === 'response.delta' && event.delta && typeof event.delta === 'object') {
+    const deltaObj = event.delta as { text?: unknown; output_text?: unknown };
+    if (typeof deltaObj.text === 'string') return deltaObj.text;
+    if (typeof deltaObj.output_text === 'string') return deltaObj.output_text;
+  }
+
+  return '';
+}
+
+function extractResponsesOutputText(data: Record<string, unknown>): string {
+  if (typeof data.output_text === 'string' && data.output_text.length > 0) {
+    return data.output_text;
+  }
+
+  if (Array.isArray(data.output_text)) {
+    const combined = data.output_text
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object') {
+          const text = (item as { text?: unknown }).text;
+          return typeof text === 'string' ? text : '';
+        }
+        return '';
+      })
+      .filter(Boolean)
+      .join('');
+
+    if (combined.length > 0) {
+      return combined;
+    }
+  }
+
+  const output = data.output;
+  if (!Array.isArray(output)) {
+    return '';
+  }
+
+  const parts: string[] = [];
+  for (const item of output) {
+    if (!item || typeof item !== 'object') continue;
+
+    const directText = (item as { text?: unknown; output_text?: unknown }).text;
+    if (typeof directText === 'string' && directText.length > 0) {
+      parts.push(directText);
+    }
+
+    const directOutputText = (item as { output_text?: unknown }).output_text;
+    if (typeof directOutputText === 'string' && directOutputText.length > 0) {
+      parts.push(directOutputText);
+    }
+
+    const content = (item as { content?: unknown }).content;
+    if (!Array.isArray(content)) continue;
+
+    for (const block of content) {
+      if (!block || typeof block !== 'object') continue;
+      const text = (block as { text?: unknown; output_text?: unknown }).text;
+      if (typeof text === 'string' && text.length > 0) {
+        parts.push(text);
+      }
+
+      const blockOutputText = (block as { output_text?: unknown }).output_text;
+      if (typeof blockOutputText === 'string' && blockOutputText.length > 0) {
+        parts.push(blockOutputText);
+      }
+    }
+  }
+
+  if (parts.length > 0) {
+    return parts.join('');
+  }
+
+  const fallbackCandidates: string[] = [];
+  const collectTextValues = (value: unknown): void => {
+    if (!value) return;
+    if (typeof value === 'string') {
+      if (value.trim().length > 0) fallbackCandidates.push(value);
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) collectTextValues(item);
+      return;
+    }
+    if (typeof value === 'object') {
+      const obj = value as Record<string, unknown>;
+      if (typeof obj.text === 'string' && obj.text.trim().length > 0) fallbackCandidates.push(obj.text);
+      if (typeof obj.output_text === 'string' && obj.output_text.trim().length > 0) fallbackCandidates.push(obj.output_text);
+      if (obj.text && typeof obj.text === 'object') {
+        const nestedTextValue = (obj.text as Record<string, unknown>).value;
+        if (typeof nestedTextValue === 'string' && nestedTextValue.trim().length > 0) {
+          fallbackCandidates.push(nestedTextValue);
+        }
+      }
+      if (typeof obj.value === 'string' && obj.value.trim().length > 0) fallbackCandidates.push(obj.value);
+      if (obj.content !== undefined) collectTextValues(obj.content);
+      if (obj.output !== undefined) collectTextValues(obj.output);
+    }
+  };
+
+  collectTextValues(data);
+  return fallbackCandidates.join('');
+}
+
+function shouldRetryForIncompleteMaxTokens(
+  useResponsesApi: boolean,
+  data: Record<string, unknown>,
+): boolean {
+  if (!useResponsesApi) return false;
+
+  const status = data.status;
+  if (status !== 'incomplete') return false;
+
+  const incompleteDetails = data.incomplete_details;
+  if (!incompleteDetails || typeof incompleteDetails !== 'object') return false;
+
+  const reason = (incompleteDetails as { reason?: unknown }).reason;
+  return reason === 'max_output_tokens';
+}
+
 // @ts-ignore
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
@@ -44,8 +202,6 @@ Deno.serve(async (req: Request) => {
     
     // Check if this is an image generation request
     if (body.imageGeneration) {
-      console.log('🎨 Image generation request received');
-      
       // Build gpt-image-1 payload
       const imagePayload = {
         model: body.model || "gpt-image-1",
@@ -54,8 +210,6 @@ Deno.serve(async (req: Request) => {
         quality: body.quality || "low",
         n: body.n || 1
       };
-
-      console.log('📝 Image payload:', imagePayload);
 
       // Call OpenAI Image API with timeout
       const controller = new AbortController();
@@ -90,8 +244,6 @@ Deno.serve(async (req: Request) => {
       }
 
       const data = await response.json();
-      console.log('🖼️ Image API response:', data);
-      
       if (!data.data || data.data.length === 0) {
         throw new Error('No image data in OpenAI response');
       }
@@ -113,8 +265,6 @@ Deno.serve(async (req: Request) => {
 
     // Check if this is a TTS request
     if (body.tts) {
-      console.log('🔊 TTS request received');
-      
       // Parse TTS parameters from prompt
       let ttsParams;
       try {
@@ -132,8 +282,6 @@ Deno.serve(async (req: Request) => {
         voice: ttsParams.voice || 'alloy',
         response_format: ttsParams.response_format || 'mp3'
       };
-
-      console.log('📝 TTS payload:', { model: ttsPayload.model, voice: ttsPayload.voice, inputLength: ttsPayload.input?.length });
 
       // Call OpenAI TTS API
       const controller = new AbortController();
@@ -168,8 +316,6 @@ Deno.serve(async (req: Request) => {
 
       // Return audio blob directly
       const audioBlob = await response.blob();
-      console.log('🎵 TTS audio generated:', { size: audioBlob.size });
-      
       return new Response(audioBlob, {
         headers: {
           ...corsHeaders,
@@ -190,23 +336,45 @@ Deno.serve(async (req: Request) => {
     }
 
     // Build OpenAI payload - add stream option if requested
+    const model = parsedPrompt.model || DEFAULT_MODEL;
+    const gpt5 = isGpt5Model(model);
+    const useResponsesApi = gpt5;
+
     const payload: Record<string, any> = {
-      model: parsedPrompt.model || DEFAULT_MODEL,
-      messages: parsedPrompt.messages || [{ role: "user", content: String(prompt) }],
-      temperature: parsedPrompt.temperature || 0.7,
-      max_tokens: parsedPrompt.max_output_tokens || 2000, // Increased for longer essays (~1500 words max)
+      model,
     };
+
+    const normalizedMessages = parsedPrompt.messages || [{ role: "user", content: String(prompt) }];
+
+    if (useResponsesApi) {
+      payload.input = normalizeResponsesInput(normalizedMessages);
+    } else {
+      payload.messages = normalizedMessages;
+    }
+
+    // GPT-5 family on Responses API uses max_output_tokens.
+    if (gpt5 && useResponsesApi) {
+      payload.max_output_tokens = parsedPrompt.max_output_tokens || 2000;
+      payload.reasoning = parsedPrompt.reasoning || { effort: 'low' };
+    } else if (gpt5) {
+      payload.max_completion_tokens = parsedPrompt.max_output_tokens || 2000;
+    } else {
+      payload.temperature = parsedPrompt.temperature || 0.7;
+      payload.max_tokens = parsedPrompt.max_output_tokens || 2000;
+    }
     
     // Only add response_format for non-streaming requests (JSON mode not compatible with streaming)
     // For streaming, we'll handle the response as plain text and parse later
-    if (!enableStreaming) {
-      payload.response_format = parsedPrompt.response_format || { type: 'json_object' };
+      if (!enableStreaming && !useResponsesApi) {
+        // Only add response_format if explicitly requested in the prompt
+        if (parsedPrompt.response_format) {
+          payload.response_format = parsedPrompt.response_format;
+        }
     }
     
     // Enable streaming if requested
     if (enableStreaming) {
       payload.stream = true;
-      console.log('🔄 Streaming mode enabled');
     }
 
     // Call OpenAI with timeout (longer timeout for streaming)
@@ -223,7 +391,9 @@ Deno.serve(async (req: Request) => {
       chatHeaders["OpenAI-Organization"] = OPENAI_ORG_ID;
     }
 
-    const response = await fetch(OPENAI_CHAT_URL, {
+    const targetUrl = useResponsesApi ? OPENAI_RESPONSES_URL : OPENAI_CHAT_URL;
+
+    const response = await fetch(targetUrl, {
       method: "POST",
       headers: chatHeaders,
       body: JSON.stringify(payload),
@@ -239,9 +409,13 @@ Deno.serve(async (req: Request) => {
         error: `OpenAI error: ${response.status}`,
         details: error,
         payload_info: {
+          endpoint: useResponsesApi ? 'responses' : 'chat.completions',
           model: payload.model,
           max_tokens: payload.max_tokens,
-          messages_count: payload.messages.length
+          max_completion_tokens: payload.max_completion_tokens,
+          max_output_tokens: payload.max_output_tokens,
+          messages_count: payload.messages?.length,
+          input_count: payload.input?.length,
         }
       }), {
         status: response.status,
@@ -251,8 +425,6 @@ Deno.serve(async (req: Request) => {
 
     // Handle streaming response
     if (enableStreaming && response.body) {
-      console.log('🔄 Starting to stream response');
-      
       // Create a TransformStream to process SSE data and forward it
       const encoder = new TextEncoder();
       const decoder = new TextDecoder();
@@ -273,10 +445,16 @@ Deno.serve(async (req: Request) => {
               
               try {
                 const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content || '';
+                const content = useResponsesApi
+                  ? extractResponsesSSEContent(parsed)
+                  : (parsed.choices?.[0]?.delta?.content || '');
                 if (content) {
                   // Forward the content chunk as SSE
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                }
+
+                if (useResponsesApi && parsed.type === 'response.completed') {
+                  controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                 }
               } catch {
                 // Ignore parse errors for incomplete chunks
@@ -294,12 +472,100 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Non-streaming response (original behavior)
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    // Non-streaming response
+    let data = await response.json();
+    let content = useResponsesApi
+      ? extractResponsesOutputText(data as Record<string, unknown>)
+      : data.choices?.[0]?.message?.content;
+
+  if (shouldRetryForIncompleteMaxTokens(useResponsesApi, data as Record<string, unknown>)) {
+      const originalContent = String(content || '');
+      const runRetry = async (previousMaxOutputTokens: number, label: 'first' | 'second') => {
+        const retryMaxOutputTokens = Math.max(previousMaxOutputTokens * 2, 160);
+        const retryPayload = {
+          ...payload,
+          max_output_tokens: retryMaxOutputTokens,
+          reasoning: { effort: 'low' },
+        };
+
+        console.warn(`Retrying Responses request (${label}) after incomplete max_output_tokens`, {
+          model,
+          previous_max_output_tokens: previousMaxOutputTokens,
+          retry_max_output_tokens: retryMaxOutputTokens,
+        });
+
+        const retryResponse = await fetch(targetUrl, {
+          method: "POST",
+          headers: chatHeaders,
+          body: JSON.stringify(retryPayload),
+          signal: controller.signal
+        });
+
+        if (!retryResponse.ok) {
+          const retryError = await retryResponse.text();
+          console.error('OpenAI retry error:', { status: retryResponse.status, retryError, label });
+          return new Response(JSON.stringify({
+            error: `OpenAI retry error: ${retryResponse.status}`,
+            details: retryError,
+            retry: label,
+          }), {
+            status: retryResponse.status,
+            headers: corsHeaders,
+          });
+        }
+
+        const retryData = await retryResponse.json();
+        const retryContent = extractResponsesOutputText(retryData as Record<string, unknown>);
+        return { retryData, retryContent, retryMaxOutputTokens };
+      };
+
+      const initialMaxOutputTokens = Number(payload.max_output_tokens || 0);
+      const firstRetryResult = await runRetry(initialMaxOutputTokens, 'first');
+      if (firstRetryResult instanceof Response) return firstRetryResult;
+
+      data = firstRetryResult.retryData;
+      content = firstRetryResult.retryContent || originalContent;
+
+      if (shouldRetryForIncompleteMaxTokens(useResponsesApi, data as Record<string, unknown>)) {
+        const secondRetryResult = await runRetry(firstRetryResult.retryMaxOutputTokens, 'second');
+        if (secondRetryResult instanceof Response) return secondRetryResult;
+
+        data = secondRetryResult.retryData;
+        const secondContent = secondRetryResult.retryContent;
+        content = secondContent && secondContent.trim().length > 0 ? secondContent : content;
+      }
+    }
     
     if (!content) {
-      throw new Error('No content in OpenAI response');
+      const diagnosticInfo = useResponsesApi
+        ? {
+            endpoint: 'responses',
+            has_output_text: Object.prototype.hasOwnProperty.call(data, 'output_text'),
+            output_text_type: Array.isArray((data as Record<string, unknown>).output_text)
+              ? 'array'
+              : typeof (data as Record<string, unknown>).output_text,
+            output_type: Array.isArray((data as Record<string, unknown>).output)
+              ? 'array'
+              : typeof (data as Record<string, unknown>).output,
+            output_length: Array.isArray((data as Record<string, unknown>).output)
+              ? ((data as Record<string, unknown>).output as unknown[]).length
+              : null,
+          }
+        : { endpoint: 'chat.completions' };
+
+      console.error('No content extracted from OpenAI response', diagnosticInfo);
+
+      return new Response(JSON.stringify({
+        error: 'No content in OpenAI response',
+        diagnostic: diagnosticInfo,
+        openai: data,
+      }), {
+        status: 502,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        }
+      });
     }
 
     return new Response(JSON.stringify({
