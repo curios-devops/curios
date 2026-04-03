@@ -85,7 +85,7 @@ exports.handler = async (event) => {
 
   // Use provided image or fall back to a static site asset (Supabase OG image removed)
   // Static fallback ensures crawlers still see an image after Supabase removal.
-  const ogImage = image || `${base}/curiosai-og-image-1200x627.png`;
+  const ogImage = image || `${base}/curios-og-image-1200x627.png`;
 
   // Generate share URL (canonical for crawlers)
   // Use direct Netlify function path (hotfix) to avoid accidental Supabase proxy/stale responses.
