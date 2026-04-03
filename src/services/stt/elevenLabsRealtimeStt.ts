@@ -44,17 +44,10 @@ async function getRealtimeCredential(): Promise<string | null> {
         return data.token.trim();
       }
     }
-  } catch {
-    logger.warn('[ElevenLabs STT] Token edge function unavailable, using local credential fallback');
-  }
-
-  if (env.elevenLabs.sttToken) {
-    return env.elevenLabs.sttToken;
-  }
-
-  if (env.elevenLabs.apiKey) {
-    logger.warn('[ElevenLabs STT] Using VITE_ELEVENLABS_API_KEY client-side fallback token');
-    return env.elevenLabs.apiKey;
+  } catch (error) {
+    logger.warn('[ElevenLabs STT] Token edge function request failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   return null;

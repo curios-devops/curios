@@ -26,8 +26,6 @@ const optionalEnvVars = {
   VITE_ANAM_AVATAR_LEO_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_LEO_ID : '') || '',
   VITE_ANAM_AVATAR_FINN_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_FINN_ID : '') || '',
   VITE_ANAM_AVATAR_PABLO_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_PABLO_ID : '') || '',
-  VITE_ELEVENLABS_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ELEVENLABS_API_KEY : '') || '',
-  VITE_ELEVENLABS_STT_TOKEN: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ELEVENLABS_STT_TOKEN : '') || '',
   VITE_ELEVENLABS_STT_MODEL_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ELEVENLABS_STT_MODEL_ID : '') || '',
 } as const;
 
@@ -82,8 +80,6 @@ export const env = {
     aiApiKey: optionalEnvVars.VITE_GOOGLE_AI_API_KEY,
   },
   elevenLabs: {
-    apiKey: optionalEnvVars.VITE_ELEVENLABS_API_KEY,
-    sttToken: optionalEnvVars.VITE_ELEVENLABS_STT_TOKEN,
     sttModelId: optionalEnvVars.VITE_ELEVENLABS_STT_MODEL_ID || 'scribe_v2_realtime',
   }
 } as const;
