@@ -15,7 +15,7 @@ import { useTranslation } from '../../hooks/useTranslation.ts';
 import { uploadMultipleImages } from '../../utils/imageUpload.ts';
 import { logger } from '../../utils/logger.ts';
 import { useVoiceRecording } from '../../hooks/useVoiceRecording.ts';
-import { transcribeAudio } from '../../services/whisper/whisperService.ts';
+import { transcribeAudioWithFallback } from '../../services/stt/transcriptionService.ts';
 
 export default function QueryBoxContainer() {
   const navigate = useNavigate();
@@ -173,8 +173,8 @@ export default function QueryBoxContainer() {
 
         logger.info('Transcribing audio...', { size: audioBlob.size });
 
-        // Transcribe using Whisper
-        const transcribedText = await transcribeAudio(audioBlob);
+        // Transcribe using ElevenLabs realtime first, then fallback to Whisper
+        const transcribedText = await transcribeAudioWithFallback(audioBlob);
 
         logger.info('Transcription complete', { text: transcribedText });
 

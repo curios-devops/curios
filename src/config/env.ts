@@ -19,6 +19,16 @@ const optionalEnvVars = {
   VITE_STRIPE_WEBHOOK_SECRET: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_WEBHOOK_SECRET : '') || '',
   VITE_STRIPE_MONTHLY_PRICE_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_MONTHLY_PRICE_ID : '') || '',
   VITE_STRIPE_YEARLY_PRICE_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_YEARLY_PRICE_ID : '') || '',
+  VITE_GOOGLE_AI_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_GOOGLE_AI_API_KEY : '') || '',
+  VITE_ANAM_AVATAR_CORA_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_CORA_ID : '') || '',
+  VITE_ANAM_AVATAR_LIZ_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_LIZ_ID : '') || '',
+  VITE_ANAM_AVATAR_ASTRID_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_ASTRID_ID : '') || '',
+  VITE_ANAM_AVATAR_LEO_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_LEO_ID : '') || '',
+  VITE_ANAM_AVATAR_FINN_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_FINN_ID : '') || '',
+  VITE_ANAM_AVATAR_PABLO_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_PABLO_ID : '') || '',
+  VITE_ELEVENLABS_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ELEVENLABS_API_KEY : '') || '',
+  VITE_ELEVENLABS_STT_TOKEN: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ELEVENLABS_STT_TOKEN : '') || '',
+  VITE_ELEVENLABS_STT_MODEL_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ELEVENLABS_STT_MODEL_ID : '') || '',
 } as const;
 
 // Validate required environment variables
@@ -57,5 +67,23 @@ export const env = {
       month: optionalEnvVars.VITE_STRIPE_MONTHLY_PRICE_ID,
       year: optionalEnvVars.VITE_STRIPE_YEARLY_PRICE_ID,
     }
+  },
+  anam: {
+    avatars: {
+      cora: optionalEnvVars.VITE_ANAM_AVATAR_CORA_ID,
+      liz: optionalEnvVars.VITE_ANAM_AVATAR_LIZ_ID,
+      astrid: optionalEnvVars.VITE_ANAM_AVATAR_ASTRID_ID,
+      leo: optionalEnvVars.VITE_ANAM_AVATAR_LEO_ID,
+      finn: optionalEnvVars.VITE_ANAM_AVATAR_FINN_ID,
+      pablo: optionalEnvVars.VITE_ANAM_AVATAR_PABLO_ID,
+    }
+  },
+  google: {
+    aiApiKey: optionalEnvVars.VITE_GOOGLE_AI_API_KEY,
+  },
+  elevenLabs: {
+    apiKey: optionalEnvVars.VITE_ELEVENLABS_API_KEY,
+    sttToken: optionalEnvVars.VITE_ELEVENLABS_STT_TOKEN,
+    sttModelId: optionalEnvVars.VITE_ELEVENLABS_STT_MODEL_ID || 'scribe_v2_realtime',
   }
 } as const;
