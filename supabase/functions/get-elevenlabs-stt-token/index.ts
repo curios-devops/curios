@@ -1,5 +1,3 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
 const rawApiKey = Deno.env.get('ELEVENLAB_API_KEY');
 const ELEVENLABS_API_KEY = rawApiKey?.trim().replace(/[\r\n\s]+/g, '');
 const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';

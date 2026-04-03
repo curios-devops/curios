@@ -3,15 +3,44 @@
 // This enables autocomplete, go to definition, etc.
 
 // Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import "@supabase/functions-js/edge-runtime.d.ts";
 
 /**
  * Supabase Edge Function: ElevenLabs TTS
  * Text-to-Speech usando ElevenLabs API (API key segura en servidor)
  */
 
-const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLAB_API_KEY'); // Sin S
+// Get and sanitize API key (remove any whitespace, newlines, or invisible characters)
+const rawApiKey = Deno.env.get('ELEVENLAB_API_KEY'); // Sin S
+const ELEVENLABS_API_KEY = rawApiKey?.trim().replace(/[\r\n\s]+/g, '');
 const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
+
+function createJsonResponse(body: unknown, status: number, corsHeaders: Record<string, string>) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+function parseProviderError(errorText: string) {
+  try {
+    return JSON.parse(errorText);
+  } catch {
+    return null;
+  }
+}
+
+// Debug: Log key info (safely)
+console.log('[ElevenLabs] API Key Info:', {
+  exists: !!rawApiKey,
+  rawLength: rawApiKey?.length,
+  sanitizedLength: ELEVENLABS_API_KEY?.length,
+  hasNewlines: rawApiKey?.includes('\n'),
+  hasCarriageReturns: rawApiKey?.includes('\r'),
+  hasSpaces: rawApiKey?.includes(' '),
+  firstChars: ELEVENLABS_API_KEY?.substring(0, 3),
+  lastChars: ELEVENLABS_API_KEY?.substring(ELEVENLABS_API_KEY.length - 3),
+});
 
 Deno.serve(async (req: Request) => {
   // CORS headers
@@ -33,20 +62,14 @@ Deno.serve(async (req: Request) => {
     // Validate API key
     if (!ELEVENLABS_API_KEY) {
       console.error('[ElevenLabs] API key not configured');
-      return new Response(
-        JSON.stringify({ error: 'ElevenLabs API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createJsonResponse({ error: 'ElevenLabs API key not configured' }, 500, corsHeaders);
     }
 
     // Parse request
-    const { text, voiceId = '21m00Tcm4TlvDq8ikWAM' } = await req.json();
+    const { text, voiceId = 'EXAVITQu4vr4xnSDxMaL' } = await req.json(); // Sarah - Mature, Reassuring, Confident
 
     if (!text) {
-      return new Response(
-        JSON.stringify({ error: 'Text is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createJsonResponse({ error: 'Text is required' }, 400, corsHeaders);
     }
 
     console.log('[ElevenLabs] Generating TTS', {
@@ -78,45 +101,57 @@ Deno.serve(async (req: Request) => {
 
     if (!response.ok) {
       const errorText = await response.text();
+      const providerError = parseProviderError(errorText);
+      const providerCode = providerError?.detail?.status ?? null;
+      const providerMessage = providerError?.detail?.message ?? errorText;
+      const isRestrictedFreeTier = response.status === 401 && providerCode === 'detected_unusual_activity';
+
       console.error('[ElevenLabs] API error', {
         status: response.status,
+        providerCode,
         error: errorText,
       });
-      return new Response(
-        JSON.stringify({
-          error: `ElevenLabs API error: ${response.status}`,
+
+      return createJsonResponse(
+        {
+          error: isRestrictedFreeTier
+            ? 'ElevenLabs account restricted for free-tier usage'
+            : `ElevenLabs API error: ${response.status}`,
+          provider: 'elevenlabs',
+          providerStatus: response.status,
+          providerCode,
+          providerMessage,
           details: errorText,
-        }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        },
+        isRestrictedFreeTier ? 503 : 502,
+        corsHeaders,
       );
     }
 
     // Return audio as base64
     const audioBuffer = await response.arrayBuffer();
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+    const uint8 = new Uint8Array(audioBuffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8.length; i += chunkSize) {
+      binary += String.fromCharCode(...uint8.subarray(i, i + chunkSize));
+    }
+    const base64Audio = btoa(binary);
 
     console.log('[ElevenLabs] TTS generated successfully', {
       size: audioBuffer.byteLength,
       sizeKB: (audioBuffer.byteLength / 1024).toFixed(2),
     });
 
-    return new Response(
-      JSON.stringify({
-        audio: base64Audio,
-        size: audioBuffer.byteLength,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return createJsonResponse({
+      audio: base64Audio,
+      size: audioBuffer.byteLength,
+    }, 200, corsHeaders);
   } catch (error) {
     console.error('[ElevenLabs] Function error', { error });
-    return new Response(
-      JSON.stringify({
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createJsonResponse({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    }, 500, corsHeaders);
   }
 });
