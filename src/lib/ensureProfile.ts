@@ -123,7 +123,7 @@ export function ensureProfileExists(user: User | null | undefined): Promise<void
               remaining_searches: 5,
               searches_reset_at: new Date().toISOString(),
               language: preferredLanguage || 'en',
-              accent_color: 'blue',
+              accent_color: 'gray',
             })
             .select('id')
             .single();
@@ -160,7 +160,7 @@ export function ensureProfileExists(user: User | null | undefined): Promise<void
             remaining_searches: 5,
             searches_reset_at: new Date().toISOString(),
             language: preferredLanguage || 'en',
-            accent_color: 'blue',
+            accent_color: 'gray',
           })
           .select('id')
           .single();

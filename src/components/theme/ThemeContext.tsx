@@ -14,6 +14,19 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const validAccentColors: AccentColor[] = ['blue', 'teal', 'purple', 'orange', 'gray'];
+
+function normalizeAccentColor(color: string | null | undefined): AccentColor | null {
+  if (color === 'green') {
+    return 'teal';
+  }
+
+  if (color && validAccentColors.includes(color as AccentColor)) {
+    return color as AccentColor;
+  }
+
+  return null;
+}
 
 function getInitialTheme(): Theme {
   // Check if theme was previously stored
@@ -33,11 +46,8 @@ function getInitialTheme(): Theme {
 
 
 function getInitialAccentColor(): AccentColor {
-  const stored = localStorage.getItem('accentColor') as AccentColor;
-  if (stored && ['blue', 'green', 'purple', 'orange', 'gray'].includes(stored)) {
-    return stored;
-  }
-  return 'blue';
+  const stored = localStorage.getItem('accentColor');
+  return normalizeAccentColor(stored) ?? 'gray';
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -75,8 +85,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             .select('accent_color')
             .eq('id', session.user.id)
             .single();
-          if (!error && data?.accent_color && ['blue','green','purple','orange','gray'].includes(data.accent_color)) {
-            color = data.accent_color;
+          const normalizedDbColor = normalizeAccentColor(data?.accent_color);
+          if (!error && normalizedDbColor) {
+            color = normalizedDbColor;
             setJustLoadedFromSupabase(true);
           }
         } catch (error) {
@@ -85,11 +96,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         }
       }
       if (!color) {
-        color = localStorage.getItem('accentColor') as AccentColor;
+        color = normalizeAccentColor(localStorage.getItem('accentColor'));
       }
-      if (!color || !['blue','green','purple','orange','gray'].includes(color)) {
-        color = 'blue';
-      }
+      color = color ?? 'gray';
       setAccentColorState(color);
       setAccentColorLoading(false);
     };

@@ -16,6 +16,7 @@ export default function ThemeToggle() {
 	const tooltipBackground = isGrayAccent ? accentColor.primary : 'var(--ui-bg-elevated)';
 	const tooltipForeground = isGrayAccent ? accentColor.dark : 'var(--ui-text-primary)';
 	const tooltipBorder = isGrayAccent ? accentColor.dark : 'var(--ui-border-subtle)';
+	const selectableAccentColors: AccentColor[] = ['blue', 'teal', 'purple', 'orange'];
 
 	const THEME_OPTIONS = [
 		{ key: 'light', label: t('light'), icon: Sun },
@@ -143,7 +144,7 @@ export default function ThemeToggle() {
 						<div className={`border-t mt-1 pt-2 px-4 pb-2 ${isDarkMode ? 'border-[#23272A]' : 'border-[#E3E6E3]'}`}>
 							<div className="text-[10px] mb-2 opacity-70">{t('accentColor')}</div>
 							<div className="flex gap-2 justify-center">
-								{(['blue', 'green', 'purple', 'orange', 'gray'] as AccentColor[]).map((color) => {
+								{selectableAccentColors.map((color) => {
 									const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
 									const isSelectedColor = selectedAccentColor === color;
 
@@ -153,14 +154,14 @@ export default function ThemeToggle() {
 									return (
 										<button
 											key={color}
-											onClick={() => setAccentColor(color)}
+											onClick={() => setAccentColor(isSelectedColor ? 'gray' : color)}
 											className={`w-5 h-5 rounded-md transition-transform ${isSelectedColor ? `border-2 ${selectedBorderClass} scale-105` : 'border border-transparent hover:scale-105'}`}
 											style={{
 												backgroundColor: colorConfig.primary,
 												boxShadow: isSelectedColor ? '0 1px 3px rgba(0,0,0,0.2)' : undefined
 											}}
-											title={color.charAt(0).toUpperCase() + color.slice(1)}
-											aria-label={`Select ${color} accent color`}
+											title={isSelectedColor ? `Turn off ${color} accent` : color.charAt(0).toUpperCase() + color.slice(1)}
+											aria-label={isSelectedColor ? `Turn off ${color} accent color` : `Select ${color} accent color`}
 										/>
 									);
 								})}

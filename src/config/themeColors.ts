@@ -1,15 +1,13 @@
-// Theme Accent Colors Configuration
-// Implements Hue Consistency Rule: same hue (~±5°), varying only lightness & saturation
-// for optimal color recognition across light/dark modes
-
-export type AccentColor = 'blue' | 'green' | 'purple' | 'orange' | 'gray';
+export type AccentColor = 'blue' | 'teal' | 'purple' | 'orange' | 'gray';
 export type ColorTemperature = 'cold' | 'warm' | 'neutral';
 
 export interface ColorVariants {
-  primary: string;      // Main accent color
-  hover: string;        // Hover state
-  light: string;        // Lighter variant for backgrounds
-  dark: string;         // Darker variant for borders/text
+  primary: string;
+  hover: string;
+  light: string;
+  dark: string;
+  brandLight?: string;
+  brandSubtle?: string;
 }
 
 export interface ThemeColors {
@@ -31,180 +29,229 @@ export interface GlobalPaletteTokens {
   textOnAccent: string;
 }
 
-// BACKUP - Alternative color scheme (2024 palette)
-// blue: #4A90E2 (light), #6CA8F5 (dark)
-// green: #4EC58B (light), #5ED19C (dark)
-// purple: #A16EFF (light), #B285FF (dark)
-// orange: #FFA54C (light), #FF8A3D (dark)
+interface DesignColorSet {
+  bg: string;
+  surface: string;
+  border: string;
+  text: string;
+  brandLight: string;
+  brand: string;
+  brandDark: string;
+  brandSubtle: string;
+}
 
-// Accent color configurations with Hue Consistency Rule
-// Dark mode colors are base; light mode derived with same hue, adjusted L/S
-export const accentColors: Record<AccentColor, ThemeColors> = {
+const designSystemThemes: Record<AccentColor, { light: DesignColorSet; dark: DesignColorSet }> = {
+  gray: {
+    light: {
+      bg: '#FAFAFA',
+      surface: '#FFFFFF',
+      border: '#E5E7EB',
+      text: '#111827',
+      brandLight: '#9CA3AF',
+      brand: '#6B7280',
+      brandDark: '#4B5563',
+      brandSubtle: '#F3F4F6',
+    },
+    dark: {
+      bg: '#0B0C0F',
+      surface: '#111317',
+      border: '#1C1F26',
+      text: '#F3F4F6',
+      brandLight: '#9CA3AF',
+      brand: '#6B7280',
+      brandDark: '#4B5563',
+      brandSubtle: '#1A1D24',
+    },
+  },
   blue: {
     light: {
-      primary: '#007BFF', // Matches "Sign in for access" button color
-      hover: '#0056B3',   // Standard hover state (darker)
-      light: '#E3F2FF',
-      dark: '#003D7A',
+      bg: '#F4F6FA',
+      surface: '#FAFBFD',
+      border: '#DDE3EE',
+      text: '#0F1520',
+      brandLight: '#5B8CFF',
+      brand: '#2563EB',
+      brandDark: '#1E40AF',
+      brandSubtle: '#EEF3FF',
     },
     dark: {
-      primary: '#007BFF', // Base color (standard button blue)
-      hover: '#0056B3',   // Standard hover state
-      light: '#1565C0',
-      dark: '#3399FF',
-    },
-  },
-  green: {
-    light: {
-      primary: '#28B558', // Derived from dark: same hue, reduced lightness
-      hover: '#229A4A',   // Darker for hover
-      light: '#D4EDDA',
-      dark: '#1C7F3C',
-    },
-    dark: {
-      primary: '#30D158', // Base color (restored from backup)
-      hover: '#28B049',   // Darker for hover
-      light: '#1a3d23',
-      dark: '#4ADE80',
-    },
-  },
-  purple: {
-    light: {
-      primary: '#4A2ED6', // Derived from dark: same hue, reduced lightness
-      hover: '#3E26B5',   // Darker for hover
-      light: '#E2D9F3',
-      dark: '#321E94',
-    },
-    dark: {
-      primary: '#5C3BFE', // Base color (restored from backup)
-      hover: '#4A2FD6',   // Darker for hover
-      light: '#2d1b4e',
-      dark: '#C4B5FD',
+      bg: '#0F1117',
+      surface: '#161B27',
+      border: '#1E2738',
+      text: '#E8EDF5',
+      brandLight: '#7AA2FF',
+      brand: '#2563EB',
+      brandDark: '#1E40AF',
+      brandSubtle: '#1A2540',
     },
   },
   orange: {
     light: {
-      primary: '#E64A19', // Derived from dark: same hue, reduced lightness
-      hover: '#C23E15',   // Darker for hover
-      light: '#FFE5D0',
-      dark: '#A03311',
+      bg: '#F7F3EE',
+      surface: '#FDFAF7',
+      border: '#E8DDD2',
+      text: '#1A1410',
+      brandLight: '#E07A4F',
+      brand: '#C4502A',
+      brandDark: '#8F3A1F',
+      brandSubtle: '#F5EAE4',
     },
     dark: {
-      primary: '#FF5722', // Base color (restored from backup)
-      hover: '#FF6E40',   // Lighter for hover
-      light: '#4a3310',
-      dark: '#FF8A65',
+      bg: '#120F0D',
+      surface: '#1A1512',
+      border: '#2A221C',
+      text: '#F3ECE7',
+      brandLight: '#F2A07A',
+      brand: '#D97757',
+      brandDark: '#A34A2F',
+      brandSubtle: '#2A1D17',
     },
   },
-  gray: {
+  teal: {
     light: {
-      primary: '#f5f5f7',
-      hover: '#ececef',
-      light: '#f9f9fb',
-      dark: '#141418',
+      bg: '#F4F8F8',
+      surface: '#FFFFFF',
+      border: '#D7E6E5',
+      text: '#0F1F1F',
+      brandLight: '#2FB3A8',
+      brand: '#1F8A8C',
+      brandDark: '#16686A',
+      brandSubtle: '#E6F4F3',
     },
     dark: {
-      primary: '#1c1c1f',
-      hover: '#26262a',
-      light: '#3a3a40',
-      dark: '#f2f2f5',
+      bg: '#0E1414',
+      surface: '#141C1C',
+      border: '#1F2C2C',
+      text: '#E6F4F3',
+      brandLight: '#4DD6C8',
+      brand: '#1F8A8C',
+      brandDark: '#16686A',
+      brandSubtle: '#0F2222',
+    },
+  },
+  purple: {
+    light: {
+      bg: '#F6F3FF',
+      surface: '#FFFFFF',
+      border: '#E4DDFF',
+      text: '#1A1033',
+      brandLight: '#8A6CFF',
+      brand: '#6634FF',
+      brandDark: '#5E30EC',
+      brandSubtle: '#F0EBFF',
+    },
+    dark: {
+      bg: '#0E0B1A',
+      surface: '#151024',
+      border: '#241C3D',
+      text: '#EDE7FF',
+      brandLight: '#9B84FF',
+      brand: '#6634FF',
+      brandDark: '#5E30EC',
+      brandSubtle: '#1A1330',
+    },
+  },
+};
+
+export const accentColors: Record<AccentColor, ThemeColors> = {
+  gray: {
+    light: {
+      primary: designSystemThemes.gray.light.brand,
+      hover: designSystemThemes.gray.light.brandDark,
+      light: designSystemThemes.gray.light.brandSubtle,
+      dark: designSystemThemes.gray.light.brandDark,
+      brandLight: designSystemThemes.gray.light.brandLight,
+      brandSubtle: designSystemThemes.gray.light.brandSubtle,
+    },
+    dark: {
+      primary: designSystemThemes.gray.dark.brand,
+      hover: designSystemThemes.gray.dark.brandDark,
+      light: designSystemThemes.gray.dark.brandSubtle,
+      dark: designSystemThemes.gray.dark.brandDark,
+      brandLight: designSystemThemes.gray.dark.brandLight,
+      brandSubtle: designSystemThemes.gray.dark.brandSubtle,
+    },
+  },
+  blue: {
+    light: {
+      primary: designSystemThemes.blue.light.brand,
+      hover: designSystemThemes.blue.light.brandDark,
+      light: designSystemThemes.blue.light.brandSubtle,
+      dark: designSystemThemes.blue.light.brandDark,
+      brandLight: designSystemThemes.blue.light.brandLight,
+      brandSubtle: designSystemThemes.blue.light.brandSubtle,
+    },
+    dark: {
+      primary: designSystemThemes.blue.dark.brand,
+      hover: designSystemThemes.blue.dark.brandDark,
+      light: designSystemThemes.blue.dark.brandSubtle,
+      dark: designSystemThemes.blue.dark.brandDark,
+      brandLight: designSystemThemes.blue.dark.brandLight,
+      brandSubtle: designSystemThemes.blue.dark.brandSubtle,
+    },
+  },
+  orange: {
+    light: {
+      primary: designSystemThemes.orange.light.brand,
+      hover: designSystemThemes.orange.light.brandDark,
+      light: designSystemThemes.orange.light.brandSubtle,
+      dark: designSystemThemes.orange.light.brandDark,
+      brandLight: designSystemThemes.orange.light.brandLight,
+      brandSubtle: designSystemThemes.orange.light.brandSubtle,
+    },
+    dark: {
+      primary: designSystemThemes.orange.dark.brand,
+      hover: designSystemThemes.orange.dark.brandDark,
+      light: designSystemThemes.orange.dark.brandSubtle,
+      dark: designSystemThemes.orange.dark.brandDark,
+      brandLight: designSystemThemes.orange.dark.brandLight,
+      brandSubtle: designSystemThemes.orange.dark.brandSubtle,
+    },
+  },
+  teal: {
+    light: {
+      primary: designSystemThemes.teal.light.brand,
+      hover: designSystemThemes.teal.light.brandDark,
+      light: designSystemThemes.teal.light.brandSubtle,
+      dark: designSystemThemes.teal.light.brandDark,
+      brandLight: designSystemThemes.teal.light.brandLight,
+      brandSubtle: designSystemThemes.teal.light.brandSubtle,
+    },
+    dark: {
+      primary: designSystemThemes.teal.dark.brand,
+      hover: designSystemThemes.teal.dark.brandDark,
+      light: designSystemThemes.teal.dark.brandSubtle,
+      dark: designSystemThemes.teal.dark.brandDark,
+      brandLight: designSystemThemes.teal.dark.brandLight,
+      brandSubtle: designSystemThemes.teal.dark.brandSubtle,
+    },
+  },
+  purple: {
+    light: {
+      primary: designSystemThemes.purple.light.brand,
+      hover: designSystemThemes.purple.light.brandDark,
+      light: designSystemThemes.purple.light.brandSubtle,
+      dark: designSystemThemes.purple.light.brandDark,
+      brandLight: designSystemThemes.purple.light.brandLight,
+      brandSubtle: designSystemThemes.purple.light.brandSubtle,
+    },
+    dark: {
+      primary: designSystemThemes.purple.dark.brand,
+      hover: designSystemThemes.purple.dark.brandDark,
+      light: designSystemThemes.purple.dark.brandSubtle,
+      dark: designSystemThemes.purple.dark.brandDark,
+      brandLight: designSystemThemes.purple.dark.brandLight,
+      brandSubtle: designSystemThemes.purple.dark.brandSubtle,
     },
   },
 };
 
 export const accentTemperatureMap: Record<AccentColor, ColorTemperature> = {
   blue: 'cold',
-  green: 'cold',
+  teal: 'cold',
   purple: 'warm',
   orange: 'warm',
   gray: 'neutral',
-};
-
-const premiumPaletteByTemperature: Record<ColorTemperature, { light: GlobalPaletteTokens; dark: GlobalPaletteTokens }> = {
-  cold: {
-    light: {
-      bgPrimary: '#f4f8ff',
-      bgSecondary: '#ecf2ff',
-      bgElevated: '#f8fbff',
-      borderSubtle: '#d9e6ff',
-      borderDefault: '#c3d8ff',
-      textPrimary: '#1e2b45',
-      textSecondary: '#33456a',
-      textMuted: '#5d6f96',
-      shadowSoft: 'rgba(45, 78, 138, 0.10)',
-      shadowElevated: 'rgba(36, 66, 122, 0.18)',
-      textOnAccent: '#eef5ff',
-    },
-    dark: {
-      bgPrimary: '#111a2b',
-      bgSecondary: '#172236',
-      bgElevated: '#1b2942',
-      borderSubtle: '#253857',
-      borderDefault: '#32527c',
-      textPrimary: '#e4edff',
-      textSecondary: '#c2d3f5',
-      textMuted: '#93a9d1',
-      shadowSoft: 'rgba(10, 16, 29, 0.35)',
-      shadowElevated: 'rgba(7, 12, 22, 0.48)',
-      textOnAccent: '#eaf3ff',
-    },
-  },
-  warm: {
-    light: {
-      bgPrimary: '#fff6f1',
-      bgSecondary: '#ffeee6',
-      bgElevated: '#fff9f6',
-      borderSubtle: '#ffe0d2',
-      borderDefault: '#ffcdb9',
-      textPrimary: '#42251b',
-      textSecondary: '#63382a',
-      textMuted: '#8a5a49',
-      shadowSoft: 'rgba(129, 70, 46, 0.10)',
-      shadowElevated: 'rgba(112, 54, 34, 0.18)',
-      textOnAccent: '#fff3eb',
-    },
-    dark: {
-      bgPrimary: '#1c1411',
-      bgSecondary: '#261b17',
-      bgElevated: '#2d201a',
-      borderSubtle: '#3f2b23',
-      borderDefault: '#5c3c30',
-      textPrimary: '#ffe8dc',
-      textSecondary: '#f4ccba',
-      textMuted: '#d49f8a',
-      shadowSoft: 'rgba(17, 10, 8, 0.34)',
-      shadowElevated: 'rgba(12, 8, 6, 0.48)',
-      textOnAccent: '#fff2e8',
-    },
-  },
-  neutral: {
-    light: {
-      bgPrimary: '#fafafa',
-      bgSecondary: '#f5f5f6',
-      bgElevated: '#ffffff',
-      borderSubtle: '#e6e6e8',
-      borderDefault: '#d6d6da',
-      textPrimary: '#1f1f23',
-      textSecondary: '#3a3a42',
-      textMuted: '#6a6a75',
-      shadowSoft: 'rgba(0, 0, 0, 0.08)',
-      shadowElevated: 'rgba(0, 0, 0, 0.14)',
-      textOnAccent: '#111113',
-    },
-    dark: {
-      bgPrimary: '#111113',
-      bgSecondary: '#17171a',
-      bgElevated: '#1d1d22',
-      borderSubtle: '#2a2a31',
-      borderDefault: '#3a3a45',
-      textPrimary: '#f2f2f5',
-      textSecondary: '#d6d6dc',
-      textMuted: '#a3a3ad',
-      shadowSoft: 'rgba(0, 0, 0, 0.34)',
-      shadowElevated: 'rgba(0, 0, 0, 0.48)',
-      textOnAccent: '#f5f5f7',
-    },
-  },
 };
 
 // Helper function to get current accent colors based on theme and selected color
@@ -223,8 +270,20 @@ export function getGlobalPaletteTokens(
   theme: 'light' | 'dark',
   accentColor: AccentColor = 'blue'
 ): GlobalPaletteTokens {
-  const temperature = getAccentTemperature(accentColor);
-  return premiumPaletteByTemperature[temperature][theme];
+  const palette = designSystemThemes[accentColor][theme];
+  return {
+    bgPrimary: palette.bg,
+    bgSecondary: palette.surface,
+    bgElevated: palette.surface,
+    borderSubtle: palette.border,
+    borderDefault: palette.border,
+    textPrimary: palette.text,
+    textSecondary: palette.text,
+    textMuted: palette.text,
+    shadowSoft: theme === 'light' ? 'rgba(0, 0, 0, 0.06)' : 'rgba(0, 0, 0, 0.30)',
+    shadowElevated: theme === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(0, 0, 0, 0.44)',
+    textOnAccent: '#FFFFFF',
+  };
 }
 
 // CSS variable names for easy access
