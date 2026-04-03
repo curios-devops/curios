@@ -1,6 +1,8 @@
 import { useRef, useEffect } from 'react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { Check, Sparkles, FlaskConical, BookOpen } from 'lucide-react';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
+import { useTheme } from '../theme/ThemeContext.tsx';
 
 interface TabTooltipProps {
   tab: 'search' | 'insights' | 'labs';
@@ -41,6 +43,12 @@ export default function TabTooltip({
   const tooltipRef = useRef<HTMLDivElement>(null);
   const config = tabConfig[tab];
   const { t } = useTranslation();
+  const accentColor = useAccentColor();
+  const { accentColor: selectedAccentColor } = useTheme();
+  const isGrayAccent = selectedAccentColor === 'gray';
+  const accentPrimary = isGrayAccent ? accentColor.dark : accentColor.primary;
+  const accentHover = isGrayAccent ? accentColor.primary : accentColor.hover;
+  const accentForeground = isGrayAccent ? accentColor.light : 'white';
   const title = t(tab);
   const description = t(`${tab}_description`);
   const proTitle = t(`${tab}_pro_title`);
@@ -113,7 +121,7 @@ export default function TabTooltip({
         <div className="flex items-center gap-2 mb-1">
           <h3 className="text-xs font-medium text-gray-900 dark:text-white">{title}</h3>
           {config.badge && (
-            <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
+            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded" style={{ backgroundColor: accentPrimary, color: accentForeground }}>
               {config.badge}
             </span>
           )}
@@ -128,10 +136,10 @@ export default function TabTooltip({
       <div className="mb-2.5">
         <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
+            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded" style={{ backgroundColor: accentPrimary, color: accentForeground }}>
               PRO
             </span>
-            <span className="text-[#007BFF] text-[10px] font-bold">{proTitle}</span>
+            <span className="text-[10px] font-bold" style={{ color: accentPrimary }}>{proTitle}</span>
           </div>
           {/* Interactive Toggle Switch for Guests */}
           <button
@@ -141,7 +149,7 @@ export default function TabTooltip({
             title={t('signInToUpgrade')}
           >
             <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-all group-hover:bg-gray-100"></div>
-            <div className="absolute inset-0 rounded-full ring-2 ring-transparent group-hover:ring-[#007BFF] group-hover:ring-opacity-30 transition-all"></div>
+            <div className="absolute inset-0 rounded-full ring-2 ring-transparent group-hover:ring-[var(--accent-primary)] group-hover:ring-opacity-30 transition-all"></div>
           </button>
         </div>
 
@@ -152,7 +160,10 @@ export default function TabTooltip({
         <button
         type="button"
         onClick={onSignIn}
-        className="w-full bg-[#007BFF] hover:bg-[#0056b3] text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
+        className="w-full py-2 rounded-lg transition-colors text-[10px] font-medium"
+        style={{ backgroundColor: accentPrimary, color: accentForeground }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = accentHover; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = accentPrimary; }}
       >
         {t('signInForAccess')}
       </button>
@@ -174,7 +185,7 @@ export default function TabTooltip({
         <div className="flex items-center gap-2 mb-1">
           <h3 className="text-xs font-medium text-gray-900 dark:text-white">{title}</h3>
           {config.badge && (
-            <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
+            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded" style={{ backgroundColor: accentPrimary, color: accentForeground }}>
               {config.badge}
             </span>
           )}
@@ -190,8 +201,8 @@ export default function TabTooltip({
         </div>
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
           <div 
-            className="bg-[#007BFF] h-1 rounded-full transition-all" 
-            style={{ width: `${((maxSearches - remainingSearches) / maxSearches) * 100}%` }}
+            className="h-1 rounded-full transition-all" 
+            style={{ backgroundColor: accentPrimary, width: `${((maxSearches - remainingSearches) / maxSearches) * 100}%` }}
           ></div>
         </div>
       </div>
@@ -203,10 +214,10 @@ export default function TabTooltip({
       <div className="mb-2.5">
         <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
+            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded" style={{ backgroundColor: accentPrimary, color: accentForeground }}>
               PRO
             </span>
-            <span className="text-[#007BFF] text-[10px] font-bold">{proTitle}</span>
+            <span className="text-[10px] font-bold" style={{ color: accentPrimary }}>{proTitle}</span>
           </div>
           <button
             type="button"
@@ -215,7 +226,7 @@ export default function TabTooltip({
             title={t('upgradeToPremium')}
           >
             <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-all group-hover:bg-gray-100"></div>
-            <div className="absolute inset-0 rounded-full ring-2 ring-transparent group-hover:ring-[#007BFF] group-hover:ring-opacity-30 transition-all"></div>
+            <div className="absolute inset-0 rounded-full ring-2 ring-transparent group-hover:ring-[var(--accent-primary)] group-hover:ring-opacity-30 transition-all"></div>
           </button>
         </div>
 
@@ -225,7 +236,7 @@ export default function TabTooltip({
         <div className="space-y-0.5 mb-2.5">
           {proFeatures.map((_, index) => (
             <div key={index} className="flex items-center gap-1.5">
-              <Check size={10} className="text-[#007BFF] flex-shrink-0" />
+              <Check size={10} className="flex-shrink-0" style={{ color: accentPrimary }} />
               <span className="text-gray-600 dark:text-gray-300 text-[10px]">{t(`${tab}_pro_feature_${index+1}`)}</span>
             </div>
           ))}
@@ -236,7 +247,10 @@ export default function TabTooltip({
       <button
         type="button"
         onClick={onUpgrade}
-        className="w-full bg-[#007BFF] hover:bg-[#0056b3] text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
+        className="w-full py-2 rounded-lg transition-colors text-[10px] font-medium"
+        style={{ backgroundColor: accentPrimary, color: accentForeground }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = accentHover; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = accentPrimary; }}
       >
   {t('upgradeToPremium')}
       </button>
@@ -258,7 +272,7 @@ export default function TabTooltip({
         <div className="flex items-center gap-2 mb-1">
           <h3 className="text-xs font-medium text-gray-900 dark:text-white">{title}</h3>
           {config.badge && (
-            <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#007BFF] text-white rounded">
+            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded" style={{ backgroundColor: accentPrimary, color: accentForeground }}>
               {config.badge}
             </span>
           )}
@@ -278,7 +292,7 @@ export default function TabTooltip({
             </span>
             <span className="text-green-600 dark:text-green-400 text-[10px] font-bold">{proTitle} ✓</span>
           </div>
-          <div className="relative w-8 h-4 rounded-full bg-[#007BFF] cursor-default">
+          <div className="relative w-8 h-4 rounded-full cursor-default" style={{ backgroundColor: accentPrimary }}>
             <div className="absolute top-0.5 right-0.5 w-3 h-3 bg-white rounded-full"></div>
           </div>
         </div>

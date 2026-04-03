@@ -22,10 +22,21 @@ export default function AuthButton({ onClick, type, isActive, children }: AuthBu
         text-xs
         ${type === 'signup' ? 'font-medium' : ''}
         ${isActive 
-          ? 'bg-[#007BFF] text-white transform scale-[0.98]' 
-          : 'bg-gray-100 dark:bg-[#222222] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#1a1a1a] hover:text-[#007BFF] dark:hover:text-[#007BFF]'
+          ? 'transform scale-[0.98]' 
+          : 'bg-gray-100 dark:bg-[#222222] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#1a1a1a]'
         }
       `}
+      style={isActive ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : undefined}
+      onMouseEnter={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.color = 'var(--accent-primary)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.color = '';
+        }
+      }}
     >
       {children}
     </button>

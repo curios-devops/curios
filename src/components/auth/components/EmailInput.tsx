@@ -37,11 +37,16 @@ export default function EmailInput({
               ? 'bg-[#222222] placeholder-gray-700 text-white' 
               : 'bg-white text-gray-900 placeholder-gray-400'} // Use theme for conditional styling
             focus:outline-none 
-            focus:border-[#007BFF] 
             transition-colors
             disabled:opacity-50
             disabled:cursor-not-allowed
           `}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = 'var(--accent-primary)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = error ? '#ef4444' : '#374151';
+          }}
         />
       </div>
       {error && (

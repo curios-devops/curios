@@ -7,12 +7,19 @@ import { useState, useRef, useEffect } from 'react';
 
 const LanguageSelector = () => {
   const { currentLanguage, setLanguage } = useLanguage();
-  const { theme } = useTheme();
+  const { theme, accentColor: selectedAccentColor } = useTheme();
   const { t } = useTranslation();
   const accentColor = useAccentColor();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const isDarkMode = (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+  const isGrayAccent = selectedAccentColor === 'gray';
+  const controlBackground = isGrayAccent ? accentColor.dark : accentColor.primary;
+  const controlForeground = isGrayAccent ? accentColor.light : 'var(--ui-text-on-accent)';
+  const controlHoverBackground = isGrayAccent ? accentColor.primary : accentColor.hover;
+  const tooltipBackground = isGrayAccent ? accentColor.primary : 'var(--ui-bg-elevated)';
+  const tooltipForeground = isGrayAccent ? accentColor.dark : 'var(--ui-text-primary)';
+  const tooltipBorder = isGrayAccent ? accentColor.dark : 'var(--ui-border-subtle)';
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -29,23 +36,30 @@ const LanguageSelector = () => {
       <button
         type='button'
         onClick={() => setOpen(!open)}
-        className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-medium shadow-md relative group border
-          ${isDarkMode
-            ? 'bg-[#23272A] border-[#3A3F42] text-[#F3F6F4]'
-            : 'bg-[#FAFBF9] border-[#D1D5DB] text-[#2A3B39]'}
-        `}
+        className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-medium shadow-md relative group border"
         style={{
           boxShadow: open 
-            ? (isDarkMode ? '0 0 0 2px #23272A' : `0 0 0 2px ${accentColor.primary}`)
+            ? `0 0 0 2px ${isGrayAccent ? accentColor.dark : accentColor.primary}`
             : undefined,
           outline: 'none',
-          transition: 'border-color 200ms'
+          transition: 'border-color 200ms, background-color 200ms, color 200ms',
+          backgroundColor: controlBackground,
+          color: controlForeground,
+          borderColor: isGrayAccent ? accentColor.dark : accentColor.primary,
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = accentColor.primary;
+          e.currentTarget.style.backgroundColor = controlHoverBackground;
+          if (isGrayAccent) {
+            e.currentTarget.style.color = accentColor.dark;
+            e.currentTarget.style.borderColor = accentColor.dark;
+          } else {
+            e.currentTarget.style.borderColor = accentColor.hover;
+          }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = isDarkMode ? '#3A3F42' : '#D1D5DB';
+          e.currentTarget.style.backgroundColor = controlBackground;
+          e.currentTarget.style.color = controlForeground;
+          e.currentTarget.style.borderColor = isGrayAccent ? accentColor.dark : accentColor.primary;
         }}
         aria-label="Language selector"
       >
@@ -65,21 +79,25 @@ const LanguageSelector = () => {
         </div>
         {/* Tooltip */}
         <span
-          className={`absolute bottom-9 right-0 translate-x-0 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50
-            ${theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-              ? 'bg-gray-800 text-gray-100'
-              : 'bg-gray-100 text-gray-800'}
-          `}
+          className="absolute bottom-9 right-0 translate-x-0 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border"
+          style={{
+            backgroundColor: tooltipBackground,
+            color: tooltipForeground,
+            borderColor: tooltipBorder,
+          }}
         >
           {t('languageSelectorTooltip')}
         </span>
       </button>
       {open && (
-        <div className={`absolute right-0 bottom-full mb-2 w-44 rounded-xl shadow-lg border transition-colors duration-200 py-1 z-50 animate-fade-in text-xs
-          ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-            ? 'bg-[#181A1B] border-[#23272A] text-white'
-            : 'bg-white border-[#E3E6E3] text-[#222E2A]'}
-        `}>
+        <div
+          className="absolute right-0 bottom-full mb-2 w-44 rounded-xl shadow-lg border transition-colors duration-200 py-1 z-50 animate-fade-in text-xs"
+          style={{
+            backgroundColor: 'var(--ui-bg-elevated)',
+            borderColor: 'var(--ui-border-subtle)',
+            color: 'var(--ui-text-primary)',
+          }}
+        >
           <div className="flex flex-col">
             {languages
               .filter((l: Language) => l.code !== currentLanguage.code)
@@ -91,11 +109,16 @@ const LanguageSelector = () => {
                     setLanguage(lang);
                     setOpen(false);
                   }}
-                  className={`flex items-center gap-2 px-4 py-2 text-left rounded-lg transition-colors font-normal text-xs
-                    ${(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-                      ? 'bg-transparent text-[#F3F6F4] hover:bg-[#23272A] hover:text-[#F3F6F4]'
-                      : 'bg-transparent text-[#222E2A] hover:bg-[#F5F7F6] hover:text-[#222E2A]'}
-                  `}
+                  className="flex items-center gap-2 px-4 py-2 text-left rounded-lg transition-colors font-normal text-xs"
+                  style={{ color: 'var(--ui-text-primary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
+                    e.currentTarget.style.color = isGrayAccent ? accentColor.dark : accentColor.primary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = 'var(--ui-text-primary)';
+                  }}
                   title={lang.name}
                 >
                   {lang.code === 'ca' ? (

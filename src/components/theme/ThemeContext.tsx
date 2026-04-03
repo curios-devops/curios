@@ -34,7 +34,7 @@ function getInitialTheme(): Theme {
 
 function getInitialAccentColor(): AccentColor {
   const stored = localStorage.getItem('accentColor') as AccentColor;
-  if (stored && ['blue', 'green', 'purple', 'orange'].includes(stored)) {
+  if (stored && ['blue', 'green', 'purple', 'orange', 'gray'].includes(stored)) {
     return stored;
   }
   return 'blue';
@@ -75,7 +75,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             .select('accent_color')
             .eq('id', session.user.id)
             .single();
-          if (!error && data?.accent_color && ['blue','green','purple','orange'].includes(data.accent_color)) {
+          if (!error && data?.accent_color && ['blue','green','purple','orange','gray'].includes(data.accent_color)) {
             color = data.accent_color;
             setJustLoadedFromSupabase(true);
           }
@@ -87,7 +87,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (!color) {
         color = localStorage.getItem('accentColor') as AccentColor;
       }
-      if (!color || !['blue','green','purple','orange'].includes(color)) {
+      if (!color || !['blue','green','purple','orange','gray'].includes(color)) {
         color = 'blue';
       }
       setAccentColorState(color);

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, Sparkles, Brain, Lightbulb, Microscope, User } from 'lucide-react';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
+import { useTheme } from '../theme/ThemeContext.tsx';
 
 export type SearchMode = 'auto' | 'pro' | 'reasoning' | 'deep-research' | 'operator';
 
@@ -12,6 +14,9 @@ interface SearchModeSelectorProps {
 
 export default function SearchModeSelector({ mode, onChange, isLoggedIn, isPro }: SearchModeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const accentColor = useAccentColor();
+  const { accentColor: selectedAccentColor } = useTheme();
+  const isGrayAccent = selectedAccentColor === 'gray';
 
   const modes = [
     {
@@ -53,6 +58,7 @@ export default function SearchModeSelector({ mode, onChange, isLoggedIn, isPro }
   ];
 
   const selectedMode = modes.find(m => m.id === mode) || modes[0];
+  const activeAccentColor = isGrayAccent ? accentColor.dark : accentColor.primary;
 
   if (!isLoggedIn) return null;
 
@@ -62,7 +68,7 @@ export default function SearchModeSelector({ mode, onChange, isLoggedIn, isPro }
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#222222] hover:bg-[#2a2a2a] transition-colors"
       >
-        <selectedMode.icon size={16} className="text-[#007BFF]" />
+        <selectedMode.icon size={16} style={{ color: activeAccentColor }} />
         <span className="text-white text-sm">{selectedMode.name}</span>
         <ChevronDown size={16} className="text-gray-400" />
       </button>
@@ -90,7 +96,8 @@ export default function SearchModeSelector({ mode, onChange, isLoggedIn, isPro }
               >
                 <modeOption.icon 
                   size={18} 
-                  className={mode === modeOption.id ? 'text-[#007BFF]' : 'text-gray-400'} 
+                  style={{ color: mode === modeOption.id ? activeAccentColor : undefined }}
+                  className={mode === modeOption.id ? '' : 'text-gray-400'} 
                 />
                 <div>
                   <div className="flex items-center gap-2">
@@ -98,7 +105,13 @@ export default function SearchModeSelector({ mode, onChange, isLoggedIn, isPro }
                       {modeOption.name}
                     </span>
                     {modeOption.requiresPro && (
-                      <span className="text-[10px] font-medium bg-[#007BFF] text-white px-1.5 py-0.5 rounded">
+                      <span
+                        className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                        style={{
+                          backgroundColor: activeAccentColor,
+                          color: isGrayAccent ? accentColor.light : 'white',
+                        }}
+                      >
                         PRO
                       </span>
                     )}

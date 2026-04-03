@@ -1,10 +1,24 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase.ts';
 import { env } from '../../config/env.ts';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useTheme } from '../theme/ThemeContext';
+
+const SUPPORTED_OTP_TYPES: ReadonlyArray<EmailOtpType> = [
+  'signup',
+  'invite',
+  'magiclink',
+  'recovery',
+  'email_change',
+  'email',
+];
+
+function isEmailOtpType(value: string | null): value is EmailOtpType {
+  return !!value && SUPPORTED_OTP_TYPES.includes(value as EmailOtpType);
+}
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -16,6 +30,26 @@ export default function AuthCallback() {
       try {
         // Debugging: log which Supabase project/url the client is using
         console.info('Auth callback running - supabase URL:', env.supabase.url);
+
+        const url = new URL(globalThis.location.href);
+        const code = url.searchParams.get('code');
+        const tokenHash = url.searchParams.get('token_hash');
+        const otpType = url.searchParams.get('type');
+
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            console.error('Error exchanging auth code for session:', exchangeError);
+          }
+        } else if (tokenHash && isEmailOtpType(otpType)) {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: otpType,
+          });
+          if (verifyError) {
+            console.error('Error verifying OTP token hash:', verifyError);
+          }
+        }
 
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) {
@@ -50,7 +84,7 @@ export default function AuthCallback() {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-black' : 'bg-white'} flex items-center justify-center`}>
       <div className="text-center">
-        <Loader2 className="w-8 h-8 text-[#007BFF] animate-spin mx-auto mb-4" />
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: 'var(--accent-primary)' }} />
         <h1 className={`text-2xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>
           {t('completingSignIn')}
         </h1>

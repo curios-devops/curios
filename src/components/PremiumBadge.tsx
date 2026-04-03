@@ -11,7 +11,16 @@ export default function PremiumBadge() {
       onMouseLeave={() => setShowTooltip(false)}
     >
       <div className="relative">
-        <div className="flex items-center bg-[#007BFF] text-white p-2 rounded-lg shadow-lg hover:bg-[#0056b3] transition-colors">
+        <div
+          className="flex items-center text-white p-2 rounded-lg shadow-lg transition-colors"
+          style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+          }}
+        >
           <Crown size={16} />
         </div>
 

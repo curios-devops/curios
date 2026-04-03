@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
 interface ProTooltipProps {
   remainingSearches: number | null;
@@ -22,6 +23,7 @@ export default function ProTooltip({
   subscription,
 }: ProTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const accentColor = useAccentColor();
   const safeRemainingSearches = remainingSearches ?? 0;
   const percentage = (safeRemainingSearches / maxSearches) * 100;
 
@@ -52,7 +54,7 @@ export default function ProTooltip({
         onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="text-[#007BFF]" size={18} />
+          <Sparkles size={18} style={{ color: accentColor.primary }} />
           <h3 className="text-gray-900 dark:text-white font-medium transition-colors duration-200">Pro Search</h3>
         </div>
         
@@ -64,7 +66,10 @@ export default function ProTooltip({
           <button
             type="button"
             onClick={onSignIn}
-            className="w-full bg-[#007BFF] text-white py-2.5 rounded-lg hover:bg-[#0056b3] transition-colors text-sm font-medium"
+            className="w-full text-white py-2.5 rounded-lg transition-colors text-sm font-medium"
+            style={{ backgroundColor: accentColor.primary }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = accentColor.hover)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = accentColor.primary)}
           >
             Sign in for Pro Searches
           </button>
@@ -81,7 +86,7 @@ export default function ProTooltip({
         onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="text-[#007BFF]" size={18} />
+          <Sparkles size={18} style={{ color: accentColor.primary }} />
           <h3 className="text-gray-900 dark:text-white font-medium transition-colors duration-200">Pro Search</h3>
         </div>
         
@@ -98,9 +103,17 @@ export default function ProTooltip({
                     ? 'bg-red-500' 
                     : safeRemainingSearches <= maxSearches / 3
                       ? 'bg-yellow-500'
-                      : 'bg-[#007BFF]'
+                      : ''
                 }`}
-                style={{ width: `${percentage}%` }}
+                style={{
+                  width: `${percentage}%`,
+                  backgroundColor:
+                    safeRemainingSearches === 0
+                      ? undefined
+                      : safeRemainingSearches <= maxSearches / 3
+                        ? undefined
+                        : accentColor.primary,
+                }}
               />
             </div>
             <p className={`text-sm ${
@@ -125,7 +138,7 @@ export default function ProTooltip({
       className="absolute left-0 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
     >
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="text-[#007BFF]" size={18} />
+        <Sparkles size={18} style={{ color: accentColor.primary }} />
         <h3 className="text-gray-900 dark:text-white font-medium transition-colors duration-200">Pro Search</h3>
       </div>
       
@@ -142,9 +155,17 @@ export default function ProTooltip({
                   ? 'bg-red-500' 
                   : safeRemainingSearches <= maxSearches / 3
                     ? 'bg-yellow-500'
-                    : 'bg-[#007BFF]'
+                    : ''
               }`}
-              style={{ width: `${(safeRemainingSearches / maxSearches) * 100}%` }}
+              style={{
+                width: `${(safeRemainingSearches / maxSearches) * 100}%`,
+                backgroundColor:
+                  safeRemainingSearches === 0
+                    ? undefined
+                    : safeRemainingSearches <= maxSearches / 3
+                      ? undefined
+                      : accentColor.primary,
+              }}
             />
           </div>
           <p className={`text-sm ${
@@ -161,7 +182,10 @@ export default function ProTooltip({
         <button
           type="button"
           onClick={onUpgrade}
-          className="w-full bg-[#007BFF] text-white py-2.5 rounded-lg hover:bg-[#0056b3] transition-colors text-sm font-medium"
+          className="w-full text-white py-2.5 rounded-lg transition-colors text-sm font-medium"
+          style={{ backgroundColor: accentColor.primary }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = accentColor.hover)}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = accentColor.primary)}
         >
           Upgrade to Premium
         </button>

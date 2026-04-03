@@ -78,16 +78,26 @@ export default function AuthForm({ mode }: AuthFormProps) {
         disabled={loading}
         className={`
           w-full 
-          bg-[#007BFF] 
           text-white 
           p-3 
           rounded-lg 
           transition-all
           ${loading 
             ? 'opacity-70 cursor-not-allowed' 
-            : 'hover:bg-[#0056b3]'
+            : ''
           }
         `}
+        style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+        onMouseEnter={(e) => {
+          if (!loading) {
+            e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!loading) {
+            e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+          }
+        }}
       >
         {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
       </button>

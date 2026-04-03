@@ -14,6 +14,8 @@ import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { uploadMultipleImages } from '../../utils/imageUpload.ts';
 import { logger } from '../../utils/logger.ts';
+import { useVoiceRecording } from '../../hooks/useVoiceRecording.ts';
+import { transcribeAudio } from '../../services/whisper/whisperService.ts';
 
 export default function QueryBoxContainer() {
   const navigate = useNavigate();
@@ -31,6 +33,8 @@ export default function QueryBoxContainer() {
   const { decrementProQuota, hasProQuotaLeft, canAccessPro } = useProQuota();
   const { session } = useSession();
   const accentColor = useAccentColor();
+  const { isRecording, startRecording, stopRecording } = useVoiceRecording();
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   // Close attach menu when clicking outside
   useEffect(() => {
@@ -154,13 +158,65 @@ export default function QueryBoxContainer() {
     }
   };
 
+  // Mic button: Record and transcribe into search box (does NOT navigate)
+  const handleVoiceClick = async () => {
+    // If already recording, stop and transcribe
+    if (isRecording) {
+      try {
+        setIsTranscribing(true);
+        const audioBlob = await stopRecording();
+
+        if (!audioBlob) {
+          logger.error('No audio blob received from recording');
+          return;
+        }
+
+        logger.info('Transcribing audio...', { size: audioBlob.size });
+
+        // Transcribe using Whisper
+        const transcribedText = await transcribeAudio(audioBlob);
+
+        logger.info('Transcription complete', { text: transcribedText });
+
+        // Set the query in the search box (user can then choose Avatar or Regular search)
+        setQuery(transcribedText);
+
+      } catch (error) {
+        logger.error('Voice transcription failed', { error });
+        console.error('Voice transcription error:', error);
+        // TODO: Show error notification to user
+      } finally {
+        setIsTranscribing(false);
+      }
+    } else {
+      // Start recording
+      await startRecording();
+    }
+  };
+
+  // Avatar/Equalizer button: Navigate to Avatar Search
+  const handleAvatarClick = () => {
+    const trimmedQuery = query.trim();
+
+    // If no query, can't do avatar search
+    if (!trimmedQuery) {
+      logger.warn('Avatar search requires a query');
+      return;
+    }
+
+    // Navigate to Avatar Search Results page
+    navigate(`/avatar-search?q=${encodeURIComponent(trimmedQuery)}`);
+  };
+
   return (
     <div className="w-full max-w-xl mx-auto">
       {/* Unified container with border encompassing input and button bar */}
       <div 
-        className={`relative border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#2a2a2a] transition-colors flex flex-col ${imageAttachments.length > 0 ? '' : 'pt-3'}`}
+        className={`relative border rounded-lg transition-colors flex flex-col ${imageAttachments.length > 0 ? '' : 'pt-3'}`}
         style={{
-          borderColor: undefined, // default
+          borderColor: 'var(--ui-border-default)',
+          backgroundColor: 'var(--ui-bg-elevated)',
+          boxShadow: '0 10px 26px var(--ui-shadow-soft)',
         }}
         onFocus={(e) => {
           if (e.currentTarget.contains(e.target)) {
@@ -169,7 +225,7 @@ export default function QueryBoxContainer() {
         }}
         onBlur={(e) => {
           if (e.currentTarget.contains(e.relatedTarget as Node) === false) {
-            e.currentTarget.style.borderColor = '';
+            e.currentTarget.style.borderColor = 'var(--ui-border-default)';
           }
         }}
       >
@@ -208,6 +264,10 @@ export default function QueryBoxContainer() {
           isSearchDisabled={!query.trim() && imageAttachments.length === 0 || !hasSearchesLeft}
           isSearchActive={query.trim().length > 0 || imageAttachments.length > 0}
           attachMenuRef={attachMenuRef}
+          onVoiceClick={handleVoiceClick}
+          onAvatarClick={handleAvatarClick}
+          isRecording={isRecording}
+          isTranscribing={isTranscribing}
         />
       </div>
 

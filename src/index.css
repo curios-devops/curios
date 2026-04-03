@@ -13,8 +13,18 @@
   }
 
   :root {
-
     color-scheme: light dark;
+    --ui-bg-primary: #f4f8ff;
+    --ui-bg-secondary: #ecf2ff;
+    --ui-bg-elevated: #f8fbff;
+    --ui-border-subtle: #d9e6ff;
+    --ui-border-default: #c3d8ff;
+    --ui-text-primary: #1e2b45;
+    --ui-text-secondary: #33456a;
+    --ui-text-muted: #5d6f96;
+    --ui-shadow-soft: rgba(45, 78, 138, 0.10);
+    --ui-shadow-elevated: rgba(36, 66, 122, 0.18);
+    --ui-text-on-accent: #eef5ff;
   }
 
   @media (prefers-color-scheme: light) {
@@ -163,6 +173,26 @@
 
 .hover\:bg-theme-help-button-hover:hover {
   background-color: var(--bg-theme-help-button-hover);
+}
+
+.ui-bg-primary {
+  background-color: var(--ui-bg-primary);
+}
+
+.ui-text-primary {
+  color: var(--ui-text-primary);
+}
+
+.ui-text-secondary {
+  color: var(--ui-text-secondary);
+}
+
+.ui-border-default {
+  border-color: var(--ui-border-default);
+}
+
+.ui-search-textarea::placeholder {
+  color: var(--ui-text-muted);
 }
 
 /* Responsive adjustments */

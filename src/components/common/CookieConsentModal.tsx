@@ -64,7 +64,14 @@ export default function CookieConsentModal({
             <button
               type="button"
               onClick={handlePrivacyPolicyClick}
-              className="text-blue-600 hover:text-blue-800 underline transition-colors dark:text-[#007BFF] dark:hover:text-[#0056b3]"
+              className="underline transition-colors"
+              style={{ color: 'var(--accent-primary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--accent-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--accent-primary)';
+              }}
             >
               {t('privacyPolicy')}
             </button>
@@ -77,7 +84,14 @@ export default function CookieConsentModal({
           <button
             type="button"
             onClick={handleNecessaryOnly}
-            className="h-8 w-full rounded-lg bg-[#007BFF] hover:bg-[#0056b3] text-white text-[10px] font-medium transition-colors"
+            className="h-8 w-full rounded-lg text-[10px] font-medium transition-colors"
+            style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+            }}
           >
             {t('necessaryOnly')}
           </button>

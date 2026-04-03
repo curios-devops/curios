@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Search, BookOpen, FlaskConical } from 'lucide-react';
 import TabTooltip from './TabTooltip.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
+import { useTheme } from '../theme/ThemeContext.tsx';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
 export type TabType = 'search' | 'insights' | 'labs';
 
@@ -42,6 +44,9 @@ export default function ThreeTabSwitch({
   onSignIn = () => {}
 }: ThreeTabSwitchProps) {
   const { t } = useTranslation();
+  const { accentColor: selectedAccentColor } = useTheme();
+  const accentColor = useAccentColor();
+  const isGrayAccent = selectedAccentColor === 'gray';
   const [hoveredTab, setHoveredTab] = useState<TabType | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipTimeoutRef = useRef<number | null>(null);
@@ -126,6 +131,16 @@ export default function ThreeTabSwitch({
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           const isHovered = hoveredTab === tab.id;
+          const activeTabStyle = isGrayAccent
+            ? {
+                backgroundColor: accentColor.primary,
+                color: accentColor.dark,
+                borderColor: accentColor.dark,
+              }
+            : undefined;
+          const activeIconStyle = isActive
+            ? { color: isGrayAccent ? accentColor.dark : accentColor.primary }
+            : undefined;
           return (
             <div key={tab.id} className="relative">
               <button
@@ -149,18 +164,20 @@ export default function ThreeTabSwitch({
                       : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   }
                 `}
+                style={isActive ? activeTabStyle : undefined}
               >
           <Icon 
                   size={16} 
                   className={`
                     transition-colors duration-200
                     ${isActive 
-                      ? 'text-[#007BFF]' 
+                      ? '' 
                       : isHovered 
                         ? 'text-gray-600 dark:text-gray-300' 
                         : 'text-gray-500 dark:text-gray-400'
                     }
                   `} 
+                  style={activeIconStyle}
                 />
                 {/* label is localized via translation */}
                 <span className="sr-only">{t(tab.id)}</span>

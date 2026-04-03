@@ -37,7 +37,13 @@ export default function FormInput({
         onChange={onChange}
         className={`w-full bg-[#222222] border ${
           error ? 'border-red-500' : 'border-gray-700'
-        } rounded-lg p-3 text-white focus:outline-none focus:border-[#007BFF]`}
+        } rounded-lg p-3 text-white focus:outline-none`}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = 'var(--accent-primary)';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = error ? '#ef4444' : '#374151';
+        }}
         placeholder={placeholder}
       />
       {error && (

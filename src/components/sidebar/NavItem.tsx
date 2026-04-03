@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useSession } from "../../hooks/useSession.ts";
 import { useAccentColor } from "../../hooks/useAccentColor.ts";
+import { useTheme } from "../theme/ThemeContext.tsx";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavItemProps {
@@ -27,7 +28,9 @@ export default function NavItem({
   const navigate = useNavigate();
   const { session } = useSession();
   const accentColor = useAccentColor();
+  const { accentColor: selectedAccentColor } = useTheme();
   const isGuest = !session;
+  const interactiveTextColor = selectedAccentColor === 'gray' ? accentColor.dark : accentColor.primary;
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -48,18 +51,29 @@ export default function NavItem({
         isCollapsed ? "justify-center" : "gap-3"
       } p-2.5 rounded-lg transition-colors duration-200 ${
         isActive
-          ? "bg-[#eef1f2] dark:bg-[#1a1a1a] font-medium"
-          : "text-gray-600 dark:text-gray-400 hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a]"
+          ? "font-medium"
+          : ""
       }`}
-      style={isActive ? { color: accentColor.primary } : undefined}
+      style={
+        isActive
+          ? {
+              color: interactiveTextColor,
+              backgroundColor: 'var(--ui-bg-elevated)',
+            }
+          : {
+              color: 'var(--ui-text-secondary)',
+            }
+      }
       onMouseEnter={(e) => {
         if (!isActive) {
-          e.currentTarget.style.color = accentColor.primary;
+          e.currentTarget.style.color = interactiveTextColor;
+          e.currentTarget.style.backgroundColor = 'var(--ui-bg-elevated)';
         }
       }}
       onMouseLeave={(e) => {
         if (!isActive) {
-          e.currentTarget.style.color = '';
+          e.currentTarget.style.color = 'var(--ui-text-secondary)';
+          e.currentTarget.style.backgroundColor = 'transparent';
         }
       }}
     >
@@ -77,7 +91,14 @@ export default function NavItem({
     return (
       <div className="relative group">
         {navButton}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words">
+        <div
+          className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words"
+          style={{
+            backgroundColor: 'var(--ui-bg-elevated)',
+            color: 'var(--ui-text-primary)',
+            border: '1px solid var(--ui-border-subtle)',
+          }}
+        >
           {label}
         </div>
       </div>

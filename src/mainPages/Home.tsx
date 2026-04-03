@@ -15,11 +15,16 @@ import { useSubscription } from '../hooks/useSubscription.ts';
 import { languages } from '../types/language.ts';
 import { useTranslation } from '../hooks/useTranslation.ts';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
+import { useTheme } from '../components/theme/ThemeContext.tsx';
 
 export default function Home() {
   const { session } = useSession();
   const { subscription } = useSubscription(session);
   const accentColors = useAccentColor();
+  const { accentColor: selectedAccentColor } = useTheme();
+  const isGrayAccent = selectedAccentColor === 'gray';
+  const getStartedBackground = isGrayAccent ? accentColors.dark : accentColors.primary;
+  const getStartedText = isGrayAccent ? accentColors.light : 'var(--ui-text-on-accent)';
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
@@ -78,15 +83,16 @@ export default function Home() {
   };
 
   const { t } = useTranslation();
-
-
-  // Debug logs
-  console.log('isGuest:', isGuest, 'cookiesAccepted:', cookiesAccepted);
   const showCookieButton = isGuest && !cookiesAccepted;
-  console.log('showCookieButton:', showCookieButton);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#1a1a1a] relative transition-colors duration-200 pt-40">
+    <div
+      className="min-h-screen relative transition-colors duration-200 pt-40"
+      style={{
+        backgroundColor: 'var(--ui-bg-primary)',
+        color: 'var(--ui-text-primary)',
+      }}
+    >
       {/* Top right: only ThemeToggle and Get Started button */}
       {/* On desktop, show in current position. On mobile, these are hidden and shown in the header */}
       <div className="absolute top-2 right-4 flex items-start gap-2 mobile:hidden">
@@ -94,15 +100,26 @@ export default function Home() {
           <ThemeToggle />
         </div>
         <button
-          className="h-7 px-3 rounded-lg flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
+          className="h-7 px-3 rounded-lg flex items-center justify-center text-sm font-medium transition-colors shadow-md"
           style={{
-            backgroundColor: accentColors.primary,
+            backgroundColor: getStartedBackground,
+            color: getStartedText,
+            border: isGrayAccent ? `1px solid ${accentColors.dark}` : '1px solid transparent',
+            boxShadow: '0 8px 18px var(--ui-shadow-soft)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = accentColors.hover;
+            if (isGrayAccent) {
+              e.currentTarget.style.backgroundColor = accentColors.primary;
+              e.currentTarget.style.color = accentColors.dark;
+              e.currentTarget.style.borderColor = accentColors.dark;
+            } else {
+              e.currentTarget.style.backgroundColor = accentColors.hover;
+            }
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = accentColors.primary;
+            e.currentTarget.style.backgroundColor = getStartedBackground;
+            e.currentTarget.style.color = getStartedText;
+            e.currentTarget.style.borderColor = isGrayAccent ? accentColors.dark : 'transparent';
           }}
           type="button"
           onClick={handleShowSignUp}
@@ -113,7 +130,10 @@ export default function Home() {
 
       <div className="max-w-4xl mx-auto px-8 py-12">
         <div className="flex flex-col items-center justify-center mt-10 mb-0">
-          <h1 className="text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-8 leading-tight font-helvetica">
+          <h1
+            className="text-4xl md:text-5xl font-light text-center mb-8 leading-tight font-helvetica"
+            style={{ color: 'var(--ui-text-primary)' }}
+          >
             {t('mainTitle')}
           </h1>
         </div>

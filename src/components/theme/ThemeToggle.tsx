@@ -9,6 +9,13 @@ export default function ThemeToggle() {
 	const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor } = useTheme();
 	const { t } = useTranslation();
 	const accentColor = useAccentColor();
+	const isGrayAccent = selectedAccentColor === 'gray';
+	const controlBackground = isGrayAccent ? accentColor.dark : accentColor.primary;
+	const controlForeground = isGrayAccent ? accentColor.light : 'var(--ui-text-on-accent)';
+	const controlHoverBackground = isGrayAccent ? accentColor.primary : accentColor.hover;
+	const tooltipBackground = isGrayAccent ? accentColor.primary : 'var(--ui-bg-elevated)';
+	const tooltipForeground = isGrayAccent ? accentColor.dark : 'var(--ui-text-primary)';
+	const tooltipBorder = isGrayAccent ? accentColor.dark : 'var(--ui-border-subtle)';
 
 	const THEME_OPTIONS = [
 		{ key: 'light', label: t('light'), icon: Sun },
@@ -48,23 +55,30 @@ export default function ThemeToggle() {
 		<div className="relative" ref={ref}>
 			<button
 				onClick={() => setOpen(!open)}
-				className={`flex items-center justify-center w-7 h-7 rounded-lg border focus:outline-none shadow-md relative group
-						${isDarkMode
-							? 'bg-[#23272A] border-[#3A3F42] text-white'
-							: 'bg-[#FAFBF9] border-[#D1D5DB] text-[#2A3B39]'}
-						`}
+				className="flex items-center justify-center w-7 h-7 rounded-lg border focus:outline-none shadow-md relative group"
 				style={{
 					boxShadow: open 
-						? (isDarkMode ? '0 0 0 2px #23272A' : `0 0 0 2px ${accentColor.primary}`)
+						? `0 0 0 2px ${isGrayAccent ? accentColor.dark : accentColor.primary}`
 						: undefined,
 					outline: 'none',
-					transition: 'border-color 200ms'
+					transition: 'border-color 200ms, background-color 200ms, color 200ms',
+					backgroundColor: controlBackground,
+					color: controlForeground,
+					borderColor: isGrayAccent ? accentColor.dark : accentColor.primary,
 				}}
 				onMouseEnter={(e) => {
-					e.currentTarget.style.borderColor = accentColor.primary;
+					e.currentTarget.style.backgroundColor = controlHoverBackground;
+					if (isGrayAccent) {
+						e.currentTarget.style.color = accentColor.dark;
+						e.currentTarget.style.borderColor = accentColor.dark;
+					} else {
+						e.currentTarget.style.borderColor = accentColor.hover;
+					}
 				}}
 				onMouseLeave={(e) => {
-					e.currentTarget.style.borderColor = isDarkMode ? '#3A3F42' : '#D1D5DB';
+					e.currentTarget.style.backgroundColor = controlBackground;
+					e.currentTarget.style.color = controlForeground;
+					e.currentTarget.style.borderColor = isGrayAccent ? accentColor.dark : accentColor.primary;
 				}}
 				aria-label="Theme selector"
 			>
@@ -73,36 +87,50 @@ export default function ThemeToggle() {
 					{selectedTheme === 'system' && <Monitor size={15} />}
 														{/* Tooltip below button, right-aligned */}
 														<span
-															className={`absolute top-full mt-2 right-0 translate-x-0 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50
-																${(selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-																	? 'bg-gray-800 text-gray-100'
-																	: 'bg-gray-100 text-gray-800'}
-															`}
+															className="absolute top-full mt-2 right-0 translate-x-0 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border"
+															style={{
+																backgroundColor: tooltipBackground,
+																color: tooltipForeground,
+																borderColor: tooltipBorder,
+															}}
 														>
 															{t('themeSelectorTooltip')}
 														</span>
 				</button>
 			{open && (
-				<div className={`absolute right-0 top-full mt-2 w-40 rounded-xl shadow-lg z-50 py-1 animate-fade-in text-xs border transition-colors duration-200
-					${(selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-						? 'bg-[#181A1B] border-[#23272A] text-white' : 'bg-[#FAFBF9] border-[#E3E6E3] text-[#2A3B39]'}`}
+				<div
+					className="absolute right-0 top-full mt-2 w-40 rounded-xl shadow-lg z-50 py-1 animate-fade-in text-xs border transition-colors duration-200"
+					style={{
+						backgroundColor: 'var(--ui-bg-elevated)',
+						borderColor: 'var(--ui-border-subtle)',
+						color: 'var(--ui-text-primary)',
+					}}
 				>
 					<div className="flex flex-col">
 						{THEME_OPTIONS.map((option) => {
 							const isSelected = selectedTheme === option.key;
-							const isDark = (selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+							const selectedBackground = isGrayAccent ? accentColor.primary : 'var(--ui-bg-secondary)';
+							const selectedText = isGrayAccent ? accentColor.dark : accentColor.primary;
 							return (
 								<button
 									key={option.key}
-									className={`flex items-center gap-2 px-4 py-2 text-left rounded-lg transition-colors font-normal text-xs
-										${isSelected && isDark
-											? 'bg-[#23272A] text-white'
-											: isDark
-												? 'bg-transparent text-white hover:bg-[#23272A]'
-												: isSelected
-													? 'bg-[#F3F6F4] text-[#2A3B39]'
-													: 'bg-transparent text-[#2A3B39] hover:bg-[#F3F6F4]'}
-								`}
+									className="flex items-center gap-2 px-4 py-2 text-left rounded-lg transition-colors font-normal text-xs"
+									style={{
+										backgroundColor: isSelected ? selectedBackground : 'transparent',
+										color: isSelected ? selectedText : 'var(--ui-text-primary)',
+									}}
+									onMouseEnter={(e) => {
+										if (!isSelected) {
+											e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
+											e.currentTarget.style.color = isGrayAccent ? accentColor.dark : accentColor.primary;
+										}
+									}}
+									onMouseLeave={(e) => {
+										if (!isSelected) {
+											e.currentTarget.style.backgroundColor = 'transparent';
+											e.currentTarget.style.color = 'var(--ui-text-primary)';
+										}
+									}}
 									onClick={() => handleThemeSelect(option.key as 'light' | 'dark' | 'system')}
 								>
 									<option.icon size={15} className="mr-2" />
@@ -115,7 +143,7 @@ export default function ThemeToggle() {
 						<div className={`border-t mt-1 pt-2 px-4 pb-2 ${isDarkMode ? 'border-[#23272A]' : 'border-[#E3E6E3]'}`}>
 							<div className="text-[10px] mb-2 opacity-70">{t('accentColor')}</div>
 							<div className="flex gap-2 justify-center">
-								{(['blue', 'green', 'purple', 'orange'] as AccentColor[]).map((color) => {
+								{(['blue', 'green', 'purple', 'orange', 'gray'] as AccentColor[]).map((color) => {
 									const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
 									const isSelectedColor = selectedAccentColor === color;
 

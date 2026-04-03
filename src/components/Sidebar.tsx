@@ -40,9 +40,14 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
   return (
     <>
       <aside
-        className={`${embedded ? 'relative h-full w-full' : 'fixed left-0 top-0 h-screen'} bg-[#f9f9f8] dark:bg-[#2a2a2a] border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 ${
+        className={`${embedded ? 'relative h-full w-full' : 'fixed left-0 top-0 h-screen'} border-r flex flex-col transition-all duration-200 ${
           embedded ? '' : (isCollapsed ? 'w-20' : 'w-48')
         }`}
+        style={{
+          backgroundColor: 'var(--ui-bg-secondary)',
+          borderColor: 'var(--ui-border-subtle)',
+          color: 'var(--ui-text-secondary)',
+        }}
       >
         <div className="flex-shrink-0 p-4">
           <div className="flex items-center gap-3">
@@ -111,7 +116,10 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
                 />
               </div>
             )}
-            <div className="border-t border-gray-200 dark:border-gray-800 w-full transition-colors duration-200">
+            <div
+              className="border-t w-full transition-colors duration-200"
+              style={{ borderColor: 'var(--ui-border-subtle)' }}
+            >
             </div>
             {/* Only render Sign In button in the sidebar for guests */}
             {session
@@ -123,13 +131,21 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
                       <button
                         type="button"
                         onClick={handleSignInClick}
-                        className={`flex items-center justify-center p-2.5 rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-400 hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a] w-full`}
+                        className="flex items-center justify-center p-2.5 rounded-lg transition-colors duration-200 w-full"
+                        style={{ color: 'var(--ui-text-secondary)' }}
                         onMouseEnter={(e) => e.currentTarget.style.color = accentColor.primary}
-                        onMouseLeave={(e) => e.currentTarget.style.color = ''}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--ui-text-secondary)'}
                       >
                         <User size={24} className="transition-colors duration-200" />
                       </button>
-                      <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words">
+                      <div
+                        className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words"
+                        style={{
+                          backgroundColor: 'var(--ui-bg-elevated)',
+                          color: 'var(--ui-text-primary)',
+                          border: '1px solid var(--ui-border-subtle)',
+                        }}
+                      >
                         {t('logIn')}
                       </div>
                     </div>
@@ -137,9 +153,10 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
                     <button
                       type="button"
                       onClick={handleSignInClick}
-                      className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-400 hover:bg-[#eef1f2] dark:hover:bg-[#1a1a1a] w-full`}
+                      className="flex items-center gap-3 p-2.5 rounded-lg transition-colors duration-200 w-full"
+                      style={{ color: 'var(--ui-text-secondary)' }}
                       onMouseEnter={(e) => e.currentTarget.style.color = accentColor.primary}
-                      onMouseLeave={(e) => e.currentTarget.style.color = ''}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--ui-text-secondary)'}
                     >
                       <User size={24} className="transition-colors duration-200" />
                       <span className="text-sm font-medium tracking-[-0.01em]">

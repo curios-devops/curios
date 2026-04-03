@@ -1,4 +1,5 @@
 import { Sparkles } from 'lucide-react';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
 interface ProTooltipProps {
   remainingSearches?: number;
@@ -19,6 +20,7 @@ export default function ProTooltip({
   isLoggedIn = false,
   // alwaysShowUpgrade = false
 }: ProTooltipProps) {
+  const accentColor = useAccentColor();
   // Guest user view
   if (!isLoggedIn) {
     return (
@@ -31,7 +33,7 @@ export default function ProTooltip({
         onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="text-[#007BFF]" size={18} />
+          <Sparkles size={18} style={{ color: accentColor.primary }} />
             <h3 className={window.matchMedia('(prefers-color-scheme: dark)').matches ? 'text-white font-medium' : 'text-gray-900 font-medium'}>Pro Search</h3>
         </div>
         
@@ -42,7 +44,10 @@ export default function ProTooltip({
           
           <button
             onClick={onSignIn}
-            className="w-full bg-[#007BFF] text-white py-2.5 rounded-lg hover:bg-[#0056b3] transition-colors text-sm font-medium"
+            className="w-full text-white py-2.5 rounded-lg transition-colors text-sm font-medium"
+            style={{ backgroundColor: accentColor.primary }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = accentColor.hover)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = accentColor.primary)}
           >
             Sign in for Pro Searches
           </button>
@@ -64,7 +69,7 @@ export default function ProTooltip({
         onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="text-[#007BFF]" size={18} />
+          <Sparkles size={18} style={{ color: accentColor.primary }} />
             <h3 className={window.matchMedia('(prefers-color-scheme: dark)').matches ? 'text-white font-medium' : 'text-gray-900 font-medium'}>Pro Search</h3>
         </div>
         <div className="space-y-4">
@@ -74,8 +79,8 @@ export default function ProTooltip({
           <div className="space-y-2">
             <div className="w-full bg-[#222222] rounded-full h-1.5">
               <div
-                className="h-1.5 rounded-full transition-all duration-300 bg-[#007BFF]"
-                style={{ width: `${percentage}%` }}
+                className="h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${percentage}%`, backgroundColor: accentColor.primary }}
               />
             </div>
             <p className="text-sm text-gray-400">
@@ -97,7 +102,7 @@ export default function ProTooltip({
       `}
     >
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="text-[#007BFF]" size={18} />
+        <Sparkles size={18} style={{ color: accentColor.primary }} />
           <h3 className={window.matchMedia('(prefers-color-scheme: dark)').matches ? 'text-white font-medium' : 'text-gray-900 font-medium'}>Pro Search</h3>
       </div>
       <div className="space-y-4">
@@ -113,9 +118,17 @@ export default function ProTooltip({
                     ? 'bg-red-500'
                     : remainingSearches <= maxSearches / 3
                       ? 'bg-yellow-500'
-                      : 'bg-[#007BFF]'
+                      : ''
                 }`}
-                style={{ width: `${(remainingSearches / maxSearches) * 100}%` }}
+                style={{
+                  width: `${(remainingSearches / maxSearches) * 100}%`,
+                  backgroundColor:
+                    remainingSearches === 0
+                      ? undefined
+                      : remainingSearches <= maxSearches / 3
+                        ? undefined
+                        : accentColor.primary,
+                }}
               />
             ) : (
               <div className="h-1.5 rounded-full transition-all duration-300 bg-gray-300 w-full" />

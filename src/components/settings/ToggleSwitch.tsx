@@ -17,7 +17,7 @@ export default function ToggleSwitch({ checked, onChange }: ToggleSwitchProps) {
       <div className={`
         w-11 h-6 
         bg-[#222222] 
-        peer-checked:bg-[#007BFF] 
+        peer-checked:bg-[var(--accent-primary)] 
         rounded-full 
         peer 
         peer-checked:after:translate-x-full 

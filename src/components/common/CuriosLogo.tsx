@@ -4,11 +4,13 @@ import { useId } from "react";
 interface CuriosLogoProps {
   size?: number;
   className?: string;
+  colorOverride?: string;
 }
 
-export default function CuriosLogo({ size = 16, className = "" }: CuriosLogoProps) {
+export default function CuriosLogo({ size = 16, className = "", colorOverride }: CuriosLogoProps) {
   const accentColor = useAccentColor();
   const maskId = useId();
+  const logoColor = colorOverride || accentColor.primary;
   
   return (
     <svg 
@@ -38,13 +40,13 @@ export default function CuriosLogo({ size = 16, className = "" }: CuriosLogoProp
           A 234 234 0 1 0 234 0
           Z
         "
-        fill={accentColor.primary}
+        fill={logoColor}
         fillRule="evenodd"
         mask={`url(#${maskId})`}
       />
 
       {/* Center circle */}
-      <circle cx="0" cy="0" r="134" fill={accentColor.primary}/>
+      <circle cx="0" cy="0" r="134" fill={logoColor}/>
     </svg>
   );
 }

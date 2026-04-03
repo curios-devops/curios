@@ -21,7 +21,16 @@ export default function AccountSection({ username, email, onSignOut }: AccountSe
                 <h3 className="text-white font-medium">Username</h3>
                 <p className="text-gray-400 text-sm mt-1">{username}</p>
               </div>
-              <button className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
+              <button
+                className="transition-colors text-sm"
+                style={{ color: 'var(--accent-primary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--accent-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--accent-primary)';
+                }}
+              >
                 Edit
               </button>
             </div>
@@ -34,7 +43,16 @@ export default function AccountSection({ username, email, onSignOut }: AccountSe
                 <h3 className="text-white font-medium">Email</h3>
                 <p className="text-gray-400 text-sm mt-1">{email}</p>
               </div>
-              <button className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
+              <button
+                className="transition-colors text-sm"
+                style={{ color: 'var(--accent-primary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--accent-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--accent-primary)';
+                }}
+              >
                 Edit
               </button>
             </div>

@@ -60,10 +60,21 @@ export default function EmailForm({ onSubmit }: EmailFormProps) {
           rounded-lg 
           transition-all
           ${email.trim() && !loading
-            ? 'bg-[#007BFF] text-white hover:bg-[#0056b3]'
+            ? ''
             : 'bg-[#222222] text-gray-500 cursor-not-allowed'
           }
         `}
+        style={email.trim() && !loading ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : undefined}
+        onMouseEnter={(e) => {
+          if (email.trim() && !loading) {
+            e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (email.trim() && !loading) {
+            e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+          }
+        }}
  >{loading ? t('please_wait') : t('or_continue_with_email')}
       </button>
     </div>

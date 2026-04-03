@@ -1,4 +1,6 @@
 import React from 'react';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
+import { useTheme } from '../theme/ThemeContext.tsx';
 
 interface ToggleSwitchProps {
   isEnabled: boolean;
@@ -13,6 +15,12 @@ export default function ToggleSwitch({
   disabled = false,
   showWarning = false
 }: ToggleSwitchProps) {
+  const accentColor = useAccentColor();
+  const { accentColor: selectedAccentColor } = useTheme();
+  const isGrayAccent = selectedAccentColor === 'gray';
+  const activeTrackColor = isGrayAccent ? accentColor.dark : accentColor.primary;
+  const activeLabelColor = isGrayAccent ? accentColor.dark : accentColor.primary;
+
   return (
     <div className="flex items-center gap-2">
       <button
@@ -32,9 +40,18 @@ export default function ToggleSwitch({
           ${disabled 
             ? 'bg-[#2a2a2a] border-gray-700 cursor-not-allowed opacity-50' 
             : isEnabled 
-              ? 'bg-[#0095FF] border-[#0095FF] focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-[#0095FF]' 
-              : 'bg-[#007BFF] border-[#007BFF]'
+              ? 'focus:ring-2 focus:ring-offset-2 focus:ring-offset-black' 
+              : ''
           }`}
+        style={
+          disabled
+            ? undefined
+            : {
+                backgroundColor: isEnabled ? activeTrackColor : activeTrackColor,
+                borderColor: isEnabled ? activeTrackColor : activeTrackColor,
+                boxShadow: isEnabled ? `0 0 0 2px ${activeTrackColor}33` : undefined,
+              }
+        }
       >
         <span
           className={`
@@ -65,11 +82,12 @@ export default function ToggleSwitch({
           ${disabled
             ? 'text-gray-600'
             : isEnabled 
-              ? 'text-[#0095FF] font-bold' 
+              ? 'font-bold' 
               : 'text-gray-500 font-normal'
           }
           ${showWarning ? 'text-red-500' : ''}
         `}
+        style={!disabled && isEnabled ? { color: activeLabelColor } : undefined}
       >
         Pro
       </span>

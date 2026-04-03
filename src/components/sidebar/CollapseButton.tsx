@@ -1,5 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "../../hooks/useTranslation.ts";
+import { useAccentColor } from "../../hooks/useAccentColor.ts";
+import { useTheme } from "../theme/ThemeContext.tsx";
 
 interface CollapseButtonProps {
   isCollapsed: boolean;
@@ -11,6 +13,10 @@ export default function CollapseButton(
   { isCollapsed, onClick, position = "top" }: CollapseButtonProps,
 ) {
   const { t } = useTranslation();
+  const accentColor = useAccentColor();
+  const { accentColor: selectedAccentColor } = useTheme();
+  const isGrayAccent = selectedAccentColor === 'gray';
+  const hoverTextColor = isGrayAccent ? accentColor.dark : accentColor.primary;
   const Icon = isCollapsed ? ChevronRight : ChevronLeft;
 
   const button = (
@@ -24,13 +30,18 @@ export default function CollapseButton(
         justify-center
         p-2.5
         text-gray-600
-        hover:text-[#007BFF]
         transition-colors
         rounded-md
         hover:bg-gray-100
         dark:hover:bg-[#1a1a1a]
         dark:text-gray-400
       `}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.color = hoverTextColor;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = '';
+      }}
       aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
       <Icon size={20} strokeWidth={2.5} />
@@ -42,7 +53,13 @@ export default function CollapseButton(
     return (
       <div className="relative group">
         {button}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-nowrap">
+        <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block text-sm py-1 px-2 rounded whitespace-nowrap"
+          style={{
+            backgroundColor: 'var(--ui-bg-elevated)',
+            color: 'var(--ui-text-primary)',
+            border: '1px solid var(--ui-border-subtle)',
+          }}
+        >
           {t('expand')}
         </div>
       </div>
@@ -54,7 +71,13 @@ export default function CollapseButton(
     return (
       <div className="relative group">
         {button}
-        <div className="absolute left-1/2 -translate-x-1/2 -bottom-8 hidden group-hover:block bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 dark:text-white text-sm py-1 px-2 rounded whitespace-nowrap">
+        <div className="absolute left-1/2 -translate-x-1/2 -bottom-8 hidden group-hover:block text-sm py-1 px-2 rounded whitespace-nowrap"
+          style={{
+            backgroundColor: 'var(--ui-bg-elevated)',
+            color: 'var(--ui-text-primary)',
+            border: '1px solid var(--ui-border-subtle)',
+          }}
+        >
           {t('collapse')}
         </div>
       </div>

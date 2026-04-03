@@ -4,6 +4,7 @@ import { useSession } from '../../hooks/useSession.ts';
 import { useSubscription } from '../../hooks/useSubscription.ts';
 import { useProQuota } from '../../hooks/useProQuota.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
+import { useTheme } from '../theme/ThemeContext.tsx';
 import FunctionTooltip from './FunctionTooltip.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 
@@ -73,6 +74,8 @@ export default function FunctionSelector({
   const { subscription, loading: subscriptionLoading } = useSubscription(session);
   const { remainingQuota } = useProQuota();
   const accentColor = useAccentColor();
+  const { accentColor: selectedAccentColor } = useTheme();
+  const isGrayAccent = selectedAccentColor === 'gray';
 
   // Convert FunctionType to TabType
   const getTabFromFunction = (functionType: FunctionType): TabType => {
@@ -229,6 +232,13 @@ export default function FunctionSelector({
           const isActive = activeTab === tab.id;
           const isHovered = hoveredTab === tab.id;
           const isPro = isProEnabled && activeTab === tab.id;
+          const activeTabStyle = isGrayAccent
+            ? {
+                backgroundColor: accentColor.primary,
+                color: accentColor.dark,
+                borderColor: accentColor.dark,
+              }
+            : undefined;
           
           return (
             <div key={tab.id} className="relative">
@@ -249,6 +259,7 @@ export default function FunctionSelector({
                       : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   }
                 `}
+                style={isActive ? activeTabStyle : undefined}
               >
                 <Icon 
                   size={16} 
@@ -261,7 +272,11 @@ export default function FunctionSelector({
                         : 'text-gray-500 dark:text-gray-400'
                     }
                   `}
-                  style={isActive ? { color: accentColor.primary } : undefined}
+                  style={
+                    isActive
+                      ? { color: isGrayAccent ? accentColor.dark : accentColor.primary }
+                      : undefined
+                  }
                 />
                 {tab.badge && (
                   <span className="text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-medium">
@@ -269,7 +284,13 @@ export default function FunctionSelector({
                   </span>
                 )}
                 {isPro && (
-                  <span className="text-[10px] text-white px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: accentColor.primary }}>
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                    style={{
+                      backgroundColor: isGrayAccent ? accentColor.dark : accentColor.primary,
+                      color: isGrayAccent ? accentColor.light : 'white',
+                    }}
+                  >
                     {t('pro')}
                   </span>
                 )}

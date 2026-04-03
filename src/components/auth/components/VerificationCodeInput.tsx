@@ -76,7 +76,19 @@ export default function VerificationCodeInput({ email, onSubmit, onClose }: Veri
           disabled={loading || timeLeft <= 0}
           className={`w-full ${theme === 'dark' ? 'bg-[#222222] text-white border-gray-700 placeholder-gray-500' : 'bg-gray-100 text-gray-900 border-gray-300 placeholder-gray-400'} border ${
             error ? 'border-red-500' : timeLeft <= 0 ? 'border-yellow-500' : ''
-          } rounded-lg px-4 py-3.5 focus:outline-none focus:border-[#007BFF] transition-colors text-center tracking-wider text-lg`}
+          } rounded-lg px-4 py-3.5 focus:outline-none transition-colors text-center tracking-wider text-lg`}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = 'var(--accent-primary)';
+          }}
+          onBlur={(e) => {
+            if (error) {
+              e.currentTarget.style.borderColor = '#ef4444';
+            } else if (timeLeft <= 0) {
+              e.currentTarget.style.borderColor = '#eab308';
+            } else {
+              e.currentTarget.style.borderColor = theme === 'dark' ? '#374151' : '#d1d5db';
+            }
+          }}
         />
         {timeLeft > 0 && (
           <div className={`absolute right-4 top-1/2 -translate-y-1/2 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>

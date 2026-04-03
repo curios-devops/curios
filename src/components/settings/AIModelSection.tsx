@@ -54,11 +54,12 @@ function ModelOption({ label, isSelected, onClick }: ModelOptionProps) {
       className={`
         w-full px-4 py-2.5 rounded-lg flex items-center justify-between
         ${isSelected 
-          ? 'bg-[#007BFF] text-white' 
+          ? 'text-white' 
           : 'bg-[#222222] text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
         }
         transition-colors
       `}
+      style={isSelected ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : undefined}
     >
       <span>{label}</span>
       {isSelected && <Sparkles size={16} />}

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../hooks/useSession';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
+import { useTheme } from '../theme/ThemeContext.tsx';
 
 interface UserMenuProps {
   email: string;
@@ -11,6 +13,11 @@ interface UserMenuProps {
 export default function UserMenu({ email, isCollapsed }: UserMenuProps) {
   const navigate = useNavigate();
   const { session } = useSession();
+  const accentColors = useAccentColor();
+  const { accentColor: selectedAccentColor } = useTheme();
+  const isGrayAccent = selectedAccentColor === 'gray';
+  const avatarBackgroundColor = isGrayAccent ? accentColors.dark : accentColors.primary;
+  const avatarTextColor = isGrayAccent ? accentColors.light : 'var(--ui-text-on-accent)';
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const initial = email[0].toUpperCase();
 
@@ -44,7 +51,13 @@ export default function UserMenu({ email, isCollapsed }: UserMenuProps) {
         ${isCollapsed ? 'justify-center' : ''}
       `}
     >
-      <div className="w-8 h-8 rounded-full bg-[#007BFF] flex items-center justify-center text-white font-medium shrink-0 overflow-hidden">
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center font-medium shrink-0 overflow-hidden"
+        style={{
+          backgroundColor: avatarBackgroundColor,
+          color: avatarTextColor,
+        }}
+      >
         {avatarUrl ? (
           <img
             src={avatarUrl}

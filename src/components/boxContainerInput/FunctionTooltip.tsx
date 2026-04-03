@@ -191,7 +191,7 @@ export default function FunctionTooltip({
           {/* Pro Toggle */}
           <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
             <div className="flex items-center gap-2">
-              <Sparkles className="text-[#007BFF]" size={16} />
+              <Sparkles size={16} style={{ color: accentColor.primary }} />
               <span className="text-sm font-medium text-gray-900 dark:text-white">{t('proMode')}</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -201,9 +201,12 @@ export default function FunctionTooltip({
                 checked={isProEnabled}
                 onChange={handleProToggle}
               />
-              <div className={`w-11 h-6 rounded-full transition-colors ${
-                isProEnabled ? 'bg-[#007BFF]' : 'bg-gray-200 dark:bg-gray-600'
-              }`}>
+              <div
+                className={`w-11 h-6 rounded-full transition-colors ${
+                  isProEnabled ? '' : 'bg-gray-200 dark:bg-gray-600'
+                }`}
+                style={isProEnabled ? { backgroundColor: accentColor.primary } : undefined}
+              >
                 <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
                   isProEnabled ? 'translate-x-5' : 'translate-x-0'
                 } mt-0.5 ml-0.5`}></div>
