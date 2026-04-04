@@ -28,9 +28,24 @@ export default function NavItem({
   const navigate = useNavigate();
   const { session } = useSession();
   const accentColor = useAccentColor();
-  const { accentColor: selectedAccentColor } = useTheme();
+  const { theme, accentColor: selectedAccentColor } = useTheme();
   const isGuest = !session;
-  const interactiveTextColor = selectedAccentColor === 'gray' ? accentColor.dark : accentColor.primary;
+  const isGrayAccent = selectedAccentColor === 'gray';
+  const isDarkMode =
+    theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const selectedBackground = isGrayAccent
+    ? (isDarkMode ? accentColor.light : '#F9F9F9')
+    : 'var(--ui-bg-secondary)';
+  const selectedTextColor = isGrayAccent ? accentColor.dark : accentColor.primary;
+  const selectedBorderColor = isGrayAccent
+    ? (isDarkMode ? 'var(--ui-border-subtle)' : '#ECECEC')
+    : accentColor.light;
+
+  const hoverBackground = selectedBackground;
+  const hoverTextColor = selectedTextColor;
+  const hoverBorderColor = selectedBorderColor;
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -49,7 +64,7 @@ export default function NavItem({
       onClick={handleClick}
       className={`flex items-center ${
         isCollapsed ? "justify-center" : "gap-3"
-      } p-2.5 rounded-lg transition-colors duration-200 ${
+      } p-2.5 rounded-lg border transition-colors duration-200 ${
         isActive
           ? "font-medium"
           : ""
@@ -57,24 +72,24 @@ export default function NavItem({
       style={
         isActive
           ? {
-              color: interactiveTextColor,
-              backgroundColor: 'var(--ui-bg-elevated)',
+              color: selectedTextColor,
+              backgroundColor: 'transparent',
+              borderColor: 'transparent',
             }
           : {
               color: 'var(--ui-text-secondary)',
+              borderColor: 'transparent',
             }
       }
       onMouseEnter={(e) => {
-        if (!isActive) {
-          e.currentTarget.style.color = interactiveTextColor;
-          e.currentTarget.style.backgroundColor = 'var(--ui-bg-elevated)';
-        }
+        e.currentTarget.style.color = hoverTextColor;
+        e.currentTarget.style.backgroundColor = hoverBackground;
+        e.currentTarget.style.borderColor = hoverBorderColor;
       }}
       onMouseLeave={(e) => {
-        if (!isActive) {
-          e.currentTarget.style.color = 'var(--ui-text-secondary)';
-          e.currentTarget.style.backgroundColor = 'transparent';
-        }
+        e.currentTarget.style.color = isActive ? selectedTextColor : 'var(--ui-text-secondary)';
+        e.currentTarget.style.backgroundColor = 'transparent';
+        e.currentTarget.style.borderColor = 'transparent';
       }}
     >
       <Icon size={24} />

@@ -14,9 +14,13 @@ export default function CollapseButton(
 ) {
   const { t } = useTranslation();
   const accentColor = useAccentColor();
-  const { accentColor: selectedAccentColor } = useTheme();
+  const { theme, accentColor: selectedAccentColor } = useTheme();
+  const isDarkMode = (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
   const isGrayAccent = selectedAccentColor === 'gray';
   const hoverTextColor = isGrayAccent ? accentColor.dark : accentColor.primary;
+  const tooltipBackground = isGrayAccent ? accentColor.primary : 'var(--ui-bg-elevated)';
+  const tooltipForeground = isDarkMode ? '#F9FAFB' : '#111827';
+  const tooltipBorder = isGrayAccent ? accentColor.dark : 'var(--ui-border-subtle)';
   const Icon = isCollapsed ? ChevronRight : ChevronLeft;
 
   const button = (
@@ -53,11 +57,11 @@ export default function CollapseButton(
     return (
       <div className="relative group">
         {button}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block text-sm py-1 px-2 rounded whitespace-nowrap"
+        <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block text-xs py-1 px-2 rounded whitespace-nowrap border z-50"
           style={{
-            backgroundColor: 'var(--ui-bg-elevated)',
-            color: 'var(--ui-text-primary)',
-            border: '1px solid var(--ui-border-subtle)',
+            backgroundColor: tooltipBackground,
+            color: tooltipForeground,
+            borderColor: tooltipBorder,
           }}
         >
           {t('expand')}
@@ -71,11 +75,11 @@ export default function CollapseButton(
     return (
       <div className="relative group">
         {button}
-        <div className="absolute left-1/2 -translate-x-1/2 -bottom-8 hidden group-hover:block text-sm py-1 px-2 rounded whitespace-nowrap"
+        <div className="absolute left-1/2 -translate-x-1/2 md:-translate-x-[62%] -bottom-8 hidden group-hover:block text-xs py-1 px-2 rounded whitespace-nowrap border z-50"
           style={{
-            backgroundColor: 'var(--ui-bg-elevated)',
-            color: 'var(--ui-text-primary)',
-            border: '1px solid var(--ui-border-subtle)',
+            backgroundColor: tooltipBackground,
+            color: tooltipForeground,
+            borderColor: tooltipBorder,
           }}
         >
           {t('collapse')}

@@ -1,5 +1,7 @@
 import { Cookie, X } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
+import { useTheme } from '../theme/ThemeContext';
+import { useAccentColor } from '../../hooks/useAccentColor';
 
 interface CookieConsentModalProps {
   onAcceptAll: () => void;
@@ -15,6 +17,13 @@ export default function CookieConsentModal({
   onShowSignUp
 }: CookieConsentModalProps) {
   const { t } = useTranslation();
+  const { accentColor: selectedAccentColor } = useTheme();
+  const accentColor = useAccentColor();
+  const isGrayAccent = selectedAccentColor === 'gray';
+  const primaryButtonBackground = isGrayAccent ? accentColor.dark : accentColor.primary;
+  const primaryButtonText = isGrayAccent ? accentColor.light : 'var(--ui-text-on-accent)';
+  const primaryButtonBorder = isGrayAccent ? accentColor.dark : accentColor.primary;
+  const primaryButtonHover = isGrayAccent ? accentColor.primary : accentColor.hover;
 
   const handleAcceptAll = () => {
     localStorage.setItem('cookieConsent', 'all');
@@ -84,13 +93,21 @@ export default function CookieConsentModal({
           <button
             type="button"
             onClick={handleNecessaryOnly}
-            className="h-8 w-full rounded-lg text-[10px] font-medium transition-colors"
-            style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+            className="h-8 w-full rounded-lg text-[10px] font-medium transition-colors border"
+            style={{
+              backgroundColor: 'var(--ui-bg-secondary)',
+              color: 'var(--ui-text-primary)',
+              borderColor: 'var(--ui-border-subtle)'
+            }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
+              e.currentTarget.style.backgroundColor = 'var(--ui-bg-tertiary)';
+              e.currentTarget.style.borderColor = isGrayAccent ? accentColor.dark : accentColor.primary;
+              e.currentTarget.style.color = isGrayAccent ? accentColor.dark : accentColor.primary;
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+              e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
+              e.currentTarget.style.borderColor = 'var(--ui-border-subtle)';
+              e.currentTarget.style.color = 'var(--ui-text-primary)';
             }}
           >
             {t('necessaryOnly')}
@@ -98,7 +115,20 @@ export default function CookieConsentModal({
           <button
             type="button"
             onClick={handleAcceptAll}
-            className="h-8 w-full rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-[10px] font-medium transition-colors"
+            className="h-8 w-full rounded-lg text-[10px] font-medium transition-colors border"
+            style={{
+              backgroundColor: primaryButtonBackground,
+              color: primaryButtonText,
+              borderColor: primaryButtonBorder
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = primaryButtonHover;
+              e.currentTarget.style.borderColor = isGrayAccent ? accentColor.dark : accentColor.hover;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = primaryButtonBackground;
+              e.currentTarget.style.borderColor = primaryButtonBorder;
+            }}
           >
             {t('acceptAll')}
           </button>

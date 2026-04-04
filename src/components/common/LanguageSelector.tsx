@@ -18,7 +18,7 @@ const LanguageSelector = () => {
   const controlForeground = isGrayAccent ? accentColor.light : 'var(--ui-text-on-accent)';
   const controlHoverBackground = isGrayAccent ? accentColor.primary : accentColor.hover;
   const tooltipBackground = isGrayAccent ? accentColor.primary : 'var(--ui-bg-elevated)';
-  const tooltipForeground = isGrayAccent ? accentColor.dark : 'var(--ui-text-primary)';
+  const tooltipForeground = isDarkMode ? '#F9FAFB' : '#111827';
   const tooltipBorder = isGrayAccent ? accentColor.dark : 'var(--ui-border-subtle)';
 
   useEffect(() => {
