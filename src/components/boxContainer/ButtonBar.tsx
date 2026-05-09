@@ -1,8 +1,9 @@
-import { type LucideIcon, Plus, Image as ImageIcon, FileText } from 'lucide-react';
+import { type LucideIcon, Plus, Image as ImageIcon } from 'lucide-react';
 import React from 'react';
 import ActionButton from '../boxContainerInput/ActionButton.tsx';
-import FunctionSelector from '../boxContainerInput/FunctionSelector.tsx';
-import type { FunctionType } from '../boxContainerInput/FunctionSelector.tsx';
+import ModeSelector from '../boxContainerInput/ModeSelector.tsx';
+import ModeChip from '../boxContainerInput/ModeChip.tsx';
+import type { ModeType } from '../boxContainerInput/ModeSelector.tsx';
 import SearchButton from '../boxContainerInput/SearchButton.tsx';
 import type { ReverseImageSearchHandle } from './ReverseImageSearch.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
@@ -18,45 +19,58 @@ const MicIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((
 )) as LucideIcon;
 MicIcon.displayName = 'MicIcon';
 
+// SVG for audio bars/waveform icon (ChatGPT style - tallest bar in middle)
+const AudioBarsIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg ref={ref} width={20} height={20} viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <rect x="2" y="8" width="3" height="8" rx="1.5" />
+    <rect x="7" y="2" width="3" height="20" rx="1.5" />
+    <rect x="12" y="4" width="3" height="16" rx="1.5" />
+    <rect x="17" y="7" width="3" height="10" rx="1.5" />
+  </svg>
+)) as LucideIcon;
+AudioBarsIcon.displayName = 'AudioBarsIcon';
+
 interface ButtonBarProps {
-  // Left side - Function Selector
-  selectedFunction: FunctionType;
-  onFunctionSelect: (functionType: FunctionType) => void;
-  onSignUpRequired: () => void;
-  onUpgrade?: () => void;
-  
+  // Left side - Mode Selector
+  selectedMode: ModeType;
+  onModeSelect: (mode: ModeType) => void;
+  onModeClear: () => void;
+
   // Right side - Action buttons
   showAttachMenu: boolean;
   setShowAttachMenu: (show: boolean) => void;
   reverseImageRef: React.RefObject<ReverseImageSearchHandle>;
-  onDocumentClick: () => void;
   onSearchClick: () => void;
   isSearchDisabled: boolean;
   isSearchActive: boolean;
   attachMenuRef: React.RefObject<HTMLDivElement>;
+  onVoiceClick: () => void;
+  isRecording: boolean;
+  isTranscribing: boolean;
 }
 
 export default function ButtonBar({
-  selectedFunction,
-  onFunctionSelect,
-  onSignUpRequired,
-  onUpgrade,
+  selectedMode,
+  onModeSelect,
+  onModeClear,
   showAttachMenu,
   setShowAttachMenu,
   reverseImageRef,
-  onDocumentClick,
   onSearchClick,
   isSearchDisabled,
   isSearchActive,
   attachMenuRef,
+  onVoiceClick,
+  isRecording,
+  isTranscribing,
 }: ButtonBarProps) {
   const { t } = useTranslation();
 
   return (
     <div className="flex items-center justify-between px-4 py-1.5">
-      {/* Left side: Plus button THEN Function Selector */}
+      {/* Left side: Plus button and mode chip */}
       <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3 min-w-0">
-        {/* Attach button with dropdown - MOVED TO LEFT */}
+        {/* Plus button with dropdown - includes modes and file uploads */}
         <div className="relative" ref={attachMenuRef}>
           <ActionButton
             icon={Plus}
@@ -64,69 +78,88 @@ export default function ButtonBar({
             tooltip={t('addFilesAndMore')}
             onClick={() => setShowAttachMenu(!showAttachMenu)}
           />
-          
-          {/* Dropdown menu */}
+
+          {/* Dropdown menu with files and modes */}
           {showAttachMenu && (
-            <div className="absolute bottom-full mb-2 left-0 bg-white dark:bg-[#2a2a2a] rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden min-w-[200px] z-50">
-              {/* Images option */}
+            <div
+              className="absolute bottom-full mb-2 left-0 rounded-lg shadow-lg border overflow-hidden min-w-[240px] z-50"
+              style={{
+                backgroundColor: 'var(--ui-bg-elevated)',
+                borderColor: 'var(--ui-border-default)',
+                boxShadow: '0 14px 28px var(--ui-shadow-elevated)',
+              }}
+            >
+              {/* Upload photos and files - combined option */}
               <button
                 onClick={() => {
                   setShowAttachMenu(false);
                   reverseImageRef.current?.openFilePicker();
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#333333] transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-3 transition-colors text-left"
+                style={{ color: 'var(--ui-text-primary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
               >
-                <ImageIcon size={18} className="text-gray-700 dark:text-gray-300" />
-                <span className="text-gray-900 dark:text-white font-medium">
-                  {t('images')}
+                <ImageIcon size={18} style={{ color: 'var(--ui-text-secondary)' }} />
+                <span className="font-medium">
+                  {t('uploadPhotosAndFiles')}
                 </span>
               </button>
-              
-              {/* Documents option */}
-              <button
-                onClick={() => {
-                  setShowAttachMenu(false);
-                  onDocumentClick();
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#333333] transition-colors text-left border-t border-gray-200 dark:border-gray-700"
-              >
-                <FileText size={18} className="text-gray-700 dark:text-gray-300" />
-                <div className="flex flex-col">
-                  <span className="text-gray-900 dark:text-white font-medium">
-                    {t('documents')}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {t('loginRequired')}
-                  </span>
-                </div>
-              </button>
+
+              {/* Divider before modes */}
+              <div
+                className="border-t"
+                style={{ borderColor: 'var(--ui-border-default)' }}
+              />
+
+              {/* Mode Selector within the menu */}
+              <ModeSelector
+                selectedMode={selectedMode}
+                onModeSelect={onModeSelect}
+                onClose={() => setShowAttachMenu(false)}
+              />
             </div>
           )}
         </div>
 
-        {/* Function Selector */}
-        <FunctionSelector
-          selectedFunction={selectedFunction}
-          onFunctionSelect={onFunctionSelect}
-          onSignUpRequired={onSignUpRequired}
-          onUpgrade={onUpgrade}
-          className="min-w-0" // Allow shrinking
-        />
+        {/* Mode chip - shows selected mode */}
+        <ModeChip mode={selectedMode} onClear={onModeClear} />
       </div>
 
-      {/* Right side: Mic and Search Button */}
+      {/* Right side: Action buttons based on content state */}
       <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
-        <ActionButton
-          icon={MicIcon}
-          label={t('askByVoice')}
-          tooltip={t('askByVoice')}
-          onClick={() => {}}
-        />
-        <SearchButton
-          onClick={onSearchClick}
-          isActive={isSearchActive}
-          disabled={isSearchDisabled}
-        />
+        {!isSearchActive ? (
+          // Empty search box: Show Mic (Dictate) and Bars (Avatar) buttons
+          <>
+            <ActionButton
+              icon={MicIcon}
+              label={t('dictate') || 'Dictate'}
+              tooltip={t('dictate') || 'Dictate'}
+              onClick={onVoiceClick}
+              className={isRecording ? 'animate-pulse' : ''}
+            />
+            <ActionButton
+              icon={AudioBarsIcon}
+              label={t('voiceMode') || 'Voice mode'}
+              tooltip={t('voiceMode') || 'Voice mode'}
+              onClick={() => {
+                // TODO: Open Avatar/Voice mode
+                console.log('Voice mode clicked');
+              }}
+            />
+          </>
+        ) : (
+          // Has text: Show Search/Submit button
+          <SearchButton
+            onClick={onSearchClick}
+            isActive={isSearchActive}
+            disabled={isSearchDisabled}
+          />
+        )}
       </div>
     </div>
   );

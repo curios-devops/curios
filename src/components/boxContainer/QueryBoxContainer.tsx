@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { FunctionType } from '../boxContainerInput/FunctionSelector.tsx';
+import type { ModeType } from '../boxContainerInput/ModeSelector.tsx';
 import SearchTextArea from '../boxContainerInput/SearchTextArea.tsx';
 import ReverseImageSearch, { type ReverseImageSearchHandle, type ReverseImageAttachment } from './ReverseImageSearch.tsx';
 import ButtonBar from './ButtonBar.tsx';
@@ -17,11 +17,15 @@ import { logger } from '../../utils/logger.ts';
 import { useVoiceRecording } from '../../hooks/useVoiceRecording.ts';
 import { transcribeAudioWithFallback } from '../../services/stt/transcriptionService.ts';
 
-export default function QueryBoxContainer() {
+interface QueryBoxContainerProps {
+  onModeChange?: (mode: ModeType) => void;
+}
+
+export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  const [selectedFunction, setSelectedFunction] = useState<FunctionType>('search');
+  const [selectedMode, setSelectedMode] = useState<ModeType>('search');
   const [showProModal, setShowProModal] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [signInContext, setSignInContext] = useState<'default' | 'reverse-image' | 'document'>('default');
@@ -35,6 +39,11 @@ export default function QueryBoxContainer() {
   const accentColor = useAccentColor();
   const { isRecording, startRecording, stopRecording } = useVoiceRecording();
   const [isTranscribing, setIsTranscribing] = useState(false);
+
+  // Notify parent when mode changes
+  useEffect(() => {
+    onModeChange?.(selectedMode);
+  }, [selectedMode, onModeChange]);
 
   // Close attach menu when clicking outside
   useEffect(() => {
@@ -50,53 +59,43 @@ export default function QueryBoxContainer() {
     }
   }, [showAttachMenu]);
 
-  // Function mapping for navigation
-  const getFunctionRoute = (functionType: FunctionType): string => {
-    switch (functionType) {
+  // Mode mapping for navigation
+  const getModeRoute = (mode: ModeType): string => {
+    switch (mode) {
       case 'search':
         return '/search';
-      case 'pro-search':
-        return '/pro-search';
-      case 'insights':
+      case 'stories':
         return '/insights-results';
-      case 'research':
-        return '/research-results';
-      case 'labs':
-        return '/labs-results';
-      case 'pro-labs':
-        return '/pro-labs-results';
+      case 'cinematic':
+        return '/cinematic-results';
+      case 'avatar':
+        return '/avatar-search';
       default:
         return '/search';
     }
   };
 
-  // Check if function should use pro mode
-  const isProFunction = (functionType: FunctionType): boolean => {
-    return ['pro-search', 'research', 'pro-labs'].includes(functionType);
+  // Check if mode is a pro feature
+  const isProMode = (mode: ModeType): boolean => {
+    return ['stories', 'cinematic'].includes(mode);
   };
 
-  const handleFunctionSelect = (functionType: FunctionType) => {
-    setSelectedFunction(functionType);
+  const handleModeSelect = (mode: ModeType) => {
+    setSelectedMode(mode);
   };
 
-  const handleSignUpRequired = () => {
-    setSignInContext('default');
-    setShowSignInModal(true);
-  };
-
-  const handleDocumentClick = () => {
-    setSignInContext('document');
-    setShowSignInModal(true);
+  const handleModeClear = () => {
+    setSelectedMode('search');
   };
 
   const handleSearch = async () => {
     const trimmedQuery = query.trim();
     const hasImages = imageAttachments.length > 0;
-    
+
     // Validate: need either text or images
     if (!trimmedQuery && !hasImages) return;
 
-    const isProFeature = isProFunction(selectedFunction);
+    const isProFeature = isProMode(selectedMode);
 
     // For Pro features, check Pro quota (Standard users only)
     if (isProFeature) {
@@ -143,12 +142,12 @@ export default function QueryBoxContainer() {
     }
 
     if (success) {
-      const route = getFunctionRoute(selectedFunction);
+      const route = getModeRoute(selectedMode);
       const proParam = isProFeature ? '&pro=true' : '';
-      
+
       // Pass image URLs as URL parameters (comma-separated)
       const imageParam = imageUrls.length > 0 ? `&images=${encodeURIComponent(imageUrls.join(','))}` : '';
-      
+
       navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${proParam}${imageParam}`);
     }
   };  const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -194,29 +193,16 @@ export default function QueryBoxContainer() {
     }
   };
 
-  // Avatar/Equalizer button: Navigate to Avatar Search
-  const handleAvatarClick = () => {
-    const trimmedQuery = query.trim();
-
-    // If no query, can't do avatar search
-    if (!trimmedQuery) {
-      logger.warn('Avatar search requires a query');
-      return;
-    }
-
-    // Navigate to Avatar Search Results page
-    navigate(`/avatar-search?q=${encodeURIComponent(trimmedQuery)}`);
-  };
-
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="w-full max-w-3xl mx-auto">
       {/* Unified container with border encompassing input and button bar */}
-      <div 
-        className={`relative border rounded-lg transition-colors flex flex-col ${imageAttachments.length > 0 ? '' : 'pt-3'}`}
+      <div
+        className={`relative border transition-colors flex flex-col ${imageAttachments.length > 0 ? '' : 'pt-3'}`}
         style={{
           borderColor: 'var(--ui-border-default)',
           backgroundColor: 'var(--ui-bg-elevated)',
-          boxShadow: '0 10px 26px var(--ui-shadow-soft)',
+          boxShadow: '0 4px 12px var(--ui-shadow-soft)',
+          borderRadius: '10px',
         }}
         onFocus={(e) => {
           if (e.currentTarget.contains(e.target)) {
@@ -247,25 +233,29 @@ export default function QueryBoxContainer() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             className="px-0"
+            mode={selectedMode}
           />
         </div>
 
-        {/* Button bar with function selector and action buttons */}
+        {/* Divider between input and button bar */}
+        <div
+          className="border-t mx-4"
+          style={{ borderColor: 'var(--ui-border-subtle)' }}
+        />
+
+        {/* Button bar with mode selector and action buttons */}
         <ButtonBar
-          selectedFunction={selectedFunction}
-          onFunctionSelect={handleFunctionSelect}
-          onSignUpRequired={handleSignUpRequired}
-          onUpgrade={() => setShowProModal(true)}
+          selectedMode={selectedMode}
+          onModeSelect={handleModeSelect}
+          onModeClear={handleModeClear}
           showAttachMenu={showAttachMenu}
           setShowAttachMenu={setShowAttachMenu}
           reverseImageRef={reverseImageRef}
-          onDocumentClick={handleDocumentClick}
           onSearchClick={handleSearch}
           isSearchDisabled={!query.trim() && imageAttachments.length === 0 || !hasSearchesLeft}
           isSearchActive={query.trim().length > 0 || imageAttachments.length > 0}
           attachMenuRef={attachMenuRef}
           onVoiceClick={handleVoiceClick}
-          onAvatarClick={handleAvatarClick}
           isRecording={isRecording}
           isTranscribing={isTranscribing}
         />

@@ -68,7 +68,7 @@ export default function NavItem({
         isActive
           ? "font-medium"
           : ""
-      }`}
+      } relative`}
       style={
         isActive
           ? {
@@ -92,11 +92,19 @@ export default function NavItem({
         e.currentTarget.style.borderColor = 'transparent';
       }}
     >
-      <Icon size={24} />
+      <Icon size={20} />
       {!isCollapsed && (
-        <span className="text-sm font-medium tracking-[-0.01em]">
-          {label}
-        </span>
+        <>
+          <span className="text-base font-medium tracking-[-0.01em] flex-1">
+            {label}
+          </span>
+          {isActive && (
+            <div
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: '#ef4444' }}
+            />
+          )}
+        </>
       )}
     </a>
   );

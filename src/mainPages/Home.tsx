@@ -11,24 +11,62 @@ import CookieButton from '../components/common/CookieButton.tsx';
 import GuestSignUpBanner from '../components/GuestSignUpBanner.tsx';
 import StandardUserBanner from '../components/StandardUserBanner.tsx';
 import SignUpModal from '../components/auth/SignUpModal.tsx';
+import SignInModal from '../components/auth/SignInModal.tsx';
 import { useSubscription } from '../hooks/useSubscription.ts';
 import { languages } from '../types/language.ts';
 import { useTranslation } from '../hooks/useTranslation.ts';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
 import { useTheme } from '../components/theme/ThemeContext.tsx';
+import type { ModeType } from '../components/boxContainerInput/ModeSelector.tsx';
 
 export default function Home() {
   const { session } = useSession();
   const { subscription } = useSubscription(session);
   const accentColors = useAccentColor();
-  const { accentColor: selectedAccentColor } = useTheme();
+  const { theme, accentColor: selectedAccentColor } = useTheme();
   const isGrayAccent = selectedAccentColor === 'gray';
-  const getStartedBackground = isGrayAccent ? accentColors.dark : accentColors.primary;
-  const getStartedText = isGrayAccent ? accentColors.light : 'var(--ui-text-on-accent)';
+  const isDarkMode =
+    theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const getStartedBackground = isGrayAccent
+    ? isDarkMode
+      ? '#F3F4F6'
+      : '#111827'
+    : accentColors.primary;
+  const getStartedText = isGrayAccent
+    ? isDarkMode
+      ? '#111827'
+      : '#F3F4F6'
+    : 'var(--ui-text-on-accent)';
+
+  const getStartedHover = isGrayAccent
+    ? isDarkMode
+      ? '#E5E7EB'
+      : '#1F2937'
+    : accentColors.hover;
   const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
   const [cookiesAccepted, setCookiesAccepted] = useState(() => !!localStorage.getItem('cookieConsent'));
+  const [currentMode, setCurrentMode] = useState<ModeType>('search');
+
+  // Dynamic subtitle based on mode
+  const getModeSubtitle = (mode: ModeType): string => {
+    switch (mode) {
+      case 'search':
+        return 'Always grounded in trusted sources.';
+      case 'stories':
+        return 'Based on verified knowledge sources.';
+      case 'cinematic':
+        return 'Visual explanations grounded in facts.';
+      case 'avatar':
+        return 'Guided learning from trusted knowledge.';
+      default:
+        return 'Always grounded in trusted sources.';
+    }
+  };
 
   const isGuest = !session; // Guest = not logged in
   const isStandard = session && !subscription?.isActive; // Logged in but not pro
@@ -93,33 +131,45 @@ export default function Home() {
         color: 'var(--ui-text-primary)',
       }}
     >
-      {/* Top right: only ThemeToggle and Get Started button */}
+      {/* Top right: ThemeToggle, Login and Get Started buttons */}
       {/* On desktop, show in current position. On mobile, these are hidden and shown in the header */}
-      <div className="absolute top-2 right-4 flex items-start gap-2 mobile:hidden">
-        <div className="w-7 h-7 flex items-start">
+      <div className="absolute top-3 right-4 flex items-center gap-3 mobile:hidden">
+        <div className="w-7 h-7 flex items-center">
           <ThemeToggle />
         </div>
         <button
-          className="h-7 px-3 rounded-lg flex items-center justify-center text-sm font-medium transition-colors shadow-md"
+          className="h-9 px-4 flex items-center justify-center text-sm font-medium transition-all"
+          style={{
+            backgroundColor: 'transparent',
+            color: 'var(--ui-text-primary)',
+            border: '1px solid var(--ui-border-default)',
+            borderRadius: '8px',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+          type="button"
+          onClick={() => setShowSignInModal(true)}
+        >
+          {t('logIn') || 'Log in'}
+        </button>
+        <button
+          className="h-9 px-4 flex items-center justify-center text-sm font-medium transition-all"
           style={{
             backgroundColor: getStartedBackground,
             color: getStartedText,
-            border: isGrayAccent ? `1px solid ${accentColors.dark}` : '1px solid transparent',
-            boxShadow: '0 8px 18px var(--ui-shadow-soft)',
+            border: '1px solid transparent',
+            borderRadius: '8px',
           }}
           onMouseEnter={(e) => {
-            if (isGrayAccent) {
-              e.currentTarget.style.backgroundColor = accentColors.primary;
-              e.currentTarget.style.color = accentColors.dark;
-              e.currentTarget.style.borderColor = accentColors.dark;
-            } else {
-              e.currentTarget.style.backgroundColor = accentColors.hover;
-            }
+            e.currentTarget.style.backgroundColor = getStartedHover;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = getStartedBackground;
             e.currentTarget.style.color = getStartedText;
-            e.currentTarget.style.borderColor = isGrayAccent ? accentColors.dark : 'transparent';
           }}
           type="button"
           onClick={handleShowSignUp}
@@ -128,16 +178,32 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="max-w-4xl mx-auto px-8 py-12">
-        <div className="flex flex-col items-center justify-center mt-10 mb-0">
+      <div className="max-w-4xl mx-auto px-8 py-8">
+        <div className="flex flex-col items-center justify-center mt-2 mb-12">
           <h1
-            className="text-4xl md:text-5xl font-light text-center mb-8 leading-tight font-helvetica"
-            style={{ color: 'var(--ui-text-primary)' }}
+            className="text-2xl md:text-3xl text-center leading-tight uppercase mb-3"
+            style={{
+              color: 'var(--ui-text-primary)',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              fontWeight: '400',
+              letterSpacing: '0.05em'
+            }}
           >
             {t('mainTitle')}
           </h1>
+          <p
+            className="text-xl md:text-2xl text-center"
+            style={{
+              color: '#94a3b8',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              fontWeight: '400',
+              letterSpacing: '0.04em'
+            }}
+          >
+            {getModeSubtitle(currentMode)}
+          </p>
         </div>
-        <InputContainer />
+        <InputContainer onModeChange={setCurrentMode} />
       </div>
 
       {/* Bottom near right, not overlapping cookies */}
@@ -175,7 +241,16 @@ export default function Home() {
           onClose={() => setShowSignUpModal(false)}
           currentLanguage={languages[0]} // English
         />
-            )}
+      )}
+
+      {/* Sign In Modal triggered by login button */}
+      {showSignInModal && (
+        <SignInModal
+          isOpen={showSignInModal}
+          onClose={() => setShowSignInModal(false)}
+          currentLanguage={languages[0]} // English
+        />
+      )}
     </div>
   );
 }

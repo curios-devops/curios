@@ -10,8 +10,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#0095FF',
-        'primary-hover': '#0080FF'
+        primary: '#0ea5e9',
+        'primary-hover': '#0284c7'
       },
       keyframes: {
         'fade-in-up': {

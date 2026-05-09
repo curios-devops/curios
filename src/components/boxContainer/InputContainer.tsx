@@ -1,9 +1,14 @@
 import QueryBoxContainer from './QueryBoxContainer.tsx';
+import type { ModeType } from '../boxContainerInput/ModeSelector.tsx';
 
-export default function InputContainer() {
+interface InputContainerProps {
+  onModeChange?: (mode: ModeType) => void;
+}
+
+export default function InputContainer({ onModeChange }: InputContainerProps) {
   return (
     <div className="relative">
-      <QueryBoxContainer />
+      <QueryBoxContainer onModeChange={onModeChange} />
     </div>
   );
 }

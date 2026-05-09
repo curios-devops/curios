@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { PanelLeft, PanelLeftClose } from "lucide-react";
 import { useTranslation } from "../../hooks/useTranslation.ts";
 import { useAccentColor } from "../../hooks/useAccentColor.ts";
 import { useTheme } from "../theme/ThemeContext.tsx";
@@ -21,7 +21,7 @@ export default function CollapseButton(
   const tooltipBackground = isGrayAccent ? accentColor.primary : 'var(--ui-bg-elevated)';
   const tooltipForeground = isDarkMode ? '#F9FAFB' : '#111827';
   const tooltipBorder = isGrayAccent ? accentColor.dark : 'var(--ui-border-subtle)';
-  const Icon = isCollapsed ? ChevronRight : ChevronLeft;
+  const Icon = isCollapsed ? PanelLeft : PanelLeftClose;
 
   const button = (
     <button
