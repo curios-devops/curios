@@ -179,7 +179,7 @@ export default function Home() {
       </div>
 
       <div className="max-w-4xl mx-auto px-8 py-8">
-        <div className="flex flex-col items-center justify-center mt-2 mb-12">
+        <div className="flex flex-col items-center justify-center mt-2 mb-6">
           <h1
             className="text-lg sm:text-xl md:text-2xl text-center leading-tight uppercase mb-2"
             style={{
