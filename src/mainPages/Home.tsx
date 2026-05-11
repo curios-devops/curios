@@ -181,7 +181,7 @@ export default function Home() {
       <div className="max-w-4xl mx-auto px-8 py-8">
         <div className="flex flex-col items-center justify-center mt-2 mb-12">
           <h1
-            className="text-2xl md:text-3xl text-center leading-tight uppercase mb-3"
+            className="text-lg sm:text-xl md:text-2xl text-center leading-tight uppercase mb-2"
             style={{
               color: 'var(--ui-text-primary)',
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
@@ -192,7 +192,7 @@ export default function Home() {
             {t('mainTitle')}
           </h1>
           <p
-            className="text-xl md:text-2xl text-center"
+            className="text-sm sm:text-base md:text-lg text-center"
             style={{
               color: '#94a3b8',
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
