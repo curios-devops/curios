@@ -19,7 +19,7 @@ interface Tab {
 const tabs: Tab[] = [
   { id: 'search', label: 'search', description: 'Fast answers to everyday questions', icon: Search, tooltip: 'Get quick answers with web search and AI analysis' },
   { id: 'insights', label: 'insights', description: 'Multi-agent research reports', icon: BookOpen, tooltip: 'Get in-depth, multi-agent research reports' },
-  { id: 'labs', label: 'labs', description: 'Create projects from scratch', icon: FlaskConical, tooltip: 'Turn your ideas into completed docs, slides, dashboards, and more' }
+  { id: 'labs', label: 'labs', description: 'Generate cinematic multi-scene visual answers', icon: FlaskConical, tooltip: 'Create source-grounded cinematic videos with multiple Veo scenes' }
 ];
 
 interface ThreeTabSwitchProps {
@@ -44,9 +44,12 @@ export default function ThreeTabSwitch({
   onSignIn = () => {}
 }: ThreeTabSwitchProps) {
   const { t } = useTranslation();
-  const { accentColor: selectedAccentColor } = useTheme();
+  const { theme, accentColor: selectedAccentColor } = useTheme();
   const accentColor = useAccentColor();
   const isGrayAccent = selectedAccentColor === 'gray';
+  const isDarkMode =
+    theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const [hoveredTab, setHoveredTab] = useState<TabType | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipTimeoutRef = useRef<number | null>(null);
@@ -133,13 +136,19 @@ export default function ThreeTabSwitch({
           const isHovered = hoveredTab === tab.id;
           const activeTabStyle = isGrayAccent
             ? {
-                backgroundColor: accentColor.primary,
-                color: accentColor.dark,
-                borderColor: accentColor.dark,
+                backgroundColor: isDarkMode ? '#F3F4F6' : '#111827',
+                color: isDarkMode ? '#111827' : '#F9FAFB',
+                borderColor: isDarkMode ? '#F3F4F6' : '#111827',
               }
             : undefined;
           const activeIconStyle = isActive
-            ? { color: isGrayAccent ? accentColor.dark : accentColor.primary }
+            ? {
+                color: isGrayAccent
+                  ? isDarkMode
+                    ? '#111827'
+                    : '#F9FAFB'
+                  : accentColor.primary,
+              }
             : undefined;
           return (
             <div key={tab.id} className="relative">

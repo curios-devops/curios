@@ -1,4 +1,4 @@
-import { Artifact, ArtifactStep } from '../../../../../commonApp/types/index';
+import { Artifact, ArtifactStep } from '../../../../commonApp/types/index';
 
 async function dalle3GenerateImage(prompt: string): Promise<string> {
   try {
@@ -35,7 +35,7 @@ export async function dalleWorker(artifact: Artifact, prompt: string, updateArti
 
   const updatedArtifact = {
     ...artifact,
-    steps: artifact.steps.map(s =>
+    steps: artifact.steps.map((s: ArtifactStep) =>
       s.name === 'draw'
         ? { ...s, status: 'complete' as ArtifactStep['status'], result: imageUrl }
         : s

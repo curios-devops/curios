@@ -9,6 +9,8 @@ import { logger } from '../../../utils/logger';
 // Callback type for streaming content chunks
 export type StreamingCallback = (chunk: string, isComplete: boolean) => void;
 
+const STUDIO_MODEL = import.meta.env.VITE_STUDIO_MODEL || 'gpt-5-mini';
+
 export interface StudioWriterInput {
   query: string;
   onKeyIdeasChunk?: StreamingCallback;
@@ -26,7 +28,7 @@ export interface StudioWriterOutput {
 }
 
 export class StudioWriterAgent {
-  private defaultModel = 'gpt-4.1-mini-2025-04-14';
+  private defaultModel = STUDIO_MODEL;
 
   /**
    * Execute with streaming support

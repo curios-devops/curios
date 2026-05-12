@@ -1,0 +1,26 @@
+#!/bin/bash
+# Configure ElevenLabs TTS function to disable JWT verification via API
+# Since the CLI has compatibility issues, we'll use the Management API directly
+
+echo "⚙️  Configuring elevenlabs-tts function..."
+echo ""
+echo "❌ This requires a service_role key or access token"
+echo ""
+echo "Please do one of the following:"
+echo ""
+echo "Option 1: Via Supabase Dashboard (EASIEST)"
+echo "  1. Go to: https://supabase.com/dashboard/project/gpfccicfqynahflehpqo/functions/elevenlabs-tts"
+echo "  2. Click 'Details' or 'Settings' tab"
+echo "  3. Find 'Verify JWT' toggle"
+echo "  4. Turn it OFF (disable)"
+echo "  5. Save changes"
+echo ""
+echo "Option 2: Upgrade Supabase CLI"
+echo "  brew uninstall supabase"
+echo "  brew install supabase/tap/supabase"
+echo "  supabase functions deploy elevenlabs-tts --no-verify-jwt --project-ref gpfccicfqynahflehpqo"
+echo ""
+echo "Option 3: Use Docker to deploy"
+echo "  docker run --rm -v \"\$PWD:/workspace\" -w /workspace supabase/cli:latest \\"
+echo "    functions deploy elevenlabs-tts --no-verify-jwt --project-ref gpfccicfqynahflehpqo"
+echo ""

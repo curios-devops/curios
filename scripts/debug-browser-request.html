@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debug Edge Function Request</title>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    button { padding: 10px 20px; margin: 10px 0; cursor: pointer; }
+    pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Debug Edge Function Request</h1>
+
+  <button onclick="testRequest()">Test Edge Function</button>
+
+  <div id="output"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://gpfccicfqynahflehpqo.supabase.co';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZmNjaWNmcXluYWhmbGVocHFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxNDIyMDYsImV4cCI6MjA1MDcxODIwNn0.wLnIXxThhq144sQpUFzLd_ifimgr1oetMwvchDmMF84';
+
+    async function testRequest() {
+      const output = document.getElementById('output');
+      output.innerHTML = '<p>Testing...</p>';
+
+      try {
+        console.log('Making request with headers:', {
+          'Authorization': `Bearer ${ANON_KEY.substring(0, 20)}...`,
+          'apikey': ANON_KEY.substring(0, 20) + '...',
+          'Content-Type': 'application/json'
+        });
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/elevenlabs-tts`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${ANON_KEY}`,
+            'apikey': ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: 'Test from debug page',
+            voiceId: 'EXAVITQu4vr4xnSDxMaL'
+          })
+        });
+
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+        if (response.ok) {
+          const data = await response.json();
+          output.innerHTML = `
+            <div class="success">
+              <h2>✅ Success!</h2>
+              <p>Status: ${response.status}</p>
+              <p>Audio size: ${data.size} bytes (${(data.size/1024).toFixed(2)} KB)</p>
+              <p>Audio received: ${data.audio ? 'Yes' : 'No'}</p>
+            </div>
+          `;
+        } else {
+          const errorText = await response.text();
+          output.innerHTML = `
+            <div class="error">
+              <h2>❌ Error ${response.status}</h2>
+              <pre>${errorText}</pre>
+              <h3>Request Details:</h3>
+              <pre>URL: ${SUPABASE_URL}/functions/v1/elevenlabs-tts
+Headers:
+  Authorization: Bearer ${ANON_KEY.substring(0, 30)}...
+  apikey: ${ANON_KEY.substring(0, 30)}...
+  Content-Type: application/json</pre>
+            </div>
+          `;
+        }
+
+      } catch (err) {
+        output.innerHTML = `
+          <div class="error">
+            <h2>❌ Network Error</h2>
+            <pre>${err.message}\n${err.stack}</pre>
+          </div>
+        `;
+        console.error('Request error:', err);
+      }
+    }
+  </script>
+</body>
+</html>

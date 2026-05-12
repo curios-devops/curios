@@ -2,8 +2,7 @@
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+/// <reference lib="deno.ns" />
 
 /**
  * Supabase Edge Function: OpenAI TTS
@@ -85,7 +84,13 @@ Deno.serve(async (req: Request) => {
 
     // Return audio as base64
     const audioBuffer = await response.arrayBuffer();
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+    const uint8 = new Uint8Array(audioBuffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8.length; i += chunkSize) {
+      binary += String.fromCharCode(...uint8.subarray(i, i + chunkSize));
+    }
+    const base64Audio = btoa(binary);
 
     console.log('[OpenAI TTS] TTS generated successfully', {
       size: audioBuffer.byteLength,

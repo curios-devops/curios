@@ -1,12 +1,9 @@
-import React from 'react';
-
 interface SocialButtonProps {
-  provider: string;
   onClick: () => void;
-  children: React.ReactNode;
+  children: import('react').ReactNode;
 }
 
-export default function SocialButton({ provider, onClick, children }: SocialButtonProps) {
+export default function SocialButton({ onClick, children }: SocialButtonProps) {
   return (
     <button
       onClick={onClick}

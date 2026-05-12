@@ -1,5 +1,5 @@
-import { AgentResponse, Artifact, ArtifactStep } from '../../../../commonApp/types/index.ts';
-import { logger } from '../../../../utils/logger.ts';
+import { AgentResponse, Artifact, ArtifactStep } from '../../../commonApp/types/index.ts';
+import { logger } from '../../../utils/logger.ts';
 
 interface WriterResponse {
   content: string;

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloudinary Video+Audio Mix Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #0a0e27;
+      color: #e0e0e0;
+    }
+    h1 {
+      color: #60a5fa;
+      border-bottom: 2px solid #60a5fa;
+      padding-bottom: 10px;
+    }
+    .section {
+      background: #1a1e3a;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      border: 1px solid #2a2e4a;
+    }
+    .section h2 {
+      color: #818cf8;
+      margin-top: 0;
+    }
+    button {
+      background: #60a5fa;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #3b82f6;
+    }
+    button:disabled {
+      background: #4a5568;
+      cursor: not-allowed;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      background: #2a2e4a;
+      border-left: 4px solid #60a5fa;
+    }
+    .error {
+      border-left-color: #ef4444;
+      color: #fca5a5;
+    }
+    .success {
+      border-left-color: #10b981;
+      color: #6ee7b7;
+    }
+    video, audio {
+      width: 100%;
+      max-width: 640px;
+      border-radius: 8px;
+      margin: 10px 0;
+      background: #000;
+    }
+    .video-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    pre {
+      background: #0a0e27;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border: 1px solid #2a2e4a;
+      font-size: 11px;
+    }
+    .log {
+      font-family: monospace;
+      font-size: 12px;
+      color: #9ca3af;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎬 Cloudinary Video+Audio Mix Test</h1>
+
+  <div class="section">
+    <h2>Test Configuration</h2>
+    <p><strong>Narration Text:</strong> "The sky is blue due to a phenomenon called Rayleigh scattering. When sunlight enters Earth's atmosphere, it collides with gas molecules. Blue light has a shorter wavelength and gets scattered more than other colors, making the sky appear blue to our eyes."</p>
+  </div>
+
+  <div class="section">
+    <h2>Step 1: Get Pexels Video</h2>
+    <button id="btn-get-video" onclick="getPexelsVideo()">Search Pexels: "blue sky"</button>
+    <div id="status-video"></div>
+    <div id="video-original" class="video-container"></div>
+  </div>
+
+  <div class="section">
+    <h2>Step 2: Generate Audio Narration</h2>
+    <button id="btn-generate-audio" onclick="generateAudio()" disabled>Generate ElevenLabs TTS</button>
+    <div id="status-audio"></div>
+    <div id="audio-player"></div>
+  </div>
+
+  <div class="section">
+    <h2>Step 3: Mix Video + Audio (Cloudinary)</h2>
+    <button id="btn-mix" onclick="mixVideoAudio()" disabled>Upload & Mix on Cloudinary</button>
+    <div id="status-mix"></div>
+    <div id="video-mixed" class="video-container"></div>
+  </div>
+
+  <div class="section">
+    <h2>Debug Logs</h2>
+    <button onclick="document.getElementById('logs').innerHTML = ''; log('Logs cleared')">Clear Logs</button>
+    <div id="logs" class="log"></div>
+  </div>
+
+  <script type="module">
+    // Import from your existing code
+    import { PexelsFallbackProvider } from '../src/services/cinematic/providers/PexelsFallbackProvider.ts';
+    import { ElevenLabsService } from '../src/services/studio/assets/elevenLabsService.ts';
+
+    const SUPABASE_URL = 'https://gpfccicfqynahflehpqo.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZmNjaWNmcXluYWhmbGVocHFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyODIyMDUsImV4cCI6MjA2MDg1ODIwNX0.XoXXwAWyZSRDspdMlPqGPqrI1KnxSjdINu7u_6dXqqk';
+
+    const NARRATION_TEXT = "The sky is blue due to a phenomenon called Rayleigh scattering. When sunlight enters Earth's atmosphere, it collides with gas molecules. Blue light has a shorter wavelength and gets scattered more than other colors, making the sky appear blue to our eyes.";
+
+    // Use your existing services
+    const pexelsProvider = new PexelsFallbackProvider();
+    const elevenLabsService = new ElevenLabsService();
+
+    let videoUrl = null;
+    let audioBlob = null;
+    let audioUrl = null;
+    let mixedVideoUrl = null;
+
+    function log(message, data = null) {
+      const timestamp = new Date().toLocaleTimeString();
+      const logDiv = document.getElementById('logs');
+      const entry = document.createElement('div');
+      entry.innerHTML = `[${timestamp}] ${message}`;
+      if (data) {
+        entry.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      }
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(message, data);
+    }
+
+    function showStatus(elementId, message, type = 'status') {
+      const el = document.getElementById(elementId);
+      el.className = `status ${type}`;
+      el.textContent = message;
+    }
+
+    window.getPexelsVideo = async function() {
+      const btn = document.getElementById('btn-get-video');
+      btn.disabled = true;
+      showStatus('status-video', 'Searching Pexels for "blue sky" video...', 'status');
+      log('Searching Pexels using PexelsFallbackProvider...');
+
+      try {
+        // Use your existing Pexels provider (exact same code as cinematic)
+        const videoData = await pexelsProvider.getVideo('blue sky', '16:9');
+
+        videoUrl = videoData.url;
+
+        log('Pexels video found', {
+          url: videoUrl.substring(0, 80),
+          duration: videoData.duration,
+          resolution: `${videoData.width}x${videoData.height}`
+        });
+
+        const videoContainer = document.getElementById('video-original');
+        videoContainer.innerHTML = `
+          <p><strong>Provider:</strong> Pexels</p>
+          <p><strong>Resolution:</strong> ${videoData.width}x${videoData.height}</p>
+          <p><strong>Duration:</strong> ${videoData.duration}s</p>
+          <p><strong>Source URL:</strong> <a href="${videoUrl}" target="_blank">${videoUrl.substring(0, 60)}...</a></p>
+          <video controls src="${videoUrl}"></video>
+        `;
+
+        showStatus('status-video', '✓ Video loaded from Pexels', 'success');
+        document.getElementById('btn-generate-audio').disabled = false;
+      } catch (error) {
+        log('Pexels search failed', { error: error.message, stack: error.stack });
+        showStatus('status-video', `✗ Error: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    window.generateAudio = async function() {
+      const btn = document.getElementById('btn-generate-audio');
+      btn.disabled = true;
+      showStatus('status-audio', 'Generating narration audio with ElevenLabs...', 'status');
+      log('Calling ElevenLabs TTS using ElevenLabsService...');
+
+      try {
+        // Use your existing ElevenLabs service (exact same code as cinematic)
+        audioBlob = await elevenLabsService.generateTTS(NARRATION_TEXT);
+
+        if (!audioBlob) {
+          throw new Error('No audio blob returned from ElevenLabs');
+        }
+
+        audioUrl = URL.createObjectURL(audioBlob);
+
+        log('Audio blob created', {
+          size: audioBlob.size,
+          sizeKB: (audioBlob.size / 1024).toFixed(2),
+          type: audioBlob.type
+        });
+
+        // Display audio player
+        const audioContainer = document.getElementById('audio-player');
+        audioContainer.innerHTML = `
+          <p><strong>Audio Size:</strong> ${(audioBlob.size / 1024).toFixed(2)} KB</p>
+          <audio controls src="${audioUrl}"></audio>
+        `;
+
+        showStatus('status-audio', '✓ Audio generated successfully', 'success');
+        document.getElementById('btn-mix').disabled = false;
+      } catch (error) {
+        log('Audio generation failed', { error: error.message, stack: error.stack });
+        showStatus('status-audio', `✗ Error: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    window.mixVideoAudio = async function() {
+      const btn = document.getElementById('btn-mix');
+      btn.disabled = true;
+      showStatus('status-mix', 'Mixing video and audio on Cloudinary...', 'status');
+      log('Starting Cloudinary mix workflow...');
+
+      try {
+        // Convert audio blob to base64
+        const reader = new FileReader();
+        const audioDataUrl = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(audioBlob);
+        });
+
+        // Extract base64 from data URL (remove "data:audio/mpeg;base64," prefix)
+        const base64Audio = audioDataUrl.split(',')[1];
+
+        log('Audio converted to base64', {
+          audioSize: audioBlob.size,
+          base64Length: base64Audio.length
+        });
+
+        // Create data URL for audio to pass to edge function
+        const audioDataUrlForUpload = `data:audio/mpeg;base64,${base64Audio}`;
+
+        const mixPayload = {
+          sourceUrl: videoUrl,
+          userId: 'test-user',
+          targetDurationSeconds: 8,
+          narrationAudioUrl: audioDataUrlForUpload
+        };
+
+        log('Calling cloudinary-process-video edge function', {
+          sourceUrl: videoUrl.substring(0, 80),
+          audioDataUrlLength: audioDataUrlForUpload.length,
+          targetDuration: 8
+        });
+
+        const payloadSize = JSON.stringify(mixPayload).length;
+        log('Request payload size', {
+          payloadBytes: payloadSize,
+          payloadKB: (payloadSize / 1024).toFixed(2),
+          payloadMB: (payloadSize / 1024 / 1024).toFixed(2)
+        });
+
+        const mixResponse = await fetch(`${SUPABASE_URL}/functions/v1/cloudinary-process-video`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify(mixPayload)
+        }).catch(err => {
+          log('Fetch error details', {
+            error: err.message,
+            name: err.name,
+            cause: err.cause
+          });
+          throw err;
+        });
+
+        log('Cloudinary response status', { status: mixResponse.status, ok: mixResponse.ok });
+
+        if (!mixResponse.ok) {
+          const errorText = await mixResponse.text();
+          log('Cloudinary error response', { status: mixResponse.status, body: errorText });
+          throw new Error(`Cloudinary mix failed: ${mixResponse.status} - ${errorText}`);
+        }
+
+        const mixData = await mixResponse.json();
+        log('Cloudinary mix response received', mixData);
+
+        if (!mixData.success || !mixData.cloudinary?.playbackUrl) {
+          throw new Error(mixData.error || 'No playback URL returned');
+        }
+
+        mixedVideoUrl = mixData.cloudinary.playbackUrl;
+
+        // Display mixed video
+        const mixedContainer = document.getElementById('video-mixed');
+        mixedContainer.innerHTML = `
+          <p><strong>Mixed Video URL (H.264):</strong> <a href="${mixData.cloudinary.h264Url}" target="_blank">${mixData.cloudinary.h264Url.substring(0, 60)}...</a></p>
+          <p><strong>Mixed Video URL (H.265):</strong> <a href="${mixData.cloudinary.h265Url}" target="_blank">${mixData.cloudinary.h265Url.substring(0, 60)}...</a></p>
+          <p><strong>Duration Mode:</strong> ${mixData.cloudinary.durationMode || 'none'}</p>
+          <p><strong>Audio Mixed:</strong> ${mixData.cloudinary.audioMixed ? '✓ Yes' : '✗ No'}</p>
+          <p><strong>Source Mode:</strong> ${mixData.cloudinary.sourceMode || 'unknown'}</p>
+          <video controls src="${mixedVideoUrl}" autoplay loop></video>
+        `;
+
+        showStatus('status-mix', '✓ Video + Audio mixed successfully!', 'success');
+        log('Mix complete! 🎉', {
+          playbackUrl: mixedVideoUrl.substring(0, 80),
+          durationMode: mixData.cloudinary.durationMode,
+          audioMixed: mixData.cloudinary.audioMixed,
+          sourceMode: mixData.cloudinary.sourceMode
+        });
+      } catch (error) {
+        log('Mix failed', { error: error.message, stack: error.stack });
+        showStatus('status-mix', `✗ Error: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // Initial state
+    log('Test page loaded', {
+      supabaseUrl: SUPABASE_URL,
+      hasAnonKey: !!SUPABASE_ANON_KEY,
+      pexelsAvailable: pexelsProvider.isAvailable(),
+      elevenLabsAvailable: elevenLabsService.isConfigured()
+    });
+  </script>
+</body>
+</html>

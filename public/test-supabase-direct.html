@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Supabase Direct</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+    pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    .error { color: red; }
+    .success { color: green; }
+  </style>
+</head>
+<body>
+  <h1>Test Supabase Edge Function</h1>
+
+  <button onclick="testWithSupabaseClient()">Test with Supabase Client</button>
+  <button onclick="testWithRawFetch()">Test with Raw Fetch</button>
+
+  <div id="output"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://gpfccicfqynahflehpqo.supabase.co';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZmNjaWNmcXluYWhmbGVocHFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxNDIyMDYsImV4cCI6MjA1MDcxODIwNn0.wLnIXxThhq144sQpUFzLd_ifimgr1oetMwvchDmMF84';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, ANON_KEY);
+
+    async function testWithSupabaseClient() {
+      const output = document.getElementById('output');
+      output.innerHTML = '<p>Testing with Supabase client...</p>';
+
+      try {
+        const { data, error } = await supabase.functions.invoke('elevenlabs-tts', {
+          body: {
+            text: 'Test from Supabase client',
+            voiceId: 'EXAVITQu4vr4xnSDxMaL'
+          }
+        });
+
+        if (error) {
+          output.innerHTML = `
+            <div class="error">
+              <h2>❌ Supabase Client Error</h2>
+              <pre>${JSON.stringify(error, null, 2)}</pre>
+            </div>
+          `;
+        } else {
+          output.innerHTML = `
+            <div class="success">
+              <h2>✅ Supabase Client Success!</h2>
+              <p>Audio size: ${data.size} bytes</p>
+            </div>
+          `;
+        }
+      } catch (err) {
+        output.innerHTML = `
+          <div class="error">
+            <h2>❌ Exception</h2>
+            <pre>${err.message}\n${err.stack}</pre>
+          </div>
+        `;
+      }
+    }
+
+    async function testWithRawFetch() {
+      const output = document.getElementById('output');
+      output.innerHTML = '<p>Testing with raw fetch...</p>';
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/elevenlabs-tts`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${ANON_KEY}`,
+            'apikey': ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: 'Test from raw fetch',
+            voiceId: 'EXAVITQu4vr4xnSDxMaL'
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          output.innerHTML = `
+            <div class="success">
+              <h2>✅ Raw Fetch Success!</h2>
+              <p>Status: ${response.status}</p>
+              <p>Audio size: ${data.size} bytes</p>
+            </div>
+          `;
+        } else {
+          const errorText = await response.text();
+          output.innerHTML = `
+            <div class="error">
+              <h2>❌ Raw Fetch Error ${response.status}</h2>
+              <pre>${errorText}</pre>
+              <h3>Response Headers:</h3>
+              <pre>${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}</pre>
+            </div>
+          `;
+        }
+      } catch (err) {
+        output.innerHTML = `
+          <div class="error">
+            <h2>❌ Exception</h2>
+            <pre>${err.message}\n${err.stack}</pre>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>

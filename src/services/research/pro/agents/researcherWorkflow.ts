@@ -1,4 +1,6 @@
 // Minimal stub for InternetSearcher agent
+const RESEARCH_MODEL = import.meta.env.VITE_RESEARCH_MODEL || 'gpt-5.2';
+
 class InternetSearcher {
 
   constructor() {
@@ -100,7 +102,7 @@ Format as a well-structured markdown report. Include proper citations where appr
 
     try {
       const response = await chatCompletion({
-        model: 'gpt-4.1-mini-2025-04-14',
+        model: RESEARCH_MODEL,
         messages: [
           { role: 'system', content: 'You are an expert research synthesizer. Create comprehensive, well-structured research reports with proper analysis and citations.' },
           { role: 'user', content: synthesisPrompt }

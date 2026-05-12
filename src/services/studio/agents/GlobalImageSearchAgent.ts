@@ -8,6 +8,8 @@ import { logger } from '../../../utils/logger';
 import { BraveImageService } from '../assets/braveImageService';
 import { GoogleImageService } from '../assets/googleImageService';
 
+const STUDIO_IMAGE_MATCH_MODEL = import.meta.env.VITE_STUDIO_IMAGE_MATCH_MODEL || import.meta.env.VITE_STUDIO_MODEL || 'gpt-5-mini';
+
 interface ImageCandidate {
   url: string;
   title: string;
@@ -178,7 +180,7 @@ export class GlobalImageSearchAgent {
               content: promptText
             }
           ],
-          model: 'gpt-4o-mini',
+          model: STUDIO_IMAGE_MATCH_MODEL,
           temperature: 0.3,
           response_format: { type: 'json_object' }
         })

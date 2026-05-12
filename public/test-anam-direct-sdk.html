@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anam Direct SDK Debug</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, system-ui, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+
+      .container {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 32px 20px 48px;
+      }
+
+      .card {
+        background: #111827;
+        border: 1px solid #334155;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+
+      h1 {
+        margin-top: 0;
+        font-size: 28px;
+      }
+
+      p,
+      li,
+      label,
+      button,
+      input,
+      textarea,
+      pre {
+        font-size: 14px;
+      }
+
+      .warning {
+        color: #fbbf24;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-weight: 600;
+      }
+
+      input,
+      textarea {
+        background: #020617;
+        color: #e2e8f0;
+        border: 1px solid #475569;
+        border-radius: 10px;
+        padding: 12px;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 72px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 12px 18px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      button.primary {
+        background: #0095ff;
+        color: white;
+      }
+
+      button.secondary {
+        background: #334155;
+        color: white;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .video-wrap {
+        aspect-ratio: 1 / 1;
+        width: min(100%, 540px);
+        margin: 0 auto;
+        background: #020617;
+        border: 1px solid #334155;
+        border-radius: 18px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #020617;
+      }
+
+      .status {
+        margin-top: 12px;
+        font-weight: 700;
+      }
+
+      pre {
+        background: #020617;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 16px;
+        min-height: 160px;
+        max-height: 360px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <h1>Anam Direct SDK Debug</h1>
+        <p class="warning">
+          Temporary diagnostic page only. Enter your Anam API key manually here, test once,
+          then close the page. Do not use this pattern in production.
+        </p>
+        <ul>
+          <li>If this page also fails with <code>/v1/engine/session</code> 500, the problem is not Supabase token exchange.</li>
+          <li>If this page works, the problem is in the token-based flow or persona config attached to the token.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="grid">
+          <label>
+            Anam API Key
+            <input id="apiKey" type="password" placeholder="Paste your Anam API key" autocomplete="off" />
+          </label>
+          <label>
+            Avatar ID
+            <input id="avatarId" type="text" value="30fa96d0-26c4-4e55-94a0-517025942e18" />
+          </label>
+          <label>
+            Voice ID
+            <input id="voiceId" type="text" value="6bfbe25a-979d-40f3-a92b-5394170af54b" />
+          </label>
+          <label>
+            LLM ID
+            <input id="llmId" type="text" value="0934d97d-0c3a-4f33-91b0-5e136a0ef466" />
+          </label>
+        </div>
+
+        <label style="margin-top: 16px;">
+          System Prompt
+          <textarea id="systemPrompt">[STYLE] Reply in natural speech without formatting. Add pauses using '...' and very occasionally a disfluency. [PERSONALITY] You are a helpful assistant that provides search results and answers.</textarea>
+        </label>
+
+        <div class="actions">
+          <button id="startButton" class="primary">Start Direct Session</button>
+          <button id="stopButton" class="secondary" disabled>Stop Session</button>
+          <button id="clearButton" class="secondary">Clear Logs</button>
+        </div>
+
+        <div id="status" class="status">Idle</div>
+      </div>
+
+      <div class="card">
+        <div class="video-wrap">
+          <video id="anam-video" autoplay playsinline muted></video>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Logs</h2>
+        <pre id="logs"></pre>
+      </div>
+    </div>
+
+    <script type="module">
+      import { unsafe_createClientWithApiKey } from 'https://esm.sh/@anam-ai/js-sdk@4.10.0';
+
+      const elements = {
+        apiKey: document.getElementById('apiKey'),
+        avatarId: document.getElementById('avatarId'),
+        voiceId: document.getElementById('voiceId'),
+        llmId: document.getElementById('llmId'),
+        systemPrompt: document.getElementById('systemPrompt'),
+        startButton: document.getElementById('startButton'),
+        stopButton: document.getElementById('stopButton'),
+        clearButton: document.getElementById('clearButton'),
+        status: document.getElementById('status'),
+        logs: document.getElementById('logs'),
+        video: document.getElementById('anam-video'),
+      };
+
+      let anamClient = null;
+
+      function setStatus(message) {
+        elements.status.textContent = message;
+      }
+
+      function log(message, data) {
+        const line = `[${new Date().toLocaleTimeString()}] ${message}`;
+        const extra = data ? `\n${JSON.stringify(data, null, 2)}` : '';
+        elements.logs.textContent = `${line}${extra}\n\n${elements.logs.textContent}`;
+        console.log('[Anam Direct Debug]', message, data ?? '');
+      }
+
+      async function stopSession() {
+        if (!anamClient) {
+          return;
+        }
+
+        try {
+          if (typeof anamClient.stopStreaming === 'function') {
+            anamClient.stopStreaming();
+          } else if (typeof anamClient.disconnect === 'function') {
+            await anamClient.disconnect();
+          }
+          elements.video.srcObject = null;
+          log('Stopped direct session');
+        } catch (error) {
+          log('Stop failed', {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        } finally {
+          anamClient = null;
+          elements.startButton.disabled = false;
+          elements.stopButton.disabled = true;
+          setStatus('Stopped');
+        }
+      }
+
+      async function startSession() {
+        const apiKey = elements.apiKey.value.trim();
+        const avatarId = elements.avatarId.value.trim();
+        const voiceId = elements.voiceId.value.trim();
+        const llmId = elements.llmId.value.trim();
+        const systemPrompt = elements.systemPrompt.value.trim();
+
+        if (!apiKey) {
+          setStatus('Missing API key');
+          log('Missing API key');
+          return;
+        }
+
+        elements.startButton.disabled = true;
+        elements.stopButton.disabled = false;
+        setStatus('Creating direct client...');
+
+        try {
+          anamClient = unsafe_createClientWithApiKey(apiKey, {
+            name: 'CuriosAI Assistant',
+            avatarId,
+            voiceId,
+            llmId,
+            systemPrompt,
+          });
+
+          log('Created direct client', {
+            avatarId,
+            voiceId,
+            llmId,
+          });
+
+          setStatus('Starting stream...');
+          await anamClient.streamToVideoElement('anam-video');
+          setStatus('Connected');
+          log('Direct session connected successfully');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          setStatus(`Failed: ${message}`);
+          log('Direct session failed', { message, error });
+          await stopSession();
+        }
+      }
+
+      elements.startButton.addEventListener('click', startSession);
+      elements.stopButton.addEventListener('click', stopSession);
+      elements.clearButton.addEventListener('click', () => {
+        elements.logs.textContent = '';
+      });
+    </script>
+  </body>
+</html>

@@ -29,7 +29,12 @@ export default function EmailForm({ onSubmit }: EmailFormProps) {
       if (response.success) {
         onSubmit(email);
       } else {
-        setError(response.error || 'Failed to send magic link');
+        const errorMessage = typeof response.error === 'string'
+          ? response.error
+          : (response.error && typeof response.error === 'object' && 'message' in response.error && typeof response.error.message === 'string'
+              ? response.error.message
+              : 'Failed to send magic link');
+        setError(errorMessage);
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred');

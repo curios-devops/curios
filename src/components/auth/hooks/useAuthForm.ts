@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { z } from 'zod';
 import { authSchema } from '../validation/authSchemas';
 import type { AuthFormData, AuthFormErrors } from '../types/auth';
@@ -16,9 +17,12 @@ export function useAuthForm() {
       return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const formattedErrors = {};
+        const formattedErrors: AuthFormErrors = {};
         error.errors.forEach((err) => {
-          formattedErrors[err.path[0]] = err.message;
+          const field = err.path[0];
+          if (field === 'email' || field === 'password') {
+            formattedErrors[field] = err.message;
+          }
         });
         setErrors(formattedErrors);
       }
@@ -26,11 +30,13 @@ export function useAuthForm() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+    if (name === 'email' || name === 'password') {
+      if (errors[name]) {
+        setErrors(prev => ({ ...prev, [name]: undefined }));
+      }
     }
   };
 

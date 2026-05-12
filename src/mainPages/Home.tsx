@@ -57,6 +57,8 @@ export default function Home() {
     switch (mode) {
       case 'search':
         return 'Always grounded in trusted sources.';
+      case 'fastsearch':
+        return 'Lightning-fast answers with citations.';
       case 'stories':
         return 'Based on verified knowledge sources.';
       case 'cinematic':

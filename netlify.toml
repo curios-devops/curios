@@ -12,6 +12,8 @@
 [dev]
   functions = "netlify/functions"
   functionsPort = 8888
+  # Don't auto-open browser (Vite handles it)
+  autoLaunch = false
 
 # Ensure LinkedIn sees correct HTML content type for proxied Supabase function
 [[headers]]

@@ -1,0 +1,11 @@
+{
+  "instances": [
+    {
+      "prompt": "Tell me a short story about a robot learning to paint."
+    }
+  ],
+  "parameters": {
+    "temperature": 0.7,
+    "maxOutputTokens": 200
+  }
+}

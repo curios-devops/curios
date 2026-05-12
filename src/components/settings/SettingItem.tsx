@@ -12,7 +12,7 @@ export default function SettingItem({ icon: Icon, title, description, action }: 
   return (
     <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg border border-gray-800/50">
       <div className="flex items-start gap-4">
-        <Icon className="text-[#007BFF] mt-1" size={20} />
+        <Icon className="mt-1" size={20} style={{ color: 'var(--accent-primary)' }} />
         <div>
           <h3 className="text-white font-medium mb-1">{title}</h3>
           <p className="text-gray-400 text-sm">{description}</p>

@@ -3,6 +3,8 @@ import { AgentResponse } from '../../../../commonApp/types';
 import { WebSearchPlan } from '../../types';
 import { logger } from '../../../../utils/logger';
 
+const RESEARCH_MODEL = import.meta.env.VITE_RESEARCH_MODEL || 'gpt-5.2';
+
 export class PlannerAgent extends BaseAgent {
   constructor() {
     super(
@@ -23,7 +25,7 @@ Output a JSON object with an array of 'searches', each containing:
       const result = await super.safeOpenAICall(
         input,
         {
-          model: 'gpt-4.1-mini-2025-04-14',
+          model: RESEARCH_MODEL,
           temperature: 0.3,
           max_completion_tokens: 1200,
           response_format: { type: 'json_object' },

@@ -4,7 +4,6 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
 };
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 console.log("Pexels Search function up and running!")
 
@@ -52,7 +51,7 @@ Deno.serve(async (req: Request) => {
     const params = new URLSearchParams({
       query,
       per_page: perPage.toString(),
-      ...(type === 'photos' && orientation ? { orientation } : {})
+      orientation: orientation, // Both videos and photos support orientation
     });
 
     const pexelsUrl = `${baseUrl}?${params}`;

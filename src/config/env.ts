@@ -20,6 +20,8 @@ const optionalEnvVars = {
   VITE_STRIPE_MONTHLY_PRICE_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_MONTHLY_PRICE_ID : '') || '',
   VITE_STRIPE_YEARLY_PRICE_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_YEARLY_PRICE_ID : '') || '',
   VITE_GOOGLE_AI_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_GOOGLE_AI_API_KEY : '') || '',
+  VITE_PEXELS_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_PEXELS_API_KEY : '') || '',
+  VITE_PIXABAY_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_PIXABAY_API_KEY : '') || '',
   VITE_ANAM_AVATAR_CORA_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_CORA_ID : '') || '',
   VITE_ANAM_AVATAR_LIZ_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_LIZ_ID : '') || '',
   VITE_ANAM_AVATAR_ASTRID_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_ASTRID_ID : '') || '',
@@ -81,5 +83,11 @@ export const env = {
   },
   elevenLabs: {
     sttModelId: optionalEnvVars.VITE_ELEVENLABS_STT_MODEL_ID || 'scribe_v2_realtime',
+  },
+  pexels: {
+    apiKey: optionalEnvVars.VITE_PEXELS_API_KEY,
+  },
+  pixabay: {
+    apiKey: optionalEnvVars.VITE_PIXABAY_API_KEY,
   }
 } as const;

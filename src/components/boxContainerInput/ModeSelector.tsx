@@ -1,8 +1,8 @@
-import { BookOpen, Clapperboard, UserCircle } from 'lucide-react';
+import { BookOpen, Clapperboard, UserCircle, Zap } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
-export type ModeType = 'search' | 'stories' | 'cinematic' | 'avatar';
+export type ModeType = 'search' | 'stories' | 'cinematic' | 'avatar' | 'fastsearch';
 
 interface Mode {
   id: ModeType;
@@ -12,6 +12,7 @@ interface Mode {
 
 // Note: 'search' is not in this list - it's the default mode when nothing is selected
 const modes: Mode[] = [
+  { id: 'fastsearch', label: 'fastSearch', icon: Zap },
   { id: 'stories', label: 'stories', icon: BookOpen },
   { id: 'cinematic', label: 'cinematic', icon: Clapperboard },
   { id: 'avatar', label: 'avatar', icon: UserCircle }

@@ -49,7 +49,7 @@ export const supabase = createClient(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'implicit',
+      flowType: 'pkce',
       storage: typeof window !== 'undefined' ? localStorage : undefined,
       // Suppress time skew warnings - these are often false positives from client clock drift
       // The SDK will still handle token refresh properly

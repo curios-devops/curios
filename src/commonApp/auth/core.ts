@@ -13,13 +13,14 @@ export async function signInWithMagicLink(email: string): Promise<AuthResponse> 
     });
 
     if (error) throw error;
-    return { user: undefined, session: undefined, error: undefined };
+    return { success: true, user: undefined, session: undefined, error: undefined };
   } catch (error) {
     console.error('Magic link error:', error);
     return {
+      success: false,
       user: undefined,
       session: undefined,
-      error: error instanceof Error ? { message: error.message } : { message: 'Failed to send magic link' }
+      error: error instanceof Error ? error.message : 'Failed to send magic link'
     };
   }
 }
@@ -36,13 +37,14 @@ export async function signUpWithMagicLink(email: string): Promise<AuthResponse> 
     });
 
     if (error) throw error;
-    return { user: undefined, session: undefined, error: undefined };
+    return { success: true, user: undefined, session: undefined, error: undefined };
   } catch (error) {
     console.error('Magic link (signup) error:', error);
     return {
+      success: false,
       user: undefined,
       session: undefined,
-      error: error instanceof Error ? { message: error.message } : { message: 'Failed to send magic link' }
+      error: error instanceof Error ? error.message : 'Failed to send magic link'
     };
   }
 }

@@ -9,21 +9,63 @@ interface ElevenLabsRealtimeOptions {
   previousText?: string;
 }
 
-function blobToBase64(blob: Blob): Promise<string> {
+function blobToArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
-      const result = reader.result;
-      if (typeof result !== 'string') {
-        reject(new Error('Failed to convert audio blob to base64'));
+      if (!(reader.result instanceof ArrayBuffer)) {
+        reject(new Error('Failed to read audio blob as ArrayBuffer'));
         return;
       }
-      const commaIndex = result.indexOf(',');
-      resolve(commaIndex >= 0 ? result.substring(commaIndex + 1) : result);
+      resolve(reader.result);
     };
-    reader.onerror = () => reject(new Error('FileReader failed while encoding audio'));
-    reader.readAsDataURL(blob);
+    reader.onerror = () => reject(new Error('FileReader failed while reading audio blob'));
+    reader.readAsArrayBuffer(blob);
   });
+}
+
+function floatTo16BitPCM(input: Float32Array): Int16Array {
+  const output = new Int16Array(input.length);
+  for (let index = 0; index < input.length; index += 1) {
+    const sample = Math.max(-1, Math.min(1, input[index]));
+    output[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+  }
+  return output;
+}
+
+function int16ToBase64(samples: Int16Array): string {
+  const bytes = new Uint8Array(samples.buffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function blobToPcm16Base64(blob: Blob, targetSampleRate = 16000): Promise<string> {
+  const arrayBuffer = await blobToArrayBuffer(blob);
+  const audioContext = new AudioContext();
+
+  try {
+    const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+
+    const sourceData = decodedBuffer.getChannelData(0);
+    const sourceSampleRate = decodedBuffer.sampleRate;
+    const ratio = sourceSampleRate / targetSampleRate;
+    const targetLength = Math.max(1, Math.floor(sourceData.length / ratio));
+
+    const resampled = new Float32Array(targetLength);
+    for (let index = 0; index < targetLength; index += 1) {
+      const sourceIndex = Math.min(sourceData.length - 1, Math.floor(index * ratio));
+      resampled[index] = sourceData[sourceIndex];
+    }
+
+    const pcm16 = floatTo16BitPCM(resampled);
+    return int16ToBase64(pcm16);
+  } finally {
+    await audioContext.close();
+  }
 }
 
 async function getRealtimeCredential(): Promise<string | null> {
@@ -77,7 +119,7 @@ export async function transcribeWithElevenLabsRealtime(
 
   const wsUrl = `${ELEVENLABS_REALTIME_URL}?${query.toString()}`;
 
-  const audioBase64 = await blobToBase64(audioBlob);
+  const audioBase64 = await blobToPcm16Base64(audioBlob, 16000);
 
   logger.info('[ElevenLabs STT] Opening realtime websocket', {
     modelId,

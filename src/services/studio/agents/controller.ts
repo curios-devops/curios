@@ -1,6 +1,6 @@
-import type { Artifact, ArtifactStep } from '../../../../commonApp/types/index.ts';
-import { logger } from '../../../../utils/logger.ts';
-import { ServiceHealthMonitor } from '../../../../commonService/utils/serviceHealth.ts';
+import type { Artifact, ArtifactStep } from '../../../commonApp/types/index.ts';
+import { logger } from '../../../utils/logger.ts';
+import { ServiceHealthMonitor } from '../../../commonService/utils/serviceHealth.ts';
 import { LabPlannerAgent } from './plannerAgent.ts';
 import { LabResearcherAgent } from './researcherAgent.ts';
 import { LabWriterAgent } from './writerAgent.ts';

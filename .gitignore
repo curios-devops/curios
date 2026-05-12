@@ -37,3 +37,9 @@ CLAUDE.local.md
 
 # Studio video outputs
 public/studio-videos/*.mp4
+
+# Vertex AI Service Account Keys (NEVER commit these!)
+vertex-ai-veo-key.json
+*-veo-key.json
+*-sa-key.json
+*.gcp.json

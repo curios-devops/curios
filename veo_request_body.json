@@ -1,0 +1,11 @@
+{
+  "instances": [
+    {
+      "prompt": "A majestic golden eagle soaring over a snow-capped mountain range at sunrise. Cinematic style, highly detailed."
+    }
+  ],
+  "parameters": {
+    "video_length_seconds": 4,
+    "seed": 1234
+  }
+}

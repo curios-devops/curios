@@ -1,4 +1,4 @@
-import React from 'react';
+import type { ChangeEvent } from 'react';
 
 interface FormInputProps {
   id: string;
@@ -7,8 +7,9 @@ interface FormInputProps {
   label: string;
   value: string;
   error?: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 export default function FormInput({
@@ -19,7 +20,8 @@ export default function FormInput({
   value,
   error,
   onChange,
-  placeholder
+  placeholder,
+  disabled = false,
 }: FormInputProps) {
   return (
     <div>
@@ -35,6 +37,7 @@ export default function FormInput({
         name={name}
         value={value}
         onChange={onChange}
+        disabled={disabled}
         className={`w-full bg-[#222222] border ${
           error ? 'border-red-500' : 'border-gray-700'
         } rounded-lg p-3 text-white focus:outline-none`}

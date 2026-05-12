@@ -14,14 +14,14 @@ import SignUpModal from './SignUpModal.tsx';
 
 interface SignInModalProps {
   isOpen: boolean;
-  currentLanguage: Language; // Add currentLanguage prop
+  currentLanguage?: Language;
   onClose: () => void;
   context?: 'default' | 'pro';
   title?: string;
   subtitle?: string;
 }
 
-export default function SignInModal({ isOpen, onClose, context = 'default', title, subtitle }: SignInModalProps) {
+export default function SignInModal({ isOpen, currentLanguage: _currentLanguage, onClose, context = 'default', title, subtitle }: SignInModalProps) {
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
   const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export default function SignInModal({ isOpen, onClose, context = 'default', titl
   }
 
   if (showSignUp) {
-    return <SignUpModal isOpen={true} onClose={() => setShowSignUp(false)} currentLanguage={{ code: 'en', name: 'English', flag: '🇺🇸' }} />;
+    return <SignUpModal isOpen={true} onClose={() => setShowSignUp(false)} context={context} />;
   }
 
   return (

@@ -1,4 +1,4 @@
-import { Clock, Search, Image, Video, Newspaper, ArrowLeft } from 'lucide-react';
+import { Clock, Search, Image, Video, Newspaper, ArrowLeft, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ShareMenu from '../ShareMenu';
 
@@ -26,6 +26,7 @@ export default function TopBar({
   const navigate = useNavigate();
   
   const tabs = [
+    { id: 'avatar', label: 'Avatar', icon: User },
     { id: 'answer', label: 'Overview', icon: Search },
     { id: 'images', label: 'Images', icon: Image },
     { id: 'videos', label: 'Videos', icon: Video },

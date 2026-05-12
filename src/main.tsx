@@ -9,6 +9,8 @@ import './index.css';
 
 // Lazy load page components from their respective service directories
 const SearchResults = lazy(() => import('./services/search/regular/pages/SearchResults.tsx'));
+const FastSearchResults = lazy(() => import('./services/fast-search/ui/FastSearchResults.tsx'));
+const AvatarSearchResults = lazy(() => import('./services/search/avatar/pages/AvatarSearchResults.tsx'));
 const DeepResearchResults = lazy(() => import('./services/research/pro/pages/ResearchResults.tsx'));
 const ProSearchResults = lazy(() => import('./services/search/pro/pages/ProSearchResults.tsx'));
 const ProSearchTest = lazy(() => import('./services/search/pro/pages/ProSearchTest.tsx'));
@@ -17,11 +19,13 @@ const TavilySearchTest = lazy(() => import('./services/research/regular/pages/Ta
 const ResearcherResults = lazy(() => import('./services/research/pro/pages/ResearcherResults.tsx'));
 // const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx')); // Replaced by Studio
 const StudioResults = lazy(() => import('./services/studio/pages/StudioResults.tsx'));
+const CinematicResults = lazy(() => import('./services/cinematic/pages/CinematicResults.tsx'));
 const Settings = lazy(() => import('./mainPages/Settings.tsx'));
 const TestPage = lazy(() => import('./pages/test.tsx'));
 const ImageTest = lazy(() => import('./pages/ImageTest.tsx'));
 const SerpApiTest = lazy(() => import('./pages/SerpApiTest'));
 const ReverseImageVsTest = lazy(() => import('./pages/ReverseImageVsTest'));
+const AnamAvatarTest = lazy(() => import('./services/search/avatar/components/AnamAvatarTest.tsx'));
 // Phase6TestPage removed - obsolete chunk rendering test
 const Policies = lazy(() => import('./mainPages/Policies.tsx'));
 const AuthCallback = lazy(() => import('./components/auth/AuthCallback.tsx'));
@@ -52,6 +56,8 @@ const router = createBrowserRouter(
       children: [
         { path: '/', element: <Home /> },
         { path: '/search', element: <LazyPageWrapper><SearchResults /></LazyPageWrapper> },
+        { path: '/fast-search', element: <LazyPageWrapper><FastSearchResults query="" answer="" sources={[]} images={[]} videos={[]} followUps={[]} /></LazyPageWrapper> },
+        { path: '/avatar-search', element: <LazyPageWrapper><AvatarSearchResults /></LazyPageWrapper> },
         { path: '/pro-search', element: <LazyPageWrapper><ProSearchResults /></LazyPageWrapper> },
         { path: '/pro-search-test', element: <LazyPageWrapper><ProSearchTest /></LazyPageWrapper> },
         { path: '/deep-research', element: <LazyPageWrapper><DeepResearchResults /></LazyPageWrapper> },
@@ -62,8 +68,9 @@ const router = createBrowserRouter(
         // Labs routes replaced by Studio
         // { path: '/labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
         // { path: '/pro-labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
-        { path: '/labs-results', element: <LazyPageWrapper><StudioResults /></LazyPageWrapper> },
-        { path: '/pro-labs-results', element: <LazyPageWrapper><StudioResults /></LazyPageWrapper> },
+        { path: '/labs-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
+        { path: '/pro-labs-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
+        { path: '/cinematic-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
         { path: '/studio/results', element: <LazyPageWrapper><StudioResults /></LazyPageWrapper> },
         { path: '/settings', element: <LazyPageWrapper><Settings /></LazyPageWrapper> },
         { path: '/policies', element: <LazyPageWrapper><Policies /></LazyPageWrapper> },
@@ -73,6 +80,7 @@ const router = createBrowserRouter(
     ,{ path: '/image-test', element: <LazyPageWrapper><ImageTest /></LazyPageWrapper> }
     ,{ path: '/serp-test', element: <LazyPageWrapper><SerpApiTest /></LazyPageWrapper> }
     ,{ path: '/reverse-image-vs', element: <LazyPageWrapper><ReverseImageVsTest /></LazyPageWrapper> }
+    ,{ path: '/anam-test', element: <LazyPageWrapper><AnamAvatarTest /></LazyPageWrapper> }
     // phase6-test route removed - obsolete chunk rendering test
       ]
     }
@@ -238,7 +246,12 @@ const root = createRoot(rootElement);
 root.render(
   <ErrorBoundary>
     <AuthProvider>
-      <RouterProvider router={router} />
+      <RouterProvider
+        router={router}
+        future={{
+          v7_startTransition: true,
+        }}
+      />
     </AuthProvider>
   </ErrorBoundary>
 );

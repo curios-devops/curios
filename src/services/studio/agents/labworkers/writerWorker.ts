@@ -1,10 +1,13 @@
-import { Artifact, ArtifactStep } from '../../../../../commonApp/types/index';
+import { Artifact, ArtifactStep } from '../../../../commonApp/types/index';
 
 
 const SUPABASE_EDGE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
   ? import.meta.env.VITE_OPENAI_API_URL
   : 'VITE_OPENAI_API_URL';
 const SUPABASE_ANON_KEY = typeof window === 'undefined' ? process.env.VITE_SUPABASE_ANON_KEY : import.meta.env.VITE_SUPABASE_ANON_KEY;
+const STUDIO_MODEL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_STUDIO_MODEL)
+  ? import.meta.env.VITE_STUDIO_MODEL
+  : 'gpt-5-mini';
 
 async function chatCompletion({ prompt, research, title }: { prompt: string; research: string; title?: string }): Promise<string> {
   try {
@@ -20,7 +23,7 @@ async function chatCompletion({ prompt, research, title }: { prompt: string; res
       },
       body: JSON.stringify({
         prompt: JSON.stringify({
-          model: 'gpt-4.1-mini-2025-04-14',
+          model: STUDIO_MODEL,
           messages,
           temperature: 0.7,
           max_output_tokens: 1200,
@@ -44,7 +47,7 @@ async function chatCompletion({ prompt, research, title }: { prompt: string; res
 
 export async function writerWorker(artifact: Artifact, prompt: string, updateArtifact: (partial: Artifact) => void): Promise<Artifact> {
   console.log('📝 WriterWorker: Starting with prompt:', prompt);
-  console.log('📝 WriterWorker: Artifact steps:', artifact.steps.map(s => ({ name: s.name, status: s.status, hasResult: !!s.result })));
+  console.log('📝 WriterWorker: Artifact steps:', artifact.steps.map((s: ArtifactStep) => ({ name: s.name, status: s.status, hasResult: !!s.result })));
   
   // Add to thinkingLog with minimal Markdown formatting
   const thinkingLog = artifact.thinkingLog ? [...artifact.thinkingLog] : [];
@@ -59,8 +62,8 @@ export async function writerWorker(artifact: Artifact, prompt: string, updateArt
   updateArtifact({
     ...artifact,
     // Mark all steps as in_progress for writing, since step names may vary
-    steps: artifact.steps.map((s, idx) =>
-      idx === artifact.steps.findIndex(st => st.status === 'pending' || st.status === 'in_progress')
+    steps: artifact.steps.map((s: ArtifactStep, idx: number) =>
+      idx === artifact.steps.findIndex((st: ArtifactStep) => st.status === 'pending' || st.status === 'in_progress')
         ? { ...s, status: 'in_progress' as ArtifactStep['status'], agentName: 'Writer', agentStatus: 'is working', thinkingSince: Date.now() }
         : s
     ),
@@ -68,7 +71,7 @@ export async function writerWorker(artifact: Artifact, prompt: string, updateArt
   });
 
   // Use the result of the last completed step before writing as research/background
-  const writingStepIdx = artifact.steps.findIndex(st => st.status === 'in_progress');
+  const writingStepIdx = artifact.steps.findIndex((st: ArtifactStep) => st.status === 'in_progress');
   let research = '';
   if (writingStepIdx > 0) {
     // Find the last completed step before the writing step
@@ -95,7 +98,7 @@ export async function writerWorker(artifact: Artifact, prompt: string, updateArt
   const updatedArtifact = {
     ...artifact,
     content: markdown,
-    steps: artifact.steps.map((s, idx) =>
+    steps: artifact.steps.map((s: ArtifactStep, idx: number) =>
       idx === writingStepIdx
         ? { ...s, status: 'complete' as ArtifactStep['status'], result: markdown, agentStatus: undefined, thinkingSince: undefined }
         : s

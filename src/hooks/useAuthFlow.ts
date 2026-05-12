@@ -16,7 +16,12 @@ export function useAuthFlow() {
       const response = await authFn(email);
 
       if (!response.success) {
-        throw new Error(response.error);
+        const errorMessage = typeof response.error === 'string'
+          ? response.error
+          : (response.error && typeof response.error === 'object' && 'message' in response.error && typeof response.error.message === 'string'
+              ? response.error.message
+              : 'Authentication failed');
+        throw new Error(errorMessage);
       }
 
       setVerificationEmail(email);

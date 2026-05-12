@@ -1,4 +1,3 @@
-import React from 'react';
 import { Session } from '@supabase/supabase-js';
 import AuthButtonGroup from './buttons/AuthButtonGroup';
 import UserMenu from './UserMenu';

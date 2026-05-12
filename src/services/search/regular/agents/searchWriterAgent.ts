@@ -9,9 +9,25 @@ import { logger } from '../../../../utils/logger.ts';
 // Callback type for streaming content chunks
 export type StreamingCallback = (chunk: string, isComplete: boolean) => void;
 
+const REGULAR_SEARCH_MODEL = import.meta.env.VITE_REGULAR_SEARCH_MODEL || 'gpt-5-mini';
+const REGULAR_IMAGE_SEARCH_MODEL = import.meta.env.VITE_REGULAR_IMAGE_SEARCH_MODEL || REGULAR_SEARCH_MODEL;
+const REGULAR_SEARCH_FALLBACK_MODEL = import.meta.env.VITE_REGULAR_SEARCH_FALLBACK_MODEL || 'gpt-5';
+
+function shouldFallbackToGpt5(status: number, errorText: string, model: string): boolean {
+  if (!/^gpt-5-mini(?:-|_|$)/i.test(model)) return false;
+  if (status !== 400) return false;
+
+  const normalized = (errorText || '').toLowerCase();
+  return normalized.includes('invalid model')
+    || normalized.includes('unsupported')
+    || normalized.includes('max_tokens')
+    || normalized.includes('max completion tokens')
+    || normalized.includes('temperature');
+}
+
 export class SearchWriterAgent {
-  private readonly defaultModel: string = 'gpt-4.1-mini-2025-04-14'; // GPT-4.1 mini model
-  private readonly imageSearchModel: string = 'gpt-4.1-mini-2025-04-14'; // Same model for reverse image searches
+  private readonly defaultModel: string = REGULAR_SEARCH_MODEL;
+  private readonly imageSearchModel: string = REGULAR_IMAGE_SEARCH_MODEL;
 
   constructor() {
     logger.info('SearchWriterAgent: Initialized');
@@ -54,38 +70,67 @@ export class SearchWriterAgent {
 
     logger.debug('Calling OpenAI via Supabase', { model, messageCount: messages.length });
 
-    // Prepare payload
-    const payload = {
+    const buildPayload = (modelToUse: string) => ({
       prompt: JSON.stringify({
         messages,
-        model,
+        model: modelToUse,
         response_format: { type: 'json_object' },
         temperature: 0.7,
         max_output_tokens: 1200
       })
-    };
+    });
 
     // Simple timeout with AbortController
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-      const response = await fetch(supabaseEdgeUrl, {
+      let response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseAnonKey}`
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(buildPayload(model)),
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('OpenAI API error', { status: response.status, error: errorText.substring(0, 200) });
-        throw new Error(`API error: ${response.status}`);
+        const firstErrorText = await response.text();
+
+        if (shouldFallbackToGpt5(response.status, firstErrorText, model)) {
+          logger.warn('Primary model failed, retrying with fallback model', {
+            primaryModel: model,
+            fallbackModel: REGULAR_SEARCH_FALLBACK_MODEL,
+            status: response.status,
+          });
+
+          response = await fetch(supabaseEdgeUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseAnonKey}`
+            },
+            body: JSON.stringify(buildPayload(REGULAR_SEARCH_FALLBACK_MODEL)),
+            signal: controller.signal
+          });
+
+          if (!response.ok) {
+            const secondErrorText = await response.text();
+            logger.error('OpenAI API error (fallback failed)', {
+              status: response.status,
+              error: secondErrorText.substring(0, 200),
+              primaryModel: model,
+              fallbackModel: REGULAR_SEARCH_FALLBACK_MODEL,
+            });
+            throw new Error(`API error: ${response.status}`);
+          }
+        } else {
+          logger.error('OpenAI API error', { status: response.status, error: firstErrorText.substring(0, 200) });
+          throw new Error(`API error: ${response.status}`);
+        }
       }
 
       const data = await response.json();
@@ -148,16 +193,15 @@ export class SearchWriterAgent {
     console.log('🔄 [WRITER STREAMING] Starting streaming call to OpenAI', { model, messageCount: messages.length });
     logger.debug('Calling OpenAI via Supabase (streaming)', { model, messageCount: messages.length });
 
-    // Prepare payload with streaming enabled
-    const payload = {
+    const buildPayload = (modelToUse: string) => ({
       prompt: JSON.stringify({
         messages,
-        model,
+        model: modelToUse,
         temperature: 0.7,
         max_output_tokens: 1200
       }),
       stream: true
-    };
+    });
 
     console.log('🔄 [WRITER STREAMING] Payload prepared with stream: true');
 
@@ -166,13 +210,13 @@ export class SearchWriterAgent {
 
     try {
       console.log('🔄 [WRITER STREAMING] Fetching from edge function...');
-      const response = await fetch(supabaseEdgeUrl, {
+      let response = await fetch(supabaseEdgeUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseAnonKey}`
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(buildPayload(model)),
         signal: controller.signal
       });
 
@@ -196,9 +240,39 @@ export class SearchWriterAgent {
         console.log('🔍 [WRITER STREAMING] Not 429, continuing...');
 
         if (!response.ok) {
-          const errorText = await response.text();
-          logger.error('OpenAI streaming API error', { status: response.status, error: errorText.substring(0, 200) });
-          throw new Error(`API error: ${response.status}`);
+          const firstErrorText = await response.text();
+
+          if (shouldFallbackToGpt5(response.status, firstErrorText, model)) {
+            logger.warn('Primary streaming model failed, retrying with fallback model', {
+              primaryModel: model,
+              fallbackModel: REGULAR_SEARCH_FALLBACK_MODEL,
+              status: response.status,
+            });
+
+            response = await fetch(supabaseEdgeUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseAnonKey}`
+              },
+              body: JSON.stringify(buildPayload(REGULAR_SEARCH_FALLBACK_MODEL)),
+              signal: controller.signal
+            });
+
+            if (!response.ok) {
+              const secondErrorText = await response.text();
+              logger.error('OpenAI streaming API error (fallback failed)', {
+                status: response.status,
+                error: secondErrorText.substring(0, 200),
+                primaryModel: model,
+                fallbackModel: REGULAR_SEARCH_FALLBACK_MODEL,
+              });
+              throw new Error(`API error: ${response.status}`);
+            }
+          } else {
+            logger.error('OpenAI streaming API error', { status: response.status, error: firstErrorText.substring(0, 200) });
+            throw new Error(`API error: ${response.status}`);
+          }
         }
 
         if (!response.body) {

@@ -8,14 +8,18 @@ import { useLanguage } from '../../contexts/LanguageContext.tsx';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import SignInModal from './SignInModal.tsx';
+import type { Language } from '../../types/language.ts';
 
 interface SignUpModalProps {
   isOpen: boolean;
   onClose: () => void;
+  context?: 'default' | 'pro';
+  currentLanguage?: Language;
 }
 
-export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
+export default function SignUpModal({ isOpen, onClose, context = 'default', currentLanguage: currentLanguageProp }: SignUpModalProps) {
   const { currentLanguage } = useLanguage();
+  const selectedLanguage = currentLanguageProp ?? currentLanguage;
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
 
@@ -31,7 +35,7 @@ export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
     return <VerificationModal email={verificationEmail} onClose={onClose} />;
   }
   if (showSignIn) {
-    return <SignInModal isOpen={true} onClose={() => { setShowSignIn(false); onClose(); }} currentLanguage={currentLanguage} />;
+    return <SignInModal isOpen={true} onClose={() => { setShowSignIn(false); onClose(); }} currentLanguage={selectedLanguage} context={context} />;
   }
 
   return (

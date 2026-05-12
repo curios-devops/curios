@@ -82,7 +82,10 @@ export async function signOut(): Promise<Partial<AuthResponse>> {
               message: error.message,
             }
           : {
-              message: error && typeof error === 'object' && 'message' in error ? error.message : 'Failed to sign out',
+              message:
+                error && typeof error === 'object' && 'message' in error
+                  ? String(error.message)
+                  : 'Failed to sign out',
             },
     };
   }

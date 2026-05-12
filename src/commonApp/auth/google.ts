@@ -1,5 +1,4 @@
 import { supabase } from "../../lib/supabase.ts";
-import type { UserType } from "../../types/index.ts";
 import type { Provider } from "@supabase/supabase-js";
 
 interface AuthResult { success: boolean; error?: string; }

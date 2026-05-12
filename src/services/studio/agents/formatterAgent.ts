@@ -1,5 +1,5 @@
-import { AgentResponse, Artifact } from '../../../../commonApp/types/index.ts';
-import { logger } from '../../../../utils/logger.ts';
+import { AgentResponse, Artifact } from '../../../commonApp/types/index.ts';
+import { logger } from '../../../utils/logger.ts';
 
 interface FormatterResponse {
   content: string;

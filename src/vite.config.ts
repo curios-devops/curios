@@ -1,5 +1,8 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import type { NextFunction } from 'connect';
+import type { IncomingMessage, ServerResponse } from 'http';
+import type { ViteDevServer } from 'vite';
 
 export default defineConfig(({ mode }) => {
   // Load env file based on mode
@@ -32,8 +35,8 @@ export default defineConfig(({ mode }) => {
       middleware: [
         {
           name: 'cors-headers',
-          configureServer(server) {
-            server.middlewares.use((_req, res, next) => {
+          configureServer(server: ViteDevServer) {
+            server.middlewares.use((_req: IncomingMessage, res: ServerResponse, next: NextFunction) => {
               res.setHeader('Access-Control-Allow-Origin', '*');
               res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
               res.setHeader('Access-Control-Allow-Headers', 'X-RapidAPI-Key, X-RapidAPI-Host, Content-Type');

@@ -257,7 +257,18 @@ verify_jwt = false
 [functions.fetch-openai]
 enabled = true
 verify_jwt = false
-...existing code...
+
+[functions.elevenlabs-tts]
+enabled = true
+verify_jwt = false
+
+[functions.anam-avatar]
+enabled = true
+verify_jwt = false
+
+[functions.get-anam-token]
+enabled = true
+verify_jwt = false
 
 [analytics]
 enabled = true

@@ -1,4 +1,4 @@
-import { Artifact, ArtifactStep } from '../../../../../commonApp/types/index';
+import { Artifact, ArtifactStep } from '../../../../commonApp/types/index';
 
 export async function gameWorker(
   artifact: Artifact,

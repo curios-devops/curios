@@ -1,6 +1,6 @@
-import { AgentResponse } from '../../../../commonApp/types/index.ts';
-import { logger } from '../../../../utils/logger.ts';
-import { searchWithTavily } from '../../../../commonService/searchTools/tavilyService.ts';
+import { AgentResponse } from '../../../commonApp/types/index.ts';
+import { logger } from '../../../utils/logger.ts';
+import { searchWithTavily } from '../../../commonService/searchTools/tavilyService.ts';
 
 interface ResearchResponse {
   content: string;

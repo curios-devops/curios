@@ -24,8 +24,6 @@ export interface BingReverseImageSearchResults {
  */
 export async function bingReverseImageSearchTool(imageUrl: string, query?: string): Promise<BingReverseImageSearchResults> {
   logger.info('Bing Reverse Image Search Tool: Starting', { imageUrl, query: query || 'none' });
-  console.log('🔍 [BING REVERSE IMAGE TOOL] Starting search for:', imageUrl, 'with query:', query || 'none');
-  console.log('🔍 [BING REVERSE IMAGE TOOL] Edge Function URL:', BING_SERP_EDGE_FUNCTION_URL);
 
   // Get Supabase anon key for authentication
   const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -35,18 +33,16 @@ export async function bingReverseImageSearchTool(imageUrl: string, query?: strin
 
   if (!imageUrl || !imageUrl.startsWith('http')) {
     const error = 'Invalid image URL - must be a public HTTP(S) URL';
-    console.error('❌ [BING REVERSE IMAGE TOOL]', error);
+    logger.error('Bing Reverse Image Search Tool: Invalid input', { error, imageUrl });
     throw new Error(error);
   }
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.log('⏰ [BING REVERSE IMAGE TOOL] Timeout triggered after', SEARCH_TIMEOUT, 'ms');
       controller.abort();
     }, SEARCH_TIMEOUT);
 
-    console.log('🔍 [BING REVERSE IMAGE TOOL] Calling Supabase Edge Function...');
     const response = await fetch(BING_SERP_EDGE_FUNCTION_URL, {
       method: 'POST',
       headers: {
@@ -61,11 +57,9 @@ export async function bingReverseImageSearchTool(imageUrl: string, query?: strin
     });
 
     clearTimeout(timeoutId);
-    console.log('🔍 [BING REVERSE IMAGE TOOL] Response received:', response.status, response.statusText);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ [BING REVERSE IMAGE TOOL] HTTP error:', response.status, errorText);
       logger.error('Bing SERP API reverse image search error', { 
         status: response.status, 
         error: errorText,
@@ -74,7 +68,6 @@ export async function bingReverseImageSearchTool(imageUrl: string, query?: strin
       throw new Error(`Bing reverse image search failed: ${response.status} - ${errorText}`);
     }
 
-    console.log('🔍 [BING REVERSE IMAGE TOOL] Parsing JSON response...');
     const edgeResponse = await response.json();
     
     if (!edgeResponse.success || !edgeResponse.data) {
@@ -83,11 +76,6 @@ export async function bingReverseImageSearchTool(imageUrl: string, query?: strin
     
     const data = edgeResponse.data;
     
-    console.log('🔍 [BING REVERSE IMAGE TOOL] Raw API response keys:', Object.keys(data));
-    console.log('🔍 [BING REVERSE IMAGE TOOL] Web results count:', data.web?.length || 0);
-    console.log('🔍 [BING REVERSE IMAGE TOOL] Images count:', data.images?.length || 0);
-    console.log('🔍 [BING REVERSE IMAGE TOOL] Total matches:', data.totalMatches || 0);
-
     // Edge Function already transformed the data
     const finalResult = {
       web: data.web || [],
@@ -102,24 +90,15 @@ export async function bingReverseImageSearchTool(imageUrl: string, query?: strin
       totalMatches: finalResult.totalMatches
     });
 
-    console.log('🔍 [BING REVERSE IMAGE TOOL] Final results:', {
-      web: finalResult.web.length,
-      images: finalResult.images.length,
-      totalMatches: finalResult.totalMatches,
-      firstImage: finalResult.images[0] || 'NO IMAGES'
-    });
-
     return finalResult;
 
   } catch (err: any) {
     if (err.name === 'AbortError') {
       const timeoutError = `Bing reverse image search timeout after ${SEARCH_TIMEOUT}ms`;
-      console.error('❌ [BING REVERSE IMAGE TOOL] Timeout:', timeoutError);
       logger.error('Bing reverse image search timeout', { timeout: SEARCH_TIMEOUT, imageUrl });
       throw new Error(timeoutError);
     }
-    
-    console.error('❌ [BING REVERSE IMAGE TOOL] Error:', err.message, err);
+
     logger.error('Bing Reverse Image Search Tool: Error', { 
       error: err.message, 
       stack: err.stack,

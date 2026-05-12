@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import type { FormEvent } from 'react';
+import { useState } from 'react';
 import { useAuthForm } from './hooks/useAuthForm';
 import FormInput from './components/FormInput';
 import type { AuthFormProps } from './types/auth';
@@ -9,7 +10,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 

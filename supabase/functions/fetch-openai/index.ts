@@ -1,6 +1,7 @@
+// deno-lint-ignore-file no-import-prefix
 // Simplified Supabase Edge Function for OpenAI API calls
 // Supports both streaming and non-streaming modes for chat completions
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,9 +15,9 @@ const streamingCorsHeaders = {
   "Connection": "keep-alive"
 };
 
-// @ts-ignore
+// @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-// @ts-ignore
+// @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
 const OPENAI_ORG_ID = Deno.env.get("OPENAI_ORG_ID");
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
@@ -181,7 +182,7 @@ function shouldRetryForIncompleteMaxTokens(
   return reason === 'max_output_tokens';
 }
 
-// @ts-ignore
+// @ts-ignore: Deno.serve is the entry point for Supabase Edge Functions
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -340,7 +341,7 @@ Deno.serve(async (req: Request) => {
     const gpt5 = isGpt5Model(model);
     const useResponsesApi = gpt5;
 
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       model,
     };
 
@@ -414,8 +415,8 @@ Deno.serve(async (req: Request) => {
           max_tokens: payload.max_tokens,
           max_completion_tokens: payload.max_completion_tokens,
           max_output_tokens: payload.max_output_tokens,
-          messages_count: payload.messages?.length,
-          input_count: payload.input?.length,
+          messages_count: Array.isArray(payload.messages) ? payload.messages.length : undefined,
+          input_count: Array.isArray(payload.input) ? payload.input.length : undefined,
         }
       }), {
         status: response.status,
@@ -430,7 +431,7 @@ Deno.serve(async (req: Request) => {
       const decoder = new TextDecoder();
       
       const transformStream = new TransformStream({
-        async transform(chunk, controller) {
+        transform(chunk, controller) {
           const text = decoder.decode(chunk);
           const lines = text.split('\n');
           

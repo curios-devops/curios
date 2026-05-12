@@ -13,7 +13,7 @@ export async function sendMagicLink(email: string): Promise<AuthResponse> {
     });
 
     if (error) throw error;
-    return { success: true };
+    return { success: true, error: null };
   } catch (error) {
     console.error('Magic link error:', error);
     return {

@@ -801,57 +801,6 @@ export class ChapterRenderer {
   }
 
   /**
-   * Dibujar texto con sombra
-   */
-  private drawText(text: string, position: 'top' | 'center' | 'bottom'): void {
-    this.ctx.save();
-    
-    // Configurar texto
-    this.ctx.font = 'bold 32px Arial';
-    this.ctx.fillStyle = '#FFFFFF';
-    this.ctx.textAlign = 'center';
-    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    this.ctx.shadowBlur = 10;
-    
-    // Calcular posición Y
-    let y: number;
-    switch (position) {
-      case 'top':
-        y = 100;
-        break;
-      case 'center':
-        y = this.height / 2;
-        break;
-      case 'bottom':
-      default:
-        y = this.height - 100;
-        break;
-    }
-    
-    // Dividir texto en líneas si es muy largo
-    const maxWidth = this.width - 100;
-    const words = text.split(' ');
-    let line = '';
-    let lineY = y;
-    
-    for (const word of words) {
-      const testLine = line + word + ' ';
-      const metrics = this.ctx.measureText(testLine);
-      
-      if (metrics.width > maxWidth && line !== '') {
-        this.ctx.fillText(line, this.width / 2, lineY);
-        line = word + ' ';
-        lineY += 40;
-      } else {
-        line = testLine;
-      }
-    }
-    this.ctx.fillText(line, this.width / 2, lineY);
-    
-    this.ctx.restore();
-  }
-
-  /**
    * Interpolación lineal
    */
   private interpolate(start: number, end: number, progress: number): number {

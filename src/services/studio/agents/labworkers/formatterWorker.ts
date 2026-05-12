@@ -1,4 +1,4 @@
-import { Artifact, ArtifactStep } from '../../../../../commonApp/types/index';
+import { Artifact, ArtifactStep } from '../../../../commonApp/types/index';
 
 // --- Simplified formatting without external dependencies ---
 
@@ -14,7 +14,7 @@ async function formatContent(content: string, type: 'doc' | 'pdf'): Promise<stri
 export async function formatterWorker(artifact: Artifact, _prompt: string, updateArtifact: (partial: Artifact) => void): Promise<Artifact> {
   updateArtifact({
     ...artifact,
-    steps: artifact.steps.map(s => s.name === 'format' ? { ...s, status: 'in_progress' as ArtifactStep['status'] } : s)
+    steps: artifact.steps.map((s: ArtifactStep) => s.name === 'format' ? { ...s, status: 'in_progress' as ArtifactStep['status'] } : s)
   });
 
   // Only allow 'doc' or 'pdf' as type
@@ -24,7 +24,7 @@ export async function formatterWorker(artifact: Artifact, _prompt: string, updat
   const updatedArtifact = {
     ...artifact,
     content: formatted,
-    steps: artifact.steps.map(s => s.name === 'format' ? { ...s, status: 'complete' as ArtifactStep['status'], result: formatted } : s)
+    steps: artifact.steps.map((s: ArtifactStep) => s.name === 'format' ? { ...s, status: 'complete' as ArtifactStep['status'], result: formatted } : s)
   };
   updateArtifact(updatedArtifact);
   return updatedArtifact;

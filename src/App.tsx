@@ -10,6 +10,7 @@ import ThemeToggle from './components/theme/ThemeToggle.tsx';
 import SignUpModal from './components/auth/SignUpModal.tsx';
 import { useTranslation } from './hooks/useTranslation.ts';
 import { useAccentColor } from './hooks/useAccentColor.ts';
+import { useTheme } from './components/theme/ThemeContext.tsx';
 
 // Main App Content Component that can access translation context
 function AppContent() {
@@ -77,15 +78,46 @@ function AppContent() {
   // Mobile Get Started component so it can access AppContent scope (t, state)
   function MobileGetStarted() {
     const accent = useAccentColor();
+    const { theme, accentColor: selectedAccentColor } = useTheme();
+    const isGrayAccent = selectedAccentColor === 'gray';
+    const isDarkMode =
+      theme === 'dark' ||
+      (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+    const backgroundColor = isGrayAccent
+      ? isDarkMode
+        ? '#F3F4F6'
+        : '#111827'
+      : accent.primary;
+
+    const textColor = isGrayAccent
+      ? isDarkMode
+        ? '#111827'
+        : '#F3F4F6'
+      : 'var(--ui-text-on-accent)';
+
+    const hoverBackgroundColor = isGrayAccent
+      ? isDarkMode
+        ? '#E5E7EB'
+        : '#1F2937'
+      : accent.hover;
+
     // Use the same visual style as the desktop "Get started" button (rounded-lg)
     return (
       <button
         className="h-7 px-3 rounded-lg flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
         type="button"
         onClick={() => setShowSignUpModal(true)}
-        style={{ backgroundColor: accent.primary }}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = accent.hover }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = accent.primary }}
+        style={{
+          backgroundColor,
+          color: textColor,
+          border: isGrayAccent ? '1px solid transparent' : '1px solid transparent',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBackgroundColor }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = backgroundColor;
+          e.currentTarget.style.color = textColor;
+        }}
       >
         {t('getStarted')}
       </button>

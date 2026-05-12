@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface GoogleButtonProps {
   onClick: () => void;
   label?: string;

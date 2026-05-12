@@ -39,9 +39,9 @@ const tabs: Tab[] = [
   {
     id: 'labs',
     label: 'Labs',
-    description: 'Create projects from scratch',
+    description: 'Generate cinematic visual answers',
     icon: FlaskConical,
-    tooltip: 'Turn your ideas into completed docs, slides, dashboards, and more'
+    tooltip: 'Create source-grounded cinematic videos with multiple Veo scenes'
   }
 ];
 
@@ -74,8 +74,11 @@ export default function FunctionSelector({
   const { subscription, loading: subscriptionLoading } = useSubscription(session);
   const { remainingQuota } = useProQuota();
   const accentColor = useAccentColor();
-  const { accentColor: selectedAccentColor } = useTheme();
+  const { theme, accentColor: selectedAccentColor } = useTheme();
   const isGrayAccent = selectedAccentColor === 'gray';
+  const isDarkMode =
+    theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   // Convert FunctionType to TabType
   const getTabFromFunction = (functionType: FunctionType): TabType => {
@@ -234,9 +237,9 @@ export default function FunctionSelector({
           const isPro = isProEnabled && activeTab === tab.id;
           const activeTabStyle = isGrayAccent
             ? {
-                backgroundColor: accentColor.primary,
-                color: accentColor.dark,
-                borderColor: accentColor.dark,
+                backgroundColor: isDarkMode ? '#F3F4F6' : '#111827',
+                color: isDarkMode ? '#111827' : '#F9FAFB',
+                borderColor: isDarkMode ? '#F3F4F6' : '#111827',
               }
             : undefined;
           
@@ -274,7 +277,13 @@ export default function FunctionSelector({
                   `}
                   style={
                     isActive
-                      ? { color: isGrayAccent ? accentColor.dark : accentColor.primary }
+                      ? {
+                          color: isGrayAccent
+                            ? isDarkMode
+                              ? '#111827'
+                              : '#F9FAFB'
+                            : accentColor.primary,
+                        }
                       : undefined
                   }
                 />
@@ -287,8 +296,16 @@ export default function FunctionSelector({
                   <span
                     className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
                     style={{
-                      backgroundColor: isGrayAccent ? accentColor.dark : accentColor.primary,
-                      color: isGrayAccent ? accentColor.light : 'white',
+                      backgroundColor: isGrayAccent
+                        ? isDarkMode
+                          ? '#111827'
+                          : '#F9FAFB'
+                        : accentColor.primary,
+                      color: isGrayAccent
+                        ? isDarkMode
+                          ? '#F9FAFB'
+                          : '#111827'
+                        : 'white',
                     }}
                   >
                     {t('pro')}

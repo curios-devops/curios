@@ -1,13 +1,17 @@
 // Search Service - Main Entry Point
 
-// Export Pro search service
-export * from './pro/searchProIndex';
+// Unified entry points
+export { performSearch, performSearchWithStreaming, SearchError } from './searchService';
 
-// Export Regular search service
-export * from './regular/searchRegularIndex';
+// Backwards-compatible page exports
+export { default as ProSearchResultsPage } from './pro/pages/ProSearchResults';
+export { default as SearchResultsPage } from './regular/pages/SearchResults.tsx';
 
-// Export search types
-export * from '../../commonApp/types/searchTypes';
+// Optional advanced agents
+export { SwarmController } from './pro/agents/swarmController';
+export { PerspectiveAgent } from './pro/agents/perspectiveAgent';
+export { SearchWriterAgent as WriterAgent } from './regular/agents/searchWriterAgent.ts';
+export { SearchRetrieverAgent as RetrieverAgent } from './regular/agents/searchRetrieverAgent.ts';
 
-// Export search service utilities
-export * from './searchService';
+// Shared types
+export * from '../../commonApp/types/index.ts';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import SignInModal from './SignInModal';
 import SignUpModal from './SignUpModal';
 
@@ -15,7 +15,7 @@ export default function AuthModal({
   defaultMode = 'signup',
   context = 'default'
 }: AuthModalProps) {
-  const [mode, setMode] = useState<'signin' | 'signup'>(defaultMode);
+  const [mode] = useState<'signin' | 'signup'>(defaultMode);
 
   if (!isOpen) return null;
 

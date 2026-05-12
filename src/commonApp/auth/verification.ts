@@ -10,7 +10,7 @@ export async function verifyMagicLink(details: VerificationDetails): Promise<Aut
     });
 
     if (error) throw error;
-    return { success: true };
+    return { success: true, error: null };
   } catch (error) {
     console.error('Verification error:', error);
     return {

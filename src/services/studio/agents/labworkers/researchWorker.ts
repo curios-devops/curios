@@ -1,5 +1,5 @@
-import { Artifact, ArtifactStep, Citation } from '../../../../../commonApp/types/index';
-import { searxngSearch } from '../../../../../commonService/searchTools/searxng';
+import { Artifact, ArtifactStep, Citation } from '../../../../commonApp/types/index';
+import { searxngSearch } from '../../../../commonService/searchTools/searxng';
 
 // --- OpenAI websearch tool integration ---
 // TODO: Refactor to use Supabase Edge Function for OpenAI chat completions/websearch

@@ -82,15 +82,7 @@ export async function searchWithTavily(
       }
 
       const data = await res.json();
-      
-      // DEBUG: Log raw Tavily response
-      console.log('🔍 [TAVILY DEBUG] Raw API Response:', {
-        hasImages: 'images' in data,
-        imagesCount: data.images?.length || 0,
-        imagesArray: data.images,
-        resultsCount: data.results?.length || 0
-      });
-      
+
       const sanitizedData = sanitizeResponse(data) as TavilyResponse;
 
       // Process results with validation
@@ -129,13 +121,6 @@ export async function searchWithTavily(
           source_url: image.url.trim(),
         }));
 
-      // DEBUG: Log processed results
-      console.log('🔍 [TAVILY DEBUG] Processed Results:', {
-        resultsCount: results.length,
-        imagesCount: images.length,
-        firstImage: images[0] || 'No images'
-      });
-
       return { results, images };
     } catch (error) {
       clearTimeout(timeoutId);
@@ -147,9 +132,18 @@ export async function searchWithTavily(
     // Call searchTavily directly (no retry wrapper to avoid conflicts with rate limit queue)
     return await searchTavily();
   } catch (error) {
+    const isAborted =
+      (error instanceof Error && error.name === 'AbortError') ||
+      (error instanceof Error && /aborted|abort/i.test(error.message));
+
     // Handle rate limit errors quietly
     if (error instanceof TavilyError && error.isRateLimit) {
       console.warn('Tavily rate limit hit, falling back to alternative sources');
+    } else if (isAborted) {
+      console.info('Tavily search request cancelled', {
+        query,
+        timestamp: new Date().toISOString(),
+      });
     } else {
       console.warn('Tavily search error:', {
         error: error instanceof Error ? error.message : 'Unknown error',

@@ -27,7 +27,7 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
       host: '0.0.0.0',
       port: 5173, // Fixed: Use port 5173 as per project memory
       strictPort: true, // Don't try to find another port if 5173 is in use
-      open: true, // Only Vite will open browser, Netlify dev won't
+      open: 'http://localhost:5173', // Auto-open only localhost:5173
       proxy: proxyConfig,
       fs: {
         allow: ['..']
