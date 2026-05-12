@@ -357,13 +357,18 @@ Deno.serve(async (req: Request) => {
     if (gpt5 && useResponsesApi) {
       payload.max_output_tokens = parsedPrompt.max_output_tokens || 2000;
       payload.reasoning = parsedPrompt.reasoning || { effort: 'low' };
+
+      // Add tools if provided (for web_search, code_interpreter, etc.)
+      if (parsedPrompt.tools) {
+        payload.tools = parsedPrompt.tools;
+      }
     } else if (gpt5) {
       payload.max_completion_tokens = parsedPrompt.max_output_tokens || 2000;
     } else {
       payload.temperature = parsedPrompt.temperature || 0.7;
       payload.max_tokens = parsedPrompt.max_output_tokens || 2000;
     }
-    
+
     // Only add response_format for non-streaming requests (JSON mode not compatible with streaming)
     // For streaming, we'll handle the response as plain text and parse later
       if (!enableStreaming && !useResponsesApi) {
@@ -372,7 +377,7 @@ Deno.serve(async (req: Request) => {
           payload.response_format = parsedPrompt.response_format;
         }
     }
-    
+
     // Enable streaming if requested
     if (enableStreaming) {
       payload.stream = true;

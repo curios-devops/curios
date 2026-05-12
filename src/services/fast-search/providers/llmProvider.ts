@@ -209,19 +209,32 @@ Language: ${context.locale}`;
 
     logger.debug('LLMProvider: Starting to read stream');
 
+    let chunkCount = 0;
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+
+      if (done) {
+        logger.debug('LLMProvider: Stream complete', { chunkCount, totalLength: fullText.length });
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (!line.trim() || !line.startsWith('data: ')) continue;
+        if (!line.trim()) continue;
+
+        if (!line.startsWith('data: ')) {
+          logger.warn('LLMProvider: Unexpected line format', { line: line.substring(0, 100) });
+          continue;
+        }
 
         const data = line.slice(6);
-        if (data === '[DONE]') continue;
+        if (data === '[DONE]') {
+          logger.debug('LLMProvider: Received DONE signal');
+          continue;
+        }
 
         try {
           const json = JSON.parse(data);
@@ -229,13 +242,20 @@ Language: ${context.locale}`;
           const content = json.content || json.delta || json.text || '';
 
           if (content && typeof content === 'string') {
+            chunkCount++;
             fullText += content;
             onChunk(content);
+
+            if (chunkCount === 1) {
+              logger.debug('LLMProvider: First chunk received', { length: content.length });
+            }
+          } else {
+            logger.debug('LLMProvider: Chunk with no content', { json });
           }
         } catch (parseError) {
-          // Ignore parse errors for incomplete chunks
-          logger.debug('LLMProvider: Failed to parse stream chunk', {
-            error: parseError instanceof Error ? parseError.message : 'Unknown'
+          logger.warn('LLMProvider: Failed to parse stream chunk', {
+            error: parseError instanceof Error ? parseError.message : 'Unknown',
+            data: data.substring(0, 200)
           });
         }
       }
