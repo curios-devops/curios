@@ -9,7 +9,7 @@ import './index.css';
 
 // Lazy load page components from their respective service directories
 const SearchResults = lazy(() => import('./services/search/regular/pages/SearchResults.tsx'));
-const FastSearchResults = lazy(() => import('./services/fast-search/ui/FastSearchResults.tsx'));
+const FastSearchResults = lazy(() => import('./services/fast-search/pages/FastSearchResults.tsx'));
 const AvatarSearchResults = lazy(() => import('./services/search/avatar/pages/AvatarSearchResults.tsx'));
 const DeepResearchResults = lazy(() => import('./services/research/pro/pages/ResearchResults.tsx'));
 const ProSearchResults = lazy(() => import('./services/search/pro/pages/ProSearchResults.tsx'));
@@ -56,7 +56,7 @@ const router = createBrowserRouter(
       children: [
         { path: '/', element: <Home /> },
         { path: '/search', element: <LazyPageWrapper><SearchResults /></LazyPageWrapper> },
-        { path: '/fast-search', element: <LazyPageWrapper><FastSearchResults query="" answer="" sources={[]} images={[]} videos={[]} followUps={[]} /></LazyPageWrapper> },
+        { path: '/fast-search', element: <LazyPageWrapper><FastSearchResults /></LazyPageWrapper> },
         { path: '/avatar-search', element: <LazyPageWrapper><AvatarSearchResults /></LazyPageWrapper> },
         { path: '/pro-search', element: <LazyPageWrapper><ProSearchResults /></LazyPageWrapper> },
         { path: '/pro-search-test', element: <LazyPageWrapper><ProSearchTest /></LazyPageWrapper> },

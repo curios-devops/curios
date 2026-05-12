@@ -3,4 +3,4 @@
 
 export { executeFastSearch, executeFastSearchStreaming } from './controller';
 export type { FastSearchRequest, FastSearchResponse } from './controller';
-export { default as FastSearchResults } from './ui/FastSearchResults';
+export { default as FastSearchResults } from './pages/FastSearchResults';
