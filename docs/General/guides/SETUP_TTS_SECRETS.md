@@ -54,8 +54,8 @@ chmod +x scripts/setup-tts-secrets.sh
 
 | Secret Name | Description | Current Value (from .env) |
 |------------|-------------|---------------------------|
-| `ELEVENLAB_API_KEY` | ElevenLabs TTS API key (primary) | `sk_78f067ad...` |
-| `OPENAI_API_KEY` | OpenAI TTS API key (fallback) | `sk-proj-FpYBG...` |
+| `ELEVENLAB_API_KEY` | ElevenLabs TTS API key (primary) | `<your-elevenlabs-api-key>` |
+| `OPENAI_API_KEY` | OpenAI TTS API key (fallback) | `<your-openai-api-key>` |
 
 ## How TTS Works in Cinematic
 

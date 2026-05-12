@@ -173,10 +173,10 @@ export async function generateAvatarVideo(text: string): Promise<AvatarVideoResu
 ANAM_API_KEY=OGY2N2UxN2MtMmUxMS00MGM5LTg4N2UtZDNjM2NhZDNjMDIwOi9lMUEzTmdhZ1hoSEJIZlM4cUw1RjdtSUtHWW9tNVdpNFplZklpMzVPYXM9
 
 # ElevenLabs (for TTS)
-ELEVENLAB_API_KEY=sk_78f067ad602e2a587ece716fd007cbece9179dfea30235bc
+ELEVENLAB_API_KEY=<your-elevenlabs-api-key>
 
 # OpenAI (fallback TTS + Whisper)
-OPENAI_API_KEY=sk-proj-...
+OPENAI_API_KEY=<your-openai-api-key>
 
 # Supabase
 VITE_SUPABASE_URL=https://gpfccicfqynahflehpqo.supabase.co
