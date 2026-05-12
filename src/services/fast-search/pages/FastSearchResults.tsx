@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
-import { executeFastSearch } from '../controller';
+import { executeFastSearchStreaming } from '../controller';
 import type { FastSearchResponse } from '../controller';
 import CustomMarkdown from '../../../components/CustomMarkdown';
 import TopBar from '../../../components/results/TopBar';
@@ -22,6 +22,7 @@ export default function FastSearchResults() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<FastSearchResponse | null>(null);
+  const [streamingAnswer, setStreamingAnswer] = useState('');
 
   // Scroll to top on mount
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function FastSearchResults() {
     return () => clearInterval(interval);
   }, [searchStartTime]);
 
-  // Execute search
+  // Execute search with streaming
   useEffect(() => {
     if (!query.trim()) {
       setError('Please enter a search query');
@@ -46,16 +47,31 @@ export default function FastSearchResults() {
 
     const fetchResults = async () => {
       try {
-        logger.info('FastSearch: Starting search', { query });
+        logger.info('FastSearch: Starting streaming search', { query });
         setIsLoading(true);
         setError(null);
+        setStreamingAnswer('');
 
-        const response = await executeFastSearch({
-          query,
-          locale: navigator.language.split('-')[0] || 'en'
+        // Execute streaming search (web search + answer generation)
+        const response = await executeFastSearchStreaming(
+          {
+            query,
+            locale: navigator.language.split('-')[0] || 'en'
+          },
+          (chunk: string) => {
+            // Stream answer chunks as they arrive
+            setStreamingAnswer(prev => prev + chunk);
+          }
+        );
+
+        // Once streaming completes, set final results
+        setResults({
+          answer: '', // Answer already streamed to streamingAnswer
+          sources: response.sources,
+          images: response.images,
+          videos: response.videos,
+          followUps: response.followUps
         });
-
-        setResults(response);
         setIsLoading(false);
       } catch (err) {
         logger.error('FastSearch: Search failed', {
@@ -97,26 +113,27 @@ export default function FastSearchResults() {
         )}
 
         {/* Results */}
-        {results && !isLoading && (
+        {(streamingAnswer || results) && (
           <>
-            {/* AI Answer */}
+            {/* AI Answer (streaming or complete) */}
             <AIAnswerCard
-              answer={results.answer}
-              sources={results.sources}
+              answer={streamingAnswer || results?.answer || ''}
+              sources={results?.sources || []}
+              isStreaming={isLoading && !!streamingAnswer}
             />
 
             {/* Images Carousel */}
-            {results.images.length > 0 && (
+            {results && results.images.length > 0 && (
               <ImagesCarousel images={results.images} />
             )}
 
             {/* Sources Carousel */}
-            {results.sources.length > 0 && (
+            {results && results.sources.length > 0 && (
               <SourcesCarousel sources={results.sources} />
             )}
 
             {/* Follow-up Questions */}
-            {results.followUps.length > 0 && (
+            {results && results.followUps.length > 0 && (
               <FollowUpQuestions
                 questions={results.followUps}
                 onClick={handleFollowUpClick}
@@ -130,12 +147,14 @@ export default function FastSearchResults() {
 }
 
 // AI Answer Card Component
-function AIAnswerCard({ answer, sources }: { answer: string; sources: Array<{ title: string; url: string }> }) {
+function AIAnswerCard({ answer, sources, isStreaming }: { answer: string; sources: Array<{ title: string; url: string }>; isStreaming?: boolean }) {
   return (
     <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800">
       <div className="flex items-center gap-3 p-6 border-b border-gray-200 dark:border-gray-800">
         <Sparkles className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
-        <h2 className="text-xl font-medium text-gray-900 dark:text-white">AI Overview</h2>
+        <h2 className="text-xl font-medium text-gray-900 dark:text-white">
+          {isStreaming ? 'Generating answer...' : 'AI Overview'}
+        </h2>
 
         {/* Source count */}
         {sources.length > 0 && (
@@ -147,6 +166,9 @@ function AIAnswerCard({ answer, sources }: { answer: string; sources: Array<{ ti
 
       <div className="p-6 prose dark:prose-invert max-w-none">
         <CustomMarkdown content={answer} />
+        {isStreaming && (
+          <span className="inline-block w-2 h-4 ml-1 bg-gray-400 dark:bg-gray-600 animate-pulse" />
+        )}
       </div>
     </div>
   );

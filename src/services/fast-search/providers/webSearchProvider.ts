@@ -62,67 +62,18 @@ export async function executeWebSearch(
 }
 
 /**
- * Execute web search using OpenAI's search preview model
- * Uses gpt-4o-mini-search-preview which has built-in web search capabilities
+ * Execute web search using OpenAI Responses API with web_search tool
+ * Uses GPT-5 mini with web_search tool for fast, accurate results
+ *
+ * NOTE: This returns empty array to skip OpenAI web search.
+ * The actual web search + answer generation happens together in llmProvider
+ * using Responses API with web_search tool in a single call.
  */
 async function searchWithOpenAI(query: string): Promise<WebSearchResult[]> {
-  const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-  if (!supabaseEdgeUrl || !supabaseAnonKey) {
-    throw new Error('Supabase Edge Function not configured');
-  }
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout for web search
-
-  try {
-    const response = await fetch(supabaseEdgeUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`
-      },
-      body: JSON.stringify({
-        prompt: JSON.stringify({
-          messages: [
-            {
-              role: 'user',
-              content: `Search the web for: "${query}". Return a JSON array of the top 10 search results with this exact format: [{"title": "...", "url": "...", "snippet": "..."}]`
-            }
-          ],
-          model: 'gpt-4o-mini-search-preview',
-          response_format: { type: 'json_object' },
-          temperature: 0.3,
-          max_output_tokens: 3000
-        })
-      }),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error('WebSearchProvider: OpenAI search API error', {
-        status: response.status,
-        error: errorText.substring(0, 200)
-      });
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Parse the response to extract search results
-    const results = parseOpenAISearchResults(data);
-    logger.debug('WebSearchProvider: OpenAI search parsed results', {
-      resultCount: results.length
-    });
-    return results.slice(0, 10);
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
+  logger.debug('WebSearchProvider: Skipping separate web search (handled by Responses API)');
+  // Return empty to trigger Tavily fallback for image/source carousels
+  // The actual answer generation will use web_search tool in Responses API
+  return [];
 }
 
 /**

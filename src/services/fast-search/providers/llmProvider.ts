@@ -19,11 +19,11 @@ export interface LLMResponse {
   followUps: string[];
 }
 
-const MODEL = 'gpt-4.1-mini-2025-04-14'; // Fast, cost-effective model
+const MODEL = 'gpt-5-mini'; // Fast, cost-effective GPT-5 model with Responses API support
 
 /**
- * Generate structured answer using openai-mini in a single pass
- * Takes search context and returns formatted answer with follow-ups
+ * Generate structured answer using GPT-5 mini with Responses API + web_search tool
+ * This combines web search and answer generation in a single API call
  *
  * @param context - The complete search context
  * @returns LLM response with answer and follow-up questions
@@ -31,9 +31,9 @@ const MODEL = 'gpt-4.1-mini-2025-04-14'; // Fast, cost-effective model
 export async function generateAnswer(
   context: SearchContext
 ): Promise<LLMResponse> {
-  logger.debug('LLMProvider: Generating answer', {
+  logger.debug('LLMProvider: Generating answer with web search', {
     query: context.query,
-    sourceCount: context.webResults.length
+    fallbackSourceCount: context.webResults.length
   });
 
   const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
@@ -43,17 +43,20 @@ export async function generateAnswer(
     throw new Error('Supabase Edge Function not configured');
   }
 
-  // Build sources for prompt
-  const sources = context.webResults.map(result => ({
-    title: result.title,
-    url: result.url,
-    snippet: result.snippet
-  }));
+  // Build user message that asks for web search
+  const userMessage = `Search the web and provide a comprehensive answer to: "${context.query}"
 
-  const userPrompt = buildUserPrompt(context.query, sources, context.locale);
+Requirements:
+- Use current web information to answer accurately
+- Provide a clear, well-structured response in markdown format
+- Include 3-5 relevant follow-up questions
+- Return response as JSON: {"answer": "markdown text", "followUps": ["question 1", "question 2", ...]}
+
+Today's date: ${context.date}
+Language: ${context.locale}`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for web search + generation
 
   try {
     const response = await fetch(supabaseEdgeUrl, {
@@ -64,14 +67,19 @@ export async function generateAnswer(
       },
       body: JSON.stringify({
         prompt: JSON.stringify({
-          messages: [
-            { role: 'system', content: FAST_SEARCH_SYSTEM_PROMPT },
-            { role: 'user', content: userPrompt }
+          input: [
+            { role: 'user', content: userMessage }
           ],
           model: MODEL,
+          tools: [
+            {
+              type: 'web_search',
+              search_context_size: 'low' // Fast, cost-effective search
+            }
+          ],
           response_format: { type: 'json_object' },
-          temperature: 0.7,
-          max_output_tokens: 1500
+          max_output_tokens: 2000,
+          reasoning: { effort: 'low' } // Fast reasoning for speed
         })
       }),
       signal: controller.signal
@@ -81,20 +89,24 @@ export async function generateAnswer(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText.substring(0, 200)}`);
+      logger.error('LLMProvider: API error', {
+        status: response.status,
+        error: errorText.substring(0, 300)
+      });
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
 
-    logger.debug('LLMProvider: Received response from OpenAI', {
+    logger.debug('LLMProvider: Received response from Responses API', {
       hasText: !!data.text,
-      hasChoices: !!data.choices,
-      rawData: JSON.stringify(data).substring(0, 500)
+      hasOutputText: !!data.output_text,
+      rawDataPreview: JSON.stringify(data).substring(0, 500)
     });
 
     const result = parseResponse(data);
 
-    logger.info('LLMProvider: Answer generated successfully', {
+    logger.info('LLMProvider: Answer generated successfully with web search', {
       answerLength: result.answer.length,
       followUpCount: result.followUps.length
     });
@@ -111,7 +123,7 @@ export async function generateAnswer(
 }
 
 /**
- * Generate answer with streaming support
+ * Generate answer with streaming support using Responses API + web_search tool
  * Streams the answer as it's being generated
  *
  * @param context - The search context
@@ -122,9 +134,8 @@ export async function generateAnswerStreaming(
   context: SearchContext,
   onChunk: (chunk: string) => void
 ): Promise<{ followUps: string[] }> {
-  logger.debug('LLMProvider: Generating answer with streaming', {
-    query: context.query,
-    sourceCount: context.webResults.length
+  logger.debug('LLMProvider: Generating answer with streaming + web search', {
+    query: context.query
   });
 
   const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
@@ -134,17 +145,19 @@ export async function generateAnswerStreaming(
     throw new Error('Supabase Edge Function not configured');
   }
 
-  // Build sources for prompt
-  const sources = context.webResults.map(result => ({
-    title: result.title,
-    url: result.url,
-    snippet: result.snippet
-  }));
+  // Build user message for streaming
+  const userMessage = `Search the web and provide a comprehensive answer to: "${context.query}"
 
-  const userPrompt = buildUserPrompt(context.query, sources, context.locale);
+Requirements:
+- Use current web information to answer accurately
+- Provide a clear, well-structured response in markdown format
+- Include 3-5 relevant follow-up questions at the end
+
+Today's date: ${context.date}
+Language: ${context.locale}`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for streaming
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for streaming
 
   try {
     const response = await fetch(supabaseEdgeUrl, {
@@ -155,15 +168,20 @@ export async function generateAnswerStreaming(
       },
       body: JSON.stringify({
         prompt: JSON.stringify({
-          messages: [
-            { role: 'system', content: FAST_SEARCH_SYSTEM_PROMPT },
-            { role: 'user', content: userPrompt }
+          input: [
+            { role: 'user', content: userMessage }
           ],
           model: MODEL,
-          stream: true,
-          temperature: 0.7,
-          max_output_tokens: 1500
-        })
+          tools: [
+            {
+              type: 'web_search',
+              search_context_size: 'low'
+            }
+          ],
+          max_output_tokens: 2000,
+          reasoning: { effort: 'low' }
+        }),
+        stream: true
       }),
       signal: controller.signal
     });
@@ -172,7 +190,11 @@ export async function generateAnswerStreaming(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText.substring(0, 200)}`);
+      logger.error('LLMProvider: Streaming API error', {
+        status: response.status,
+        error: errorText.substring(0, 300)
+      });
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     // Process streaming response
@@ -183,38 +205,46 @@ export async function generateAnswerStreaming(
 
     const decoder = new TextDecoder();
     let fullText = '';
+    let buffer = '';
+
+    logger.debug('LLMProvider: Starting to read stream');
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n').filter(line => line.trim());
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') continue;
+        if (!line.trim() || !line.startsWith('data: ')) continue;
 
-          try {
-            const json = JSON.parse(data);
-            const content = json.choices?.[0]?.delta?.content;
-            if (content) {
-              fullText += content;
-              onChunk(content);
-            }
-          } catch {
-            // Ignore parse errors
+        const data = line.slice(6);
+        if (data === '[DONE]') continue;
+
+        try {
+          const json = JSON.parse(data);
+          // Handle both edge function format and Responses API format
+          const content = json.content || json.delta || json.text || '';
+
+          if (content && typeof content === 'string') {
+            fullText += content;
+            onChunk(content);
           }
+        } catch (parseError) {
+          // Ignore parse errors for incomplete chunks
+          logger.debug('LLMProvider: Failed to parse stream chunk', {
+            error: parseError instanceof Error ? parseError.message : 'Unknown'
+          });
         }
       }
     }
 
     // Extract follow-ups from the full text
-    // Assuming the LLM includes them at the end
     const followUps = extractFollowUps(fullText);
 
-    logger.info('LLMProvider: Streaming completed', {
+    logger.info('LLMProvider: Streaming completed with web search', {
       answerLength: fullText.length,
       followUpCount: followUps.length
     });
