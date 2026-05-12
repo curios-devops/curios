@@ -439,31 +439,41 @@ Deno.serve(async (req: Request) => {
         transform(chunk, controller) {
           const text = decoder.decode(chunk);
           const lines = text.split('\n');
-          
+
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const data = line.slice(6);
               if (data === '[DONE]') {
                 // Send done signal
+                console.log('[STREAM] Received [DONE] signal');
                 controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                 continue;
               }
-              
+
               try {
                 const parsed = JSON.parse(data);
+                const eventType = parsed.type || 'unknown';
+
                 const content = useResponsesApi
                   ? extractResponsesSSEContent(parsed)
                   : (parsed.choices?.[0]?.delta?.content || '');
+
                 if (content) {
                   // Forward the content chunk as SSE
+                  console.log(`[STREAM] Forwarding content chunk: type=${eventType}, length=${content.length}`);
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                } else {
+                  // Log events without content for debugging
+                  console.log(`[STREAM] Event without content: type=${eventType}`);
                 }
 
                 if (useResponsesApi && parsed.type === 'response.completed') {
+                  console.log('[STREAM] Response completed, sending [DONE]');
                   controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                 }
-              } catch {
-                // Ignore parse errors for incomplete chunks
+              } catch (error) {
+                // Log parse errors for debugging
+                console.error('[STREAM] Parse error:', error, 'Data:', data.substring(0, 200));
               }
             }
           }
