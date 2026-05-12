@@ -62,8 +62,8 @@ export async function executeWebSearch(
 }
 
 /**
- * Execute web search using OpenAI's built-in web search tool
- * Uses GPT-5 models with web_search tool call
+ * Execute web search using OpenAI's search preview model
+ * Uses gpt-4o-mini-search-preview which has built-in web search capabilities
  */
 async function searchWithOpenAI(query: string): Promise<WebSearchResult[]> {
   const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
@@ -74,7 +74,7 @@ async function searchWithOpenAI(query: string): Promise<WebSearchResult[]> {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout for web search
 
   try {
     const response = await fetch(supabaseEdgeUrl, {
@@ -87,21 +87,14 @@ async function searchWithOpenAI(query: string): Promise<WebSearchResult[]> {
         prompt: JSON.stringify({
           messages: [
             {
-              role: 'system',
-              content: 'You are a web search assistant. Use the web_search tool to find relevant information. Return results as a JSON array with title, url, and snippet fields.'
-            },
-            {
               role: 'user',
-              content: `Search the web for: ${query}`
+              content: `Search the web for: "${query}". Return a JSON array of the top 10 search results with this exact format: [{"title": "...", "url": "...", "snippet": "..."}]`
             }
           ],
-          model: 'gpt-5-mini',
-          tools: [{
-            type: 'web_search',
-            max_results: 10
-          }],
+          model: 'gpt-4o-mini-search-preview',
+          response_format: { type: 'json_object' },
           temperature: 0.3,
-          max_output_tokens: 2000
+          max_output_tokens: 3000
         })
       }),
       signal: controller.signal
@@ -111,14 +104,20 @@ async function searchWithOpenAI(query: string): Promise<WebSearchResult[]> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText.substring(0, 200)}`);
+      logger.error('WebSearchProvider: OpenAI search API error', {
+        status: response.status,
+        error: errorText.substring(0, 200)
+      });
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
 
     // Parse the response to extract search results
-    // OpenAI returns tool calls with search results
     const results = parseOpenAISearchResults(data);
+    logger.debug('WebSearchProvider: OpenAI search parsed results', {
+      resultCount: results.length
+    });
     return results.slice(0, 10);
   } catch (error) {
     clearTimeout(timeoutId);
@@ -128,55 +127,49 @@ async function searchWithOpenAI(query: string): Promise<WebSearchResult[]> {
 
 /**
  * Parse OpenAI API response to extract web search results
+ * The search preview model returns results in the content
  */
 function parseOpenAISearchResults(data: any): WebSearchResult[] {
   try {
-    // Check if we have tool calls with web search results
-    if (data.choices?.[0]?.message?.tool_calls) {
-      const toolCalls = data.choices[0].message.tool_calls;
-      const searchResults: WebSearchResult[] = [];
+    // Extract content from response (edge function returns it as .text)
+    const content = data.text || data.choices?.[0]?.message?.content;
 
-      for (const toolCall of toolCalls) {
-        if (toolCall.type === 'web_search' && toolCall.results) {
-          for (const result of toolCall.results) {
-            if (result.title && result.url) {
-              searchResults.push({
-                title: result.title,
-                url: result.url,
-                snippet: result.snippet || result.content || '',
-                content: result.content
-              });
-            }
-          }
-        }
-      }
-
-      if (searchResults.length > 0) {
-        return searchResults;
-      }
+    if (!content || typeof content !== 'string') {
+      logger.warn('WebSearchProvider: No content in OpenAI response');
+      return [];
     }
 
-    // Fallback: try to parse from content if structured as JSON
-    const content = data.choices?.[0]?.message?.content;
-    if (content && typeof content === 'string') {
-      try {
-        const parsed = JSON.parse(content);
-        if (Array.isArray(parsed)) {
-          return parsed
-            .filter(item => item.title && item.url)
-            .map(item => ({
-              title: item.title,
-              url: item.url,
-              snippet: item.snippet || item.content || '',
-              content: item.content
-            }));
-        }
-      } catch {
-        // Not JSON, ignore
-      }
-    }
+    // Try to parse as JSON
+    try {
+      const parsed = JSON.parse(content);
 
-    return [];
+      // Handle if results are nested under a key
+      const resultsArray = Array.isArray(parsed) ? parsed :
+                          Array.isArray(parsed.results) ? parsed.results :
+                          Array.isArray(parsed.search_results) ? parsed.search_results : null;
+
+      if (!resultsArray) {
+        logger.warn('WebSearchProvider: Parsed JSON but no array found', { parsed });
+        return [];
+      }
+
+      const results = resultsArray
+        .filter(item => item && item.title && item.url)
+        .map(item => ({
+          title: String(item.title),
+          url: String(item.url),
+          snippet: String(item.snippet || item.description || item.content || ''),
+          content: item.content
+        }));
+
+      return results;
+    } catch (parseError) {
+      logger.warn('WebSearchProvider: Failed to parse OpenAI JSON response', {
+        error: parseError instanceof Error ? parseError.message : 'Unknown error',
+        contentPreview: content.substring(0, 200)
+      });
+      return [];
+    }
   } catch (error) {
     logger.error('WebSearchProvider: Failed to parse OpenAI search results', {
       error: error instanceof Error ? error.message : 'Unknown error'

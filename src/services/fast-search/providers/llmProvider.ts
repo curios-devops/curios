@@ -19,7 +19,7 @@ export interface LLMResponse {
   followUps: string[];
 }
 
-const MODEL = 'gpt-5-mini'; // Fast, cost-effective model
+const MODEL = 'gpt-4.1-mini-2025-04-14'; // Fast, cost-effective model
 
 /**
  * Generate structured answer using openai-mini in a single pass
@@ -85,6 +85,13 @@ export async function generateAnswer(
     }
 
     const data = await response.json();
+
+    logger.debug('LLMProvider: Received response from OpenAI', {
+      hasText: !!data.text,
+      hasChoices: !!data.choices,
+      rawData: JSON.stringify(data).substring(0, 500)
+    });
+
     const result = parseResponse(data);
 
     logger.info('LLMProvider: Answer generated successfully', {
@@ -96,7 +103,8 @@ export async function generateAnswer(
   } catch (error) {
     clearTimeout(timeoutId);
     logger.error('LLMProvider: Generation failed', {
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     });
     throw error;
   }
@@ -226,8 +234,15 @@ export async function generateAnswerStreaming(
  */
 function parseResponse(data: any): LLMResponse {
   try {
-    const content = data.choices?.[0]?.message?.content;
+    // Edge function returns text directly
+    const content = data.text || data.choices?.[0]?.message?.content;
+
     if (!content) {
+      logger.error('LLMProvider: No content in response', {
+        hasText: !!data.text,
+        hasChoices: !!data.choices,
+        dataKeys: Object.keys(data)
+      });
       throw new Error('No content in response');
     }
 
@@ -235,13 +250,23 @@ function parseResponse(data: any): LLMResponse {
     try {
       const parsed = JSON.parse(content);
       if (parsed.answer && Array.isArray(parsed.followUps)) {
+        logger.debug('LLMProvider: Successfully parsed JSON response with structured data');
         return {
           answer: parsed.answer,
           followUps: parsed.followUps
         };
       }
-    } catch {
-      // Not JSON, parse as markdown text
+      // If JSON but not in expected format, extract what we can
+      if (parsed.answer) {
+        logger.debug('LLMProvider: Parsed JSON with answer but no followUps');
+        return {
+          answer: parsed.answer,
+          followUps: extractFollowUps(parsed.answer)
+        };
+      }
+    } catch (parseError) {
+      // Not JSON, will parse as markdown text below
+      logger.debug('LLMProvider: Content is not JSON, parsing as markdown');
     }
 
     // Extract follow-ups from markdown text
