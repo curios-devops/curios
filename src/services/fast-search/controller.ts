@@ -1,6 +1,11 @@
 // FastSearch Controller - Main entry point for fast search functionality
 // Single-LLM pipeline architecture for faster search responses
 
+import { executeWebSearch } from './providers/webSearchProvider';
+import { searchImages, searchVideos } from './providers/mediaSearchProvider';
+import { generateAnswer, generateAnswerStreaming } from './providers/llmProvider';
+import { logger } from '../../utils/logger';
+
 export interface FastSearchRequest {
   query: string;
   locale?: string;
@@ -30,7 +35,7 @@ export interface FastSearchResponse {
  * Execute a fast search query
  * This is the main controller that orchestrates:
  * 1. Web search (OpenAI tool / Tavily fallback)
- * 2. Media search (SerpAPI)
+ * 2. Media search (Tavily images)
  * 3. Single LLM generation with structured output
  *
  * @param request - The search request with query and optional locale
@@ -39,8 +44,82 @@ export interface FastSearchResponse {
 export async function executeFastSearch(
   request: FastSearchRequest
 ): Promise<FastSearchResponse> {
-  // TODO: Implement in Phase 2
-  throw new Error('FastSearch not yet implemented');
+  const { query, locale = 'en' } = request;
+
+  logger.info('FastSearch: Starting search', { query, locale });
+
+  const startTime = Date.now();
+
+  try {
+    // Step 1 & 2: Execute web and media searches in parallel
+    logger.debug('FastSearch: Executing searches in parallel');
+
+    const [webResults, images, videos] = await Promise.all([
+      executeWebSearch(query),
+      searchImages(query),
+      searchVideos(query)
+    ]);
+
+    const searchTime = Date.now() - startTime;
+    logger.info('FastSearch: Searches completed', {
+      webResultCount: webResults.length,
+      imageCount: images.length,
+      videoCount: videos.length,
+      searchTimeMs: searchTime
+    });
+
+    // Step 3: Generate answer with LLM
+    logger.debug('FastSearch: Generating answer');
+
+    const llmStartTime = Date.now();
+    const { answer, followUps } = await generateAnswer({
+      query,
+      webResults,
+      images,
+      videos,
+      date: new Date().toISOString().split('T')[0],
+      locale
+    });
+
+    const llmTime = Date.now() - llmStartTime;
+    const totalTime = Date.now() - startTime;
+
+    logger.info('FastSearch: Search completed successfully', {
+      totalTimeMs: totalTime,
+      searchTimeMs: searchTime,
+      llmTimeMs: llmTime,
+      answerLength: answer.length,
+      followUpCount: followUps.length
+    });
+
+    return {
+      answer,
+      sources: webResults.map(r => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.snippet
+      })),
+      images: images.map(img => ({
+        url: img.url,
+        title: img.title,
+        source: img.source
+      })),
+      videos: videos.map(v => ({
+        url: v.url,
+        title: v.title,
+        thumbnail: v.thumbnail
+      })),
+      followUps
+    };
+  } catch (error) {
+    const totalTime = Date.now() - startTime;
+    logger.error('FastSearch: Search failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      query,
+      totalTimeMs: totalTime
+    });
+    throw error;
+  }
 }
 
 /**
@@ -56,6 +135,78 @@ export async function executeFastSearchStreaming(
   request: FastSearchRequest,
   onChunk: (chunk: string) => void
 ): Promise<Omit<FastSearchResponse, 'answer'>> {
-  // TODO: Implement in Phase 2
-  throw new Error('FastSearch streaming not yet implemented');
+  const { query, locale = 'en' } = request;
+
+  logger.info('FastSearch: Starting streaming search', { query, locale });
+
+  const startTime = Date.now();
+
+  try {
+    // Step 1 & 2: Execute web and media searches in parallel
+    logger.debug('FastSearch: Executing searches in parallel');
+
+    const [webResults, images, videos] = await Promise.all([
+      executeWebSearch(query),
+      searchImages(query),
+      searchVideos(query)
+    ]);
+
+    const searchTime = Date.now() - startTime;
+    logger.info('FastSearch: Searches completed', {
+      webResultCount: webResults.length,
+      imageCount: images.length,
+      videoCount: videos.length,
+      searchTimeMs: searchTime
+    });
+
+    // Step 3: Generate answer with streaming LLM
+    logger.debug('FastSearch: Generating answer with streaming');
+
+    const llmStartTime = Date.now();
+    const { followUps } = await generateAnswerStreaming({
+      query,
+      webResults,
+      images,
+      videos,
+      date: new Date().toISOString().split('T')[0],
+      locale
+    }, onChunk);
+
+    const llmTime = Date.now() - llmStartTime;
+    const totalTime = Date.now() - startTime;
+
+    logger.info('FastSearch: Streaming search completed successfully', {
+      totalTimeMs: totalTime,
+      searchTimeMs: searchTime,
+      llmTimeMs: llmTime,
+      followUpCount: followUps.length
+    });
+
+    return {
+      sources: webResults.map(r => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.snippet
+      })),
+      images: images.map(img => ({
+        url: img.url,
+        title: img.title,
+        source: img.source
+      })),
+      videos: videos.map(v => ({
+        url: v.url,
+        title: v.title,
+        thumbnail: v.thumbnail
+      })),
+      followUps
+    };
+  } catch (error) {
+    const totalTime = Date.now() - startTime;
+    logger.error('FastSearch: Streaming search failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      query,
+      totalTimeMs: totalTime
+    });
+    throw error;
+  }
 }
