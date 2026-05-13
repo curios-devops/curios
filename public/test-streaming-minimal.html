@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Minimal Streaming Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    #output {
+      border: 1px solid #ccc;
+      padding: 10px;
+      min-height: 200px;
+      white-space: pre-wrap;
+      background: #f5f5f5;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .log {
+      margin: 5px 0;
+      padding: 5px;
+      background: #fff;
+      border-left: 3px solid #0066cc;
+    }
+    .error {
+      border-left-color: #cc0000;
+    }
+  </style>
+</head>
+<body>
+  <h1>Minimal GPT-5 Streaming Test</h1>
+
+  <button onclick="testStreaming()">Test: "Tell me about Elon Musk"</button>
+
+  <h2>Streamed Content:</h2>
+  <div id="output"></div>
+
+  <h2>Debug Logs:</h2>
+  <div id="logs"></div>
+
+  <script>
+    const EDGE_FUNCTION_URL = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZmNjaWNmcXluYWhmbGVocHFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIzMTg1MzksImV4cCI6MjA1Nzg5NDUzOX0.mG1MaCt62FdB3tDDV5dHEJeCJvWB5l96EyJQqTSjAd8';
+
+    function log(message, isError = false) {
+      const logsDiv = document.getElementById('logs');
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log' + (isError ? ' error' : '');
+      logEntry.textContent = `[${new Date().toISOString()}] ${message}`;
+      logsDiv.appendChild(logEntry);
+      console.log(message);
+    }
+
+    async function testStreaming() {
+      const outputDiv = document.getElementById('output');
+      const logsDiv = document.getElementById('logs');
+
+      // Clear previous
+      outputDiv.textContent = '';
+      logsDiv.innerHTML = '';
+
+      log('Starting streaming test...');
+
+      const requestBody = {
+        prompt: JSON.stringify({
+          input: [
+            { role: 'user', content: 'Tell me about Elon Musk in 3 sentences.' }
+          ],
+          model: 'gpt-5-mini',
+          tools: [{
+            type: 'web_search',
+            search_context_size: 'low'
+          }],
+          max_output_tokens: 500,
+          reasoning: { effort: 'low' }
+        }),
+        stream: true
+      };
+
+      log('Request payload prepared');
+      log('Calling edge function...');
+
+      try {
+        const response = await fetch(EDGE_FUNCTION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${ANON_KEY}`
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        log(`Response status: ${response.status}`);
+        log(`Response headers: ${response.headers.get('content-type')}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          log(`Error response: ${errorText}`, true);
+          return;
+        }
+
+        if (!response.body) {
+          log('No response body!', true);
+          return;
+        }
+
+        log('Starting to read stream...');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let chunkCount = 0;
+        let totalChars = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            log(`Stream complete! Chunks: ${chunkCount}, Chars: ${totalChars}`);
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+
+              if (data === '[DONE]') {
+                log('Received [DONE] signal');
+                continue;
+              }
+
+              try {
+                const json = JSON.parse(data);
+                const content = json.content || '';
+
+                if (content) {
+                  chunkCount++;
+                  totalChars += content.length;
+                  outputDiv.textContent += content;
+
+                  if (chunkCount === 1) {
+                    log(`First chunk received: length=${content.length}`);
+                  }
+                  if (chunkCount % 10 === 0) {
+                    log(`Progress: ${chunkCount} chunks, ${totalChars} chars`);
+                  }
+                }
+              } catch (e) {
+                log(`Parse error: ${e.message}`, true);
+              }
+            }
+          }
+        }
+
+      } catch (error) {
+        log(`Fetch error: ${error.message}`, true);
+      }
+    }
+  </script>
+</body>
+</html>

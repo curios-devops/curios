@@ -434,13 +434,20 @@ Deno.serve(async (req: Request) => {
       // Create a TransformStream to process SSE data and forward it
       const encoder = new TextEncoder();
       const decoder = new TextDecoder();
-      
+      let buffer = ''; // Buffer for incomplete lines
+
       const transformStream = new TransformStream({
         transform(chunk, controller) {
-          const text = decoder.decode(chunk);
-          const lines = text.split('\n');
+          // Append to buffer instead of processing immediately
+          buffer += decoder.decode(chunk, { stream: true });
+          const lines = buffer.split('\n');
+
+          // Keep last line in buffer (might be incomplete)
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
+            if (!line.trim()) continue; // Skip empty lines
+
             if (line.startsWith('data: ')) {
               const data = line.slice(6);
               if (data === '[DONE]') {
@@ -476,6 +483,12 @@ Deno.serve(async (req: Request) => {
                 console.error('[STREAM] Parse error:', error, 'Data:', data.substring(0, 200));
               }
             }
+          }
+        },
+        flush() {
+          // Process any remaining buffered data
+          if (buffer.trim()) {
+            console.log('[STREAM] Flushing remaining buffer:', buffer.substring(0, 100));
           }
         }
       });
