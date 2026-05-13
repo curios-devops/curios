@@ -142,30 +142,29 @@ export async function executeFastSearchStreaming(
   const startTime = Date.now();
 
   try {
-    // Step 1 & 2: Execute web and media searches in parallel
-    logger.debug('FastSearch: Executing searches in parallel');
+    // Step 1: Execute media searches (images/videos only)
+    // Web search is handled by LLM's web_search tool
+    logger.debug('FastSearch: Executing media searches in parallel');
 
-    const [webResults, images, videos] = await Promise.all([
-      executeWebSearch(query),
+    const [images, videos] = await Promise.all([
       searchImages(query),
       searchVideos(query)
     ]);
 
     const searchTime = Date.now() - startTime;
-    logger.info('FastSearch: Searches completed', {
-      webResultCount: webResults.length,
+    logger.info('FastSearch: Media searches completed', {
       imageCount: images.length,
       videoCount: videos.length,
       searchTimeMs: searchTime
     });
 
-    // Step 3: Generate answer with streaming LLM
-    logger.debug('FastSearch: Generating answer with streaming');
+    // Step 2: Generate answer with streaming LLM (includes web search via tool)
+    logger.debug('FastSearch: Generating answer with streaming + web search');
 
     const llmStartTime = Date.now();
     const { followUps } = await generateAnswerStreaming({
       query,
-      webResults,
+      webResults: [], // LLM uses web_search tool instead
       images,
       videos,
       date: new Date().toISOString().split('T')[0],
@@ -183,11 +182,7 @@ export async function executeFastSearchStreaming(
     });
 
     return {
-      sources: webResults.map(r => ({
-        title: r.title,
-        url: r.url,
-        snippet: r.snippet
-      })),
+      sources: [], // Citations are embedded in answer text with web_search tool
       images: images.map(img => ({
         url: img.url,
         title: img.title,
