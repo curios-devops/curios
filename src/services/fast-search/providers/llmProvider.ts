@@ -249,6 +249,9 @@ Language: ${context.locale}`;
             if (chunkCount === 1) {
               logger.debug('LLMProvider: First chunk received', { length: content.length });
             }
+            if (chunkCount % 10 === 0) {
+              logger.debug('LLMProvider: Progress', { chunkCount, totalLength: fullText.length });
+            }
           } else {
             logger.debug('LLMProvider: Chunk with no content', { json });
           }
