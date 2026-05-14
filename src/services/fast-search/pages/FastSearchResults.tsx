@@ -1,7 +1,7 @@
 // FastSearch Results Page
 // Displays fast search results with answer, horizontal media carousel, sources, and follow-ups
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { executeFastSearchStreaming } from '../controller';
@@ -10,6 +10,34 @@ import CustomMarkdown from '../../../components/CustomMarkdown';
 import TopBar from '../../../components/results/TopBar';
 import { logger } from '../../../utils/logger';
 import { formatTimeAgo } from '../../../utils/time';
+import type { CitationInfo } from '../../../commonApp/types';
+
+// Citation extraction helper - converts [text](url) to [sitename] format
+function extractAndConvertCitations(text: string): { convertedText: string; citations: CitationInfo[] } {
+  const citations: CitationInfo[] = [];
+  const citationMap = new Map<string, number>();
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+
+  const convertedText = text.replace(linkRegex, (match, linkText, url) => {
+    try {
+      const cleanUrl = url.split('?')[0].split('#')[0];
+      const urlObj = new URL(cleanUrl);
+      const hostname = urlObj.hostname.replace(/^www\./, '');
+      const parts = hostname.split('.');
+      const siteName = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+
+      if (!citationMap.has(url)) {
+        citationMap.set(url, citations.length);
+        citations.push({ url, title: linkText, siteName, snippet: '' });
+      }
+      return `[${siteName}]`;
+    } catch {
+      return match;
+    }
+  });
+
+  return { convertedText, citations };
+}
 
 export default function FastSearchResults() {
   const location = useLocation();
@@ -23,6 +51,9 @@ export default function FastSearchResults() {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<FastSearchResponse | null>(null);
   const [streamingAnswer, setStreamingAnswer] = useState('');
+
+  // Ref for direct DOM updates during streaming (avoids React render blocking)
+  const answerDivRef = useRef<HTMLDivElement>(null);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -47,36 +78,40 @@ export default function FastSearchResults() {
 
     const fetchResults = async () => {
       try {
-        logger.info('FastSearch: Starting streaming search', { query });
+        console.log('FastSearch: Starting streaming search');
         setIsLoading(true);
         setError(null);
         setStreamingAnswer('');
 
-        // Execute streaming search (web search + answer generation)
+        // Use direct DOM updates during streaming to avoid React render blocking
+        let fullText = '';
         const response = await executeFastSearchStreaming(
           {
             query,
             locale: navigator.language.split('-')[0] || 'en'
           },
           (chunk: string) => {
-            // Stream answer chunks as they arrive
-            setStreamingAnswer(prev => prev + chunk);
+            // Direct DOM update - no React state, no re-render
+            fullText += chunk;
+            if (answerDivRef.current) {
+              answerDivRef.current.textContent = fullText;
+            }
           }
         );
 
-        // Once streaming completes, set final results
+        // Once streaming completes, set final state for React rendering with markdown
+        setStreamingAnswer(fullText);
         setResults({
-          answer: '', // Answer already streamed to streamingAnswer
+          answer: '',
           sources: response.sources,
           images: response.images,
           videos: response.videos,
           followUps: response.followUps
         });
         setIsLoading(false);
+        console.log('FastSearch: Streaming complete');
       } catch (err) {
-        logger.error('FastSearch: Search failed', {
-          error: err instanceof Error ? err.message : 'Unknown error'
-        });
+        console.error('FastSearch: Search failed', err instanceof Error ? err.message : 'Unknown error');
         setError(err instanceof Error ? err.message : 'Search failed');
         setIsLoading(false);
       }
@@ -89,6 +124,12 @@ export default function FastSearchResults() {
     navigate(`/fast-search?q=${encodeURIComponent(question)}`);
   };
 
+  // Extract citations from streaming answer (memoized to avoid re-computation)
+  const { convertedText, citations } = useMemo(() => {
+    if (!streamingAnswer) return { convertedText: '', citations: [] };
+    return extractAndConvertCitations(streamingAnswer);
+  }, [streamingAnswer]);
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#111111]">
       <TopBar
@@ -98,13 +139,6 @@ export default function FastSearchResults() {
       />
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Loading State */}
-        {isLoading && (
-          <div className="space-y-6">
-            <LoadingSkeleton />
-          </div>
-        )}
-
         {/* Error State */}
         {error && !isLoading && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
@@ -112,42 +146,62 @@ export default function FastSearchResults() {
           </div>
         )}
 
-        {/* Results */}
-        {(streamingAnswer || results) && (
-          <>
-            {/* AI Answer (streaming or complete) */}
-            <AIAnswerCard
-              answer={streamingAnswer || results?.answer || ''}
-              sources={results?.sources || []}
-              isStreaming={isLoading && !!streamingAnswer}
-            />
-
-            {/* Images Carousel */}
-            {results && results.images.length > 0 && (
-              <ImagesCarousel images={results.images} />
-            )}
-
-            {/* Sources Carousel */}
-            {results && results.sources.length > 0 && (
-              <SourcesCarousel sources={results.sources} />
-            )}
-
-            {/* Follow-up Questions */}
-            {results && results.followUps.length > 0 && (
-              <FollowUpQuestions
-                questions={results.followUps}
-                onClick={handleFollowUpClick}
-              />
-            )}
-          </>
+        {/* Loading indicator - "Searching trusted sources..." */}
+        {isLoading && !streamingAnswer && (
+          <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+              <span className="inline-block w-1.5 h-1.5 bg-gray-600 dark:bg-gray-400 rounded-full animate-pulse" />
+              <span>Searching trusted sources...</span>
+            </div>
+          </div>
         )}
+
+        {/* Streaming text - simple container */}
+        <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+          <div
+            ref={answerDivRef}
+            className="prose dark:prose-invert max-w-none text-gray-900 dark:text-white"
+          >
+            {/* Direct DOM updates happen here during streaming */}
+          </div>
+        </div>
+
+        {/* Images Carousel - COMMENTED OUT FOR NOW */}
+        {/* {results && results.images.length > 0 && (
+          <ImagesCarousel images={results.images} />
+        )} */}
+
+        {/* Sources Carousel - COMMENTED OUT FOR NOW */}
+        {/* {results && results.sources.length > 0 && (
+          <SourcesCarousel sources={results.sources} />
+        )} */}
+
+        {/* Follow-up Questions - COMMENTED OUT FOR NOW */}
+        {/* {results && results.followUps.length > 0 && (
+          <FollowUpQuestions
+            questions={results.followUps}
+            onClick={handleFollowUpClick}
+          />
+        )} */}
       </div>
     </div>
   );
 }
 
 // AI Answer Card Component
-function AIAnswerCard({ answer, sources, isStreaming }: { answer: string; sources: Array<{ title: string; url: string }>; isStreaming?: boolean }) {
+function AIAnswerCard({
+  answer,
+  citations,
+  sources,
+  isStreaming,
+  answerDivRef
+}: {
+  answer: string;
+  citations: CitationInfo[];
+  sources: Array<{ title: string; url: string }>;
+  isStreaming?: boolean;
+  answerDivRef: React.RefObject<HTMLDivElement>;
+}) {
   return (
     <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800">
       <div className="flex items-center gap-3 p-6 border-b border-gray-200 dark:border-gray-800">
@@ -165,7 +219,13 @@ function AIAnswerCard({ answer, sources, isStreaming }: { answer: string; source
       </div>
 
       <div className="p-6 prose dark:prose-invert max-w-none">
-        <CustomMarkdown content={answer} />
+        {/* During streaming: show plain text via ref, After: show markdown with citations */}
+        <div ref={answerDivRef} className={!isStreaming && answer ? 'hidden' : ''}>
+          {/* Plain text streaming goes here via direct DOM updates */}
+        </div>
+        {!isStreaming && answer && (
+          <CustomMarkdown citations={citations}>{answer}</CustomMarkdown>
+        )}
         {isStreaming && (
           <span className="inline-block w-2 h-4 ml-1 bg-gray-400 dark:bg-gray-600 animate-pulse" />
         )}
