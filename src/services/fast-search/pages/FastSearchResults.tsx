@@ -12,33 +12,6 @@ import { logger } from '../../../utils/logger';
 import { formatTimeAgo } from '../../../utils/time';
 import type { CitationInfo } from '../../../commonApp/types';
 
-// Citation extraction helper - converts [text](url) to [sitename] format
-function extractAndConvertCitations(text: string): { convertedText: string; citations: CitationInfo[] } {
-  const citations: CitationInfo[] = [];
-  const citationMap = new Map<string, number>();
-  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-
-  const convertedText = text.replace(linkRegex, (match, linkText, url) => {
-    try {
-      const cleanUrl = url.split('?')[0].split('#')[0];
-      const urlObj = new URL(cleanUrl);
-      const hostname = urlObj.hostname.replace(/^www\./, '');
-      const parts = hostname.split('.');
-      const siteName = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
-
-      if (!citationMap.has(url)) {
-        citationMap.set(url, citations.length);
-        citations.push({ url, title: linkText, siteName, snippet: '' });
-      }
-      return `[${siteName}]`;
-    } catch {
-      return match;
-    }
-  });
-
-  return { convertedText, citations };
-}
-
 export default function FastSearchResults() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -51,9 +24,47 @@ export default function FastSearchResults() {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<FastSearchResponse | null>(null);
   const [streamingAnswer, setStreamingAnswer] = useState('');
+  const [showSearching, setShowSearching] = useState(true);
 
-  // Ref for direct DOM updates during streaming (avoids React render blocking)
-  const answerDivRef = useRef<HTMLDivElement>(null);
+  // Process answer: convert [text](url) to [sitename] badges and remove duplicate citations
+  const { processedAnswer, citations } = useMemo(() => {
+    if (!streamingAnswer) return { processedAnswer: '', citations: [] };
+
+    const cites: CitationInfo[] = [];
+    const citationMap = new Map<string, number>();
+
+    let text = streamingAnswer;
+
+    // Step 1: Convert [text](url) to [sitename]
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
+      try {
+        const cleanUrl = url.split('?')[0].split('#')[0];
+        const urlObj = new URL(cleanUrl);
+        const hostname = urlObj.hostname.replace(/^www\./, '');
+        const parts = hostname.split('.');
+        const siteName = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+
+        if (!citationMap.has(cleanUrl)) {
+          citationMap.set(cleanUrl, cites.length);
+          cites.push({ url: cleanUrl, title: linkText, siteName, snippet: '' });
+        }
+        return `[${siteName}]`;
+      } catch {
+        return linkText;
+      }
+    });
+
+    // Step 2: Remove parenthetical citations only if they look like citations
+    // Match: (sitename), (sitename +N), (sitename(url))
+    text = text.replace(/\s*\(([a-z0-9]+)(\s*\+\d+)?(\([^)]+\))?\)/gi, '');
+
+    // Clean up encoding issues
+    text = text.replace(/�/g, '');
+
+    console.log('🔍 FastSearch:', cites.length, 'citations,', text.includes('(') ? 'HAS PARENS' : 'clean');
+
+    return { processedAnswer: text, citations: cites };
+  }, [streamingAnswer]);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -78,29 +89,25 @@ export default function FastSearchResults() {
 
     const fetchResults = async () => {
       try {
-        console.log('FastSearch: Starting streaming search');
         setIsLoading(true);
         setError(null);
         setStreamingAnswer('');
+        setShowSearching(true);
 
-        // Use direct DOM updates during streaming to avoid React render blocking
-        let fullText = '';
+        let isFirstChunk = true;
         const response = await executeFastSearchStreaming(
           {
             query,
             locale: navigator.language.split('-')[0] || 'en'
           },
           (chunk: string) => {
-            // Direct DOM update - no React state, no re-render
-            fullText += chunk;
-            if (answerDivRef.current) {
-              answerDivRef.current.textContent = fullText;
+            if (isFirstChunk) {
+              setShowSearching(false);
+              isFirstChunk = false;
             }
+            setStreamingAnswer(prev => prev + chunk);
           }
         );
-
-        // Once streaming completes, set final state for React rendering with markdown
-        setStreamingAnswer(fullText);
         setResults({
           answer: '',
           sources: response.sources,
@@ -109,9 +116,7 @@ export default function FastSearchResults() {
           followUps: response.followUps
         });
         setIsLoading(false);
-        console.log('FastSearch: Streaming complete');
       } catch (err) {
-        console.error('FastSearch: Search failed', err instanceof Error ? err.message : 'Unknown error');
         setError(err instanceof Error ? err.message : 'Search failed');
         setIsLoading(false);
       }
@@ -123,12 +128,6 @@ export default function FastSearchResults() {
   const handleFollowUpClick = (question: string) => {
     navigate(`/fast-search?q=${encodeURIComponent(question)}`);
   };
-
-  // Extract citations from streaming answer (memoized to avoid re-computation)
-  const { convertedText, citations } = useMemo(() => {
-    if (!streamingAnswer) return { convertedText: '', citations: [] };
-    return extractAndConvertCitations(streamingAnswer);
-  }, [streamingAnswer]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#111111]">
@@ -147,24 +146,34 @@ export default function FastSearchResults() {
         )}
 
         {/* Loading indicator - "Searching trusted sources..." */}
-        {isLoading && !streamingAnswer && (
+        {showSearching && (
           <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
             <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
-              <span className="inline-block w-1.5 h-1.5 bg-gray-600 dark:bg-gray-400 rounded-full animate-pulse" />
+              <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--accent-primary)' }} />
               <span>Searching trusted sources...</span>
             </div>
           </div>
         )}
 
-        {/* Streaming text - simple container */}
-        <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
-          <div
-            ref={answerDivRef}
-            className="prose dark:prose-invert max-w-none text-gray-900 dark:text-white"
-          >
-            {/* Direct DOM updates happen here during streaming */}
+        {/* AI Overview - appears when streaming starts */}
+        {!showSearching && (
+          <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-3 p-6 border-b border-gray-200 dark:border-gray-800">
+              <Sparkles className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
+              <h2 className="text-xl font-medium text-gray-900 dark:text-white">AI Overview</h2>
+            </div>
+            <div className="p-6">
+              <div className="prose dark:prose-invert max-w-none">
+                <CustomMarkdown citations={citations}>
+                  {processedAnswer}
+                </CustomMarkdown>
+                {isLoading && (
+                  <span className="inline-block w-2 h-4 ml-1 animate-pulse align-middle" style={{ backgroundColor: 'var(--accent-primary)' }}></span>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Images Carousel - COMMENTED OUT FOR NOW */}
         {/* {results && results.images.length > 0 && (
