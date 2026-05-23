@@ -96,6 +96,8 @@ export default function Explore() {
       // Replace the reverse-image-search endpoint with google-news
       const googleNewsUrl = SERP_API_URL.replace('/reverse-image-search', '/google-news');
 
+      console.log('[EXPLORE] Fetching news from:', googleNewsUrl);
+
       const response = await fetch(googleNewsUrl, {
         method: 'POST',
         headers: {
@@ -106,11 +108,16 @@ export default function Explore() {
         }),
       });
 
+      console.log('[EXPLORE] Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to fetch news');
+        const errorText = await response.text();
+        console.error('[EXPLORE] Error response:', errorText);
+        throw new Error(`Failed to fetch news: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
+      console.log('[EXPLORE] Result:', result);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to fetch news');

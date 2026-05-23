@@ -80,13 +80,39 @@ After deployment:
 
 ## Troubleshooting
 
+### "Loading news..." Stuck (Silent Failure)
+
+**Symptom**: Works in dev, but production page stays on "Loading news..." indefinitely.
+
+**Cause**: Edge function not deployed to production.
+
+**Fix**:
+```bash
+# Deploy the google-news edge function
+supabase functions deploy google-news --project-ref gpfccicfqynahflehpqo
+
+# Verify deployment
+curl -X POST https://gpfccicfqynahflehpqo.supabase.co/functions/v1/google-news \
+  -H "Content-Type: application/json" \
+  -d '{"query": "technology"}'
+```
+
+**Debug in Browser**:
+Open browser console on production, you should see:
+- `[EXPLORE] Fetching news from: https://...`
+- `[EXPLORE] Response status: 200` (or error code)
+- `[EXPLORE] Result: {...}` (on success)
+
+If you see 404 → edge function not deployed
+If you see 500 → check SERPAPI_API_KEY is set
+
 ### Edge Function Not Found (404)
 ```bash
 # Verify function is deployed
 supabase functions list
 
 # Redeploy if needed
-supabase functions deploy google-news
+supabase functions deploy google-news --project-ref gpfccicfqynahflehpqo
 ```
 
 ### API Key Error
