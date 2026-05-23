@@ -20,6 +20,8 @@ const ResearcherResults = lazy(() => import('./services/research/pro/pages/Resea
 // const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx')); // Replaced by Studio
 const StudioResults = lazy(() => import('./services/studio/pages/StudioResults.tsx'));
 const CinematicResults = lazy(() => import('./services/cinematic/pages/CinematicResults.tsx'));
+const Explore = lazy(() => import('./mainPages/Explore.tsx'));
+const Discover = lazy(() => import('./mainPages/Discover.tsx'));
 const Settings = lazy(() => import('./mainPages/Settings.tsx'));
 const TestPage = lazy(() => import('./pages/test.tsx'));
 const ImageTest = lazy(() => import('./pages/ImageTest.tsx'));
@@ -55,6 +57,8 @@ const router = createBrowserRouter(
       element: <App />,
       children: [
         { path: '/', element: <Home /> },
+        { path: '/explore', element: <LazyPageWrapper><Explore /></LazyPageWrapper> },
+        { path: '/discover', element: <LazyPageWrapper><Discover /></LazyPageWrapper> },
         { path: '/search', element: <LazyPageWrapper><SearchResults /></LazyPageWrapper> },
         { path: '/fast-search', element: <LazyPageWrapper><FastSearchResults /></LazyPageWrapper> },
         { path: '/avatar-search', element: <LazyPageWrapper><AvatarSearchResults /></LazyPageWrapper> },
