@@ -27,6 +27,8 @@ export default function Explore() {
   // Format date as relative time or formatted date
   const formatPublishedDate = (dateString: string): string => {
     try {
+      if (!dateString) return '';
+
       // Parse various date formats from SerpAPI
       // Examples: "2 hours ago", "1 day ago", "May 23, 2024"
       const hoursAgoMatch = dateString.match(/(\d+)\s+hours?\s+ago/i);
@@ -54,7 +56,7 @@ export default function Explore() {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       }
 
-      // Try to parse as a date string
+      // Try to parse as a date string (handles ISO, UTC, and various formats)
       const parsedDate = new Date(dateString);
       if (!isNaN(parsedDate.getTime())) {
         const now = new Date();
@@ -66,14 +68,20 @@ export default function Explore() {
           return `${Math.max(1, diffHours)}h ago`;
         }
 
-        // Otherwise, show formatted date
-        return parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        // Otherwise, show formatted date (always in user's locale)
+        return parsedDate.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          timeZone: 'UTC' // Ensure consistent formatting
+        });
       }
 
-      // Fallback: return original string
+      // Fallback: try to format as date anyway
+      console.warn('[EXPLORE] Could not parse date:', dateString);
       return dateString;
     } catch (err) {
-      console.error('Error parsing date:', err);
+      console.error('[EXPLORE] Error parsing date:', dateString, err);
       return dateString;
     }
   };
