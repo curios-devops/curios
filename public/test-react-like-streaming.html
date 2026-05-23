@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test React-like Streaming</title>
+  <style>
+    body { font-family: monospace; padding: 20px; max-width: 800px; margin: 0 auto; }
+    #output { border: 1px solid #ccc; padding: 10px; min-height: 200px; white-space: pre-wrap; background: #f5f5f5; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+    .log { margin: 2px 0; padding: 3px; background: #f0f0f0; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <h1>Test React-like State Updates During Streaming</h1>
+
+  <p>This mimics how FastSearch uses setState callbacks during streaming</p>
+
+  <button onclick="testSimpleCallback()">Simple Callback (like test)</button>
+  <button onclick="testStateCallback()">State Update Callback (like React)</button>
+
+  <h2>Output:</h2>
+  <div id="output"></div>
+
+  <h2>Logs:</h2>
+  <div id="logs"></div>
+
+  <script>
+    const EDGE_FUNCTION_URL = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZmNjaWNmcXluYWhmbGVocHFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIzMTg1MzksImV4cCI6MjA1Nzg5NDUzOX0.mG1MaCt62FdB3tDDV5dHEJeCJvWB5l96EyJQqTSjAd8';
+
+    function log(message) {
+      const logsDiv = document.getElementById('logs');
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log';
+      logEntry.textContent = `[${new Date().toISOString()}] ${message}`;
+      logsDiv.appendChild(logEntry);
+      console.log(message);
+    }
+
+    function clearAll() {
+      document.getElementById('output').textContent = '';
+      document.getElementById('logs').innerHTML = '';
+    }
+
+    // Simple callback - like the working minimal test
+    async function testSimpleCallback() {
+      clearAll();
+      log('=== SIMPLE CALLBACK TEST ===');
+
+      const outputDiv = document.getElementById('output');
+
+      await streamWithCallback((chunk) => {
+        outputDiv.textContent += chunk;
+        log(`Chunk appended: ${chunk.length} chars`);
+      });
+    }
+
+    // State update callback - mimics React setState(prev => prev + chunk)
+    async function testStateCallback() {
+      clearAll();
+      log('=== STATE UPDATE CALLBACK TEST ===');
+
+      let streamingAnswer = '';
+      const outputDiv = document.getElementById('output');
+
+      // Mimic React state updates
+      const setStreamingAnswer = (updater) => {
+        if (typeof updater === 'function') {
+          streamingAnswer = updater(streamingAnswer);
+        } else {
+          streamingAnswer = updater;
+        }
+        outputDiv.textContent = streamingAnswer;
+      };
+
+      await streamWithCallback((chunk) => {
+        log(`Chunk received: ${chunk.length} chars`);
+        setStreamingAnswer(prev => {
+          log(`State updater called, prev length: ${prev.length}`);
+          return prev + chunk;
+        });
+        log(`After state update, total length: ${streamingAnswer.length}`);
+      });
+    }
+
+    async function streamWithCallback(onChunk) {
+      log('Starting fetch...');
+
+      const requestBody = {
+        prompt: JSON.stringify({
+          input: [
+            { role: 'user', content: 'Tell me about Elon Musk in 3 sentences.' }
+          ],
+          model: 'gpt-5-mini',
+          tools: [{
+            type: 'web_search',
+            search_context_size: 'low'
+          }],
+          max_output_tokens: 500,
+          reasoning: { effort: 'low' }
+        }),
+        stream: true
+      };
+
+      try {
+        const response = await fetch(EDGE_FUNCTION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${ANON_KEY}`
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        log(`Response: ${response.status}`);
+
+        if (!response.ok) {
+          log(`ERROR: ${await response.text()}`);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let chunkCount = 0;
+        let readIterations = 0;
+
+        log('Starting to read stream...');
+
+        while (true) {
+          readIterations++;
+          log(`About to read chunk ${readIterations}`);
+
+          const { done, value } = await reader.read();
+
+          log(`Read result ${readIterations}: done=${done}, hasValue=${!!value}, length=${value?.length || 0}`);
+
+          if (done) {
+            log(`Stream complete! Iterations: ${readIterations}, Chunks: ${chunkCount}`);
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          log(`Processing ${lines.length} lines from iteration ${readIterations}`);
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+
+              if (data === '[DONE]') {
+                log('Received [DONE] signal');
+                continue;
+              }
+
+              try {
+                const json = JSON.parse(data);
+                const content = json.content || '';
+
+                if (content) {
+                  chunkCount++;
+                  log(`Chunk ${chunkCount}: calling onChunk with ${content.length} chars`);
+                  onChunk(content);
+                  log(`Chunk ${chunkCount}: onChunk returned`);
+                }
+              } catch (e) {
+                log(`Parse error: ${e.message}`);
+              }
+            }
+          }
+
+          log(`End of iteration ${readIterations}`);
+        }
+
+      } catch (error) {
+        log(`Fetch error: ${error.message}`);
+      }
+    }
+  </script>
+</body>
+</html>

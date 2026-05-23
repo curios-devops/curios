@@ -1,7 +1,6 @@
 import React from 'react';
 import { CitationInfo } from '../commonApp/types';
 import { parseCitation } from './citations/citationParser';
-import CitationTooltip from './citations/CitationTooltip';
 import MultipleCitations from './citations/MultipleCitations';
 
 interface CustomMarkdownProps {
@@ -18,7 +17,23 @@ export default function CustomMarkdown({ children, className = "", citations = [
     [citations]
   );
 
-  // Preprocess: collapse adjacent citations into a single token, summing any existing +N
+  // Step 1: Split semicolon or comma-separated citations within a single bracket
+  // Examples:
+  //   "[wikipedia; Rotten Tomatoes]" -> "[wikipedia] [Rotten Tomatoes]"
+  //   "[wikipedia, Rotten Tomatoes]" -> "[wikipedia] [Rotten Tomatoes]"
+  function splitMultipleCitations(text: string): string {
+    return text.replace(/\[([^\]]+)\]/g, (match, content) => {
+      // Check if there's a semicolon or comma (indicating multiple sources in one bracket)
+      if (content.includes(';') || content.includes(',')) {
+        // Split by both semicolon and comma
+        const sites = content.split(/[;,]/).map(s => s.trim()).filter(s => s);
+        return sites.map(site => `[${site}]`).join(' ');
+      }
+      return match;
+    });
+  }
+
+  // Step 2: Collapse adjacent citations into a single token, summing any existing +N
   // Examples:
   //   "[wikipedia] [britannica]" -> "[wikipedia +1]"
   //   "[instagram], [youtube +3]" -> "[instagram +4]"
@@ -42,8 +57,9 @@ export default function CustomMarkdown({ children, className = "", citations = [
   }
 
   const parsedContent = React.useMemo(() => {
-    const preprocessed = collapseAdjacentCitations(children);
-    return parseMarkdown(preprocessed);
+    let processed = splitMultipleCitations(children);
+    processed = collapseAdjacentCitations(processed);
+    return parseMarkdown(processed);
   }, [children, citationSignature]);
   
   // Simple markdown parser for basic formatting
@@ -127,31 +143,26 @@ export default function CustomMarkdown({ children, className = "", citations = [
         const parsedCitation = parseCitation(citationText, citations);
 
         if (parsedCitation) {
-          if (parsedCitation.type === 'single') {
-            const c = parsedCitation.citations[0];
-            return (
-              <CitationTooltip key={`citation-${index}`} citation={c}>
-                {c.siteName}
-              </CitationTooltip>
-            );
-          } else if (parsedCitation.type === 'multiple') {
-            return (
-              <MultipleCitations
-                key={`citation-${index}`}
-                citations={parsedCitation.citations}
-                primarySiteName={parsedCitation.citations[0]?.siteName || parsedCitation.siteName}
-              />
-            );
-          }
+          // Use MultipleCitations for both single and multiple citations
+          // to provide consistent card UI behavior
+          return (
+            <MultipleCitations
+              key={`citation-${index}`}
+              citations={parsedCitation.citations}
+              primarySiteName={parsedCitation.citations[0]?.siteName || parsedCitation.siteName}
+            />
+          );
         }
 
+        // Fallback: Strip "+N" from unmatched citations and render as plain badge
+        const cleanText = citationText.replace(/\s*\+\d+$/, '').trim();
         return (
           <span
             key={`citation-fallback-${index}`}
             className="inline-flex items-center px-2 py-0.5 mx-0.5 text-white text-xs font-medium rounded-md"
             style={{ backgroundColor: 'var(--accent-primary)' }}
           >
-            {citationText}
+            {cleanText}
           </span>
         );
       }
@@ -164,7 +175,7 @@ export default function CustomMarkdown({ children, className = "", citations = [
   function parseOtherFormatting(text: string, baseIndex: number): React.ReactNode {
     // Bold text **text**
     const parts = text.split(/(\*\*[^*]+\*\*)/);
-    
+
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         const boldText = part.slice(2, -2);
@@ -174,7 +185,7 @@ export default function CustomMarkdown({ children, className = "", citations = [
           </strong>
         );
       }
-      
+
       return parseItalicAndCode(part, `${baseIndex}-${index}`);
     });
   }

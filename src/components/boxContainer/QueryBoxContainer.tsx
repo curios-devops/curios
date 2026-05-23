@@ -197,26 +197,69 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
 
   return (
     <div className="w-full max-w-3xl mx-auto">
-      {/* Unified container with border encompassing input and button bar */}
+      {/* Retroillumination wrapper for 3D glow effect */}
       <div
-        className={`relative border transition-colors flex flex-col ${imageAttachments.length > 0 ? '' : 'pt-3'}`}
+        className="relative transition-all duration-300"
         style={{
-          borderColor: 'var(--ui-border-default)',
-          backgroundColor: 'var(--ui-bg-elevated)',
-          boxShadow: '0 4px 12px var(--ui-shadow-soft)',
-          borderRadius: '10px',
+          filter: 'drop-shadow(0 0 0 transparent)',
         }}
-        onFocus={(e) => {
-          if (e.currentTarget.contains(e.target)) {
-            e.currentTarget.style.borderColor = accentColor.primary;
-          }
+        onMouseEnter={(e) => {
+          e.currentTarget.style.filter = `drop-shadow(0 0 20px ${accentColor.primary}40) drop-shadow(0 0 40px ${accentColor.primary}20)`;
         }}
-        onBlur={(e) => {
-          if (e.currentTarget.contains(e.relatedTarget as Node) === false) {
-            e.currentTarget.style.borderColor = 'var(--ui-border-default)';
+        onMouseLeave={(e) => {
+          const searchBox = e.currentTarget.querySelector('[data-search-box]');
+          const isFocused = searchBox?.contains(document.activeElement);
+          if (!isFocused) {
+            e.currentTarget.style.filter = 'drop-shadow(0 0 0 transparent)';
           }
         }}
       >
+        {/* Unified container with border encompassing input and button bar */}
+        <div
+          data-search-box
+          className={`relative border transition-all duration-300 flex flex-col ${imageAttachments.length > 0 ? '' : 'pt-3'}`}
+          style={{
+            borderColor: 'var(--ui-border-default)',
+            backgroundColor: 'var(--ui-bg-elevated)',
+            boxShadow: `0 8px 24px rgba(0, 0, 0, 0.08), inset 0 0 0 1px ${accentColor.primary}15`,
+            borderRadius: '16px',
+            transform: 'translateY(0)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = `0 16px 40px rgba(0, 0, 0, 0.12), inset 0 0 0 1px ${accentColor.primary}30, 0 0 0 1px ${accentColor.primary}30`;
+          }}
+          onMouseLeave={(e) => {
+            const isFocused = e.currentTarget.contains(document.activeElement);
+            if (!isFocused) {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = `0 8px 24px rgba(0, 0, 0, 0.08), inset 0 0 0 1px ${accentColor.primary}15`;
+              e.currentTarget.style.borderColor = 'var(--ui-border-default)';
+            }
+          }}
+          onFocus={(e) => {
+            if (e.currentTarget.contains(e.target)) {
+              e.currentTarget.style.borderColor = accentColor.primary;
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.boxShadow = `0 16px 40px rgba(0, 0, 0, 0.12), inset 0 0 0 1px ${accentColor.primary}40, 0 0 0 1px ${accentColor.primary}50`;
+              const wrapper = e.currentTarget.parentElement;
+              if (wrapper) {
+                wrapper.style.filter = `drop-shadow(0 0 20px ${accentColor.primary}40) drop-shadow(0 0 40px ${accentColor.primary}20)`;
+              }
+            }
+          }}
+          onBlur={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node) === false) {
+              e.currentTarget.style.borderColor = 'var(--ui-border-default)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = `0 8px 24px rgba(0, 0, 0, 0.08), inset 0 0 0 1px ${accentColor.primary}15`;
+              const wrapper = e.currentTarget.parentElement;
+              if (wrapper) {
+                wrapper.style.filter = 'drop-shadow(0 0 0 transparent)';
+              }
+            }
+          }}
+        >
         {/* Reverse image attachments */}
         <ReverseImageSearch
           ref={reverseImageRef}
@@ -261,6 +304,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
           isRecording={isRecording}
           isTranscribing={isTranscribing}
         />
+      </div>
       </div>
 
       {/* Remaining searches indicator - REMOVED as requested */}

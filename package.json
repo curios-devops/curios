@@ -9,7 +9,7 @@
     "dev:all": "NODE_OPTIONS='--no-deprecation' netlify dev",
     "dev:quiet": "NODE_OPTIONS='--no-deprecation --no-warnings' netlify dev --no-open 2>&1 | grep -v 'Function' | grep -v 'Loaded' | grep -v '◈'",
     "predev:fast": "node scripts/fix-env.mjs",
-    "dev:fast": "vite --port 5173 --open",
+    "dev:fast": "vite --port 5173",
     "dev:vite": "vite --port 5173",
     "dev:full": "concurrently \"npm run supabase:dev\" \"npm run vite:dev\"",
     "dev:supabase": "supabase start",

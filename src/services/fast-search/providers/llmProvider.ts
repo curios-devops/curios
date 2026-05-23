@@ -2,7 +2,6 @@
 
 import type { WebSearchResult } from './webSearchProvider';
 import type { ImageResult, VideoResult } from './mediaSearchProvider';
-import { FAST_SEARCH_SYSTEM_PROMPT, buildUserPrompt } from '../prompts/systemPrompt';
 import { logger } from '../../../utils/logger';
 
 export interface SearchContext {
@@ -20,6 +19,20 @@ export interface LLMResponse {
 }
 
 const MODEL = 'gpt-5-mini'; // Fast, cost-effective GPT-5 model with Responses API support
+
+/**
+ * Extract site name from URL for citation format
+ */
+function extractSiteName(url: string): string {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, '');
+    return hostname
+      .replace(/\.(com|org|net|io|co|gov|edu|info|biz)(\.[a-z]{2})?$/, '')
+      .split('.')[0];
+  } catch {
+    return 'source';
+  }
+}
 
 /**
  * Generate structured answer using GPT-5 mini with Responses API + web_search tool
@@ -123,10 +136,10 @@ Language: ${context.locale}`;
 }
 
 /**
- * Generate answer with streaming support using Responses API + web_search tool
+ * Generate answer with streaming support using search results from Tavily/Brave
  * Streams the answer as it's being generated
  *
- * @param context - The search context
+ * @param context - The search context with web results
  * @param onChunk - Callback for each chunk
  * @returns Follow-up questions after streaming completes
  */
@@ -134,8 +147,9 @@ export async function generateAnswerStreaming(
   context: SearchContext,
   onChunk: (chunk: string) => void
 ): Promise<{ followUps: string[] }> {
-  logger.debug('LLMProvider: Generating answer with streaming + web search', {
-    query: context.query
+  logger.debug('LLMProvider: Generating answer with streaming', {
+    query: context.query,
+    sourceCount: context.webResults.length
   });
 
   const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
@@ -145,13 +159,26 @@ export async function generateAnswerStreaming(
     throw new Error('Supabase Edge Function not configured');
   }
 
-  // Build user message for streaming
-  const userMessage = `Search the web and provide a comprehensive answer to: "${context.query}"
+  // Build sources text from search results
+  const sourcesText = context.webResults
+    .map((result) => {
+      const siteName = extractSiteName(result.url);
+      return `[${siteName}] ${result.title}\nURL: ${result.url}\nContent: ${result.snippet}`;
+    })
+    .join('\n\n');
+
+  // Build user message for streaming with search results
+  const userMessage = `Based on these search results, provide a comprehensive answer to: "${context.query}"
+
+Search Results:
+${sourcesText}
 
 Requirements:
-- Use current web information to answer accurately
+- Use inline citations with the website name like [wikipedia], [nytimes], [bbc], etc.
+- If multiple sources from the same site, use [sitename +N] format like [wikipedia +2] for 3 wikipedia sources
 - Provide a clear, well-structured response in markdown format
-- Include 3-5 relevant follow-up questions at the end
+- Make response comprehensive and informative
+- DO NOT include follow-up questions in the response text
 
 Today's date: ${context.date}
 Language: ${context.locale}`;
@@ -172,13 +199,7 @@ Language: ${context.locale}`;
             { role: 'user', content: userMessage }
           ],
           model: MODEL,
-          tools: [
-            {
-              type: 'web_search',
-              search_context_size: 'low'
-            }
-          ],
-          max_output_tokens: 2000,
+          max_output_tokens: 1200, // Balanced comprehensive responses
           reasoning: { effort: 'low' }
         }),
         stream: true
@@ -186,9 +207,11 @@ Language: ${context.locale}`;
       signal: controller.signal
     });
 
-    clearTimeout(timeoutId);
+    // Don't clear timeout yet - keep it active during streaming
+    // clearTimeout(timeoutId);
 
     if (!response.ok) {
+      clearTimeout(timeoutId);
       const errorText = await response.text();
       logger.error('LLMProvider: Streaming API error', {
         status: response.status,
@@ -200,6 +223,7 @@ Language: ${context.locale}`;
     // Process streaming response
     const reader = response.body?.getReader();
     if (!reader) {
+      clearTimeout(timeoutId);
       throw new Error('Failed to get response reader');
     }
 
@@ -207,18 +231,25 @@ Language: ${context.locale}`;
     let fullText = '';
     let buffer = '';
 
-    logger.debug('LLMProvider: Starting to read stream');
-
-    let chunkCount = 0;
     while (true) {
-      const { done, value } = await reader.read();
+      let readResult;
+      try {
+        readResult = await reader.read();
+      } catch (readError) {
+        logger.error('LLMProvider: reader.read() error', {
+          error: readError instanceof Error ? readError.message : String(readError)
+        });
+        throw readError;
+      }
+
+      const { done, value } = readResult;
 
       if (done) {
-        logger.debug('LLMProvider: Stream complete', { chunkCount, totalLength: fullText.length });
         break;
       }
 
-      buffer += decoder.decode(value, { stream: true });
+      const decoded = decoder.decode(value, { stream: true });
+      buffer += decoded;
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
 
@@ -232,7 +263,6 @@ Language: ${context.locale}`;
 
         const data = line.slice(6);
         if (data === '[DONE]') {
-          logger.debug('LLMProvider: Received DONE signal');
           continue;
         }
 
@@ -242,18 +272,8 @@ Language: ${context.locale}`;
           const content = json.content || json.delta || json.text || '';
 
           if (content && typeof content === 'string') {
-            chunkCount++;
             fullText += content;
             onChunk(content);
-
-            if (chunkCount === 1) {
-              logger.debug('LLMProvider: First chunk received', { length: content.length });
-            }
-            if (chunkCount % 10 === 0) {
-              logger.debug('LLMProvider: Progress', { chunkCount, totalLength: fullText.length });
-            }
-          } else {
-            logger.debug('LLMProvider: Chunk with no content', { json });
           }
         } catch (parseError) {
           logger.warn('LLMProvider: Failed to parse stream chunk', {
@@ -263,6 +283,9 @@ Language: ${context.locale}`;
         }
       }
     }
+
+    // Clear timeout after streaming completes successfully
+    clearTimeout(timeoutId);
 
     // Extract follow-ups from the full text
     const followUps = extractFollowUps(fullText);
@@ -359,16 +382,6 @@ function extractFollowUps(text: string): string[] {
     }
   }
 
-  // If no follow-ups found, generate some generic ones
-  if (followUps.length === 0) {
-    return [
-      'What are the latest developments?',
-      'How does this compare to alternatives?',
-      'What are the main benefits?',
-      'Are there any limitations?',
-      'Where can I learn more?'
-    ].slice(0, 3);
-  }
-
+  // Return empty array if no follow-ups found (controller will generate dynamic ones)
   return followUps.slice(0, 5); // Limit to 5
 }

@@ -7,7 +7,7 @@ import InputContainer from '../components/boxContainer/InputContainer.tsx';
 import ThemeToggle from '../components/theme/ThemeToggle.tsx';
 import LanguageSelector from '../components/common/LanguageSelector.tsx';
 import CookieConsentModal from '../components/common/CookieConsentModal.tsx';
-import CookieButton from '../components/common/CookieButton.tsx';
+import CookieBanner from '../components/common/CookieBanner.tsx';
 import GuestSignUpBanner from '../components/GuestSignUpBanner.tsx';
 import StandardUserBanner from '../components/StandardUserBanner.tsx';
 import SignUpModal from '../components/auth/SignUpModal.tsx';
@@ -103,14 +103,14 @@ export default function Home() {
   const handleAcceptAllCookies = () => {
     localStorage.setItem('cookieConsent', 'all');
     setBannerEnabled(true);
-    setCookiesAccepted(true);
+    setCookiesAccepted(true); // This will hide the banner
     setShowCookieModal(false);
   };
 
   const handleNecessaryCookies = () => {
     localStorage.setItem('cookieConsent', 'necessary');
     setBannerEnabled(true);
-    setCookiesAccepted(true);
+    setCookiesAccepted(true); // This will hide the banner
     setShowCookieModal(false);
   };
 
@@ -123,35 +123,41 @@ export default function Home() {
   };
 
   const { t } = useTranslation();
-  const showCookieButton = isGuest && !cookiesAccepted;
+  const showCookieBanner = isGuest && !cookiesAccepted;
 
   return (
     <div
-      className="min-h-screen relative transition-colors duration-200 pt-40"
+      className="min-h-screen relative transition-colors duration-200"
       style={{
         backgroundColor: 'var(--ui-bg-primary)',
         color: 'var(--ui-text-primary)',
+        paddingTop: '160px',
       }}
     >
       {/* Top right: ThemeToggle, Login and Get Started buttons */}
       {/* On desktop, show in current position. On mobile, these are hidden and shown in the header */}
-      <div className="absolute top-3 right-4 flex items-center gap-3 mobile:hidden">
+      <div className="absolute top-4 right-6 flex items-center gap-3 mobile:hidden">
         <div className="w-7 h-7 flex items-center">
           <ThemeToggle />
         </div>
         <button
-          className="h-9 px-4 flex items-center justify-center text-sm font-medium transition-all"
+          className="h-10 px-6 flex items-center justify-center font-medium transition-all"
           style={{
             backgroundColor: 'transparent',
             color: 'var(--ui-text-primary)',
-            border: '1px solid var(--ui-border-default)',
-            borderRadius: '8px',
+            border: '1.5px solid var(--ui-border-default)',
+            borderRadius: '12px',
+            fontSize: '15px',
+            fontWeight: '500',
+            transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
+            e.currentTarget.style.borderColor = accentColors.primary;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.borderColor = 'var(--ui-border-default)';
           }}
           type="button"
           onClick={() => setShowSignInModal(true)}
@@ -159,19 +165,25 @@ export default function Home() {
           {t('logIn') || 'Log in'}
         </button>
         <button
-          className="h-9 px-4 flex items-center justify-center text-sm font-medium transition-all"
+          className="h-10 px-6 flex items-center justify-center font-medium transition-all"
           style={{
             backgroundColor: getStartedBackground,
             color: getStartedText,
             border: '1px solid transparent',
-            borderRadius: '8px',
+            borderRadius: '12px',
+            fontSize: '15px',
+            fontWeight: '500',
+            boxShadow: '0 0 0 0 transparent',
+            transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = getStartedHover;
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = getStartedBackground;
             e.currentTarget.style.color = getStartedText;
+            e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
           }}
           type="button"
           onClick={handleShowSignUp}
@@ -180,45 +192,32 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="max-w-4xl mx-auto px-8 py-8">
-        <div className="flex flex-col items-center justify-center mt-2 mb-6">
+      <div className="max-w-[720px] mx-auto px-6 sm:px-8">
+        <div className="flex flex-col items-center justify-center mb-12">
           <h1
-            className="text-lg sm:text-xl md:text-2xl text-center leading-tight uppercase mb-2"
+            className="text-center leading-tight transition-opacity duration-300"
             style={{
               color: 'var(--ui-text-primary)',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-              fontWeight: '400',
-              letterSpacing: '0.05em'
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+              fontWeight: '600',
+              letterSpacing: '-0.02em',
+              fontSize: 'clamp(24px, 4vw, 42px)',
             }}
           >
             {t('mainTitle')}
           </h1>
-          <p
-            className="text-sm sm:text-base md:text-lg text-center"
-            style={{
-              color: '#94a3b8',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-              fontWeight: '400',
-              letterSpacing: '0.04em'
-            }}
-          >
-            {getModeSubtitle(currentMode)}
-          </p>
         </div>
         <InputContainer onModeChange={setCurrentMode} />
       </div>
 
-      {/* Bottom near right, not overlapping cookies */}
       {/* Bottom right: Language and Help */}
-      <div className="fixed bottom-2 right-4 flex items-center gap-2 z-[200]">
+      <div className="fixed bottom-2 right-4 flex items-center gap-2 z-[180]">
         <LanguageSelector />
         <HelpButton />
       </div>
 
-      {/* Cookie button: just right of sidebar */}
-      <div className="fixed bottom-2 left-56 z-[200]">
-        <CookieButton onClick={() => setShowCookieModal(true)} hidden={!showCookieButton} showTooltip={!showCookieModal} />
-      </div>
+      {/* Cookie banner: bottom-right, floats over language/help buttons */}
+      <CookieBanner onClick={() => setShowCookieModal(true)} hidden={!showCookieBanner} />
 
       {/* Guest Sign Up Banner - only show for guest users and after cookie consent */}
       {isGuest && <GuestSignUpBanner isEnabled={bannerEnabled} />}
@@ -226,13 +225,14 @@ export default function Home() {
       {/* Standard User Banner - only show for logged-in free tier users */}
       {isStandard && <StandardUserBanner />}
 
-      {/* Cookie Consent Modal - only show when button pressed and not accepted */}
+      {/* Cookie Consent Modal - only show when banner pressed and not accepted */}
       {showCookieModal && isGuest && !cookiesAccepted && (
         <CookieConsentModal
           onAcceptAll={handleAcceptAllCookies}
           onNecessaryOnly={handleNecessaryCookies}
           onClose={handleCloseCookieModal}
           onShowSignUp={handleShowSignUp}
+          positionRight={true}
         />
       )}
 

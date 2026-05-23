@@ -1,12 +1,12 @@
-import { type LucideIcon, Plus, Image as ImageIcon } from 'lucide-react';
-import React from 'react';
+import { type LucideIcon, Plus, Image as ImageIcon, Search, ChevronDown } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 import ActionButton from '../boxContainerInput/ActionButton.tsx';
 import ModeSelector from '../boxContainerInput/ModeSelector.tsx';
-import ModeChip from '../boxContainerInput/ModeChip.tsx';
 import type { ModeType } from '../boxContainerInput/ModeSelector.tsx';
 import SearchButton from '../boxContainerInput/SearchButton.tsx';
 import type { ReverseImageSearchHandle } from './ReverseImageSearch.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
 // SVG for mic icon, styled to match lucide-react icons
 const MicIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((props, ref) => (
@@ -65,21 +65,56 @@ export default function ButtonBar({
   isTranscribing,
 }: ButtonBarProps) {
   const { t } = useTranslation();
+  const accentColor = useAccentColor();
+  const [showModeMenu, setShowModeMenu] = useState(false);
+  const modeMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close mode menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modeMenuRef.current && !modeMenuRef.current.contains(event.target as Node)) {
+        setShowModeMenu(false);
+      }
+    };
+
+    if (showModeMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showModeMenu]);
+
+  // Get mode label
+  const getModeLabel = (mode: ModeType): string => {
+    switch (mode) {
+      case 'search':
+        return t('search') || 'Search';
+      case 'fastsearch':
+        return t('fastSearch') || 'Fast Search';
+      case 'stories':
+        return t('stories') || 'Stories';
+      case 'cinematic':
+        return t('cinematic') || 'Cinematic';
+      case 'avatar':
+        return t('avatar') || 'Avatar';
+      default:
+        return t('search') || 'Search';
+    }
+  };
 
   return (
     <div className="flex items-center justify-between px-4 py-1.5">
-      {/* Left side: Plus button and mode chip */}
+      {/* Left side: Plus button for file uploads only */}
       <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3 min-w-0">
-        {/* Plus button with dropdown - includes modes and file uploads */}
+        {/* Plus button with dropdown - only file uploads */}
         <div className="relative" ref={attachMenuRef}>
           <ActionButton
             icon={Plus}
-            label={t('addFilesAndMore')}
-            tooltip={t('addFilesAndMore')}
+            label={t('uploadPhotosAndFiles')}
+            tooltip={t('uploadPhotosAndFiles')}
             onClick={() => setShowAttachMenu(!showAttachMenu)}
           />
 
-          {/* Dropdown menu with files and modes */}
+          {/* Dropdown menu with file upload option only */}
           {showAttachMenu && (
             <div
               className="absolute bottom-full mb-2 left-0 rounded-lg shadow-lg border overflow-hidden min-w-[240px] z-50"
@@ -109,25 +144,86 @@ export default function ButtonBar({
                   {t('uploadPhotosAndFiles')}
                 </span>
               </button>
-
-              {/* Divider before modes */}
-              <div
-                className="border-t"
-                style={{ borderColor: 'var(--ui-border-default)' }}
-              />
-
-              {/* Mode Selector within the menu */}
-              <ModeSelector
-                selectedMode={selectedMode}
-                onModeSelect={onModeSelect}
-                onClose={() => setShowAttachMenu(false)}
-              />
             </div>
           )}
         </div>
 
-        {/* Mode chip - shows selected mode */}
-        <ModeChip mode={selectedMode} onClear={onModeClear} />
+        {/* Mode selector dropdown - rounded rectangle style like mic button */}
+        <div className="relative" ref={modeMenuRef}>
+          <button
+            type="button"
+            onClick={() => setShowModeMenu(!showModeMenu)}
+            className="h-10 px-3 rounded-lg flex items-center gap-2 transition-colors duration-200 text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = accentColor.primary;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = '';
+            }}
+          >
+            <Search size={16} />
+            <span className="text-sm font-medium whitespace-nowrap">
+              {getModeLabel(selectedMode)}
+            </span>
+            <ChevronDown size={14} />
+          </button>
+
+          {/* Mode dropdown menu */}
+          {showModeMenu && (
+            <div
+              className="absolute bottom-full mb-2 left-0 rounded-lg shadow-lg border overflow-hidden min-w-[220px] z-50"
+              style={{
+                backgroundColor: 'var(--ui-bg-elevated)',
+                borderColor: 'var(--ui-border-default)',
+                boxShadow: '0 14px 28px var(--ui-shadow-elevated)',
+              }}
+            >
+              {/* Search mode (default) - first option */}
+              <button
+                onClick={() => {
+                  onModeSelect('search');
+                  setShowModeMenu(false);
+                }}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 transition-colors text-left relative"
+                style={{
+                  color: selectedMode === 'search' ? accentColor.primary : 'var(--ui-text-primary)',
+                  fontWeight: selectedMode === 'search' ? 500 : 400,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <Search
+                    size={18}
+                    style={{
+                      color: selectedMode === 'search' ? accentColor.primary : 'var(--ui-text-secondary)'
+                    }}
+                  />
+                  <span className="font-medium">
+                    {t('search') || 'Search'}
+                  </span>
+                </div>
+                {selectedMode === 'search' && (
+                  <div
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: '#ef4444' }}
+                  />
+                )}
+              </button>
+
+              {/* Mode Selector - Fast Search, Stories, Avatar, Cinematic */}
+              <ModeSelector
+                selectedMode={selectedMode}
+                onModeSelect={onModeSelect}
+                onClose={() => setShowModeMenu(false)}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Right side: Action buttons based on content state */}

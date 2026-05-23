@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debug All Streaming Events</title>
+  <style>
+    body { font-family: monospace; padding: 20px; max-width: 1200px; margin: 0 auto; }
+    #output { border: 1px solid #ccc; padding: 10px; min-height: 200px; white-space: pre-wrap; background: #f5f5f5; }
+    #events { border: 1px solid #999; padding: 10px; min-height: 400px; white-space: pre-wrap; background: #fff; font-size: 11px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+    .log { margin: 2px 0; padding: 3px; background: #f0f0f0; border-left: 3px solid #0066cc; font-size: 11px; }
+    .error { border-left-color: #cc0000; }
+    .event { margin: 5px 0; padding: 5px; background: #e8f4f8; border-left: 3px solid #2196F3; }
+    .content-event { background: #e8f5e9; border-left-color: #4CAF50; }
+  </style>
+</head>
+<body>
+  <h1>Debug All OpenAI Streaming Events</h1>
+
+  <button onclick="testStreaming(false)">Test WITHOUT web_search</button>
+  <button onclick="testStreaming(true)">Test WITH web_search</button>
+  <button onclick="clearAll()">Clear</button>
+
+  <h2>Streamed Content:</h2>
+  <div id="output"></div>
+
+  <h2>All Events (Raw):</h2>
+  <div id="events"></div>
+
+  <h2>Summary Logs:</h2>
+  <div id="logs"></div>
+
+  <script>
+    const EDGE_FUNCTION_URL = 'https://gpfccicfqynahflehpqo.supabase.co/functions/v1/fetch-openai';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwZmNjaWNmcXluYWhmbGVocHFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIzMTg1MzksImV4cCI6MjA1Nzg5NDUzOX0.mG1MaCt62FdB3tDDV5dHEJeCJvWB5l96EyJQqTSjAd8';
+
+    function clearAll() {
+      document.getElementById('output').textContent = '';
+      document.getElementById('events').innerHTML = '';
+      document.getElementById('logs').innerHTML = '';
+    }
+
+    function log(message, isError = false) {
+      const logsDiv = document.getElementById('logs');
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log' + (isError ? ' error' : '');
+      logEntry.textContent = `[${new Date().toISOString()}] ${message}`;
+      logsDiv.appendChild(logEntry);
+      console.log(message);
+    }
+
+    function logEvent(json, hasContent) {
+      const eventsDiv = document.getElementById('events');
+      const eventEntry = document.createElement('div');
+      eventEntry.className = hasContent ? 'content-event' : 'event';
+      eventEntry.textContent = JSON.stringify(json, null, 2);
+      eventsDiv.appendChild(eventEntry);
+    }
+
+    async function testStreaming(useWebSearch) {
+      clearAll();
+
+      log(`=== TEST ${useWebSearch ? 'WITH' : 'WITHOUT'} web_search ===`);
+
+      const tools = useWebSearch ? [{
+        type: 'web_search',
+        search_context_size: 'low'
+      }] : undefined;
+
+      const requestBody = {
+        prompt: JSON.stringify({
+          input: [
+            { role: 'user', content: 'Tell me about Elon Musk in 3 sentences.' }
+          ],
+          model: 'gpt-5-mini',
+          ...(tools && { tools }),
+          max_output_tokens: 500,
+          reasoning: { effort: 'low' }
+        }),
+        stream: true
+      };
+
+      log(`Request: ${JSON.stringify(requestBody, null, 2)}`);
+
+      try {
+        const response = await fetch(EDGE_FUNCTION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${ANON_KEY}`
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        log(`Response status: ${response.status}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          log(`Error: ${errorText}`, true);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let chunkCount = 0;
+        let totalChars = 0;
+        let eventCount = 0;
+        let eventTypes = {};
+
+        log('Starting to read stream...');
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            log(`Stream complete!`);
+            log(`  - Content chunks: ${chunkCount}`);
+            log(`  - Total chars: ${totalChars}`);
+            log(`  - Total events: ${eventCount}`);
+            log(`  - Event types: ${JSON.stringify(eventTypes)}`);
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+
+              if (data === '[DONE]') {
+                log('Received [DONE] signal');
+                logEvent({ DONE: true }, false);
+                continue;
+              }
+
+              try {
+                const json = JSON.parse(data);
+                eventCount++;
+
+                const eventType = json.type || 'unknown';
+                eventTypes[eventType] = (eventTypes[eventType] || 0) + 1;
+
+                const content = json.content || json.delta || json.text || '';
+                const hasContent = !!content;
+
+                logEvent(json, hasContent);
+
+                if (content) {
+                  chunkCount++;
+                  totalChars += content.length;
+                  document.getElementById('output').textContent += content;
+
+                  if (chunkCount === 1) {
+                    log(`First chunk: length=${content.length}, type=${eventType}`);
+                  }
+                  if (chunkCount % 10 === 0) {
+                    log(`Progress: ${chunkCount} chunks, ${totalChars} chars`);
+                  }
+                }
+              } catch (e) {
+                log(`Parse error: ${e.message}`, true);
+                logEvent({ error: e.message, data: data.substring(0, 100) }, false);
+              }
+            }
+          }
+        }
+
+      } catch (error) {
+        log(`Fetch error: ${error.message}`, true);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -8,13 +8,15 @@ interface CookieConsentModalProps {
   onNecessaryOnly: () => void;
   onClose: () => void;
   onShowSignUp?: () => void;
+  positionRight?: boolean; // New prop to position modal on the right
 }
 
-export default function CookieConsentModal({ 
-  onAcceptAll, 
+export default function CookieConsentModal({
+  onAcceptAll,
   onNecessaryOnly,
   onClose,
-  onShowSignUp
+  onShowSignUp,
+  positionRight = false
 }: CookieConsentModalProps) {
   const { t } = useTranslation();
   const { accentColor: selectedAccentColor } = useTheme();
@@ -45,9 +47,11 @@ export default function CookieConsentModal({
     window.location.href = '/policies#privacy';
   };
 
-  // Modal position: just above the cookie button (left-56, bottom-12), with margin from sidebar and bottom
+  // Modal position: left (default) or right (when opened from banner)
+  const positionClass = positionRight ? 'right-4 bottom-20' : 'left-56 bottom-12';
+
   return (
-    <div className="fixed left-56 bottom-12 z-50 animate-fade-in" style={{ marginLeft: 0, marginBottom: 0 }}>
+    <div className={`fixed ${positionClass} z-[200] animate-fade-in`} style={{ marginLeft: 0, marginBottom: 0 }}>
       <div className="rounded-md shadow-xl max-w-[320px] w-full p-4 relative border transition-colors duration-200 bg-[#FAFBF9] border-[#E3E6E3] text-[#2A3B39] dark:bg-[#181A1B] dark:border-[#222E2A] dark:text-white">
         {/* Close (X) button */}
         <button

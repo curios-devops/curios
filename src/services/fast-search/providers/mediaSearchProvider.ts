@@ -16,6 +16,7 @@ export interface VideoResult {
   url: string;
   title: string;
   thumbnail: string;
+  source?: string;
   duration?: string;
   platform?: string;
 }

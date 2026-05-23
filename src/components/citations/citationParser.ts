@@ -44,7 +44,7 @@ export function parseCitation(
     const key = siteName.toLowerCase();
     return citeSite === key || citeRoot === key;
   });
-  
+
   if (matchingCitations.length === 0) {
     // If no direct match, try to find by partial matching
     const partialMatches = allCitations.filter(citation =>
