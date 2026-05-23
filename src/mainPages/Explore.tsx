@@ -87,18 +87,14 @@ export default function Explore() {
       setLoading(true);
       setError(null);
 
-      const SERP_API_URL = import.meta.env.VITE_SERP_API_URL;
-      if (!SERP_API_URL) {
-        throw new Error('SERP API URL not configured');
+      const GOOGLE_NEWS_API_URL = import.meta.env.VITE_GOOGLE_NEWS_API_URL;
+      if (!GOOGLE_NEWS_API_URL) {
+        throw new Error('Google News API URL not configured');
       }
 
-      // Call the Supabase Edge Function instead of directly calling SerpAPI
-      // Replace the reverse-image-search endpoint with google-news
-      const googleNewsUrl = SERP_API_URL.replace('/reverse-image-search', '/google-news');
+      console.log('[EXPLORE] Fetching news from:', GOOGLE_NEWS_API_URL);
 
-      console.log('[EXPLORE] Fetching news from:', googleNewsUrl);
-
-      const response = await fetch(googleNewsUrl, {
+      const response = await fetch(GOOGLE_NEWS_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
