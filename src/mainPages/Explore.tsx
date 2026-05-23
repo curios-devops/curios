@@ -348,6 +348,10 @@ export default function Explore() {
                         alt={article.title}
                         className="w-full h-48 sm:h-full object-cover"
                         style={{ minHeight: '200px' }}
+                        onError={(e) => {
+                          // Hide image if it fails to load (403, CORS, etc.)
+                          e.currentTarget.style.display = 'none';
+                        }}
                       />
                     </div>
                   </div>
@@ -360,6 +364,11 @@ export default function Explore() {
                           src={article.thumbnail}
                           alt={article.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            // Hide image container if it fails to load (403, CORS, etc.)
+                            const container = e.currentTarget.parentElement;
+                            if (container) container.style.display = 'none';
+                          }}
                         />
                       </div>
                     )}
