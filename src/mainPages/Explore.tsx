@@ -36,14 +36,17 @@ export default function Explore() {
       // If already in relative format (hours ago)
       if (hoursAgoMatch) {
         const hours = parseInt(hoursAgoMatch[1]);
-        return `${hours}h ago`;
+        return `${hours} hours ago`;
       }
 
-      // If minutes ago, convert to hours (round down, minimum 1 hour)
+      // If minutes ago, show as is or convert
       if (minutesAgoMatch) {
         const minutes = parseInt(minutesAgoMatch[1]);
-        const hours = Math.max(1, Math.floor(minutes / 60));
-        return `${hours}h ago`;
+        if (minutes < 60) {
+          return `${minutes} minutes ago`;
+        }
+        const hours = Math.floor(minutes / 60);
+        return `${hours} hours ago`;
       }
 
       // If days ago, calculate the actual date
@@ -63,7 +66,7 @@ export default function Explore() {
 
         // If less than 24 hours, show hours ago
         if (diffHours < 24 && diffHours >= 0) {
-          return `${Math.max(1, diffHours)}h ago`;
+          return `${Math.max(1, diffHours)} hours ago`;
         }
 
         // Otherwise, show formatted date
