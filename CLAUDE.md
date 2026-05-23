@@ -13,7 +13,9 @@ Before implementing:
 - If multiple interpretations exist, present them - don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
-- Edge function deployed manually by user (marcelo) since MCP and CLI had issues, so provide document for deployment.
+- FrontEnd is in Netfily
+- Edge function deployed manually in supabase by user (marcelo) since MCP and CLI had issues, so provide document for deployment. 
+Never write secret keys in a .md file just indicate and replace for a placeholder
 
 ## 2. Simplicity First
 

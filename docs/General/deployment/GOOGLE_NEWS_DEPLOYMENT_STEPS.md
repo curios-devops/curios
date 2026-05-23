@@ -47,7 +47,7 @@ supabase secrets list --project-ref gpfccicfqynahflehpqo
 If `SERPAPI_API_KEY` is not listed, set it:
 
 ```bash
-supabase secrets set SERPAPI_API_KEY=c25f9802be19c7974a87a148e4133ad3ee344567f2090f930689100954d18e4a --project-ref gpfccicfqynahflehpqo
+supabase secrets set SERPAPI_API_KEY=... --project-ref gpfccicfqynahflehpqo
 ```
 
 ### Step 3: Test the Edge Function
