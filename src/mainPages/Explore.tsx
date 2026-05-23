@@ -89,48 +89,69 @@ export default function Explore() {
 
       const GOOGLE_NEWS_API_URL = import.meta.env.VITE_GOOGLE_NEWS_API_URL;
       if (!GOOGLE_NEWS_API_URL) {
-        throw new Error('Google News API URL not configured');
+        throw new Error('Google News API URL not configured. Please check environment variables.');
       }
 
       console.log('[EXPLORE] Fetching news from:', GOOGLE_NEWS_API_URL);
 
-      const response = await fetch(GOOGLE_NEWS_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: 'technology', // Default query - can be made dynamic later
-        }),
-      });
+      // Add timeout to detect stuck requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-      console.log('[EXPLORE] Response status:', response.status);
+      try {
+        const response = await fetch(GOOGLE_NEWS_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: 'technology', // Default query - can be made dynamic later
+          }),
+          signal: controller.signal,
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[EXPLORE] Error response:', errorText);
-        throw new Error(`Failed to fetch news: ${response.status} ${response.statusText}`);
+        clearTimeout(timeoutId);
+
+        console.log('[EXPLORE] Response status:', response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[EXPLORE] Error response:', errorText);
+
+          if (response.status === 404) {
+            throw new Error('Edge function not found. The google-news edge function needs to be deployed to Supabase.');
+          }
+
+          throw new Error(`Failed to fetch news: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('[EXPLORE] Result:', result);
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch news');
+        }
+
+        const newsArticles: NewsArticle[] = (result.data?.articles || []).map((item: any) => ({
+          title: item.title || '',
+          link: item.link || '',
+          snippet: item.snippet || '',
+          date: item.date || '',
+          source: item.source || 'Unknown',
+          thumbnail: item.thumbnail,
+        }));
+
+        setArticles(newsArticles);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw new Error('Request timeout. The edge function may not be deployed or is taking too long to respond.');
+        }
+        throw fetchError;
       }
-
-      const result = await response.json();
-      console.log('[EXPLORE] Result:', result);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch news');
-      }
-
-      const newsArticles: NewsArticle[] = (result.data?.articles || []).map((item: any) => ({
-        title: item.title || '',
-        link: item.link || '',
-        snippet: item.snippet || '',
-        date: item.date || '',
-        source: item.source || 'Unknown',
-        thumbnail: item.thumbnail,
-      }));
-
-      setArticles(newsArticles);
     } catch (err) {
-      console.error('Error fetching news:', err);
+      console.error('[EXPLORE] Error fetching news:', err);
       setError(err instanceof Error ? err.message : 'Failed to load news');
     } finally {
       setLoading(false);
@@ -176,14 +197,30 @@ export default function Explore() {
         {loading && (
           <div className="flex flex-col items-center justify-center py-20">
             <div
-              className="w-10 h-10 border-3 rounded-full animate-spin mb-4"
+              className="w-16 h-16 border-4 rounded-full animate-spin mb-4"
               style={{
-                borderColor: `${accentColors.primary}30`,
+                borderColor: `${accentColors.primary}20`,
                 borderTopColor: accentColors.primary,
+                borderWidth: '4px',
               }}
             />
-            <p style={{ color: 'var(--ui-text-secondary)', fontSize: '15px' }}>
+            <p
+              style={{
+                color: 'var(--ui-text-primary)',
+                fontSize: '17px',
+                fontWeight: '500',
+              }}
+            >
               Loading news...
+            </p>
+            <p
+              style={{
+                color: 'var(--ui-text-tertiary)',
+                fontSize: '14px',
+                marginTop: '8px',
+              }}
+            >
+              Fetching latest articles
             </p>
           </div>
         )}
