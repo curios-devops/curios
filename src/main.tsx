@@ -21,6 +21,7 @@ const ResearcherResults = lazy(() => import('./services/research/pro/pages/Resea
 const StudioResults = lazy(() => import('./services/studio/pages/StudioResults.tsx'));
 const CinematicResults = lazy(() => import('./services/cinematic/pages/CinematicResults.tsx'));
 const Explore = lazy(() => import('./mainPages/Explore.tsx'));
+const ArticleDetail = lazy(() => import('./mainPages/ArticleDetail.tsx'));
 const Settings = lazy(() => import('./mainPages/Settings.tsx'));
 const TestPage = lazy(() => import('./pages/test.tsx'));
 const ImageTest = lazy(() => import('./pages/ImageTest.tsx'));
@@ -57,6 +58,7 @@ const router = createBrowserRouter(
       children: [
         { path: '/', element: <Home /> },
         { path: '/explore', element: <LazyPageWrapper><Explore /></LazyPageWrapper> },
+        { path: '/explore/:articleId', element: <LazyPageWrapper><ArticleDetail /></LazyPageWrapper> },
         { path: '/search', element: <LazyPageWrapper><SearchResults /></LazyPageWrapper> },
         { path: '/fast-search', element: <LazyPageWrapper><FastSearchResults /></LazyPageWrapper> },
         { path: '/avatar-search', element: <LazyPageWrapper><AvatarSearchResults /></LazyPageWrapper> },

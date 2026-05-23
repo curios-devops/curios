@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../components/theme/ThemeContext.tsx';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
 import { useTranslation } from '../hooks/useTranslation.ts';
@@ -13,6 +14,7 @@ interface NewsArticle {
 }
 
 export default function Explore() {
+  const navigate = useNavigate();
   const { theme } = useTheme();
   const accentColors = useAccentColor();
   const { t } = useTranslation();
@@ -270,12 +272,14 @@ export default function Explore() {
         {!loading && !error && articles.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {articles.map((article, index) => (
-              <a
+              <div
                 key={index}
-                href={article.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group block rounded-xl overflow-hidden transition-all duration-200"
+                onClick={() => {
+                  navigate(`/explore/${encodeURIComponent(article.title)}`, {
+                    state: { article },
+                  });
+                }}
+                className="group block rounded-xl overflow-hidden transition-all duration-200 cursor-pointer"
                 style={{
                   backgroundColor: 'var(--ui-bg-secondary)',
                   border: '1px solid var(--ui-border-default)',
@@ -424,7 +428,7 @@ export default function Explore() {
                     </div>
                   </>
                 )}
-              </a>
+              </div>
             ))}
           </div>
         )}
