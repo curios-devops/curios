@@ -275,8 +275,10 @@ export default function Explore() {
               <div
                 key={index}
                 onClick={() => {
+                  // Pass related articles (all other articles except this one)
+                  const relatedArticles = articles.filter((_, i) => i !== index).slice(0, 4);
                   navigate(`/explore/${encodeURIComponent(article.title)}`, {
-                    state: { article },
+                    state: { article, relatedArticles },
                   });
                 }}
                 className="group block rounded-xl overflow-hidden transition-all duration-200 cursor-pointer"

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Share2 } from 'lucide-react';
+import { ArrowLeft, Share2, ExternalLink } from 'lucide-react';
 import { useTheme } from '../components/theme/ThemeContext.tsx';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
 import QueryBoxContainer from '../components/boxContainer/QueryBoxContainer.tsx';
+import CustomMarkdown from '../components/CustomMarkdown.tsx';
+import { generateArticleContent, type ArticleContent, type ArticleSource } from '../services/explore/articleService';
 
 interface ArticleData {
   title: string;
@@ -21,20 +23,46 @@ export default function ArticleDetail() {
   const { theme } = useTheme();
   const accentColors = useAccentColor();
 
-  // Get article data from navigation state or reconstruct from ID
   const [article, setArticle] = useState<ArticleData | null>(
     location.state?.article || null
   );
-  const [relatedArticles, setRelatedArticles] = useState<ArticleData[]>([]);
+  const [aiContent, setAiContent] = useState<ArticleContent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [relatedArticles, setRelatedArticles] = useState<ArticleData[]>(
+    location.state?.relatedArticles || []
+  );
 
   useEffect(() => {
-    // If we don't have article data, we could fetch it based on articleId
-    // For now, we'll just show what we have from navigation state
-    if (!article && articleId) {
-      // TODO: Implement article fetching by ID if needed
-      console.warn('Article data not found in navigation state');
+    if (article) {
+      loadArticleContent();
+    } else if (articleId) {
+      console.warn('[ARTICLE DETAIL] Article data not found in navigation state');
+      setLoading(false);
     }
-  }, [article, articleId]);
+  }, [article]);
+
+  const loadArticleContent = async () => {
+    if (!article) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const content = await generateArticleContent(
+        article.title,
+        article.snippet,
+        article.link
+      );
+
+      setAiContent(content);
+    } catch (err) {
+      console.error('[ARTICLE DETAIL] Error loading content:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load article content');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleShare = async () => {
     const shareData = {
@@ -47,12 +75,11 @@ export default function ArticleDetail() {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
-        // Fallback: copy to clipboard
         await navigator.clipboard.writeText(window.location.href);
         alert('Link copied to clipboard!');
       }
     } catch (err) {
-      console.error('Error sharing:', err);
+      console.error('[ARTICLE DETAIL] Error sharing:', err);
     }
   };
 
@@ -158,7 +185,7 @@ export default function ArticleDetail() {
             </span>
             <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '14px' }}>•</span>
             <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '14px' }}>
-              {article.date}
+              Published {article.date}
             </span>
           </div>
 
@@ -175,35 +202,9 @@ export default function ArticleDetail() {
             {article.snippet}
           </p>
 
-          {/* Source Link Badge */}
-          <a
-            href={article.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg mb-8 transition-all"
-            style={{
-              backgroundColor: 'var(--ui-bg-secondary)',
-              border: '1px solid var(--ui-border-default)',
-              color: accentColors.primary,
-              fontSize: '14px',
-              fontWeight: '500',
-              textDecoration: 'none',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = accentColors.primary;
-              e.currentTarget.style.backgroundColor = `${accentColors.primary}10`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--ui-border-default)';
-              e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
-            }}
-          >
-            Read full article at {article.source}
-          </a>
-
           {/* Main Image */}
           {article.thumbnail && (
-            <div className="mb-12 rounded-xl overflow-hidden">
+            <div className="mb-8 rounded-xl overflow-hidden">
               <img
                 src={article.thumbnail}
                 alt={article.title}
@@ -215,9 +216,91 @@ export default function ArticleDetail() {
               />
             </div>
           )}
+
+          {/* Source Link Badges */}
+          {aiContent && aiContent.sources.length > 0 && (
+            <div className="flex flex-wrap gap-3 mb-8">
+              {aiContent.sources.slice(0, 5).map((source, index) => (
+                <a
+                  key={index}
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
+                  style={{
+                    backgroundColor: 'var(--ui-bg-secondary)',
+                    border: '1px solid var(--ui-border-default)',
+                    color: 'var(--ui-text-secondary)',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    textDecoration: 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = accentColors.primary;
+                    e.currentTarget.style.color = accentColors.primary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--ui-border-default)';
+                    e.currentTarget.style.color = 'var(--ui-text-secondary)';
+                  }}
+                >
+                  <ExternalLink size={14} />
+                  <span>{source.domain}</span>
+                </a>
+              ))}
+            </div>
+          )}
+
+          {/* AI-Generated Content */}
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div
+                className="w-12 h-12 border-4 rounded-full animate-spin mb-4"
+                style={{
+                  borderColor: `${accentColors.primary}20`,
+                  borderTopColor: accentColors.primary,
+                }}
+              />
+              <p style={{ color: 'var(--ui-text-secondary)', fontSize: '15px' }}>
+                Generating in-depth analysis...
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <div
+              className="rounded-xl p-6 mb-8"
+              style={{
+                backgroundColor: 'var(--ui-bg-secondary)',
+                border: '1px solid var(--ui-border-default)',
+              }}
+            >
+              <p style={{ color: 'var(--ui-text-primary)', fontSize: '15px' }}>
+                {error}
+              </p>
+              <button
+                onClick={loadArticleContent}
+                className="mt-4 px-4 py-2 rounded-lg transition-all"
+                style={{
+                  backgroundColor: accentColors.primary,
+                  color: 'var(--ui-text-on-accent)',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {aiContent && (
+            <div className="prose prose-lg max-w-none">
+              <CustomMarkdown content={aiContent.mainContent} />
+            </div>
+          )}
         </article>
 
-        {/* Discover More Section */}
+        {/* Keep Exploring Section */}
         {relatedArticles.length > 0 && (
           <div className="mt-16">
             <h2
@@ -229,50 +312,69 @@ export default function ArticleDetail() {
                 letterSpacing: '-0.01em',
               }}
             >
-              Discover more
+              Keep exploring...
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {relatedArticles.map((relatedArticle, index) => (
                 <div
                   key={index}
-                  className="p-4 rounded-xl cursor-pointer transition-all"
+                  className="group rounded-xl overflow-hidden cursor-pointer transition-all duration-200"
                   style={{
                     backgroundColor: 'var(--ui-bg-secondary)',
                     border: '1px solid var(--ui-border-default)',
                   }}
                   onClick={() => {
                     navigate(`/explore/${encodeURIComponent(relatedArticle.title)}`, {
-                      state: { article: relatedArticle },
+                      state: { article: relatedArticle, relatedArticles },
                     });
+                    window.scrollTo(0, 0);
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = accentColors.primary;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = 'var(--ui-border-default)';
+                    e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  <h3
-                    className="mb-2"
-                    style={{
-                      color: 'var(--ui-text-primary)',
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      lineHeight: '1.4',
-                    }}
-                  >
-                    {relatedArticle.title}
-                  </h3>
-                  <p
-                    style={{
-                      color: 'var(--ui-text-secondary)',
-                      fontSize: '14px',
-                      lineHeight: '1.6',
-                    }}
-                  >
-                    {relatedArticle.snippet.substring(0, 150)}...
-                  </p>
+                  {relatedArticle.thumbnail && (
+                    <div className="aspect-video w-full overflow-hidden">
+                      <img
+                        src={relatedArticle.thumbnail}
+                        alt={relatedArticle.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          const container = e.currentTarget.parentElement;
+                          if (container) container.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="p-4">
+                    <h3
+                      className="mb-2 line-clamp-2"
+                      style={{
+                        color: 'var(--ui-text-primary)',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        lineHeight: '1.4',
+                      }}
+                    >
+                      {relatedArticle.title}
+                    </h3>
+                    <p
+                      className="line-clamp-2"
+                      style={{
+                        color: 'var(--ui-text-secondary)',
+                        fontSize: '13px',
+                        lineHeight: '1.5',
+                      }}
+                    >
+                      {relatedArticle.snippet}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
