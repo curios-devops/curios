@@ -34,30 +34,6 @@ export default function ArticleDetail() {
     location.state?.relatedArticles || []
   );
 
-  // Typewriter effect for snippet
-  const [typewriterSnippet, setTypewriterSnippet] = useState('');
-  const [snippetComplete, setSnippetComplete] = useState(false);
-
-  // Typewriter effect for snippet
-  useEffect(() => {
-    if (!article?.snippet) return;
-
-    let currentIndex = 0;
-    const snippet = article.snippet;
-
-    const typeInterval = setInterval(() => {
-      if (currentIndex < snippet.length) {
-        setTypewriterSnippet(snippet.substring(0, currentIndex + 1));
-        currentIndex++;
-      } else {
-        setSnippetComplete(true);
-        clearInterval(typeInterval);
-      }
-    }, 20); // 20ms per character for smooth typing
-
-    return () => clearInterval(typeInterval);
-  }, [article?.snippet]);
-
   useEffect(() => {
     if (article) {
       loadArticleContent();
@@ -205,11 +181,11 @@ export default function ArticleDetail() {
           </h1>
 
           {/* Metadata */}
-          <div className="flex items-center gap-3 mb-8">
+          <div className="flex items-center gap-2 mb-8">
             <span
               style={{
                 color: 'var(--ui-text-tertiary)',
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: '600',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -217,25 +193,11 @@ export default function ArticleDetail() {
             >
               {article.source}
             </span>
-            <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '14px' }}>•</span>
-            <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '14px' }}>
-              Published {article.date}
+            <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '13px' }}>•</span>
+            <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '13px' }}>
+              {article.date}
             </span>
           </div>
-
-          {/* Snippet with Typewriter Effect */}
-          <p
-            className="mb-8"
-            style={{
-              color: 'var(--ui-text-secondary)',
-              fontSize: '18px',
-              lineHeight: '1.7',
-              letterSpacing: '-0.01em',
-            }}
-          >
-            {typewriterSnippet}
-            {!snippetComplete && <span className="animate-pulse">|</span>}
-          </p>
 
           {/* Main Image */}
           {article.thumbnail && (
@@ -252,41 +214,7 @@ export default function ArticleDetail() {
             </div>
           )}
 
-          {/* Source Link Badges */}
-          {sources.length > 0 && (
-            <div className="flex flex-wrap gap-3 mb-8">
-              {sources.slice(0, 5).map((source, index) => (
-                <a
-                  key={index}
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
-                  style={{
-                    backgroundColor: 'var(--ui-bg-secondary)',
-                    border: '1px solid var(--ui-border-default)',
-                    color: 'var(--ui-text-secondary)',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    textDecoration: 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = accentColors.primary;
-                    e.currentTarget.style.color = accentColors.primary;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--ui-border-default)';
-                    e.currentTarget.style.color = 'var(--ui-text-secondary)';
-                  }}
-                >
-                  <ExternalLink size={14} />
-                  <span>{source.domain}</span>
-                </a>
-              ))}
-            </div>
-          )}
-
-          {/* Generating State */}
+          {/* Generating State - Shows before streaming starts */}
           {isGenerating && !streamingContent && (
             <div className="flex flex-col items-center justify-center py-12">
               <div
@@ -326,6 +254,40 @@ export default function ArticleDetail() {
               >
                 Retry
               </button>
+            </div>
+          )}
+
+          {/* Source Link Badges - Show after streaming starts */}
+          {sources.length > 0 && streamingContent && (
+            <div className="flex flex-wrap gap-3 mb-8">
+              {sources.slice(0, 5).map((source, index) => (
+                <a
+                  key={index}
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
+                  style={{
+                    backgroundColor: 'var(--ui-bg-secondary)',
+                    border: '1px solid var(--ui-border-default)',
+                    color: 'var(--ui-text-secondary)',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    textDecoration: 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = accentColors.primary;
+                    e.currentTarget.style.color = accentColors.primary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--ui-border-default)';
+                    e.currentTarget.style.color = 'var(--ui-text-secondary)';
+                  }}
+                >
+                  <ExternalLink size={14} />
+                  <span>{source.domain}</span>
+                </a>
+              ))}
             </div>
           )}
 
