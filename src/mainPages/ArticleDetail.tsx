@@ -59,10 +59,16 @@ export default function ArticleDetail() {
         (chunk: string) => {
           // On first chunk, stop showing "generating" state
           if (isFirstChunk) {
+            console.log('[ARTICLE DETAIL] First chunk received, hiding spinner');
             setIsGenerating(false);
             isFirstChunk = false;
           }
-          setStreamingContent(prev => prev + chunk);
+          console.log('[ARTICLE DETAIL] Adding chunk to content:', chunk.substring(0, 20));
+          setStreamingContent(prev => {
+            const newContent = prev + chunk;
+            console.log('[ARTICLE DETAIL] Total content length:', newContent.length);
+            return newContent;
+          });
         }
       );
 
@@ -294,6 +300,9 @@ export default function ArticleDetail() {
           {/* Streaming AI Content */}
           {streamingContent && (
             <div className="prose prose-lg max-w-none">
+              <div style={{ border: '2px solid red', padding: '10px', marginBottom: '10px' }}>
+                DEBUG: Content length = {streamingContent.length}
+              </div>
               <CustomMarkdown content={streamingContent} />
             </div>
           )}
