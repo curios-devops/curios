@@ -77,14 +77,8 @@ Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'nu
             { role: 'user', content: userMessage }
           ],
           model: MODEL,
-          tools: [
-            {
-              type: 'web_search',
-              search_context_size: 'medium' // More context for better article
-            }
-          ],
-          max_output_tokens: 3000,
-          reasoning: { effort: 'medium' } // Better quality for articles
+          max_output_tokens: 2000,
+          reasoning: { effort: 'low' } // Fast reasoning for streaming (web_search blocks streaming)
         }),
         stream: true
       }),
