@@ -142,8 +142,15 @@ globalThis.addEventListener('unhandledrejection', (event) => {
   event.preventDefault();
 });
 
-// Configure error handling for uncaught errors
+// Suppress image loading errors globally (403, CORS, connection errors from third-party sources)
 globalThis.addEventListener('error', (event) => {
+  // Check if it's an image loading error
+  if (event.target instanceof HTMLImageElement) {
+    console.warn('Image failed to load (normal for news images):', event.target.src);
+    event.preventDefault();
+    return;
+  }
+
   // Suppress Supabase auth errors
   const errorMessage = event.message || '';
   const errorFilename = event.filename || '';

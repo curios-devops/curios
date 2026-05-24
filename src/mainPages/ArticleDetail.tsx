@@ -5,7 +5,7 @@ import { useTheme } from '../components/theme/ThemeContext.tsx';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
 import QueryBoxContainer from '../components/boxContainer/QueryBoxContainer.tsx';
 import CustomMarkdown from '../components/CustomMarkdown.tsx';
-import { generateArticleContent, type ArticleContent, type ArticleSource } from '../services/explore/articleService';
+import { generateArticleContentStreaming, type ArticleSource } from '../services/explore/articleService';
 
 interface ArticleData {
   title: string;
@@ -26,7 +26,8 @@ export default function ArticleDetail() {
   const [article, setArticle] = useState<ArticleData | null>(
     location.state?.article || null
   );
-  const [aiContent, setAiContent] = useState<ArticleContent | null>(null);
+  const [streamingContent, setStreamingContent] = useState<string>('');
+  const [sources, setSources] = useState<ArticleSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [relatedArticles, setRelatedArticles] = useState<ArticleData[]>(
@@ -48,18 +49,22 @@ export default function ArticleDetail() {
     try {
       setLoading(true);
       setError(null);
+      setStreamingContent('');
 
-      const content = await generateArticleContent(
+      const returnedSources = await generateArticleContentStreaming(
         article.title,
         article.snippet,
-        article.link
+        article.link,
+        (chunk) => {
+          setStreamingContent(prev => prev + chunk);
+        }
       );
 
-      setAiContent(content);
+      setSources(returnedSources);
+      setLoading(false);
     } catch (err) {
       console.error('[ARTICLE DETAIL] Error loading content:', err);
       setError(err instanceof Error ? err.message : 'Failed to load article content');
-    } finally {
       setLoading(false);
     }
   };
@@ -218,9 +223,9 @@ export default function ArticleDetail() {
           )}
 
           {/* Source Link Badges */}
-          {aiContent && aiContent.sources.length > 0 && (
+          {sources.length > 0 && (
             <div className="flex flex-wrap gap-3 mb-8">
-              {aiContent.sources.slice(0, 5).map((source, index) => (
+              {sources.slice(0, 5).map((source, index) => (
                 <a
                   key={index}
                   href={source.url}
@@ -293,9 +298,9 @@ export default function ArticleDetail() {
             </div>
           )}
 
-          {aiContent && (
+          {streamingContent && (
             <div className="prose prose-lg max-w-none">
-              <CustomMarkdown content={aiContent.mainContent} />
+              <CustomMarkdown content={streamingContent} />
             </div>
           )}
         </article>
