@@ -41,6 +41,8 @@ export async function generateArticleContentStreaming(
   const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+  logger.debug('[ARTICLE SERVICE] Edge URL:', { url: supabaseEdgeUrl });
+
   if (!supabaseEdgeUrl || !supabaseAnonKey) {
     throw new Error('Supabase Edge Function not configured');
   }
@@ -85,12 +87,16 @@ Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'nu
       signal: controller.signal
     });
 
+    logger.debug('[ARTICLE SERVICE] Fetch complete, response status:', { status: response.status });
+
     if (!response.ok) {
       clearTimeout(timeoutId);
       const errorText = await response.text();
       logger.error('[ARTICLE SERVICE] API error', { status: response.status, error: errorText });
       throw new Error(`Failed to generate article: ${response.status}`);
     }
+
+    logger.debug('[ARTICLE SERVICE] Starting to read stream...');
 
     // Process streaming response
     const reader = response.body?.getReader();
@@ -103,7 +109,17 @@ Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'nu
     let buffer = '';
 
     while (true) {
-      const { done, value } = await reader.read();
+      let readResult;
+      try {
+        readResult = await reader.read();
+      } catch (readError) {
+        logger.error('[ARTICLE SERVICE] reader.read() error', {
+          error: readError instanceof Error ? readError.message : String(readError)
+        });
+        throw readError;
+      }
+
+      const { done, value } = readResult;
 
       if (done) {
         break;
@@ -132,11 +148,15 @@ Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'nu
           // Handle both edge function format and Responses API format
           const content = json.content || json.delta || json.text || '';
 
-          if (content) {
+          if (content && typeof content === 'string') {
+            logger.debug('[ARTICLE SERVICE] Received chunk:', { length: content.length, preview: content.substring(0, 50) });
             onChunk(content);
           }
-        } catch (e) {
-          logger.warn('[ARTICLE SERVICE] Failed to parse streaming chunk', { error: e, data: data.substring(0, 100) });
+        } catch (parseError) {
+          logger.warn('[ARTICLE SERVICE] Failed to parse stream chunk', {
+            error: parseError instanceof Error ? parseError.message : 'Unknown',
+            data: data.substring(0, 200)
+          });
         }
       }
     }
