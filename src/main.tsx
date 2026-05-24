@@ -143,10 +143,12 @@ globalThis.addEventListener('unhandledrejection', (event) => {
 });
 
 // Suppress image loading errors globally (403, CORS, connection errors from third-party sources)
+// Must use capture phase to catch image errors before they bubble
 globalThis.addEventListener('error', (event) => {
   // Check if it's an image loading error
   if (event.target instanceof HTMLImageElement) {
-    console.warn('Image failed to load (normal for news images):', event.target.src);
+    // Silently suppress - these are normal for third-party news images
+    event.stopPropagation();
     event.preventDefault();
     return;
   }

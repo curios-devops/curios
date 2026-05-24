@@ -3,6 +3,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide console errors for broken images */
+img {
+  /* Hide alt text when image fails to load */
+  font-size: 0 !important;
+  color: transparent !important;
+}
+
 @layer base {
   /* Ensure all interactive elements have pointer cursor */
   button,

@@ -47,9 +47,11 @@ export default function ArticleDetail() {
     if (!article) return;
 
     try {
-      setLoading(true);
       setError(null);
       setStreamingContent('');
+
+      // Show snippet immediately
+      setLoading(false); // Stop loading spinner right away
 
       const returnedSources = await generateArticleContentStreaming(
         article.title,
@@ -61,11 +63,9 @@ export default function ArticleDetail() {
       );
 
       setSources(returnedSources);
-      setLoading(false);
     } catch (err) {
       console.error('[ARTICLE DETAIL] Error loading content:', err);
       setError(err instanceof Error ? err.message : 'Failed to load article content');
-      setLoading(false);
     }
   };
 
