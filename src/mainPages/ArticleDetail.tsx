@@ -28,18 +28,42 @@ export default function ArticleDetail() {
   );
   const [streamingContent, setStreamingContent] = useState<string>('');
   const [sources, setSources] = useState<ArticleSource[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [relatedArticles, setRelatedArticles] = useState<ArticleData[]>(
     location.state?.relatedArticles || []
   );
+
+  // Typewriter effect for snippet
+  const [typewriterSnippet, setTypewriterSnippet] = useState('');
+  const [snippetComplete, setSnippetComplete] = useState(false);
+
+  // Typewriter effect for snippet
+  useEffect(() => {
+    if (!article?.snippet) return;
+
+    let currentIndex = 0;
+    const snippet = article.snippet;
+
+    const typeInterval = setInterval(() => {
+      if (currentIndex < snippet.length) {
+        setTypewriterSnippet(snippet.substring(0, currentIndex + 1));
+        currentIndex++;
+      } else {
+        setSnippetComplete(true);
+        clearInterval(typeInterval);
+      }
+    }, 20); // 20ms per character for smooth typing
+
+    return () => clearInterval(typeInterval);
+  }, [article?.snippet]);
 
   useEffect(() => {
     if (article) {
       loadArticleContent();
     } else if (articleId) {
       console.warn('[ARTICLE DETAIL] Article data not found in navigation state');
-      setLoading(false);
+      setIsGenerating(false);
     }
   }, [article]);
 
@@ -49,15 +73,19 @@ export default function ArticleDetail() {
     try {
       setError(null);
       setStreamingContent('');
+      setIsGenerating(true);
 
-      // Show snippet immediately
-      setLoading(false); // Stop loading spinner right away
-
+      let isFirstChunk = true;
       const returnedSources = await generateArticleContentStreaming(
         article.title,
         article.snippet,
         article.link,
-        (chunk) => {
+        (chunk: string) => {
+          // On first chunk, stop showing "generating" state
+          if (isFirstChunk) {
+            setIsGenerating(false);
+            isFirstChunk = false;
+          }
           setStreamingContent(prev => prev + chunk);
         }
       );
@@ -66,6 +94,7 @@ export default function ArticleDetail() {
     } catch (err) {
       console.error('[ARTICLE DETAIL] Error loading content:', err);
       setError(err instanceof Error ? err.message : 'Failed to load article content');
+      setIsGenerating(false);
     }
   };
 
@@ -194,7 +223,7 @@ export default function ArticleDetail() {
             </span>
           </div>
 
-          {/* Description */}
+          {/* Snippet with Typewriter Effect */}
           <p
             className="mb-8"
             style={{
@@ -204,7 +233,8 @@ export default function ArticleDetail() {
               letterSpacing: '-0.01em',
             }}
           >
-            {article.snippet}
+            {typewriterSnippet}
+            {!snippetComplete && <span className="animate-pulse">|</span>}
           </p>
 
           {/* Main Image */}
@@ -256,8 +286,8 @@ export default function ArticleDetail() {
             </div>
           )}
 
-          {/* AI-Generated Content */}
-          {loading && (
+          {/* Generating State */}
+          {isGenerating && !streamingContent && (
             <div className="flex flex-col items-center justify-center py-12">
               <div
                 className="w-12 h-12 border-4 rounded-full animate-spin mb-4"
@@ -272,6 +302,7 @@ export default function ArticleDetail() {
             </div>
           )}
 
+          {/* Error State */}
           {error && (
             <div
               className="rounded-xl p-6 mb-8"
@@ -298,6 +329,7 @@ export default function ArticleDetail() {
             </div>
           )}
 
+          {/* Streaming AI Content */}
           {streamingContent && (
             <div className="prose prose-lg max-w-none">
               <CustomMarkdown content={streamingContent} />
