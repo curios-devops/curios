@@ -59,10 +59,22 @@ export async function generateArticleContentStreaming(
       onSourcesFound(sources);
     }
 
-    // Step 2: Build context from Tavily results
+    // Step 2: Build context from Tavily results with site names (like fast-search)
     const context = results
       .slice(0, 5) // Use top 5 results
-      .map((r, i) => `[${i + 1}] ${r.title}\n${r.content}`)
+      .map((r) => {
+        // Extract site name from URL
+        const siteName = (() => {
+          try {
+            const hostname = new URL(r.url).hostname.replace(/^www\./, '');
+            const parts = hostname.split('.');
+            return parts[0] || 'source';
+          } catch {
+            return 'source';
+          }
+        })();
+        return `[${siteName}] ${r.title}\nURL: ${r.url}\nContent: ${r.content}`;
+      })
       .join('\n\n');
 
     logger.info('[ARTICLE SERVICE] Step 3: Calling OpenAI with context');
@@ -75,27 +87,17 @@ export async function generateArticleContentStreaming(
       throw new Error('OpenAI Edge Function not configured');
     }
 
-    // Extract site names from sources for citation instructions
-    const siteNames = results.slice(0, 5).map(r => {
-      try {
-        const hostname = new URL(r.url).hostname.replace(/^www\./, '');
-        const parts = hostname.split('.');
-        return parts[0] || 'source';
-      } catch {
-        return 'source';
-      }
-    });
-
+    // Build prompt with citation instructions (exact copy from fast-search)
     const prompt = `Based on these search results, provide a comprehensive answer to: "${title}"
 
 Search Results:
 ${context}
 
 Requirements:
-- Use inline citations with the website name like [${siteNames.join('], [')}]
-- If multiple sources from the same site, use [sitename +N] format like [${siteNames[0]} +2] for 3 ${siteNames[0]} sources
-- Provide a clear, well-structured response in markdown format with ## headers
-- Make response comprehensive and informative (500-800 words)
+- Use inline citations with the website name like [wikipedia], [nytimes], [bbc], etc.
+- If multiple sources from the same site, use [sitename +N] format like [wikipedia +2] for 3 wikipedia sources
+- Provide a clear, well-structured response in markdown format
+- Make response comprehensive and informative
 - DO NOT include follow-up questions in the response text
 
 Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
