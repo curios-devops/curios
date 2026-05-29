@@ -1,5 +1,6 @@
 // Import useState for mobile click handling
-import { useState, useEffect, useRef } from 'react';
+// Version from commit 39421ed (24 May 2026) - Last working fast-search with citation cards
+import { useState, useRef, useEffect } from 'react';
 
 interface MultipleCitationsProps {
   citations: Array<{
@@ -18,114 +19,19 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
   );
 
   const additionalCount = uniqueCitations.length - 1;
-
-  // Initialize isMobile immediately with SSR-safe check
-  const [isMobile, setIsMobile] = useState(() => {
-    // Check on initial render
-    if (typeof window !== 'undefined') {
-      return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    }
-    return false;
-  });
-
   const [showTooltip, setShowTooltip] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const containerRef = useRef<HTMLSpanElement>(null);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const tooltipRef = useRef<HTMLSpanElement>(null);
-
-  // Detect if we're on a touch device (backup check after mount)
-  useEffect(() => {
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (isTouchDevice !== isMobile) {
-      setIsMobile(isTouchDevice);
-    }
-  }, []); // IMPORTANT: Empty dependency array - runs only once
-
-  const handleClick = (url: string) => {
-    if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  };
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('[TOOLTIP] Button clicked - isMobile:', isMobile, 'citations:', uniqueCitations.length, 'showTooltip:', showTooltip);
-
-    if (isMobile && uniqueCitations.length > 1) {
-      // On mobile with multiple citations, toggle tooltip
-      console.log('[TOOLTIP] Mobile: toggling tooltip');
-      setShowTooltip(!showTooltip);
-    } else if (!isMobile && uniqueCitations.length > 1) {
-      // On desktop with multiple citations, do nothing (hover handles it)
-      console.log('[TOOLTIP] Desktop: hover handles it');
-      return;
-    } else {
-      // Single citation, open directly
-      console.log('[TOOLTIP] Single citation: opening directly');
-      handleClick(uniqueCitations[0]?.url);
-    }
+    console.log('[CITATION] Button clicked, current showTooltip:', showTooltip);
+    setShowTooltip(prev => {
+      console.log('[CITATION] Toggling from', prev, 'to', !prev);
+      return !prev;
+    });
   };
-
-  // Desktop hover handlers with delay
-  const handleMouseEnter = () => {
-    console.log('[TOOLTIP] Mouse enter - isMobile:', isMobile);
-    if (isMobile) return;
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-      hideTimeoutRef.current = null;
-    }
-    console.log('[TOOLTIP] Setting showTooltip = true');
-    setShowTooltip(true);
-  };
-
-  const handleMouseLeave = () => {
-    console.log('[TOOLTIP] Mouse leave - isMobile:', isMobile);
-    if (isMobile) return;
-    // Delay hiding by 800ms to allow moving to tooltip
-    hideTimeoutRef.current = setTimeout(() => {
-      console.log('[TOOLTIP] Hiding tooltip after delay');
-      setShowTooltip(false);
-    }, 800);
-  };
-
-  const handleTooltipMouseEnter = () => {
-    if (isMobile) return;
-    // Cancel hide timeout when mouse enters tooltip
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-      hideTimeoutRef.current = null;
-    }
-  };
-
-  const handleTooltipMouseLeave = () => {
-    if (isMobile) return;
-    // Hide immediately when leaving tooltip
-    setShowTooltip(false);
-  };
-
-  // Close tooltip when clicking outside on mobile
-  useEffect(() => {
-    if (!showTooltip || !isMobile) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
-        setShowTooltip(false);
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [showTooltip, isMobile]); // IMPORTANT: Specific dependencies
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
-      }
-    };
-  }, []); // IMPORTANT: Empty dependency - cleanup only
 
   const getFaviconDomain = (url: string): string => {
     try {
@@ -135,22 +41,52 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
     }
   };
 
-  // If after deduplication there's only 1 citation, render a simple button without tooltip
-  if (uniqueCitations.length === 1) {
-    return (
-      <button
-        type="button"
-        onClick={() => handleClick(uniqueCitations[0]?.url)}
-        className="inline-flex items-center px-2 py-0.5 mx-0.5 text-white text-xs font-medium rounded-md cursor-pointer hover:opacity-90 active:opacity-75"
-        style={{ backgroundColor: 'var(--accent-primary)' }}
-      >
-        {primarySiteName}
-      </button>
-    );
-  }
+  // Handle mouse enter - show immediately and cancel any hide timeout
+  const handleMouseEnter = () => {
+    console.log('[CITATION] Mouse enter');
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    setShowTooltip(true);
+  };
+
+  // Handle mouse leave - delay hiding by 300ms to allow moving to tooltip
+  const handleMouseLeave = () => {
+    console.log('[CITATION] Mouse leave - starting 300ms delay');
+    hideTimeoutRef.current = setTimeout(() => {
+      console.log('[CITATION] 300ms passed - hiding tooltip');
+      setShowTooltip(false);
+    }, 300);
+  };
+
+  // Handle tooltip mouse enter - cancel hide timeout
+  const handleTooltipMouseEnter = () => {
+    console.log('[CITATION] Tooltip mouse enter - canceling hide');
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  };
+
+  // Handle tooltip mouse leave - hide immediately
+  const handleTooltipMouseLeave = () => {
+    console.log('[CITATION] Tooltip mouse leave - hiding immediately');
+    setShowTooltip(false);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <span
+      ref={containerRef}
       className="relative inline-block"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -161,54 +97,113 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
         className="inline-flex items-center px-2 py-0.5 mx-0.5 text-white text-xs font-medium rounded-md cursor-pointer hover:opacity-90 active:opacity-75"
         style={{ backgroundColor: 'var(--accent-primary)' }}
       >
-        {primarySiteName} +{additionalCount}
+        {uniqueCitations.length === 1 ? primarySiteName : `${primarySiteName} +${additionalCount}`}
       </button>
 
-      {/* Dynamic tooltip - show on hover (desktop) or click (mobile) */}
-      {showTooltip && (() => {
-        console.log('[TOOLTIP] Rendering tooltip with', uniqueCitations.length, 'citations');
+      {/* Dynamic tooltip */}
+      {(() => {
+        console.log('[CITATION] Render check - showTooltip:', showTooltip, 'citations:', uniqueCitations.length);
+        if (!showTooltip) return null;
+        console.log('[CITATION] Rendering tooltip now');
         return (
           <span
-            ref={tooltipRef}
-            className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-            onMouseEnter={handleTooltipMouseEnter}
-            onMouseLeave={handleTooltipMouseLeave}
-          >
+          className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+          onMouseEnter={handleTooltipMouseEnter}
+          onMouseLeave={handleTooltipMouseLeave}
+        >
           {/* Pointer arrow */}
           <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 rotate-45"></span>
 
-          {uniqueCitations.map((citation, index) => {
-            const faviconDomain = getFaviconDomain(citation.url);
-            const titlePreview = citation.title
-              ? (citation.title.length > 25 ? citation.title.slice(0, 25) + '...' : citation.title)
-              : '';
-            return (
+          {/* Navigation header - only show for multiple citations */}
+          {uniqueCitations.length > 1 && (
+            <div className="flex items-center justify-between px-3 py-0.5 border-b border-gray-200 dark:border-gray-700">
               <button
-                key={index}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleClick(citation.url);
-                  if (isMobile) setShowTooltip(false);
+                  setCurrentIndex((prev) => (prev > 0 ? prev - 1 : uniqueCitations.length - 1));
                 }}
-                className="w-full flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors text-left first:rounded-t-lg last:rounded-b-lg touch-manipulation"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                aria-label="Previous source"
               >
-                <img
-                  src={`https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=32`}
-                  alt=""
-                  className="w-3 h-3 flex-shrink-0"
-                />
-                <span className="text-[10px] leading-tight text-gray-900 dark:text-gray-100 truncate flex-1 min-w-0">
-                  <span className="font-medium">{citation.siteName}</span>
-                  {titlePreview && (
-                    <span className="text-gray-500 dark:text-gray-400"> • {titlePreview}</span>
-                  )}
-                </span>
+                <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
               </button>
+
+              <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                {currentIndex + 1} / {uniqueCitations.length}
+              </span>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentIndex((prev) => (prev < uniqueCitations.length - 1 ? prev + 1 : 0));
+                }}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                aria-label="Next source"
+              >
+                <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Current citation */}
+          {(() => {
+            const citation = uniqueCitations.length === 1 ? uniqueCitations[0] : uniqueCitations[currentIndex];
+            const faviconDomain = getFaviconDomain(citation.url);
+
+            return (
+              <div className={`px-3 ${uniqueCitations.length === 1 ? 'py-1' : 'py-1.5'}`}>
+                {/* Icon and website name */}
+                <div className="flex items-center gap-1 mb-0">
+                  <img
+                    src={`https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=32`}
+                    alt=""
+                    className="w-5 h-5 flex-shrink-0"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
+                    {citation.siteName}
+                  </span>
+                </div>
+
+                {/* Title with link */}
+                <a
+                  href={citation.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-sm font-medium text-gray-900 dark:text-white hover:text-[var(--accent-primary)] dark:hover:text-[var(--accent-primary)] mb-0 line-clamp-2 leading-tight"
+                  onClick={() => setShowTooltip(false)}
+                >
+                  {citation.title}
+                </a>
+
+                {/* Snippet */}
+                {citation.snippet && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 leading-tight mt-0">
+                    {citation.snippet}
+                  </p>
+                )}
+              </div>
             );
-          })}
-          </span>
+          })()}
+
+          {/* Footer with source count - only show for multiple citations */}
+          {uniqueCitations.length > 1 && (
+            <div className="px-3 py-0.5 border-t border-gray-200 dark:border-gray-700 text-center">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {uniqueCitations.length} sources
+              </span>
+            </div>
+          )}
+        </span>
         );
       })()}
     </span>
