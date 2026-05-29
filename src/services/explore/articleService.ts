@@ -1,6 +1,7 @@
-// Article Service - Generate AI-enhanced article content with streaming
+// Article Service - Generate AI-enhanced article content with Tavily search
 
 import { logger } from '../../utils/logger';
+import { searchWithTavily } from '../../commonService/searchTools/tavilyService';
 
 export interface ArticleContent {
   mainContent: string; // AI-generated markdown content
@@ -10,11 +11,10 @@ export interface ArticleContent {
 export interface ArticleSource {
   title: string;
   url: string;
+  snippet: string;
   favicon?: string;
   domain: string;
 }
-
-const MODEL = 'gpt-5-mini';
 
 /**
  * Extract domain from URL
@@ -28,45 +28,78 @@ function extractDomain(url: string): string {
 }
 
 /**
- * Generate AI-enhanced article content using LLM with web_search tool and streaming
+ * Generate article content with OpenAI streaming, using Tavily results as context
  */
 export async function generateArticleContentStreaming(
   title: string,
   snippet: string,
   originalUrl: string,
-  onChunk: (chunk: string) => void
+  onChunk: (chunk: string) => void,
+  onSourcesFound?: (sources: ArticleSource[]) => void
 ): Promise<ArticleSource[]> {
-  logger.debug('[ARTICLE SERVICE] Generating content with streaming', { title });
+  try {
+    logger.info('[ARTICLE SERVICE] Step 1: Fetching Tavily context', { query: title });
 
-  const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    // Step 1: Get Tavily results for context
+    const { results } = await searchWithTavily(title);
 
-  logger.debug('[ARTICLE SERVICE] Edge URL:', { url: supabaseEdgeUrl });
+    logger.info('[ARTICLE SERVICE] Step 2: Tavily complete', { resultCount: results.length });
 
-  if (!supabaseEdgeUrl || !supabaseAnonKey) {
-    throw new Error('Supabase Edge Function not configured');
-  }
+    // Build sources from Tavily
+    const sources: ArticleSource[] = results.map(result => ({
+      title: result.title,
+      url: result.url,
+      snippet: result.content,
+      domain: extractDomain(result.url)
+    }));
 
-  const userMessage = `You are writing an in-depth article about: "${title}"
+    // Notify that sources are ready (BEFORE streaming starts - like fast-search)
+    if (onSourcesFound && sources.length > 0) {
+      logger.info('[ARTICLE SERVICE] Calling onSourcesFound callback', { count: sources.length });
+      onSourcesFound(sources);
+    }
 
-Context: ${snippet}
+    // Step 2: Build context from Tavily results
+    const context = results
+      .slice(0, 5) // Use top 5 results
+      .map((r, i) => `[${i + 1}] ${r.title}\n${r.content}`)
+      .join('\n\n');
+
+    logger.info('[ARTICLE SERVICE] Step 3: Calling OpenAI with context');
+
+    // Step 3: Call OpenAI with streaming
+    const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseEdgeUrl || !supabaseAnonKey) {
+      throw new Error('OpenAI Edge Function not configured');
+    }
+
+    // Extract site names from sources for citation instructions
+    const siteNames = results.slice(0, 5).map(r => {
+      try {
+        const hostname = new URL(r.url).hostname.replace(/^www\./, '');
+        const parts = hostname.split('.');
+        return parts[0] || 'source';
+      } catch {
+        return 'source';
+      }
+    });
+
+    const prompt = `Based on these search results, provide a comprehensive answer to: "${title}"
+
+Search Results:
+${context}
 
 Requirements:
-- Search the web for comprehensive, up-to-date information about this topic
-- Write a detailed article (600-1000 words) with multiple sections
-- Use markdown formatting with headers (##), bullet points, and paragraphs
-- Use inline citations like [source] for key facts
-- Include key facts, context, implications, and analysis
-- Make it engaging and easy to read
-- Focus on "why this matters" and "what happens next"
-- Write the article directly as markdown text
+- Use inline citations with the website name like [${siteNames.join('], [')}]
+- If multiple sources from the same site, use [sitename +N] format like [${siteNames[0]} +2] for 3 ${siteNames[0]} sources
+- Provide a clear, well-structured response in markdown format with ## headers
+- Make response comprehensive and informative (500-800 words)
+- DO NOT include follow-up questions in the response text
 
 Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
-
-  try {
     const response = await fetch(supabaseEdgeUrl, {
       method: 'POST',
       headers: {
@@ -75,117 +108,58 @@ Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'nu
       },
       body: JSON.stringify({
         prompt: JSON.stringify({
-          input: [
-            { role: 'user', content: userMessage }
-          ],
-          model: MODEL,
-          max_output_tokens: 2000,
-          reasoning: { effort: 'low' } // Fast reasoning for streaming (web_search blocks streaming)
+          input: [{ role: 'user', content: prompt }],
+          model: 'gpt-4o-mini',
+          max_output_tokens: 2000
         }),
         stream: true
-      }),
-      signal: controller.signal
+      })
     });
 
-    logger.debug('[ARTICLE SERVICE] Fetch complete, response status:', { status: response.status });
-
     if (!response.ok) {
-      clearTimeout(timeoutId);
-      const errorText = await response.text();
-      logger.error('[ARTICLE SERVICE] API error', { status: response.status, error: errorText });
-      throw new Error(`Failed to generate article: ${response.status}`);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
-    logger.debug('[ARTICLE SERVICE] Starting to read stream...');
-
-    // Process streaming response
+    // Step 4: Process streaming response
     const reader = response.body?.getReader();
     if (!reader) {
-      clearTimeout(timeoutId);
-      throw new Error('Failed to get response reader');
+      throw new Error('No response reader');
     }
 
     const decoder = new TextDecoder();
     let buffer = '';
 
     while (true) {
-      let readResult;
-      try {
-        readResult = await reader.read();
-      } catch (readError) {
-        logger.error('[ARTICLE SERVICE] reader.read() error', {
-          error: readError instanceof Error ? readError.message : String(readError)
-        });
-        throw readError;
-      }
+      const { done, value } = await reader.read();
+      if (done) break;
 
-      const { done, value } = readResult;
-
-      if (done) {
-        break;
-      }
-
-      const decoded = decoder.decode(value, { stream: true });
-      buffer += decoded;
+      buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (!line.trim()) continue;
-
-        if (!line.startsWith('data: ')) {
-          logger.warn('[ARTICLE SERVICE] Unexpected line format', { line: line.substring(0, 100) });
-          continue;
-        }
+        if (!line.trim() || !line.startsWith('data: ')) continue;
 
         const data = line.slice(6);
-        if (data === '[DONE]') {
-          continue;
-        }
+        if (data === '[DONE]') continue;
 
         try {
           const json = JSON.parse(data);
-          // Handle both edge function format and Responses API format
           const content = json.content || json.delta || json.text || '';
-
-          if (content && typeof content === 'string') {
-            logger.debug('[ARTICLE SERVICE] Received chunk:', { length: content.length, preview: content.substring(0, 50) });
+          if (content) {
             onChunk(content);
           }
-        } catch (parseError) {
-          logger.warn('[ARTICLE SERVICE] Failed to parse stream chunk', {
-            error: parseError instanceof Error ? parseError.message : 'Unknown',
-            data: data.substring(0, 200)
-          });
+        } catch (e) {
+          // Skip parse errors
         }
       }
     }
 
-    clearTimeout(timeoutId);
-
-    // Return sources (original source only for now, as web_search sources aren't easily extractable)
-    const sources: ArticleSource[] = [
-      {
-        title: extractDomain(originalUrl),
-        url: originalUrl,
-        domain: extractDomain(originalUrl)
-      }
-    ];
-
-    logger.debug('[ARTICLE SERVICE] Streaming complete', {
-      sourcesCount: sources.length
-    });
-
+    logger.info('[ARTICLE SERVICE] Step 4: Streaming complete');
     return sources;
 
   } catch (error) {
-    clearTimeout(timeoutId);
-
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timeout - article generation took too long');
-    }
-
-    logger.error('[ARTICLE SERVICE] Error generating content', { error });
+    logger.error('[ARTICLE SERVICE] Error', { error });
     throw error;
   }
 }

@@ -143,8 +143,7 @@ export default function CustomMarkdown({ children, className = "", citations = [
         const parsedCitation = parseCitation(citationText, citations);
 
         if (parsedCitation) {
-          // Use MultipleCitations for both single and multiple citations
-          // to provide consistent card UI behavior
+          // Use MultipleCitations - shows site name like "wikipedia" or "youtube +3"
           return (
             <MultipleCitations
               key={`citation-${index}`}

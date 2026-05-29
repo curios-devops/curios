@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Share2, ExternalLink } from 'lucide-react';
 import { useTheme } from '../components/theme/ThemeContext.tsx';
@@ -6,6 +6,7 @@ import { useAccentColor } from '../hooks/useAccentColor.ts';
 import QueryBoxContainer from '../components/boxContainer/QueryBoxContainer.tsx';
 import CustomMarkdown from '../components/CustomMarkdown.tsx';
 import { generateArticleContentStreaming, type ArticleSource } from '../services/explore/articleService';
+import type { CitationInfo } from '../commonApp/types';
 
 interface ArticleData {
   title: string;
@@ -34,6 +35,71 @@ export default function ArticleDetail() {
     location.state?.relatedArticles || []
   );
 
+  // Process answer and build citations (EXACT COPY from FastSearch)
+  const { processedAnswer, citations } = useMemo(() => {
+    if (!streamingContent) return { processedAnswer: '', citations: [] };
+
+    // Build citations map from sources
+    const cites: CitationInfo[] = sources.map(source => {
+      const hostname = (() => {
+        try {
+          return new URL(source.url).hostname.replace(/^www\./, '');
+        } catch {
+          return '';
+        }
+      })();
+      const parts = hostname.split('.');
+
+      // Extract siteName: prefer first part (subdomain like 'azure') over root domain
+      // Examples: azure.microsoft.com -> azure, wikipedia.org -> wikipedia
+      const siteName = parts[0] || '';
+
+      return {
+        url: source.url,
+        title: source.title,
+        siteName: siteName,
+        snippet: source.snippet
+      };
+    });
+
+    let text = streamingContent;
+
+    // Step 1: Convert [text](url) to [sitename] (for any markdown links)
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText, url) => {
+      try {
+        const hostname = new URL(url).hostname.replace(/^www\./, '');
+        const parts = hostname.split('.');
+        const siteName = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+        return `[${siteName}]`;
+      } catch {
+        return linkText;
+      }
+    });
+
+    // Step 2: Remove parenthetical citations only if they look like citations
+    // Match: (sitename), (sitename +N), (sitename(url))
+    text = text.replace(/\s*\(([a-z0-9]+)(\s*\+\d+)?(\([^)]+\))?\)/gi, '');
+
+    // Step 3: Remove horizontal rules (---) but preserve markdown headings
+    // Only remove lines that are ONLY dashes/hyphens with optional whitespace
+    text = text.replace(/^\s*[-–—]{3,}\s*$/gm, '');
+
+    // Step 4: Remove unwanted sections
+    text = text.replace(/\n\s*##?\s*Selected [Ss]ources.*$/s, '');
+    text = text.replace(/\*\*Selected [Ss]ources\*\*.*$/s, '');
+    text = text.replace(/\n\s*##?\s*Where to [Rr]ead [Mm]ore.*$/s, '');
+    text = text.replace(/\*\*Where to [Rr]ead [Mm]ore.*$/s, '');
+    text = text.replace(/\n\s*##?\s*Quick [Rr]eference [Ll]inks.*$/s, '');
+    text = text.replace(/\*\*Quick [Rr]eference [Ll]inks\*\*.*$/s, '');
+    text = text.replace(/\n\s*Sources:\s*.*$/s, '');
+    text = text.replace(/\*\*Sources:\*\*\s*.*$/s, '');
+
+    // Clean up encoding issues
+    text = text.replace(/�/g, '');
+
+    return { processedAnswer: text, citations: cites };
+  }, [streamingContent, sources]);
+
   useEffect(() => {
     if (article) {
       loadArticleContent();
@@ -41,7 +107,7 @@ export default function ArticleDetail() {
       console.warn('[ARTICLE DETAIL] Article data not found in navigation state');
       setIsGenerating(false);
     }
-  }, [article]);
+  }, [article?.title]); // FIXED: Use primitive value, not object reference
 
   const loadArticleContent = async () => {
     if (!article) return;
@@ -300,10 +366,7 @@ export default function ArticleDetail() {
           {/* Streaming AI Content */}
           {streamingContent && (
             <div className="prose prose-lg max-w-none">
-              <div style={{ border: '2px solid red', padding: '10px', marginBottom: '10px' }}>
-                DEBUG: Content length = {streamingContent.length}
-              </div>
-              <CustomMarkdown content={streamingContent} />
+              <CustomMarkdown citations={citations}>{processedAnswer}</CustomMarkdown>
             </div>
           )}
         </article>

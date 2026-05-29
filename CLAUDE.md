@@ -15,7 +15,7 @@ Before implementing:
 - If something is unclear, stop. Name what's confusing. Ask.
 - FrontEnd is in Netfily
 - Edge function deployed manually in supabase by user (marcelo) since MCP and CLI had issues, so provide document for deployment. 
-Never write secret keys in a .md file just indicate and replace for a placeholder
+
 
 ## 2. Simplicity First
 
