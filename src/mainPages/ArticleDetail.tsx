@@ -329,39 +329,7 @@ export default function ArticleDetail() {
             </div>
           )}
 
-          {/* Source Link Badges - Show after streaming starts */}
-          {sources.length > 0 && streamingContent && (
-            <div className="flex flex-wrap gap-3 mb-8">
-              {sources.slice(0, 5).map((source, index) => (
-                <a
-                  key={index}
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
-                  style={{
-                    backgroundColor: 'var(--ui-bg-secondary)',
-                    border: '1px solid var(--ui-border-default)',
-                    color: 'var(--ui-text-secondary)',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    textDecoration: 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = accentColors.primary;
-                    e.currentTarget.style.color = accentColors.primary;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--ui-border-default)';
-                    e.currentTarget.style.color = 'var(--ui-text-secondary)';
-                  }}
-                >
-                  <ExternalLink size={14} />
-                  <span>{source.domain}</span>
-                </a>
-              ))}
-            </div>
-          )}
+          {/* Source Link Badges - REMOVED: Citations now handled inline via MultipleCitations component */}
 
           {/* Streaming AI Content */}
           {streamingContent && (

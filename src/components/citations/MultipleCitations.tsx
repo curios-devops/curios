@@ -26,11 +26,7 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('[CITATION] Button clicked, current showTooltip:', showTooltip);
-    setShowTooltip(prev => {
-      console.log('[CITATION] Toggling from', prev, 'to', !prev);
-      return !prev;
-    });
+    setShowTooltip(prev => !prev);
   };
 
   const getFaviconDomain = (url: string): string => {
@@ -43,7 +39,6 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
 
   // Handle mouse enter - show immediately and cancel any hide timeout
   const handleMouseEnter = () => {
-    console.log('[CITATION] Mouse enter');
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
@@ -53,16 +48,13 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
 
   // Handle mouse leave - delay hiding by 300ms to allow moving to tooltip
   const handleMouseLeave = () => {
-    console.log('[CITATION] Mouse leave - starting 300ms delay');
     hideTimeoutRef.current = setTimeout(() => {
-      console.log('[CITATION] 300ms passed - hiding tooltip');
       setShowTooltip(false);
     }, 300);
   };
 
   // Handle tooltip mouse enter - cancel hide timeout
   const handleTooltipMouseEnter = () => {
-    console.log('[CITATION] Tooltip mouse enter - canceling hide');
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
@@ -71,7 +63,6 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
 
   // Handle tooltip mouse leave - hide immediately
   const handleTooltipMouseLeave = () => {
-    console.log('[CITATION] Tooltip mouse leave - hiding immediately');
     setShowTooltip(false);
   };
 
@@ -101,11 +92,7 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
       </button>
 
       {/* Dynamic tooltip */}
-      {(() => {
-        console.log('[CITATION] Render check - showTooltip:', showTooltip, 'citations:', uniqueCitations.length);
-        if (!showTooltip) return null;
-        console.log('[CITATION] Rendering tooltip now');
-        return (
+      {showTooltip && (
           <span
           className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl"
           onClick={(e) => e.stopPropagation()}
@@ -204,8 +191,7 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
             </div>
           )}
         </span>
-        );
-      })()}
+      )}
     </span>
   );
 }
