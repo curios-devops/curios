@@ -18,6 +18,8 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
     new Map(citations.map(citation => [citation.url, citation])).values()
   );
 
+  console.log('[CITATION DEBUG] Component rendered:', { primarySiteName, citationsCount: citations.length, uniqueCount: uniqueCitations.length });
+
   const additionalCount = uniqueCitations.length - 1;
   const [showTooltip, setShowTooltip] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -39,11 +41,13 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
 
   // Handle mouse enter - show immediately and cancel any hide timeout
   const handleMouseEnter = () => {
+    console.log('[CITATION] Mouse enter triggered');
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
     }
     setShowTooltip(true);
+    console.log('[CITATION] showTooltip set to true');
   };
 
   // Handle mouse leave - delay hiding by 300ms to allow moving to tooltip
@@ -92,7 +96,9 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
       </button>
 
       {/* Dynamic tooltip */}
-      {showTooltip && (
+      {(() => {
+        console.log('[CITATION] Render: showTooltip =', showTooltip);
+        return showTooltip && (
           <span
           className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl"
           onClick={(e) => e.stopPropagation()}
@@ -191,7 +197,8 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
             </div>
           )}
         </span>
-      )}
+        );
+      })()}
     </span>
   );
 }
