@@ -35,11 +35,12 @@ export default function ArticleDetail() {
     location.state?.relatedArticles || []
   );
 
-  // Build citations ONCE from sources (memoize separately to prevent re-renders)
-  const citations = useMemo(() => {
-    if (sources.length === 0) return [];
+  // FIXED: Use single useMemo returning object (like FastSearch) to maintain stable references
+  const { processedAnswer, citations } = useMemo(() => {
+    if (!streamingContent) return { processedAnswer: '', citations: [] };
 
-    return sources.map(source => {
+    // Build citations from sources (only when sources available)
+    const cites: CitationInfo[] = sources.map(source => {
       const hostname = (() => {
         try {
           return new URL(source.url).hostname.replace(/^www\./, '');
@@ -60,11 +61,6 @@ export default function ArticleDetail() {
         snippet: source.snippet
       };
     });
-  }, [sources]); // Only re-build when sources change, NOT on every streamingContent update
-
-  // Process answer text (separate from citations to avoid re-creating citation objects)
-  const processedAnswer = useMemo(() => {
-    if (!streamingContent) return '';
 
     let text = streamingContent;
 
@@ -101,8 +97,8 @@ export default function ArticleDetail() {
     // Clean up encoding issues
     text = text.replace(/�/g, '');
 
-    return text;
-  }, [streamingContent]); // Only depends on streamingContent, citations are separate
+    return { processedAnswer: text, citations: cites };
+  }, [streamingContent, sources]); // Re-compute when either changes
 
   useEffect(() => {
     if (article) {
