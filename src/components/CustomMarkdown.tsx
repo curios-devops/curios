@@ -147,9 +147,11 @@ export default function CustomMarkdown({ children, className = "", citations = [
         if (parsedCitation) {
           // Use MultipleCitations - shows site name like "wikipedia" or "youtube +3"
           console.log('[MARKDOWN] Rendering MultipleCitations for:', citationText);
+          // CRITICAL: Use stable key based on content, not index, to prevent remounting on re-renders
+          const stableKey = `citation-${parsedCitation.siteName}-${parsedCitation.citations.map(c => c.url).join('-')}`;
           return (
             <MultipleCitations
-              key={`citation-${index}`}
+              key={stableKey}
               citations={parsedCitation.citations}
               primarySiteName={parsedCitation.citations[0]?.siteName || parsedCitation.siteName}
             />

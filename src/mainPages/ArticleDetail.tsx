@@ -35,12 +35,12 @@ export default function ArticleDetail() {
     location.state?.relatedArticles || []
   );
 
-  // FIXED: Use single useMemo returning object (like FastSearch) to maintain stable references
-  const { processedAnswer, citations } = useMemo(() => {
-    if (!streamingContent) return { processedAnswer: '', citations: [] };
+  // CRITICAL FIX: Memoize citations separately to prevent re-creation on tooltip state changes
+  // If citations is recreated, CustomMarkdown gets new prop → re-parses → remounts MultipleCitations → loses event handlers
+  const citations = useMemo(() => {
+    if (sources.length === 0) return [];
 
-    // Build citations from sources (only when sources available)
-    const cites: CitationInfo[] = sources.map(source => {
+    return sources.map(source => {
       const hostname = (() => {
         try {
           return new URL(source.url).hostname.replace(/^www\./, '');
@@ -61,6 +61,11 @@ export default function ArticleDetail() {
         snippet: source.snippet
       };
     });
+  }, [sources]); // ONLY depends on sources - stable during streaming AND after tooltip state changes
+
+  // Process answer text separately - can update during streaming without affecting citations
+  const processedAnswer = useMemo(() => {
+    if (!streamingContent) return '';
 
     let text = streamingContent;
 
@@ -97,8 +102,8 @@ export default function ArticleDetail() {
     // Clean up encoding issues
     text = text.replace(/�/g, '');
 
-    return { processedAnswer: text, citations: cites };
-  }, [streamingContent, sources]); // Re-compute when either changes
+    return text;
+  }, [streamingContent]); // ONLY depends on streamingContent - citations are separate
 
   useEffect(() => {
     if (article) {
