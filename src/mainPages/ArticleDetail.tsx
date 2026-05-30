@@ -35,9 +35,12 @@ export default function ArticleDetail() {
     location.state?.relatedArticles || []
   );
 
+  console.log('[ARTICLE DETAIL] Component render');
+
   // CRITICAL FIX: Memoize citations separately to prevent re-creation on tooltip state changes
   // If citations is recreated, CustomMarkdown gets new prop → re-parses → remounts MultipleCitations → loses event handlers
   const citations = useMemo(() => {
+    console.log('[ARTICLE DETAIL] citations useMemo executing');
     if (sources.length === 0) return [];
 
     return sources.map(source => {
@@ -65,6 +68,7 @@ export default function ArticleDetail() {
 
   // Process answer text separately - can update during streaming without affecting citations
   const processedAnswer = useMemo(() => {
+    console.log('[ARTICLE DETAIL] processedAnswer useMemo executing');
     if (!streamingContent) return '';
 
     let text = streamingContent;

@@ -10,10 +10,16 @@ interface CustomMarkdownProps {
 }
 
 export default function CustomMarkdown({ children, className = "", citations = [] }: CustomMarkdownProps) {
+  console.log('[CUSTOM MARKDOWN] Component render - children length:', children.length, 'citations count:', citations.length);
+
   // Memoize parsing; depend on a stable citation signature to avoid re-parsing
   // caused by new array identities on each render.
   const citationSignature = React.useMemo(
-    () => citations.map(c => `${c.siteName}|${c.url}|${c.title}`).join(';;'),
+    () => {
+      const sig = citations.map(c => `${c.siteName}|${c.url}|${c.title}`).join(';;');
+      console.log('[CUSTOM MARKDOWN] citationSignature useMemo executing - sig:', sig.substring(0, 50));
+      return sig;
+    },
     [citations]
   );
 
@@ -57,6 +63,7 @@ export default function CustomMarkdown({ children, className = "", citations = [
   }
 
   const parsedContent = React.useMemo(() => {
+    console.log('[CUSTOM MARKDOWN] parsedContent useMemo executing - parsing markdown');
     let processed = splitMultipleCitations(children);
     processed = collapseAdjacentCitations(processed);
     return parseMarkdown(processed);
