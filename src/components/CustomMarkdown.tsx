@@ -10,14 +10,12 @@ interface CustomMarkdownProps {
 }
 
 export default function CustomMarkdown({ children, className = "", citations = [] }: CustomMarkdownProps) {
-  console.log('[CUSTOM MARKDOWN] Component render - children length:', children.length, 'citations count:', citations.length);
 
   // Memoize parsing; depend on a stable citation signature to avoid re-parsing
   // caused by new array identities on each render.
   const citationSignature = React.useMemo(
     () => {
       const sig = citations.map(c => `${c.siteName}|${c.url}|${c.title}`).join(';;');
-      console.log('[CUSTOM MARKDOWN] citationSignature useMemo executing - sig:', sig.substring(0, 50));
       return sig;
     },
     [citations]
@@ -63,7 +61,6 @@ export default function CustomMarkdown({ children, className = "", citations = [
   }
 
   const parsedContent = React.useMemo(() => {
-    console.log('[CUSTOM MARKDOWN] parsedContent useMemo executing - parsing markdown');
     let processed = splitMultipleCitations(children);
     processed = collapseAdjacentCitations(processed);
     return parseMarkdown(processed);
@@ -147,13 +144,10 @@ export default function CustomMarkdown({ children, className = "", citations = [
     return parts.map((part, index) => {
       if (/^\[[^\]]+\]$/.test(part)) {
         const citationText = part.slice(1, -1);
-        console.log('[MARKDOWN] Parsing citation:', citationText, 'Available citations:', citations.length);
         const parsedCitation = parseCitation(citationText, citations);
-        console.log('[MARKDOWN] Parsed result:', parsedCitation);
 
         if (parsedCitation) {
           // Use MultipleCitations - shows site name like "wikipedia" or "youtube +3"
-          console.log('[MARKDOWN] Rendering MultipleCitations for:', citationText);
           // CRITICAL: Use stable key based on content, not index, to prevent remounting on re-renders
           const stableKey = `citation-${parsedCitation.siteName}-${parsedCitation.citations.map(c => c.url).join('-')}`;
           return (
@@ -165,7 +159,6 @@ export default function CustomMarkdown({ children, className = "", citations = [
           );
         }
 
-        console.log('[MARKDOWN] Using fallback for:', citationText);
 
         // Fallback: Strip "+N" from unmatched citations and render as plain badge
         const cleanText = citationText.replace(/\s*\+\d+$/, '').trim();

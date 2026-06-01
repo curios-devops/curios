@@ -1,6 +1,5 @@
-// Import useState for mobile click handling
-// Version from commit 39421ed (24 May 2026) - Last working fast-search with citation cards
-import { useState, useRef, useEffect } from 'react';
+// SIMPLIFIED: Click-only tooltip - no hover, no memory leaks
+import { useState, useRef } from 'react';
 
 interface MultipleCitationsProps {
   citations: Array<{
@@ -18,14 +17,12 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
     new Map(citations.map(citation => [citation.url, citation])).values()
   );
 
-  console.log('[CITATION DEBUG] Component rendered:', { primarySiteName, citationsCount: citations.length, uniqueCount: uniqueCitations.length });
-
   const additionalCount = uniqueCitations.length - 1;
   const [showTooltip, setShowTooltip] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const containerRef = useRef<HTMLSpanElement>(null);
-  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // SIMPLIFIED: Only click to toggle tooltip - no hover, no memory leaks
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowTooltip(prev => !prev);
@@ -39,53 +36,8 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
     }
   };
 
-  // Handle mouse enter - show immediately and cancel any hide timeout
-  const handleMouseEnter = () => {
-    console.log('[CITATION] Mouse enter triggered');
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-      hideTimeoutRef.current = null;
-    }
-    setShowTooltip(true);
-    console.log('[CITATION] showTooltip set to true');
-  };
-
-  // Handle mouse leave - delay hiding by 300ms to allow moving to tooltip
-  const handleMouseLeave = () => {
-    hideTimeoutRef.current = setTimeout(() => {
-      setShowTooltip(false);
-    }, 300);
-  };
-
-  // Handle tooltip mouse enter - cancel hide timeout
-  const handleTooltipMouseEnter = () => {
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-      hideTimeoutRef.current = null;
-    }
-  };
-
-  // Handle tooltip mouse leave - hide immediately
-  const handleTooltipMouseLeave = () => {
-    setShowTooltip(false);
-  };
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
-      }
-    };
-  }, []);
-
   return (
-    <span
-      ref={containerRef}
-      className="relative inline-block"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <span ref={containerRef} className="relative inline-block">
       <button
         type="button"
         onClick={handleButtonClick}
@@ -95,15 +47,11 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
         {uniqueCitations.length === 1 ? primarySiteName : `${primarySiteName} +${additionalCount}`}
       </button>
 
-      {/* Dynamic tooltip */}
-      {(() => {
-        console.log('[CITATION] Render: showTooltip =', showTooltip);
-        return showTooltip && (
-          <span
+      {/* Click-only tooltip - simple, no hover, no memory leaks */}
+      {showTooltip && (
+        <span
           className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl"
           onClick={(e) => e.stopPropagation()}
-          onMouseEnter={handleTooltipMouseEnter}
-          onMouseLeave={handleTooltipMouseLeave}
         >
           {/* Pointer arrow */}
           <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 rotate-45"></span>
@@ -197,8 +145,7 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
             </div>
           )}
         </span>
-        );
-      })()}
+      )}
     </span>
   );
 }

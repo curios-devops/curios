@@ -35,12 +35,10 @@ export default function ArticleDetail() {
     location.state?.relatedArticles || []
   );
 
-  console.log('[ARTICLE DETAIL] Component render');
 
   // CRITICAL FIX: Memoize citations separately to prevent re-creation on tooltip state changes
   // If citations is recreated, CustomMarkdown gets new prop → re-parses → remounts MultipleCitations → loses event handlers
   const citations = useMemo(() => {
-    console.log('[ARTICLE DETAIL] citations useMemo executing');
     if (sources.length === 0) return [];
 
     return sources.map(source => {
@@ -68,7 +66,6 @@ export default function ArticleDetail() {
 
   // Process answer text separately - can update during streaming without affecting citations
   const processedAnswer = useMemo(() => {
-    console.log('[ARTICLE DETAIL] processedAnswer useMemo executing');
     if (!streamingContent) return '';
 
     let text = streamingContent;
@@ -134,14 +131,11 @@ export default function ArticleDetail() {
         (chunk: string) => {
           // On first chunk, stop showing "generating" state
           if (isFirstChunk) {
-            console.log('[ARTICLE DETAIL] First chunk received, hiding spinner');
             setIsGenerating(false);
             isFirstChunk = false;
           }
-          console.log('[ARTICLE DETAIL] Adding chunk to content:', chunk.substring(0, 20));
           setStreamingContent(prev => {
             const newContent = prev + chunk;
-            console.log('[ARTICLE DETAIL] Total content length:', newContent.length);
             return newContent;
           });
         }
