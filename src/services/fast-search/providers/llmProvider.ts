@@ -178,7 +178,8 @@ Requirements:
 - If multiple sources from the same site, use [sitename +N] format like [wikipedia +2] for 3 wikipedia sources
 - Provide a clear, well-structured response in markdown format
 - Make response comprehensive and informative
-- DO NOT include follow-up questions in the response text
+- At the end, include a section "## Follow-up Questions:" with 3-5 relevant questions users might ask next
+- Format follow-ups as a numbered list (1., 2., etc.)
 
 Today's date: ${context.date}
 Language: ${context.locale}`;
@@ -367,8 +368,8 @@ function parseResponse(data: any): LLMResponse {
 function extractFollowUps(text: string): string[] {
   const followUps: string[] = [];
 
-  // Look for a section with "Follow-up" or similar
-  const followUpMatch = text.match(/(?:Follow-up|Related|Next).*?(?:Questions?|Topics?)?\s*[:]\s*([\s\S]+?)(?:\n\n|$)/i);
+  // Look for a section with "Follow-up" or similar (with ## or ### markdown headers)
+  const followUpMatch = text.match(/##?\s*(?:Follow-up|Related|Next).*?(?:Questions?|Topics?)\s*[:]*\s*([\s\S]+?)(?=##|$)/i);
 
   if (followUpMatch) {
     const section = followUpMatch[1];
@@ -381,6 +382,12 @@ function extractFollowUps(text: string): string[] {
       });
     }
   }
+
+  logger.debug('LLMProvider: Extracted follow-ups', {
+    foundCount: followUps.length,
+    hasFollowUpSection: !!followUpMatch,
+    textPreview: text.substring(text.length - 300)
+  });
 
   // Return empty array if no follow-ups found (controller will generate dynamic ones)
   return followUps.slice(0, 5); // Limit to 5
