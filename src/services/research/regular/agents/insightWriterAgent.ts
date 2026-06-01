@@ -344,10 +344,12 @@ ${content}...
 
   private generateStyledReport(query: string, results: SearchResult[], focusCategory: string): string {
     const editorialStyle = this.getEditorialStyle(focusCategory);
-    
-    // Get structure sections from the style
-    const structureParts = editorialStyle.structure.split(' → ').map(s => s.replace(/\*\*/g, ''));
-    
+
+    // Get structure sections from the style - extract only the section titles, remove instruction text in parentheses
+    const structureParts = editorialStyle.structure
+      .split(' → ')
+      .map(s => s.replace(/\*\*/g, '').replace(/\s*\([^)]*\)/g, '').trim());
+
     // Build intro based on editorial style
     let intro = '';
     if (focusCategory === 'BUSINESS') {

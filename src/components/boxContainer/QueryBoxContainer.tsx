@@ -8,7 +8,6 @@ import ButtonBar from './ButtonBar.tsx';
 import ProModal from '../subscription/ProModal.tsx';
 import SignInModal from '../auth/SignInModal.tsx';
 import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
-import { useProQuota } from '../../hooks/useProQuota.ts';
 import { useSession } from '../../hooks/useSession.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTranslation } from '../../hooks/useTranslation.ts';
@@ -34,7 +33,6 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const reverseImageRef = useRef<ReverseImageSearchHandle>(null);
   const { decrementSearches, hasSearchesLeft } = useSearchLimit();
-  const { decrementProQuota, hasProQuotaLeft, canAccessPro } = useProQuota();
   const { session } = useSession();
   const accentColor = useAccentColor();
   const { isRecording, startRecording, stopRecording } = useVoiceRecording();
@@ -77,11 +75,6 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
     }
   };
 
-  // Check if mode is a pro feature
-  const isProMode = (mode: ModeType): boolean => {
-    return ['stories', 'cinematic'].includes(mode);
-  };
-
   const handleModeSelect = (mode: ModeType) => {
     setSelectedMode(mode);
   };
@@ -97,23 +90,8 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
     // Validate: need either text or images
     if (!trimmedQuery && !hasImages) return;
 
-    const isProFeature = isProMode(selectedMode);
-
-    // For Pro features, check Pro quota (Standard users only)
-    if (isProFeature) {
-      if (!canAccessPro) {
-        setShowSignInModal(true);
-        return;
-      }
-
-      if (!hasProQuotaLeft) {
-        setShowProModal(true);
-        return;
-      }
-    }
-
-    // For regular searches, check general search limit
-    if (!isProFeature && !hasSearchesLeft) {
+    // Check general search limit
+    if (!hasSearchesLeft) {
       setShowProModal(true);
       return;
     }
@@ -134,23 +112,17 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
       }
     }
 
-    // Decrement appropriate quota
-    let success = true;
-    if (isProFeature) {
-      success = await decrementProQuota();
-    } else {
-      const result = await decrementSearches();
-      success = result !== undefined ? result : false;
-    }
+    // Decrement search quota
+    const result = await decrementSearches();
+    const success = result !== undefined ? result : false;
 
     if (success) {
       const route = getModeRoute(selectedMode);
-      const proParam = isProFeature ? '&pro=true' : '';
 
       // Pass image URLs as URL parameters (comma-separated)
       const imageParam = imageUrls.length > 0 ? `&images=${encodeURIComponent(imageUrls.join(','))}` : '';
 
-      navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${proParam}${imageParam}`);
+      navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${imageParam}`);
     }
   };  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
