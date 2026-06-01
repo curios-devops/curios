@@ -50,12 +50,9 @@ export default function FastSearchResults() {
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('answer');
 
-  // Process answer and build citations from foundSources
-  const { processedAnswer, citations } = useMemo(() => {
-    if (!streamingAnswer) return { processedAnswer: '', citations: [] };
-
-    // Build citations map from foundSources
-    const cites: CitationInfo[] = foundSources.map(source => {
+  // Memoize citations separately to prevent recreation on every render
+  const citations = useMemo(() => {
+    return foundSources.map(source => {
       const hostname = (() => {
         try {
           return new URL(source.url).hostname.replace(/^www\./, '');
@@ -76,6 +73,11 @@ export default function FastSearchResults() {
         snippet: source.snippet
       };
     });
+  }, [foundSources]);
+
+  // Process answer text separately
+  const processedAnswer = useMemo(() => {
+    if (!streamingAnswer) return '';
 
     let text = streamingAnswer;
 
@@ -101,30 +103,20 @@ export default function FastSearchResults() {
 
     // Step 4: Remove unwanted sections
     // Remove "Follow-up Questions" section (these are shown separately in the UI)
-    text = text.replace(/\n\s*##?\s*Follow-?up.*?(?:Questions?|Topics?).*$/si, '');
-    text = text.replace(/\*\*Follow-?up.*?(?:Questions?|Topics?)\*\*.*$/si, '');
+    text = text.replace(/\n\s*##?\s*Follow-?up\s+(?:Questions?|Topics?)[:\s]*[\s\S]*$/i, '');
 
-    // Remove "Selected sources" section
-    text = text.replace(/\n\s*##?\s*Selected [Ss]ources.*$/s, '');
-    text = text.replace(/\*\*Selected [Ss]ources\*\*.*$/s, '');
-
-    // Remove "Where to read more" section (with variations)
-    text = text.replace(/\n\s*##?\s*Where to [Rr]ead [Mm]ore.*$/s, '');
-    text = text.replace(/\*\*Where to [Rr]ead [Mm]ore.*$/s, '');
-
-    // Remove "Quick reference links" section
-    text = text.replace(/\n\s*##?\s*Quick [Rr]eference [Ll]inks.*$/s, '');
-    text = text.replace(/\*\*Quick [Rr]eference [Ll]inks\*\*.*$/s, '');
-
-    // Remove "Sources:" section at the end
-    text = text.replace(/\n\s*Sources:\s*.*$/s, '');
-    text = text.replace(/\*\*Sources:\*\*\s*.*$/s, '');
+    // Remove "Sources" section variations
+    text = text.replace(/\n\s*##?\s*Sources?\s*\(from provided search results\)[:\s]*[\s\S]*$/i, '');
+    text = text.replace(/\n\s*##?\s*Selected [Ss]ources[:\s]*[\s\S]*$/i, '');
+    text = text.replace(/\n\s*##?\s*Where to [Rr]ead [Mm]ore[:\s]*[\s\S]*$/i, '');
+    text = text.replace(/\n\s*##?\s*Quick [Rr]eference [Ll]inks[:\s]*[\s\S]*$/i, '');
+    text = text.replace(/\n\s*Sources?:[:\s]*[\s\S]*$/i, '');
 
     // Clean up encoding issues
     text = text.replace(/�/g, '');
 
-    return { processedAnswer: text, citations: cites };
-  }, [streamingAnswer, foundSources]);
+    return text;
+  }, [streamingAnswer]);
 
   // Scroll to top on mount
   useEffect(() => {
