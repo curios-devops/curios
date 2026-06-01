@@ -100,6 +100,10 @@ export default function FastSearchResults() {
     text = text.replace(/^\s*[-–—]{3,}\s*$/gm, '');
 
     // Step 4: Remove unwanted sections
+    // Remove "Follow-up Questions" section (these are shown separately in the UI)
+    text = text.replace(/\n\s*##?\s*Follow-?up.*?(?:Questions?|Topics?).*$/si, '');
+    text = text.replace(/\*\*Follow-?up.*?(?:Questions?|Topics?)\*\*.*$/si, '');
+
     // Remove "Selected sources" section
     text = text.replace(/\n\s*##?\s*Selected [Ss]ources.*$/s, '');
     text = text.replace(/\*\*Selected [Ss]ources\*\*.*$/s, '');
