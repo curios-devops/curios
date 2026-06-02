@@ -11,6 +11,7 @@ import SignUpModal from './components/auth/SignUpModal.tsx';
 import { useTranslation } from './hooks/useTranslation.ts';
 import { useAccentColor } from './hooks/useAccentColor.ts';
 import { useTheme } from './components/theme/ThemeContext.tsx';
+import PromoBanner from './components/PromoBanner.tsx';
 
 // Main App Content Component that can access translation context
 function AppContent() {
@@ -127,26 +128,28 @@ function AppContent() {
   // removed unused MobileContinueEmail helper
 
   return (
-      <div className="flex min-h-screen bg-white dark:bg-[#111111] text-gray-900 dark:text-white transition-colors duration-200">
-        {!isMobilePortrait && (
-          <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
-        )}
-        {isMobilePortrait && (
-          <>
-            <header className="fixed top-0 left-0 w-full z-50 bg-white/90 dark:bg-[#111111]/90 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-2 gap-3 shadow-sm">
-              <div className="flex items-center gap-3">
-                <button type="button" className="p-2" aria-label="Open menu" onClick={() => setMobileSidebarOpen(true)}>
-                  <Menu size={28} className="text-gray-900 dark:text-white" />
-                </button>
-                <div className="flex items-center gap-2">
-                  <Logo isCollapsed={false} />
+      <div className="flex flex-col min-h-screen bg-white dark:bg-[#111111] text-gray-900 dark:text-white transition-colors duration-200">
+        <PromoBanner />
+        <div className="flex flex-1">
+          {!isMobilePortrait && (
+            <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
+          )}
+          {isMobilePortrait && (
+            <>
+              <header className="fixed top-0 left-0 w-full z-50 bg-white/90 dark:bg-[#111111]/90 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-2 gap-3 shadow-sm" style={{ marginTop: '32px' }}>
+                <div className="flex items-center gap-3">
+                  <button type="button" className="p-2" aria-label="Open menu" onClick={() => setMobileSidebarOpen(true)}>
+                    <Menu size={28} className="text-gray-900 dark:text-white" />
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <Logo isCollapsed={false} />
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
-                <MobileGetStarted />
-              </div>
-            </header>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                  <MobileGetStarted />
+                </div>
+              </header>
             {/* Mobile Sidebar Drawer */}
             {mobileSidebarOpen && (
               <>
@@ -163,11 +166,12 @@ function AppContent() {
                 onClose={() => setShowSignUpModal(false)}
               />
             )}
-          </>
-        )}
-        <main className={`flex-1 transition-all duration-300 ${!isMobilePortrait && (isCollapsed ? 'ml-20' : 'ml-48')}`} style={isMobilePortrait ? { marginTop: 56 } : {}}>
-          <Outlet />
-        </main>
+            </>
+          )}
+          <main className={`flex-1 transition-all duration-300 ${!isMobilePortrait && (isCollapsed ? 'ml-20' : 'ml-48')}`} style={isMobilePortrait ? { marginTop: 88 } : {}}>
+            <Outlet />
+          </main>
+        </div>
       </div>
   );
 }

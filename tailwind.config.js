@@ -23,10 +23,19 @@ export default {
             opacity: '1',
             transform: 'translateY(0)'
           }
+        },
+        'slide-infinite': {
+          '0%': {
+            transform: 'translateX(0)'
+          },
+          '100%': {
+            transform: 'translateX(-33.333%)'
+          }
         }
       },
       animation: {
-        'fade-in-up': 'fade-in-up 0.5s ease-in-out forwards'
+        'fade-in-up': 'fade-in-up 0.5s ease-in-out forwards',
+        'slide-infinite': 'slide-infinite 20s linear infinite'
       }
     },
   },

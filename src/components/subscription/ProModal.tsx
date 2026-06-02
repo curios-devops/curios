@@ -88,7 +88,7 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
                 <h3 className={`text-xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>{t('premium')}</h3>
                 <div className="flex items-center justify-center gap-2">
                   <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedInterval === 'month' ? '$5' : '$25'}
+                    {selectedInterval === 'month' ? '$1' : '$10'}
                   </span>
                   <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                     {selectedInterval === 'month' ? t('perMonth') : t('perYear')}
@@ -96,7 +96,7 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
                 </div>
                 <div className="mt-2 h-6">
                   {selectedInterval === 'year' && (
-                    <span className="text-sm" style={{ color: accentColor.primary }}>{t('save60')}</span>
+                    <span className="text-sm" style={{ color: accentColor.primary }}>20% Extra Discount</span>
                   )}
                 </div>
               </div>
