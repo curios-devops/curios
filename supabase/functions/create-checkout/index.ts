@@ -1,57 +1,10 @@
-// @ts-nocheck
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { Stripe } from "https://esm.sh/stripe@12.1.1?target=deno&no-check";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+// @ts-nocheck: Deno edge function with dynamic Stripe types
+import { Stripe } from "https://esm.sh/stripe@14.0.0?target=deno";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const STRIPE_SUPPORTED_LOCALES = [
-  'auto','ar','bg','cs','da','de','el','en','en-GB','es','es-419','et','fi','fil','fr','fr-CA','he','hr','hu','id','it','ja','ko','lt','lv','ms','mt','nb','nl','pl','pt','pt-BR','ro','ru','sk','sl','sv','th','tr','vi','zh','zh-HK','zh-TW'
-] as const;
-
-type StripeLocale = (typeof STRIPE_SUPPORTED_LOCALES)[number];
-
-function sanitizeStripeLocale(locale?: string | null): StripeLocale {
-  if (!locale || typeof locale !== 'string') {
-    return 'auto';
-  }
-
-  const trimmed = locale.trim();
-  if (!trimmed) {
-    return 'auto';
-  }
-
-  const normalized = trimmed.toLowerCase();
-  const directMatch = STRIPE_SUPPORTED_LOCALES.find((value) => value.toLowerCase() === normalized);
-  if (directMatch) {
-    return directMatch;
-  }
-
-  const [language] = normalized.split(/[-_]/);
-  if (language) {
-    const baseMatch = STRIPE_SUPPORTED_LOCALES.find((value) => value.toLowerCase() === language);
-    if (baseMatch) {
-      return baseMatch;
-    }
-
-    if (language === 'es') {
-      return 'es';
-    }
-
-    if (language === 'pt') {
-      return 'pt';
-    }
-
-    if (language === 'zh') {
-      return 'zh';
-    }
-  }
-
-  return 'auto';
-}
 
 function classifyError(error: unknown) {
   const message = error instanceof Error ? error.message : 'Failed to create checkout session';
@@ -84,7 +37,7 @@ function classifyError(error: unknown) {
   return { status: 500, code: 'INTERNAL_SERVER_ERROR', message };
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -97,16 +50,8 @@ serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    );
-
     // Get request data
-  const { userId, email, interval, locale } = await req.json();
-  // Always default to 'auto' to prevent Stripe locale errors
-  const sanitizedLocale = (locale && sanitizeStripeLocale(locale)) || 'auto';
+  const { userId, email, interval } = await req.json();
 
     // Validate required fields
     if (!userId?.trim()) {
