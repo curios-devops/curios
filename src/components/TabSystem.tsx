@@ -3,7 +3,7 @@ import { Image, List, Globe, ChevronDown, Wand2, Loader2 } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useSession } from '../hooks/useSession';
 import { useSubscription } from '../hooks/useSubscription';
-import { useProQuota } from '../hooks/useProQuota';
+import { useProCredits } from '../providers/ProCreditsProvider';
 import { generateArticleImage, extractArticleSummary } from '../services/research/regular/agents/imageGenerationService';
 import ImageGenerationModal from './common/ImageGenerationModal';
 import SignInModal from './auth/SignInModal';
@@ -114,7 +114,7 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
   const accent = useAccentColor();
   const { session } = useSession();
   const { subscription } = useSubscription(session);
-  const { remainingQuota, decrementProQuota } = useProQuota();
+  const { remaining, canUseProFeature, requestProAccess } = useProCredits();
 
   // Determine user type
   const getUserType = (): 'guest' | 'free' | 'premium' => {
@@ -255,15 +255,13 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
       return;
     }
     
-    // Free users: check quota before enabling HD
-    if (userType === 'free' && !isHDEnabled) {
-      if (remainingQuota === 0) {
-        setShowImageModal(false);
-        setShowProModal(true);
-        return;
-      }
+    // Free users: surface upgrade before enabling HD when out of Pro Credits
+    if (userType === 'free' && !isHDEnabled && !canUseProFeature) {
+      setShowImageModal(false);
+      setShowProModal(true);
+      return;
     }
-    
+
     // Toggle HD state
     setIsHDEnabled(!isHDEnabled);
   };
@@ -282,15 +280,14 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
       return;
     }
 
-    // Only decrement quota if using HD and user is free tier
-    if (userType === 'free' && useHD) {
-      if (remainingQuota === 0) {
+    // HD generation is a Pro Feature: consume a Pro Credit (free & pro tiers).
+    // The provider opens the tier-appropriate modal if access is blocked.
+    if (useHD && userType !== 'guest') {
+      const allowed = await requestProAccess();
+      if (!allowed) {
         setShowImageModal(false);
-        setShowProModal(true);
         return;
       }
-      // Decrement quota
-      await decrementProQuota();
     }
 
     console.log('📊 [Image Generation] Starting generation with data:', {
@@ -574,7 +571,7 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                           {showImageModal && (
                             <ImageGenerationModal
                               userType={userType}
-                              remainingQuota={remainingQuota}
+                              remainingQuota={remaining}
                               isHDEnabled={isHDEnabled}
                               onHDToggle={handleHDToggle}
                               onGenerate={handleGenerateImage}

@@ -1,14 +1,12 @@
 import { useAccentColor } from '../hooks/useAccentColor';
-import { useTheme } from './theme/ThemeContext';
 
 export default function PromoBanner() {
   const accentColor = useAccentColor();
-  const { theme } = useTheme();
 
   return (
     <div
       className="w-full py-2 overflow-hidden relative"
-      style={{ backgroundColor: theme === 'dark' ? '#111111' : '#f3f4f6' }}
+      style={{ backgroundColor: 'var(--ui-bg-elevated)' }}
     >
       <div className="animate-slide-infinite whitespace-nowrap">
         <span

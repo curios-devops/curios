@@ -66,16 +66,18 @@ export default function SearchModeSelector({ mode, onChange, isLoggedIn, isPro }
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#222222] hover:bg-[#2a2a2a] transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors"
+        style={{ backgroundColor: 'var(--ui-bg-elevated)' }}
       >
         <selectedMode.icon size={16} style={{ color: activeAccentColor }} />
-        <span className="text-white text-sm">{selectedMode.name}</span>
-        <ChevronDown size={16} className="text-gray-400" />
+        <span className="text-sm" style={{ color: 'var(--ui-text-primary)' }}>{selectedMode.name}</span>
+        <ChevronDown size={16} style={{ color: 'var(--ui-text-muted)' }} />
       </button>
 
       {isOpen && (
-        <div 
-          className="absolute top-full left-0 mt-2 w-[320px] bg-[#1a1a1a] rounded-lg border border-gray-800 shadow-xl z-50"
+        <div
+          className="absolute top-full left-0 mt-2 w-[320px] rounded-lg shadow-xl z-50"
+          style={{ backgroundColor: 'var(--ui-bg-primary)', border: '1px solid var(--ui-border-default)' }}
         >
           <div className="p-1">
             {modes.map((modeOption) => (
@@ -88,20 +90,18 @@ export default function SearchModeSelector({ mode, onChange, isLoggedIn, isPro }
                   }
                 }}
                 disabled={modeOption.comingSoon || (modeOption.requiresPro && !isPro)}
-                className={`
-                  w-full flex items-start gap-3 p-3 rounded-lg text-left
-                  ${mode === modeOption.id ? 'bg-[#333333]' : 'hover:bg-[#222222]'}
+                className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition-colors
                   ${(modeOption.comingSoon || (modeOption.requiresPro && !isPro)) ? 'opacity-50 cursor-not-allowed' : ''}
                 `}
+                style={{ backgroundColor: mode === modeOption.id ? 'var(--ui-bg-elevated)' : 'transparent' }}
               >
-                <modeOption.icon 
-                  size={18} 
-                  style={{ color: mode === modeOption.id ? activeAccentColor : undefined }}
-                  className={mode === modeOption.id ? '' : 'text-gray-400'} 
+                <modeOption.icon
+                  size={18}
+                  style={{ color: mode === modeOption.id ? activeAccentColor : 'var(--ui-text-muted)' }}
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-white text-sm font-medium">
+                    <span className="text-sm font-medium" style={{ color: 'var(--ui-text-primary)' }}>
                       {modeOption.name}
                     </span>
                     {modeOption.requiresPro && (
@@ -121,7 +121,7 @@ export default function SearchModeSelector({ mode, onChange, isLoggedIn, isPro }
                       </span>
                     )}
                   </div>
-                  <span className="text-gray-400 text-xs">
+                  <span className="text-xs" style={{ color: 'var(--ui-text-muted)' }}>
                     {modeOption.description}
                   </span>
                 </div>
@@ -129,8 +129,8 @@ export default function SearchModeSelector({ mode, onChange, isLoggedIn, isPro }
             ))}
           </div>
           {!isPro && (
-            <div className="p-3 border-t border-gray-800">
-              <p className="text-xs text-gray-500 text-center">
+            <div className="p-3" style={{ borderTop: '1px solid var(--ui-border-subtle)' }}>
+              <p className="text-xs text-center" style={{ color: 'var(--ui-text-muted)' }}>
                 5 enhanced queries remaining today
               </p>
             </div>

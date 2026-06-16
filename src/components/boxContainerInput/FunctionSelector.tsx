@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Search, BookOpen, FlaskConical } from 'lucide-react';
 import { useSession } from '../../hooks/useSession.ts';
 import { useSubscription } from '../../hooks/useSubscription.ts';
-import { useProQuota } from '../../hooks/useProQuota.ts';
+import { useProCredits } from '../../providers/ProCreditsProvider.tsx';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import FunctionTooltip from './FunctionTooltip.tsx';
@@ -72,7 +72,7 @@ export default function FunctionSelector({
 
   const { session, isLoading: sessionLoading } = useSession();
   const { subscription, loading: subscriptionLoading } = useSubscription(session);
-  const { remainingQuota } = useProQuota();
+  const { remaining: remainingQuota } = useProCredits();
   const accentColor = useAccentColor();
   const { theme, accentColor: selectedAccentColor } = useTheme();
   const isGrayAccent = selectedAccentColor === 'gray';

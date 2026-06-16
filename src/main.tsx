@@ -6,6 +6,21 @@ import App from './App.tsx';
 import Home from './mainPages/Home.tsx'; // Keep Home page eager loaded as it's the landing page
 import { logger } from './utils/logger.ts';
 import './index.css';
+import { applyThemeColors, type AccentColor } from './config/themeColors';
+
+// Apply theme synchronously before React renders — prevents black flash on load
+(function applyInitialTheme() {
+  const stored = localStorage.getItem('theme') || 'system';
+  const accent = localStorage.getItem('accentColor') || 'blue';
+  const validAccents = ['blue', 'teal', 'purple', 'orange', 'gray'];
+  const safeAccent = (validAccents.includes(accent) ? accent : 'blue') as AccentColor;
+  const effectiveTheme: 'light' | 'dark' =
+    stored === 'system'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      : stored === 'light' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', effectiveTheme);
+  applyThemeColors(effectiveTheme, safeAccent);
+})();
 
 // Lazy load page components from their respective service directories
 const SearchResults = lazy(() => import('./services/search/regular/pages/SearchResults.tsx'));
@@ -20,6 +35,8 @@ const ResearcherResults = lazy(() => import('./services/research/pro/pages/Resea
 // const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx')); // Replaced by Studio
 const StudioResults = lazy(() => import('./services/studio/pages/StudioResults.tsx'));
 const CinematicResults = lazy(() => import('./services/cinematic/pages/CinematicResults.tsx'));
+const MovieResults = lazy(() => import('./services/movie/pages/MovieResults.tsx'));
+const MovieSharePage = lazy(() => import('./services/movie/pages/MovieSharePage.tsx'));
 const Explore = lazy(() => import('./mainPages/Explore.tsx'));
 const ArticleDetail = lazy(() => import('./mainPages/ArticleDetail.tsx'));
 const Settings = lazy(() => import('./mainPages/Settings.tsx'));
@@ -35,10 +52,10 @@ const SubscriptionSuccess = lazy(() => import('./mainPages/SubscriptionSuccess.t
 
 // Loading component for lazy loaded routes
 const PageLoader = () => (
-  <div className="min-h-screen bg-white dark:bg-[#1a1a1a] flex items-center justify-center">
+  <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
     <div className="flex flex-col items-center gap-4">
-      <div className="w-8 h-8 border-2 border-[#0095FF] border-t-transparent rounded-full animate-spin"></div>
-      <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+      <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent-primary)', borderTopColor: 'transparent' }}></div>
+      <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>Loading...</p>
     </div>
   </div>
 );
@@ -75,6 +92,8 @@ const router = createBrowserRouter(
         { path: '/labs-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
         { path: '/pro-labs-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
         { path: '/cinematic-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
+        { path: '/movie-results', element: <LazyPageWrapper><MovieResults /></LazyPageWrapper> },
+        { path: '/movie/share/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> },
         { path: '/studio/results', element: <LazyPageWrapper><StudioResults /></LazyPageWrapper> },
         { path: '/settings', element: <LazyPageWrapper><Settings /></LazyPageWrapper> },
         { path: '/policies', element: <LazyPageWrapper><Policies /></LazyPageWrapper> },
@@ -224,13 +243,14 @@ function ErrorBoundary({ children }: ErrorBoundaryProps) {
 
   if (hasError) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
         <div className="text-center">
-          <h1 className="text-2xl font-medium text-white mb-4">Something went wrong</h1>
-          <p className="text-gray-400 mb-4">We're sorry, but something went wrong. Please try refreshing the page.</p>
+          <h1 className="text-2xl font-medium mb-4" style={{ color: 'var(--ui-text-primary)' }}>Something went wrong</h1>
+          <p className="mb-4" style={{ color: 'var(--ui-text-muted)' }}>We're sorry, but something went wrong. Please try refreshing the page.</p>
           <button
             onClick={() => globalThis.location.reload()}
-            className="bg-[#007BFF] text-white px-4 py-2 rounded-lg hover:bg-[#0056b3] transition-colors"
+            className="px-4 py-2 rounded-lg transition-colors"
+            style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
           >
             Refresh Page
           </button>

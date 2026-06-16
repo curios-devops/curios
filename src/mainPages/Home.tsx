@@ -18,6 +18,7 @@ import { useTranslation } from '../hooks/useTranslation.ts';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
 import { useTheme } from '../components/theme/ThemeContext.tsx';
 import type { ModeType } from '../components/boxContainerInput/ModeSelector.tsx';
+import ProCreditsBattery from '../components/ProCreditsBattery.tsx';
 
 export default function Home() {
   const { session } = useSession();
@@ -63,6 +64,8 @@ export default function Home() {
         return 'Based on verified knowledge sources.';
       case 'cinematic':
         return 'Visual explanations grounded in facts.';
+      case 'movie':
+        return 'Your question, turned into a shareable movie.';
       case 'avatar':
         return 'Guided learning from trusted knowledge.';
       default:
@@ -136,7 +139,12 @@ export default function Home() {
     >
       {/* Top right: ThemeToggle, Login and Get Started buttons */}
       {/* On desktop, show in current position. On mobile, these are hidden and shown in the header */}
-      <div className="absolute top-4 right-6 flex items-center gap-3 mobile:hidden">
+      {/* Pro Credits battery — centered at the top, separated from the right cluster */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 h-10 flex items-center mobile:hidden">
+        <ProCreditsBattery />
+      </div>
+
+      <div className="absolute top-4 right-6 flex items-center gap-4 mobile:hidden">
         <div className="w-7 h-7 flex items-center">
           <ThemeToggle />
         </div>

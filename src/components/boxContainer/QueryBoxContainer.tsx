@@ -5,9 +5,7 @@ import type { ModeType } from '../boxContainerInput/ModeSelector.tsx';
 import SearchTextArea from '../boxContainerInput/SearchTextArea.tsx';
 import ReverseImageSearch, { type ReverseImageSearchHandle, type ReverseImageAttachment } from './ReverseImageSearch.tsx';
 import ButtonBar from './ButtonBar.tsx';
-import ProModal from '../subscription/ProModal.tsx';
 import SignInModal from '../auth/SignInModal.tsx';
-import { useSearchLimit } from '../../hooks/useSearchLimit.ts';
 import { useSession } from '../../hooks/useSession.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTranslation } from '../../hooks/useTranslation.ts';
@@ -25,14 +23,12 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [selectedMode, setSelectedMode] = useState<ModeType>('search');
-  const [showProModal, setShowProModal] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [signInContext, setSignInContext] = useState<'default' | 'reverse-image' | 'document'>('default');
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [imageAttachments, setImageAttachments] = useState<ReverseImageAttachment[]>([]);
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const reverseImageRef = useRef<ReverseImageSearchHandle>(null);
-  const { decrementSearches, hasSearchesLeft } = useSearchLimit();
   const { session } = useSession();
   const accentColor = useAccentColor();
   const { isRecording, startRecording, stopRecording } = useVoiceRecording();
@@ -68,6 +64,8 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
         return '/insights-results';
       case 'cinematic':
         return '/cinematic-results';
+      case 'movie':
+        return '/movie-results';
       case 'avatar':
         return '/avatar-search';
       default:
@@ -90,11 +88,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
     // Validate: need either text or images
     if (!trimmedQuery && !hasImages) return;
 
-    // Check general search limit
-    if (!hasSearchesLeft) {
-      setShowProModal(true);
-      return;
-    }
+    // Regular search is free and open for all users — no quota gating.
 
     // Upload images to get public URLs (if any)
     let imageUrls: string[] = [];
@@ -112,19 +106,15 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
       }
     }
 
-    // Decrement search quota
-    const result = await decrementSearches();
-    const success = result !== undefined ? result : false;
+    const route = getModeRoute(selectedMode);
 
-    if (success) {
-      const route = getModeRoute(selectedMode);
+    // Pass image URLs as URL parameters (comma-separated)
+    const imageParam = imageUrls.length > 0 ? `&images=${encodeURIComponent(imageUrls.join(','))}` : '';
 
-      // Pass image URLs as URL parameters (comma-separated)
-      const imageParam = imageUrls.length > 0 ? `&images=${encodeURIComponent(imageUrls.join(','))}` : '';
+    navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${imageParam}`);
+  };
 
-      navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${imageParam}`);
-    }
-  };  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSearch();
@@ -269,7 +259,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
           setShowAttachMenu={setShowAttachMenu}
           reverseImageRef={reverseImageRef}
           onSearchClick={handleSearch}
-          isSearchDisabled={!query.trim() && imageAttachments.length === 0 || !hasSearchesLeft}
+          isSearchDisabled={!query.trim() && imageAttachments.length === 0}
           isSearchActive={query.trim().length > 0 || imageAttachments.length > 0}
           attachMenuRef={attachMenuRef}
           onVoiceClick={handleVoiceClick}
@@ -279,22 +269,8 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
       </div>
       </div>
 
-      {/* Remaining searches indicator - REMOVED as requested */}
-      {/* {session && (
-        <div className="mt-2 text-center">
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {remainingSearches} searches remaining today
-          </span>
-        </div>
-      )} */}
-
       {/* Modals */}
-      <ProModal 
-        isOpen={showProModal}
-        onClose={() => setShowProModal(false)}
-      />
-
-      <SignInModal 
+      <SignInModal
         isOpen={showSignInModal}
         onClose={() => {
           setShowSignInModal(false);

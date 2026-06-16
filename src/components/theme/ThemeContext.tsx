@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { AccentColor, applyThemeColors } from '../../config/themeColors';
-import { useSession } from '../../hooks/useSession';
 import { supabase } from '../../lib/supabase.ts';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -17,142 +16,102 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const validAccentColors: AccentColor[] = ['blue', 'teal', 'purple', 'orange', 'gray'];
 
 function normalizeAccentColor(color: string | null | undefined): AccentColor | null {
-  if (color === 'green') {
-    return 'teal';
-  }
-
-  if (color && validAccentColors.includes(color as AccentColor)) {
-    return color as AccentColor;
-  }
-
+  if (color === 'green') return 'teal';
+  if (color && validAccentColors.includes(color as AccentColor)) return color as AccentColor;
   return null;
 }
 
 function getInitialTheme(): Theme {
-  // Check if theme was previously stored
-  const storedTheme = localStorage.getItem('theme') as Theme;
-  if (storedTheme && ['light', 'dark', 'system'].includes(storedTheme)) {
-    return storedTheme;
-  }
-  
-  // If user prefers dark mode, start with dark
-  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    return 'dark';
-  }
-  
-  // Default to system
+  const stored = localStorage.getItem('theme') as Theme;
+  if (stored && ['light', 'dark', 'system'].includes(stored)) return stored;
   return 'system';
 }
 
-
 function getInitialAccentColor(): AccentColor {
-  const stored = localStorage.getItem('accentColor');
-  return normalizeAccentColor(stored) ?? 'gray';
+  return normalizeAccentColor(localStorage.getItem('accentColor')) ?? 'blue';
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { session, isLoading } = useSession();
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const [accentColor, setAccentColorState] = useState<AccentColor>(getInitialAccentColor);
-  const [accentColorLoading, setAccentColorLoading] = useState(true);
-  const [justLoadedFromSupabase, setJustLoadedFromSupabase] = useState(false);
+  // Store only userId (stable string) — not the full session object.
+  // This means Supabase TOKEN_REFRESHED events won't cascade through context.
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const applyTheme = useCallback((mode: Theme, accent: AccentColor) => {
-    let effectiveTheme: 'light' | 'dark';
-    
-    if (mode === 'system') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      effectiveTheme = isDark ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', effectiveTheme);
-    } else {
-      effectiveTheme = mode;
-      document.documentElement.setAttribute('data-theme', mode);
-    }
-    
-    // Apply accent colors as CSS variables
-    applyThemeColors(effectiveTheme, accent);
+  // Auth subscription — only extract userId, ignore everything else.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUserId(data.session?.user?.id ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Load accentColor from Supabase on sign-in, else from localStorage
+  // Apply theme to DOM. Only re-runs when theme or accent actually changes.
   useEffect(() => {
-    const fetchAccentColor = async () => {
-      setAccentColorLoading(true);
-      let color: AccentColor | null = null;
-      if (session?.user) {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('accent_color')
-            .eq('id', session.user.id)
-            .single();
-          const normalizedDbColor = normalizeAccentColor(data?.accent_color);
-          if (!error && normalizedDbColor) {
-            color = normalizedDbColor;
-            setJustLoadedFromSupabase(true);
-          }
-        } catch (error) {
-          // Ignore if column doesn't exist
-          console.debug('Accent color column not available in profiles table');
-        }
-      }
-      if (!color) {
-        color = normalizeAccentColor(localStorage.getItem('accentColor'));
-      }
-      color = color ?? 'gray';
-      setAccentColorState(color);
-      setAccentColorLoading(false);
-    };
-    if (!isLoading) {
-      fetchAccentColor();
-    }
-  }, [session, isLoading]);
+    const effective: 'light' | 'dark' =
+      theme === 'system'
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        : theme;
 
-  useEffect(() => {
-    applyTheme(theme, accentColor);
+    document.documentElement.setAttribute('data-theme', effective);
+    applyThemeColors(effective, accentColor);
     localStorage.setItem('theme', theme);
-    // Only update localStorage if not just loaded from Supabase
-    if (!accentColorLoading && !justLoadedFromSupabase) {
-      localStorage.setItem('accentColor', accentColor);
-    }
+    localStorage.setItem('accentColor', accentColor);
+
     if (theme === 'system') {
       const media = window.matchMedia('(prefers-color-scheme: dark)');
-      const handler = () => applyTheme('system', accentColor);
+      const handler = () => {
+        const isDark = media.matches;
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        applyThemeColors(isDark ? 'dark' : 'light', accentColor);
+      };
       media.addEventListener('change', handler);
       return () => media.removeEventListener('change', handler);
     }
-  }, [theme, accentColor, applyTheme, accentColorLoading, justLoadedFromSupabase]);
+  }, [theme, accentColor]);
 
-  // Save accentColor to Supabase if signed in and not just loaded from Supabase
+  // Load accent from Supabase once per user (non-blocking).
+  // userId is a string — same user ID === no re-run, unlike session objects.
   useEffect(() => {
-    if (session?.user && !justLoadedFromSupabase && !accentColorLoading) {
-      supabase
-        .from('profiles')
-        .update({ accent_color: accentColor })
-        .eq('id', session.user.id)
-        .then(({ error }) => {
-          if (error) {
-            console.debug('Failed to save accent color to database:', error);
-          }
-        });
-    }
-    if (justLoadedFromSupabase) setJustLoadedFromSupabase(false);
-  }, [accentColor, session, justLoadedFromSupabase, accentColorLoading]);
+    if (!userId) return;
+    supabase
+      .from('profiles')
+      .select('accent_color')
+      .eq('id', userId)
+      .single()
+      .then(({ data }) => {
+        const color = normalizeAccentColor(data?.accent_color);
+        if (color) setAccentColorState(color);
+      })
+      .catch(() => {});
+  }, [userId]);
 
-  const toggleTheme = () => {
-    setTheme(current => 
-      current === 'dark' ? 'light' : 
-      current === 'light' ? 'system' : 'dark'
-    );
-  };
+  const setTheme = useCallback((t: Theme) => setThemeState(t), []);
 
-  const setAccentColor = (color: AccentColor) => {
+  const toggleTheme = useCallback(() => {
+    setThemeState(c => c === 'dark' ? 'light' : c === 'light' ? 'system' : 'dark');
+  }, []);
+
+  // Save accent inline — no separate effect needed.
+  const setAccentColor = useCallback((color: AccentColor) => {
     setAccentColorState(color);
-  };
+    if (userId) {
+      supabase.from('profiles').update({ accent_color: color }).eq('id', userId).catch(() => {});
+    }
+  }, [userId]);
 
-  if (accentColorLoading) return null;
+  // Memoize context value so consumers only re-render when theme/accent change,
+  // not when Supabase fires TOKEN_REFRESHED and userId is the same string.
+  const value = useMemo(
+    () => ({ theme, accentColor, toggleTheme, setTheme, setAccentColor }),
+    [theme, accentColor, toggleTheme, setTheme, setAccentColor]
+  );
 
   return (
-    <ThemeContext.Provider value={{ theme, accentColor, toggleTheme, setTheme, setAccentColor }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

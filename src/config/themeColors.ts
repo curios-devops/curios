@@ -75,14 +75,14 @@ const designSystemThemes: Record<AccentColor, { light: DesignColorSet; dark: Des
       brandSubtle: '#E3F2FF',
     },
     dark: {
-      bg: '#0F1117',
-      surface: '#161B27',
-      border: '#1E2738',
-      text: '#E8EDF5',
-      brandLight: '#3399FF',
-      brand: '#007BFF',
-      brandDark: '#0056B3',
-      brandSubtle: '#1565C0',
+      bg: '#040A14',
+      surface: '#071628',
+      border: '#0D2444',
+      text: '#E4EFFF',
+      brandLight: '#45AAFF',
+      brand: '#0088EE',
+      brandDark: '#005BB5',
+      brandSubtle: '#050E1F',
     },
   },
   orange: {
@@ -313,8 +313,9 @@ export function applyThemeColors(
   const colors = getAccentColors(theme, accentColor);
   const globalTokens = getGlobalPaletteTokens(theme, accentColor);
   const temperature = getAccentTemperature(accentColor);
+  const palette = designSystemThemes[accentColor][theme];
   const root = document.documentElement;
-  
+
   root.style.setProperty(cssVarNames.primary, colors.primary);
   root.style.setProperty(cssVarNames.hover, colors.hover);
   root.style.setProperty(cssVarNames.light, colors.light);
@@ -331,6 +332,10 @@ export function applyThemeColors(
   root.style.setProperty(cssVarNames.shadowSoft, globalTokens.shadowSoft);
   root.style.setProperty(cssVarNames.shadowElevated, globalTokens.shadowElevated);
   root.style.setProperty(cssVarNames.textOnAccent, globalTokens.textOnAccent);
+
+  // Override --background and --foreground so body/root follow the design system
+  root.style.setProperty('--background', palette.bg);
+  root.style.setProperty('--foreground', palette.text);
 
   root.setAttribute('data-temperature', temperature);
 }

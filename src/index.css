@@ -35,65 +35,35 @@ img {
     --ui-text-on-accent: #eef5ff;
   }
 
-  @media (prefers-color-scheme: light) {
-    :root {
-      --background: #ffffff;
-      --foreground: #222222;
-      --bg-theme-searxng-status: #f5f5f5; /* light gray */
-      --bg-theme-theme-toggle:#d4d4d4;
-      --bg-theme-theme-toggle-hover: #e5e5e5; /* slightly darker light gray */
-      --bg-theme-loading:#f5f5f5;
-      --bg-theme-help-button: var(--bg-theme-theme-toggle);
-      --bg-theme-help-button-hover: var(--bg-theme-theme-toggle-hover);
-
-    }
-    
-    :root.dark{
-      --bg-theme-searxng-status-dark:#1e293b;
-      --bg-theme-theme-toggle:#1e293b;
-      --bg-theme-loading:#0a0f1a;
-      --bg-theme-theme-toggle-hover: #334155;
-      --bg-theme-help-button: var(--bg-theme-theme-toggle);
-      --bg-theme-help-button-hover: var(--bg-theme-theme-toggle-hover);
-
-      /* Dark mode UI colors matching Mitte.ai */
-      --ui-bg-primary: #0a0f1a;
-      --ui-bg-secondary: #0f1419;
-      --ui-bg-elevated: #1a2332;
-      --ui-border-subtle: #253044;
-      --ui-border-default: #334155;
-      --ui-text-primary: #e2e8f0;
-      --ui-text-secondary: #cbd5e1;
-      --ui-text-muted: #94a3b8;
-      --ui-shadow-soft: rgba(0, 0, 0, 0.3);
-      --ui-shadow-elevated: rgba(0, 0, 0, 0.5);
-      --ui-text-on-accent: #ffffff;
-    }
-
+  /* [data-theme] rules: JS (applyThemeColors) sets these via inline style and takes precedence.
+     These serve as CSS-only fallback for the instant before JS hydrates. */
+  [data-theme="light"] {
+    --background: #F4F6FA;
+    --foreground: #0F1520;
+    --bg-theme-theme-toggle: #d4d4d4;
+    --bg-theme-theme-toggle-hover: #e5e5e5;
+    --bg-theme-help-button: var(--bg-theme-theme-toggle);
+    --bg-theme-help-button-hover: var(--bg-theme-theme-toggle-hover);
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: #0a0f1a;
-      --foreground: #e2e8f0;
-      --bg-theme-theme-toggle:#1e293b;
-      --bg-theme-theme-toggle-hover: #334155;
-      --bg-theme-help-button: var(--bg-theme-theme-toggle);
-      --bg-theme-help-button-hover: #334155;
-
-      /* Dark mode UI colors matching Mitte.ai */
-      --ui-bg-primary: #0a0f1a;
-      --ui-bg-secondary: #0f1419;
-      --ui-bg-elevated: #1a2332;
-      --ui-border-subtle: #253044;
-      --ui-border-default: #334155;
-      --ui-text-primary: #e2e8f0;
-      --ui-text-secondary: #cbd5e1;
-      --ui-text-muted: #94a3b8;
-      --ui-shadow-soft: rgba(0, 0, 0, 0.3);
-      --ui-shadow-elevated: rgba(0, 0, 0, 0.5);
-      --ui-text-on-accent: #ffffff;
-    }
+  [data-theme="dark"] {
+    --background: #040A14;
+    --foreground: #E4EFFF;
+    --bg-theme-theme-toggle: #0D2444;
+    --bg-theme-theme-toggle-hover: #0D2444cc;
+    --bg-theme-help-button: var(--bg-theme-theme-toggle);
+    --bg-theme-help-button-hover: var(--bg-theme-theme-toggle-hover);
+    --ui-bg-primary: #040A14;
+    --ui-bg-secondary: #071628;
+    --ui-bg-elevated: #0D2444;
+    --ui-border-subtle: #0D2444;
+    --ui-border-default: #0D2444;
+    --ui-text-primary: #E4EFFF;
+    --ui-text-secondary: #C5D8F5;
+    --ui-text-muted: #7AA0CC;
+    --ui-shadow-soft: rgba(0, 0, 0, 0.3);
+    --ui-shadow-elevated: rgba(0, 0, 0, 0.5);
+    --ui-text-on-accent: #ffffff;
   }
 
   body {
@@ -146,6 +116,54 @@ img {
 
 .animate-fade-in {
   animation: fade-in 0.2s ease-out forwards;
+}
+
+/* ─── Design system overrides ────────────────────────────────────────────────
+   Replace every hardcoded dark color (Tailwind arbitrary values) with the
+   CSS variables set by applyThemeColors(). Covers both dark: prefixed classes
+   and always-on classes. Higher specificity (html[]) beats Tailwind-generated
+   [data-theme="dark"] rules without needing !important.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* #111111 → card/section surface */
+html[data-theme="dark"] .dark\:bg-\[\#111111\],
+html[data-theme="dark"] .bg-\[\#111111\],
+html[data-theme="light"] .bg-\[\#111111\] {
+  background-color: var(--ui-bg-elevated);
+}
+
+/* #1a1a1a → slightly lighter dark surface */
+html[data-theme="dark"] .dark\:bg-\[\#1a1a1a\],
+html[data-theme="dark"] .bg-\[\#1a1a1a\],
+html[data-theme="light"] .bg-\[\#1a1a1a\] {
+  background-color: var(--ui-bg-secondary);
+}
+
+/* #2a2a2a → input / elevated surface */
+html[data-theme="dark"] .dark\:bg-\[\#2a2a2a\],
+html[data-theme="dark"] .bg-\[\#2a2a2a\],
+html[data-theme="light"] .bg-\[\#2a2a2a\] {
+  background-color: var(--ui-bg-elevated);
+}
+
+/* #383838 → same as 2a2a2a tier */
+html[data-theme="dark"] .bg-\[\#383838\],
+html[data-theme="light"] .bg-\[\#383838\] {
+  background-color: var(--ui-bg-elevated);
+}
+
+/* gradient from-[#111111] to-black — flatten to solid bg-primary */
+html[data-theme="dark"] .from-\[\#111111\] {
+  --tw-gradient-from: var(--ui-bg-elevated);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, transparent);
+}
+html[data-theme="dark"] .to-black {
+  --tw-gradient-to: var(--ui-bg-primary);
+}
+
+/* dark:border-gray-800 → design system border */
+html[data-theme="dark"] .dark\:border-gray-800 {
+  border-color: var(--ui-border-default);
 }
 
 @keyframes skeleton-shimmer {

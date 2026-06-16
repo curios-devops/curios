@@ -2,6 +2,7 @@
 // Simplified Supabase Edge Function for OpenAI API calls
 // Supports both streaming and non-streaming modes for chat completions
 import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,7 @@ const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
 const DEFAULT_MODEL = "gpt-4.1-mini-2025-04-14";
 const TIMEOUT_MS = 28000; // 28 seconds (leave buffer for edge function)
 const STREAMING_TIMEOUT_MS = 60000; // 60 seconds for streaming (longer to allow full response)
+const IMAGE_TIMEOUT_MS = 120000; // 120s — gpt-image-2 (medium/high, 1536x1024) can take ~40-60s
 
 function isGpt5Model(model: string): boolean {
   return /^gpt-5(?:-|_|$)/i.test(model);
@@ -214,7 +216,7 @@ Deno.serve(async (req: Request) => {
 
       // Call OpenAI Image API with timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      const timeoutId = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS);
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -249,8 +251,38 @@ Deno.serve(async (req: Request) => {
         throw new Error('No image data in OpenAI response');
       }
 
-      const imageUrl = data.data[0].url;
-      const revisedPrompt = data.data[0].revised_prompt;
+      const first = data.data[0];
+      let imageUrl: string | undefined = first.url; // DALL-E returns a url
+      const revisedPrompt = first.revised_prompt;
+
+      // gpt-image-1/2 return base64 only. If a storageBucket is requested, upload the
+      // PNG server-side (service role → works for guests) and return a public URL.
+      // Otherwise fall back to a data URL so the caller still gets a usable image.
+      if (!imageUrl && first.b64_json) {
+        if (body.storageBucket) {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+          const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+          const path = body.storagePath || `ai-images/${crypto.randomUUID()}.png`;
+          const bytes = Uint8Array.from(atob(first.b64_json), (c) => c.charCodeAt(0));
+          const supabase = createClient(supabaseUrl, serviceKey);
+          const { error: upErr } = await supabase.storage
+            .from(body.storageBucket)
+            .upload(path, bytes, { contentType: "image/png", upsert: true });
+          if (upErr) {
+            console.error('Image storage upload error:', upErr.message);
+            return new Response(JSON.stringify({ error: `Image upload failed: ${upErr.message}` }), {
+              status: 500,
+              headers: corsHeaders
+            });
+          }
+          imageUrl = supabase.storage.from(body.storageBucket).getPublicUrl(path).data.publicUrl;
+          // Don't echo the multi-MB base64 back when we have a hosted URL.
+          return new Response(JSON.stringify({ url: imageUrl, revised_prompt: revisedPrompt }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+        imageUrl = `data:image/png;base64,${first.b64_json}`;
+      }
 
       return new Response(JSON.stringify({
         url: imageUrl,

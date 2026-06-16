@@ -13,8 +13,8 @@ Before implementing:
 - If multiple interpretations exist, present them - don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
-- FrontEnd is in Netfily
-- Edge function deployed manually in supabase by user (marcelo) since MCP and CLI had issues, so provide document for deployment. 
+- Frontend is in Netfily
+- Edge functions  
 
 
 ## 2. Simplicity First

@@ -19,6 +19,8 @@ const getPlaceholderKey = (mode: ModeType): string => {
       return 'placeholderStories';
     case 'cinematic':
       return 'placeholderCinematic';
+    case 'movie':
+      return 'placeholderMovie';
     case 'avatar':
       return 'placeholderAvatar';
     default:

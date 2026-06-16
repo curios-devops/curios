@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { logger } from './utils/logger.ts';
 import { ThemeProvider } from './components/theme/ThemeContext.tsx';
 import { LanguageProvider } from './contexts/LanguageContext.tsx';
 import Sidebar from './components/Sidebar.tsx';
@@ -12,6 +11,7 @@ import { useTranslation } from './hooks/useTranslation.ts';
 import { useAccentColor } from './hooks/useAccentColor.ts';
 import { useTheme } from './components/theme/ThemeContext.tsx';
 import PromoBanner from './components/PromoBanner.tsx';
+import { ProCreditsProvider } from './providers/ProCreditsProvider.tsx';
 
 // Main App Content Component that can access translation context
 function AppContent() {
@@ -45,12 +45,13 @@ function AppContent() {
     console.error = (...args) => {
       const message = args.join(' ');
       // Suppress non-critical errors
-      if (message.includes('Cannot find module') || 
+      if (message.includes('Cannot find module') ||
           message.includes('clock for skew') ||
           message.includes('issued in the future')) {
         return; // Silently ignore
       }
-      logger.error('React Console Error:', args);
+      // Do NOT call logger.error here: logger.error calls console.error,
+      // which is this patched function — infinite mutual recursion that hangs the app.
       originalConsoleError.apply(console, args);
     };
 
@@ -128,7 +129,7 @@ function AppContent() {
   // removed unused MobileContinueEmail helper
 
   return (
-      <div className="flex flex-col min-h-screen bg-white dark:bg-[#111111] text-gray-900 dark:text-white transition-colors duration-200">
+      <div className="flex flex-col min-h-screen transition-colors duration-200" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
         <PromoBanner />
         <div className="flex flex-1">
           {!isMobilePortrait && (
@@ -136,7 +137,7 @@ function AppContent() {
           )}
           {isMobilePortrait && (
             <>
-              <header className="fixed top-0 left-0 w-full z-50 bg-white/90 dark:bg-[#111111]/90 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-2 gap-3 shadow-sm" style={{ marginTop: '32px' }}>
+              <header className="fixed top-0 left-0 w-full z-50 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-2 gap-3 shadow-sm" style={{ marginTop: '32px', backgroundColor: 'var(--background)' }}>
                 <div className="flex items-center gap-3">
                   <button type="button" className="p-2" aria-label="Open menu" onClick={() => setMobileSidebarOpen(true)}>
                     <Menu size={28} className="text-gray-900 dark:text-white" />
@@ -179,7 +180,9 @@ export default function App() {
   return (
     <LanguageProvider>
       <ThemeProvider>
-        <AppContent />
+        <ProCreditsProvider>
+          <AppContent />
+        </ProCreditsProvider>
       </ThemeProvider>
     </LanguageProvider>
   );
