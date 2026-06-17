@@ -1,6 +1,10 @@
-// Media Search Provider - Handles image and video search through Tavily
+// Media Search Provider — Default tier routing.
+// Images: Serper primary, Brave fallback when sparse (or Serper key missing).
+// Videos: not yet implemented.
 
-import { searchWithTavily } from '../../../commonService/searchTools/tavilyService';
+import { searchSerpApiImages } from './engines/serpApiImages';
+import { searchSerpApiVideos } from './engines/serpApiVideos';
+import { searchBraveImages, searchBraveVideos } from './engines/braveAdapter';
 import { logger } from '../../../utils/logger';
 
 export interface ImageResult {
@@ -21,12 +25,22 @@ export interface VideoResult {
   platform?: string;
 }
 
+// Below this many SerpAPI images we consider it "few" and bring in Brave.
+const MIN_IMAGES = 4;
+
+function dedupeByUrl(images: ImageResult[]): ImageResult[] {
+  const seen = new Set<string>();
+  const out: ImageResult[] = [];
+  for (const img of images) {
+    if (!img?.url || seen.has(img.url)) continue;
+    seen.add(img.url);
+    out.push(img);
+  }
+  return out;
+}
+
 /**
- * Execute image search using Tavily
- * Returns diverse, high-quality images relevant to the query
- *
- * @param query - The search query
- * @returns Array of image results
+ * Execute image search: SerpAPI primary, Brave fallback when sparse.
  */
 export async function searchImages(query: string): Promise<ImageResult[]> {
   if (!query?.trim()) {
@@ -34,39 +48,35 @@ export async function searchImages(query: string): Promise<ImageResult[]> {
     return [];
   }
 
-  try {
-    logger.debug('MediaSearchProvider: Searching images', { query });
+  const serpImages = await searchSerpApiImages(query);
 
-    const { images } = await searchWithTavily(query);
-
-    const results = images.map(img => ({
-      url: img.url,
-      title: img.alt || query,
-      source: extractDomain(img.url),
-      thumbnail: img.url
-    }));
-
-    logger.info('MediaSearchProvider: Image search completed', {
-      resultCount: results.length
+  if (serpImages.length >= MIN_IMAGES) {
+    logger.info('MediaSearchProvider: SerpAPI image search completed', {
+      resultCount: serpImages.length,
     });
-
-    return results;
-  } catch (error) {
-    logger.error('MediaSearchProvider: Image search failed', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      query
-    });
-    return [];
+    return serpImages;
   }
+
+  logger.info('MediaSearchProvider: SerpAPI sparse, falling back to Brave images', {
+    serpCount: serpImages.length,
+  });
+  const braveImages = await searchBraveImages(query);
+  return dedupeByUrl([...serpImages, ...braveImages]).slice(0, 12);
+}
+
+function dedupeVideosByUrl(videos: VideoResult[]): VideoResult[] {
+  const seen = new Set<string>();
+  const out: VideoResult[] = [];
+  for (const v of videos) {
+    if (!v?.url || seen.has(v.url)) continue;
+    seen.add(v.url);
+    out.push(v);
+  }
+  return out;
 }
 
 /**
- * Execute video search
- * Note: Tavily doesn't support video search directly, so we return empty for now
- * Future: Can be extended with YouTube API or SerpAPI
- *
- * @param query - The search query
- * @returns Array of video results (empty for now)
+ * Execute video search: Brave primary, SerpAPI fallback when Brave returns none.
  */
 export async function searchVideos(query: string): Promise<VideoResult[]> {
   if (!query?.trim()) {
@@ -74,29 +84,16 @@ export async function searchVideos(query: string): Promise<VideoResult[]> {
     return [];
   }
 
-  try {
-    logger.debug('MediaSearchProvider: Video search requested (not yet implemented)', { query });
+  const braveVideos = await searchBraveVideos(query);
 
-    // TODO: Implement video search with YouTube API or SerpAPI
-    // For now, return empty array
-    return [];
-  } catch (error) {
-    logger.error('MediaSearchProvider: Video search failed', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      query
+  if (braveVideos.length > 0) {
+    logger.info('MediaSearchProvider: Brave video search completed', {
+      resultCount: braveVideos.length,
     });
-    return [];
+    return braveVideos.slice(0, 10);
   }
-}
 
-/**
- * Extract domain from URL for source attribution
- */
-function extractDomain(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.hostname.replace(/^www\./, '');
-  } catch {
-    return 'Unknown source';
-  }
+  logger.info('MediaSearchProvider: Brave returned no videos, falling back to SerpAPI');
+  const serpVideos = await searchSerpApiVideos(query);
+  return dedupeVideosByUrl(serpVideos).slice(0, 10);
 }

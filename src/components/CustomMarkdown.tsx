@@ -148,8 +148,9 @@ export default function CustomMarkdown({ children, className = "", citations = [
 
         if (parsedCitation) {
           // Use MultipleCitations - shows site name like "wikipedia" or "youtube +3"
-          // CRITICAL: Use stable key based on content, not index, to prevent remounting on re-renders
-          const stableKey = `citation-${parsedCitation.siteName}-${parsedCitation.citations.map(c => c.url).join('-')}`;
+          // Key is content-based for render stability, plus the occurrence index so
+          // the same citation group repeated in the text doesn't collide.
+          const stableKey = `citation-${parsedCitation.siteName}-${parsedCitation.citations.map(c => c.url).join('-')}-${index}`;
           return (
             <MultipleCitations
               key={stableKey}

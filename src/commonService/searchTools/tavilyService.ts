@@ -28,7 +28,8 @@ class TavilyError extends Error {
 }
 
 export async function searchWithTavily(
-  query: string
+  query: string,
+  searchDepth: 'basic' | 'advanced' = 'basic'
 ): Promise<{ results: SearchResult[]; images: ImageResult[] }> {
   const searchTavily = async () => {
     const controller = new AbortController();
@@ -54,7 +55,7 @@ export async function searchWithTavily(
         body: JSON.stringify({
           api_key: import.meta.env.VITE_TAVILY_API_KEY,
           query: query.trim(),
-          search_depth: 'basic', // 'basic' or 'advanced' (advanced costs more)
+          search_depth: searchDepth, // 'basic' or 'advanced' (advanced costs more)
           max_results: 10, // Testing if more results = more images
           include_images: true, // Set to true to test image results
           include_image_descriptions: true, // Include descriptions for images

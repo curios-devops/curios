@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar.tsx';
 import Logo from './components/sidebar/Logo.tsx';
 import { Menu } from 'lucide-react';
 import ThemeToggle from './components/theme/ThemeToggle.tsx';
+import ProCreditsBattery from './components/ProCreditsBattery.tsx';
 import SignUpModal from './components/auth/SignUpModal.tsx';
 import { useTranslation } from './hooks/useTranslation.ts';
 import { useAccentColor } from './hooks/useAccentColor.ts';
@@ -147,6 +148,7 @@ function AppContent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <ProCreditsBattery />
                   <ThemeToggle />
                   <MobileGetStarted />
                 </div>
@@ -169,7 +171,7 @@ function AppContent() {
             )}
             </>
           )}
-          <main className={`flex-1 transition-all duration-300 ${!isMobilePortrait && (isCollapsed ? 'ml-20' : 'ml-48')}`} style={isMobilePortrait ? { marginTop: 88 } : {}}>
+          <main className={`flex-1 min-w-0 transition-all duration-300 ${!isMobilePortrait && (isCollapsed ? 'ml-20' : 'ml-48')}`} style={isMobilePortrait ? { marginTop: 88 } : {}}>
             <Outlet />
           </main>
         </div>

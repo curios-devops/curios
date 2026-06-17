@@ -3,9 +3,11 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, ChevronLeft, ChevronRight, Plus, Link2 } from 'lucide-react';
-import { executeFastSearchStreaming } from '../controller';
+import { Sparkles, ChevronLeft, ChevronRight, Plus, Link2, Crown, FileText } from 'lucide-react';
+import { executeFastSearchStreaming, executeDeepFastSearchStreaming } from '../controller';
 import type { FastSearchResponse } from '../controller';
+import { exportDeepSearchPdf } from '../utils/exportPdf';
+import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import CustomMarkdown from '../../../components/CustomMarkdown';
 import TopBar from '../../../components/results/TopBar';
 import { formatTimeAgo } from '../../../utils/time';
@@ -34,6 +36,15 @@ export default function FastSearchResults() {
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
+  const wantsDeep = searchParams.get('deep') === '1';
+
+  const { requestProAccess } = useProCredits();
+
+  const [effectiveDeep, setEffectiveDeep] = useState(false);
+  const [headerImage, setHeaderImage] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const answerCardRef = useRef<HTMLDivElement | null>(null);
+  const runKeyRef = useRef<string>('');
 
   const [searchStartTime] = useState(Date.now());
   const [timeAgo, setTimeAgo] = useState('just now');
@@ -190,6 +201,12 @@ export default function FastSearchResults() {
       return;
     }
 
+    // Guard against duplicate execution (StrictMode / re-renders) — important
+    // because deep mode consumes a Pro Credit per run.
+    const runKey = `${query}|${wantsDeep}`;
+    if (runKeyRef.current === runKey) return;
+    runKeyRef.current = runKey;
+
     const fetchResults = async () => {
       try {
         setIsLoading(true);
@@ -198,34 +215,60 @@ export default function FastSearchResults() {
         setShowSearching(true);
         setFoundSources([]);
         setFrozenSourcesForAnimation([]);
+        setHeaderImage(null);
+
+        const locale = navigator.language.split('-')[0] || 'en';
+
+        // Gate deep mode on Pro Credits before doing any work. If denied, the
+        // provider opens the register/upgrade/quota modal and we fall back to
+        // the free Default tier.
+        const deep = wantsDeep;
+        if (deep) {
+          const allowed = await requestProAccess();
+          if (!allowed) {
+            // Provider opened the register/upgrade/quota modal. Drop deep=1 from
+            // the URL so the toggle reflects reality; the URL change re-runs this
+            // effect as the free Default tier.
+            navigate(`/fast-search?q=${encodeURIComponent(query)}`, { replace: true });
+            return;
+          }
+        }
+        setEffectiveDeep(deep);
 
         let isFirstChunk = true;
-        const response = await executeFastSearchStreaming(
-          {
-            query,
-            locale: navigator.language.split('-')[0] || 'en'
-          },
-          (chunk: string) => {
-            // Hide searching animation on first chunk - stream starts immediately
-            if (isFirstChunk) {
-              setShowSearching(false);
-              isFirstChunk = false;
-            }
-            setStreamingAnswer(prev => prev + chunk);
-          },
-          (sources: Array<{ title: string; url: string; snippet: string }>) => {
-            // Called when sources are found (before streaming starts)
-            setFoundSources(sources);
-            // Freeze sources for animation to prevent re-renders
-            if (frozenSourcesForAnimation.length === 0) {
-              setFrozenSourcesForAnimation(sources);
-            }
-          },
-          (images: Array<{ url: string; title: string; source: string }>) => {
-            // Called when images are found (parallel with sources)
-            setImages(images);
+        const onChunk = (chunk: string) => {
+          // Hide searching animation on first chunk - stream starts immediately
+          if (isFirstChunk) {
+            setShowSearching(false);
+            isFirstChunk = false;
           }
-        );
+          setStreamingAnswer(prev => prev + chunk);
+        };
+        const onSources = (sources: Array<{ title: string; url: string; snippet: string }>) => {
+          setFoundSources(sources);
+          if (frozenSourcesForAnimation.length === 0) {
+            setFrozenSourcesForAnimation(sources);
+          }
+        };
+        const onImagesFound = (imgs: Array<{ url: string; title: string; source: string }>) => {
+          setImages(imgs);
+        };
+
+        const response = deep
+          ? await executeDeepFastSearchStreaming(
+              { query, locale },
+              onChunk,
+              onSources,
+              onImagesFound,
+              (url: string) => setHeaderImage(url)
+            )
+          : await executeFastSearchStreaming(
+              { query, locale },
+              onChunk,
+              onSources,
+              onImagesFound
+            );
+
         // Set follow-ups AFTER streaming completes
         if (response.followUps && response.followUps.length > 0) {
           setFollowUpQuestions(response.followUps);
@@ -246,14 +289,33 @@ export default function FastSearchResults() {
     };
 
     fetchResults();
-  }, [query]);
+    // requestProAccess is intentionally omitted: its identity changes when a
+    // credit is consumed, and re-running here would double-charge.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, wantsDeep]);
+
+  // Toggle "Ask Deeper": gating happens in the search effect when deep=1 runs.
+  const handleToggleDeep = () => {
+    const q = encodeURIComponent(query);
+    navigate(wantsDeep ? `/fast-search?q=${q}` : `/fast-search?q=${q}&deep=1`);
+  };
+
+  const handleExportPdf = async () => {
+    if (!answerCardRef.current || isExporting) return;
+    setIsExporting(true);
+    try {
+      await exportDeepSearchPdf(answerCardRef.current, query);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleFollowUpClick = (question: string) => {
-    navigate(`/fast-search?q=${encodeURIComponent(question)}`);
+    navigate(`/fast-search?q=${encodeURIComponent(question)}${effectiveDeep ? '&deep=1' : ''}`);
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#111111] fast-search-page">
+    <div className="min-h-screen bg-white dark:bg-[#111111] fast-search-page overflow-x-hidden">
       <style>{`
         .fast-search-page nav button:first-child {
           display: none;
@@ -271,6 +333,46 @@ export default function FastSearchResults() {
       />
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Ask Deeper (Pro) toggle */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={handleToggleDeep}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all cursor-pointer"
+              style={
+                wantsDeep
+                  ? {
+                      borderColor: 'var(--accent-primary)',
+                      color: 'var(--accent-primary)',
+                      boxShadow: '0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent)',
+                    }
+                  : { borderColor: 'rgb(209 213 219)' }
+              }
+            >
+              <Crown size={16} className={wantsDeep ? '' : 'text-gray-400'} />
+              <span className={wantsDeep ? '' : 'text-gray-700 dark:text-gray-300'}>
+                {wantsDeep ? '👑 PRO ACTIVE' : 'Ask Deeper (Pro)'}
+              </span>
+            </button>
+            <span className="text-xs text-gray-500 dark:text-gray-400 pl-1">
+              Deeper research with more sources, context, and visuals
+            </span>
+          </div>
+
+          {effectiveDeep && !isLoading && (
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={isExporting}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer disabled:opacity-60"
+            >
+              <FileText size={16} />
+              {isExporting ? 'Exporting…' : 'Export PDF'}
+            </button>
+          )}
+        </div>
+
         {/* Error State */}
         {error && !isLoading && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
@@ -287,22 +389,22 @@ export default function FastSearchResults() {
                 <span>Searching trusted sources...</span>
               </div>
             ) : (
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
-                  <div className="relative">
+              <div className="flex items-center justify-between w-full gap-2">
+                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400 min-w-0 flex-1">
+                  <div className="relative flex-shrink-0">
                     <div className="w-3 h-3 rounded-full animate-ping absolute" style={{ backgroundColor: 'var(--accent-primary)', opacity: 0.4 }}></div>
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">Analyzing</span>
-                    <span className="text-base font-medium text-gray-900 dark:text-white min-w-[200px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-base flex-shrink-0">Analyzing</span>
+                    <span className="text-base font-medium text-gray-900 dark:text-white truncate">
                       {typewriterText}<span className="animate-pulse">|</span>
                     </span>
                   </div>
                 </div>
 
                 {/* Frozen favicons - rendered once, no re-renders */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <div className="flex items-center">
                     {frozenSourcesForAnimation.slice(0, 3).map((source, index) => {
                       try {
@@ -344,7 +446,16 @@ export default function FastSearchResults() {
           <>
             {/* AI Overview - appears when streaming starts */}
             {!showSearching && (
-              <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800">
+              <div ref={answerCardRef} className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                {/* Ask Deeper contextual header image */}
+                {effectiveDeep && headerImage && (
+                  <img
+                    src={headerImage}
+                    alt={query}
+                    className="w-full h-56 object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                )}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
                   <div className="flex items-center gap-3">
                     <Sparkles className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
@@ -391,7 +502,7 @@ export default function FastSearchResults() {
                   )}
                 </div>
                 <div className="p-6">
-                  <div className="prose dark:prose-invert max-w-none">
+                  <div className="prose dark:prose-invert max-w-none break-words [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_table]:block [&_table]:overflow-x-auto">
                     <CustomMarkdown citations={citations}>
                       {processedAnswer}
                     </CustomMarkdown>
@@ -541,12 +652,12 @@ export default function FastSearchResults() {
                   className="flex gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-[#0a0a0a]"
                 >
                   {video.thumbnail && (
-                    <img src={video.thumbnail} alt={video.title} className="w-32 h-20 object-cover rounded" />
+                    <img src={video.thumbnail} alt={video.title} className="w-32 h-20 object-cover rounded flex-shrink-0" />
                   )}
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900 dark:text-white">{video.title}</h4>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 dark:text-white break-words">{video.title}</h4>
                     {video.source && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{video.source}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate">{video.source}</p>
                     )}
                   </div>
                 </a>
@@ -680,7 +791,10 @@ function ImagesCarousel({ images }: { images: Array<{ url: string; title: string
                   loading="lazy"
                   onLoad={(e) => handleImageLoad(index, e)}
                   onError={(e) => {
-                    e.currentTarget.style.display = 'none';
+                    // Broken image (e.g. SerpAPI full-res 404/hotlink-blocked):
+                    // hide the whole tile so there's no empty box.
+                    const tile = e.currentTarget.closest('a');
+                    if (tile) (tile as HTMLElement).style.display = 'none';
                   }}
                 />
               </div>
@@ -720,7 +834,8 @@ function ImagesGrid({ images }: { images: Array<{ url: string; title: string; so
               className="w-full h-full object-cover"
               loading="lazy"
               onError={(e) => {
-                e.currentTarget.style.display = 'none';
+                const tile = e.currentTarget.closest('a');
+                if (tile) (tile as HTMLElement).style.display = 'none';
               }}
             />
           </div>

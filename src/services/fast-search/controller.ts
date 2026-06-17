@@ -3,7 +3,11 @@
 
 import { executeWebSearch } from './providers/webSearchProvider';
 import { searchImages, searchVideos } from './providers/mediaSearchProvider';
-import { generateAnswer, generateAnswerStreaming } from './providers/llmProvider';
+import { generateAnswer, generateAnswerStreaming, extractFollowUps } from './providers/llmProvider';
+import { expandQuery } from './deep/queryExpansion';
+import { executeDeepRetrieval } from './deep/deepRetrieval';
+import { generateDeepAnswerStreaming } from './deep/deepSynthesis';
+import { generateHeaderImage } from './providers/imageProvider';
 import { logger } from '../../utils/logger';
 
 /**
@@ -228,11 +232,14 @@ export async function executeFastSearchStreaming(
     // Step 1: Execute all searches in parallel (web + media)
     logger.debug('FastSearch: Executing searches in parallel');
 
-    const [webResults, images, videos] = await Promise.all([
+    const [allWebResults, images, videos] = await Promise.all([
       executeWebSearch(query),
       searchImages(query),
       searchVideos(query)
     ]);
+
+    // Default tier is the "snack": cap to the 5 most relevant sources.
+    const webResults = allWebResults.slice(0, 5);
 
     const searchTime = Date.now() - startTime;
     logger.info('FastSearch: Searches completed', {
@@ -312,6 +319,104 @@ export async function executeFastSearchStreaming(
       error: error instanceof Error ? error.message : 'Unknown error',
       query,
       totalTimeMs: totalTime
+    });
+    throw error;
+  }
+}
+
+/**
+ * Execute a "👑 Ask Deeper" (Pro) fast search with streaming.
+ * Agent-lite pipeline: expand the query into 3 angles → broad parallel retrieval
+ * with dedupe/rerank → single structured streaming synthesis → contextual header
+ * image (non-blocking). Same return shape as the default streaming path, plus an
+ * optional generated header image delivered via onHeaderImage when ready.
+ *
+ * Gating (Pro Credits) is the caller's responsibility — call this only after
+ * requestProAccess() has returned true.
+ */
+export async function executeDeepFastSearchStreaming(
+  request: FastSearchRequest,
+  onChunk: (chunk: string) => void,
+  onSourcesFound?: (sources: Array<{ title: string; url: string; snippet: string }>) => void,
+  onImagesFound?: (images: Array<{ url: string; title: string; source: string }>) => void,
+  onHeaderImage?: (url: string) => void
+): Promise<Omit<FastSearchResponse, 'answer'> & { headerImage?: string }> {
+  const { query, locale = 'en' } = request;
+
+  logger.info('FastSearch[Deep]: Starting Ask Deeper search', { query, locale });
+
+  const startTime = Date.now();
+
+  try {
+    // Step A: expand the query into 3 complementary angles.
+    const expanded = await expandQuery(query, locale);
+
+    // Step B: broad parallel retrieval + dedupe/rerank.
+    const { webResults, images, videos } = await executeDeepRetrieval(expanded);
+
+    const searchTime = Date.now() - startTime;
+    logger.info('FastSearch[Deep]: Retrieval completed', {
+      webResultCount: webResults.length,
+      imageCount: images.length,
+      videoCount: videos.length,
+      searchTimeMs: searchTime
+    });
+
+    if (onSourcesFound && webResults.length > 0) {
+      onSourcesFound(webResults.map(r => ({ title: r.title, url: r.url, snippet: r.snippet })));
+    }
+    if (onImagesFound && images.length > 0) {
+      onImagesFound(images.map(img => ({ url: img.url, title: img.title, source: img.source })));
+    }
+
+    // Step C: structured streaming synthesis. Accumulate text for follow-ups
+    // and the image prompt.
+    let fullAnswer = '';
+    await generateDeepAnswerStreaming(
+      {
+        query,
+        webResults,
+        date: new Date().toISOString().split('T')[0],
+        locale
+      },
+      (chunk: string) => {
+        fullAnswer += chunk;
+        onChunk(chunk);
+      }
+    );
+
+    const followUps = extractFollowUps(fullAnswer);
+
+    // Step D: contextual header image (non-blocking; failure just omits it).
+    let headerImage: string | undefined;
+    if (onHeaderImage) {
+      const summary = fullAnswer.replace(/[#*`>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+      const url = await generateHeaderImage(query, summary);
+      if (url) {
+        headerImage = url;
+        onHeaderImage(url);
+      }
+    }
+
+    logger.info('FastSearch[Deep]: Completed', {
+      totalTimeMs: Date.now() - startTime,
+      answerLength: fullAnswer.length,
+      followUpCount: followUps.length,
+      hasHeaderImage: !!headerImage
+    });
+
+    return {
+      sources: webResults.map(r => ({ title: r.title, url: r.url, snippet: r.snippet })),
+      images: images.map(img => ({ url: img.url, title: img.title, source: img.source })),
+      videos: videos.map(v => ({ url: v.url, title: v.title, thumbnail: v.thumbnail || '', source: v.source })),
+      followUps,
+      headerImage
+    };
+  } catch (error) {
+    logger.error('FastSearch[Deep]: Search failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      query,
+      totalTimeMs: Date.now() - startTime
     });
     throw error;
   }

@@ -152,6 +152,59 @@ export async function generateAnswerStreaming(
     sourceCount: context.webResults.length
   });
 
+  // Build user message for streaming with search results
+  const userMessage = `Based on these search results, answer concisely: "${context.query}"
+
+Search Results:
+${buildSourcesText(context.webResults)}
+
+Requirements:
+- Be direct and compact: short paragraphs, no filler, no preamble, no reasoning dumps. Aim for a fast, sufficient answer.
+- Use inline citations with the website name like [wikipedia], [nytimes], [bbc], etc. Keep citations to the 1-2 most relevant sources.
+- If multiple sources from the same site, use [sitename +N] format like [wikipedia +2] for 3 wikipedia sources
+- Use markdown formatting
+- At the end, include a section "## Follow-up Questions:" with 3-5 relevant questions users might ask next
+- Format follow-ups as a numbered list (1., 2., etc.)
+
+Today's date: ${context.date}
+Language: ${context.locale}`;
+
+  const fullText = await streamLLMText(userMessage, 900, onChunk, 60000);
+  const followUps = extractFollowUps(fullText);
+
+  logger.info('LLMProvider: Streaming completed with web search', {
+    answerLength: fullText.length,
+    followUpCount: followUps.length
+  });
+
+  return { followUps };
+}
+
+/**
+ * Format a list of web results as a citation-friendly text block.
+ * Shared by the default (concise) and deep (structured) synthesis flows.
+ */
+export function buildSourcesText(webResults: WebSearchResult[]): string {
+  return webResults
+    .map((result) => {
+      const siteName = extractSiteName(result.url);
+      return `[${siteName}] ${result.title}\nURL: ${result.url}\nContent: ${result.snippet}`;
+    })
+    .join('\n\n');
+}
+
+/**
+ * Low-level streaming primitive: POSTs a single user message to the OpenAI edge
+ * function and streams the text back via onChunk. Returns the full text.
+ * Shared by the default (concise) and deep (structured) synthesis flows.
+ */
+export async function streamLLMText(
+  userMessage: string,
+  maxOutputTokens: number,
+  onChunk: (chunk: string) => void,
+  timeoutMs = 60000,
+  model: string = MODEL
+): Promise<string> {
   const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -159,33 +212,8 @@ export async function generateAnswerStreaming(
     throw new Error('Supabase Edge Function not configured');
   }
 
-  // Build sources text from search results
-  const sourcesText = context.webResults
-    .map((result) => {
-      const siteName = extractSiteName(result.url);
-      return `[${siteName}] ${result.title}\nURL: ${result.url}\nContent: ${result.snippet}`;
-    })
-    .join('\n\n');
-
-  // Build user message for streaming with search results
-  const userMessage = `Based on these search results, provide a comprehensive answer to: "${context.query}"
-
-Search Results:
-${sourcesText}
-
-Requirements:
-- Use inline citations with the website name like [wikipedia], [nytimes], [bbc], etc.
-- If multiple sources from the same site, use [sitename +N] format like [wikipedia +2] for 3 wikipedia sources
-- Provide a clear, well-structured response in markdown format
-- Make response comprehensive and informative
-- At the end, include a section "## Follow-up Questions:" with 3-5 relevant questions users might ask next
-- Format follow-ups as a numbered list (1., 2., etc.)
-
-Today's date: ${context.date}
-Language: ${context.locale}`;
-
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for streaming
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(supabaseEdgeUrl, {
@@ -199,17 +227,14 @@ Language: ${context.locale}`;
           input: [
             { role: 'user', content: userMessage }
           ],
-          model: MODEL,
-          max_output_tokens: 1200, // Balanced comprehensive responses
+          model,
+          max_output_tokens: maxOutputTokens,
           reasoning: { effort: 'low' }
         }),
         stream: true
       }),
       signal: controller.signal
     });
-
-    // Don't clear timeout yet - keep it active during streaming
-    // clearTimeout(timeoutId);
 
     if (!response.ok) {
       clearTimeout(timeoutId);
@@ -288,15 +313,7 @@ Language: ${context.locale}`;
     // Clear timeout after streaming completes successfully
     clearTimeout(timeoutId);
 
-    // Extract follow-ups from the full text
-    const followUps = extractFollowUps(fullText);
-
-    logger.info('LLMProvider: Streaming completed with web search', {
-      answerLength: fullText.length,
-      followUpCount: followUps.length
-    });
-
-    return { followUps };
+    return fullText;
   } catch (error) {
     clearTimeout(timeoutId);
     logger.error('LLMProvider: Streaming generation failed', {
@@ -365,7 +382,7 @@ function parseResponse(data: any): LLMResponse {
  * Extract follow-up questions from text
  * Looks for numbered lists or questions at the end
  */
-function extractFollowUps(text: string): string[] {
+export function extractFollowUps(text: string): string[] {
   const followUps: string[] = [];
 
   // Look for a section with "Follow-up" or similar (with ## or ### markdown headers)

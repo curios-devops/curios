@@ -1,6 +1,8 @@
-// Web Search Provider - Handles web search through Tavily (primary) with Brave fallback
+// Web Search Provider — Default tier routing.
+// Exa is the primary engine; if it returns few results we supplement with Brave.
 
-import { searchWithTavily as tavilySearch } from '../../../commonService/searchTools/tavilyService';
+import { searchExa } from './engines/exaService';
+import { searchBraveWeb } from './engines/braveAdapter';
 import { logger } from '../../../utils/logger';
 
 export interface WebSearchResult {
@@ -10,48 +12,40 @@ export interface WebSearchResult {
   content?: string;
 }
 
+// Below this many Exa results we consider it "few" and bring in Brave.
+const MIN_RESULTS = 5;
+
+function dedupeByUrl(results: WebSearchResult[]): WebSearchResult[] {
+  const seen = new Set<string>();
+  const out: WebSearchResult[] = [];
+  for (const r of results) {
+    if (!r?.url || seen.has(r.url)) continue;
+    seen.add(r.url);
+    out.push(r);
+  }
+  return out;
+}
+
 /**
- * Execute web search using Tavily (primary) with Brave fallback
- *
- * @param query - The search query
- * @returns Array of web search results (up to 10)
+ * Execute Default-tier web search: Exa primary, Brave fallback when sparse.
  */
-export async function executeWebSearch(
-  query: string
-): Promise<WebSearchResult[]> {
+export async function executeWebSearch(query: string): Promise<WebSearchResult[]> {
   if (!query?.trim()) {
     logger.warn('WebSearchProvider: Empty query provided');
     return [];
   }
 
-  // Use Tavily as primary search engine
-  try {
-    logger.debug('WebSearchProvider: Executing Tavily search', { query });
-    const tavilyResults = await searchWithTavily(query);
+  const exaResults = await searchExa(query, 10);
 
-    logger.info('WebSearchProvider: Tavily search completed', {
-      resultCount: tavilyResults.length
-    });
-    return tavilyResults;
-  } catch (error) {
-    logger.error('WebSearchProvider: Tavily search failed', {
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-    // TODO: Add Brave fallback here if needed
-    return [];
+  if (exaResults.length >= MIN_RESULTS) {
+    logger.info('WebSearchProvider: Exa search completed', { resultCount: exaResults.length });
+    return exaResults;
   }
-}
 
-/**
- * Execute web search using Tavily
- */
-async function searchWithTavily(query: string): Promise<WebSearchResult[]> {
-  const { results } = await tavilySearch(query);
-
-  return results.map(result => ({
-    title: result.title,
-    url: result.url,
-    snippet: result.content,
-    content: result.content
-  }));
+  // Few results from Exa → supplement with Brave.
+  logger.info('WebSearchProvider: Exa sparse, falling back to Brave', {
+    exaCount: exaResults.length,
+  });
+  const braveResults = await searchBraveWeb(query);
+  return dedupeByUrl([...exaResults, ...braveResults]).slice(0, 10);
 }
