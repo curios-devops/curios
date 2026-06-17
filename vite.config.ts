@@ -70,12 +70,7 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
               './src/services/search/regular/agents/searchRetrieverAgent.ts',
               './src/services/search/regular/agents/searchWriterAgent.ts'
             ],
-            'services-research': [
-              './src/services/research/pro/agents/researchSwarmController.ts',
-              './src/services/research/pro/agents/researchPlannerAgent.ts',
-              './src/services/research/pro/agents/researchWriterAgent.ts',
-              './src/services/research/regular/agents/insightSwarmController.ts'
-            ],
+            // 'services-research' chunk removed — research pages are temporarily disabled.
             'services-lab': [
               './src/services/lab/regular/agents/orchestrator.ts'
             ],
@@ -93,11 +88,9 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
             ],
             
             // Component chunks - separate heavy components
+            // (research pages removed — temporarily disabled)
             'components-results': [
-              './src/services/lab/regular/pages/LabsResults.tsx',
-              './src/services/research/pro/pages/ResearchResults.tsx',
-              './src/services/search/pro/pages/ProSearchResults.tsx',
-              './src/services/research/regular/pages/InsightsResults.tsx'
+              './src/services/search/pro/pages/ProSearchResults.tsx'
             ],
             'components-auth': [
               './src/components/auth/AuthModal.tsx',

@@ -2,7 +2,9 @@
 // daily credit allowance and warning threshold. All values come from the
 // environment so pricing/quota can change without code changes.
 
-import type { ProTier } from '../services/proCreditsService.ts';
+// NOTE: the tier union is inlined here (not imported from proCreditsService) to avoid
+// a config ↔ service import cycle. It must stay in sync with ProTier in that file.
+type ProTier = 'guest' | 'free' | 'pro';
 
 const readInt = (key: string, fallback: number): number => {
   const raw = typeof import.meta !== 'undefined' ? import.meta.env?.[key] : undefined;
