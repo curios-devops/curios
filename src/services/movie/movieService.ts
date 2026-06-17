@@ -156,9 +156,16 @@ export async function generateMovie(
     } catch (error) {
       coreSwipe.status = 'error';
       coreSwipe.error = error instanceof Error ? error.message : String(error);
+      logger.error('[MovieService] Core swipe video failed', { error: coreSwipe.error });
     }
     options.onSwipeReady?.(coreSwipe);
     emit?.({ stage: 'rendering', message: 'Core swipe ready', progress: 84, swipes });
+  } else {
+    logger.warn('[MovieService] Skipped core video render', {
+      renderCoreVideo,
+      hasImage: Boolean(coreSwipe?.imageUrl),
+      status: coreSwipe?.status,
+    });
   }
 
   const totalDurationSeconds = swipes.reduce((sum, s) => sum + s.durationSeconds, 0);
