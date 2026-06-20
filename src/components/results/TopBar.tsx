@@ -1,4 +1,5 @@
 import { Clock, Search, Image, Video, Newspaper, ArrowLeft, User } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ShareMenu from '../ShareMenu';
 
@@ -11,17 +12,21 @@ interface TopBarProps {
   shareTitle?: string;
   shareText?: string;
   images?: Array<{ url: string; alt?: string }>;
+  // When provided, renders this instead of the Share button (Fast Search uses
+  // it for the Ask Deeper toggle, since its own DynamicShareRow replaces Share).
+  rightSlot?: ReactNode;
 }
 
-export default function TopBar({ 
-  query, 
-  timeAgo, 
+export default function TopBar({
+  query,
+  timeAgo,
   activeTab = 'answer',
   onTabChange,
   shareUrl = '',
   shareTitle = '',
   shareText = '',
-  images
+  images,
+  rightSlot
 }: TopBarProps) {
   const navigate = useNavigate();
   
@@ -54,13 +59,15 @@ export default function TopBar({
               <span className="text-xs">{timeAgo}</span>
             </div>
           </div>
-          <ShareMenu
-            url={shareUrl}
-            title={shareTitle}
-            text={shareText}
-            query={query}
-            images={images}
-          />
+          {rightSlot ?? (
+            <ShareMenu
+              url={shareUrl}
+              title={shareTitle}
+              text={shareText}
+              query={query}
+              images={images}
+            />
+          )}
         </div>
       </div>
       

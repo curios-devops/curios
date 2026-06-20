@@ -10,8 +10,8 @@ import { exportDeepSearchPdf } from '../utils/exportPdf';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import CustomMarkdown from '../../../components/CustomMarkdown';
 import TopBar from '../../../components/results/TopBar';
+import DynamicShareRow from '../../../components/share/DynamicShareRow';
 import { formatTimeAgo } from '../../../utils/time';
-import type { CitationInfo } from '../../../commonApp/types';
 
 // Helper to extract clean domain name from URL
 function extractDomainName(url: string): string {
@@ -201,8 +201,8 @@ export default function FastSearchResults() {
       return;
     }
 
-    // Guard against duplicate execution (StrictMode / re-renders) — important
-    // because deep mode consumes a Pro Credit per run.
+    // Guard against duplicate execution (StrictMode / re-renders) to avoid
+    // firing the same search twice.
     const runKey = `${query}|${wantsDeep}`;
     if (runKeyRef.current === runKey) return;
     runKeyRef.current = runKey;
@@ -219,20 +219,9 @@ export default function FastSearchResults() {
 
         const locale = navigator.language.split('-')[0] || 'en';
 
-        // Gate deep mode on Pro Credits before doing any work. If denied, the
-        // provider opens the register/upgrade/quota modal and we fall back to
-        // the free Default tier.
+        // No gating here: Pro access is gated (and the credit consumed) by the
+        // Ask Deeper toggle. Entering search just runs the requested tier.
         const deep = wantsDeep;
-        if (deep) {
-          const allowed = await requestProAccess();
-          if (!allowed) {
-            // Provider opened the register/upgrade/quota modal. Drop deep=1 from
-            // the URL so the toggle reflects reality; the URL change re-runs this
-            // effect as the free Default tier.
-            navigate(`/fast-search?q=${encodeURIComponent(query)}`, { replace: true });
-            return;
-          }
-        }
         setEffectiveDeep(deep);
 
         let isFirstChunk = true;
@@ -289,15 +278,23 @@ export default function FastSearchResults() {
     };
 
     fetchResults();
-    // requestProAccess is intentionally omitted: its identity changes when a
-    // credit is consumed, and re-running here would double-charge.
+    // Only re-run when the query or requested tier changes; other deps (navigate,
+    // state setters) are stable/intentionally omitted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, wantsDeep]);
 
-  // Toggle "Ask Deeper": gating happens in the search effect when deep=1 runs.
-  const handleToggleDeep = () => {
+  // Toggle "Ask Deeper" (a Pro feature). This is the single gate: turning it ON
+  // consumes a Pro Credit via requestProAccess; if the user is out of access it
+  // raises the subscription modal (register/upgrade/quota) and we don't navigate.
+  const handleToggleDeep = async () => {
     const q = encodeURIComponent(query);
-    navigate(wantsDeep ? `/fast-search?q=${q}` : `/fast-search?q=${q}&deep=1`);
+    if (wantsDeep) {
+      navigate(`/fast-search?q=${q}`);
+      return;
+    }
+    const allowed = await requestProAccess();
+    if (!allowed) return;
+    navigate(`/fast-search?q=${q}&deep=1`);
   };
 
   const handleExportPdf = async () => {
@@ -314,6 +311,14 @@ export default function FastSearchResults() {
     navigate(`/fast-search?q=${encodeURIComponent(question)}${effectiveDeep ? '&deep=1' : ''}`);
   };
 
+  // In Ask Deeper the generated header image leads the carousel as a wide,
+  // featured hero — and is what we share to social. Otherwise the carousel is
+  // just the retrieved images.
+  const hasFeaturedImage = effectiveDeep && !!headerImage;
+  const carouselImages = hasFeaturedImage
+    ? [{ url: headerImage as string, title: query, source: 'CuriosAI' }, ...images.filter((img) => img.url !== headerImage)]
+    : images;
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#111111] fast-search-page overflow-x-hidden">
       <style>{`
@@ -326,52 +331,26 @@ export default function FastSearchResults() {
         timeAgo={timeAgo}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        shareUrl={window.location.href}
-        shareTitle={`FastSearch: ${query}`}
-        shareText={streamingAnswer.slice(0, 100) + '...' || ''}
-        images={images.slice(0, 1)}
+        rightSlot={
+          <button
+            type="button"
+            onClick={handleToggleDeep}
+            title="Deeper research with more sources, context, and visuals"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-all cursor-pointer hover:opacity-90"
+            style={{
+              backgroundColor: 'var(--accent-primary)',
+              boxShadow: wantsDeep
+                ? '0 0 0 3px color-mix(in srgb, var(--accent-primary) 30%, transparent)'
+                : undefined,
+            }}
+          >
+            <Crown size={16} />
+            <span>Ask Deeper</span>
+          </button>
+        }
       />
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Ask Deeper (Pro) toggle */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex flex-col gap-1">
-            <button
-              type="button"
-              onClick={handleToggleDeep}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all cursor-pointer"
-              style={
-                wantsDeep
-                  ? {
-                      borderColor: 'var(--accent-primary)',
-                      color: 'var(--accent-primary)',
-                      boxShadow: '0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent)',
-                    }
-                  : { borderColor: 'rgb(209 213 219)' }
-              }
-            >
-              <Crown size={16} className={wantsDeep ? '' : 'text-gray-400'} />
-              <span className={wantsDeep ? '' : 'text-gray-700 dark:text-gray-300'}>
-                {wantsDeep ? '👑 PRO ACTIVE' : 'Ask Deeper (Pro)'}
-              </span>
-            </button>
-            <span className="text-xs text-gray-500 dark:text-gray-400 pl-1">
-              Deeper research with more sources, context, and visuals
-            </span>
-          </div>
-
-          {effectiveDeep && !isLoading && (
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={isExporting}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer disabled:opacity-60"
-            >
-              <FileText size={16} />
-              {isExporting ? 'Exporting…' : 'Export PDF'}
-            </button>
-          )}
-        </div>
 
         {/* Error State */}
         {error && !isLoading && (
@@ -437,8 +416,37 @@ export default function FastSearchResults() {
         )}
 
         {/* Images at top - between tabs and content */}
-        {!isLoading && images.length > 0 && activeTab === 'answer' && (
-          <ImagesCarousel images={images} />
+        {!isLoading && carouselImages.length > 0 && activeTab === 'answer' && (
+          <ImagesCarousel images={carouselImages} featuredFirst={hasFeaturedImage} />
+        )}
+
+        {/* Dynamic share row - between carousel and outline (blueprint placement).
+            Export PDF rides along as a trailing action, but only in Ask Deeper mode. */}
+        {!showSearching && streamingAnswer && activeTab === 'answer' && (
+          <DynamicShareRow
+            serviceType="fast_search"
+            payload={{
+              title: query,
+              description: streamingAnswer.slice(0, 200),
+              text: streamingAnswer.slice(0, 100),
+              imageUrls: carouselImages.map((img) => img.url),
+              deepLink: window.location.href,
+            }}
+            trailing={
+              effectiveDeep ? (
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  disabled={isExporting}
+                  title="Export PDF"
+                  aria-label="Export PDF"
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-gray-100 dark:bg-[#222222] hover:bg-gray-200 dark:hover:bg-[#2a2a2a] text-gray-900 dark:text-white transition-colors disabled:opacity-60"
+                >
+                  <FileText size={18} />
+                </button>
+              ) : undefined
+            }
+          />
         )}
 
         {/* Overview Tab - AI Overview with follow-ups */}
@@ -447,15 +455,6 @@ export default function FastSearchResults() {
             {/* AI Overview - appears when streaming starts */}
             {!showSearching && (
               <div ref={answerCardRef} className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                {/* Ask Deeper contextual header image */}
-                {effectiveDeep && headerImage && (
-                  <img
-                    src={headerImage}
-                    alt={query}
-                    className="w-full h-56 object-cover"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                )}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
                   <div className="flex items-center gap-3">
                     <Sparkles className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
@@ -715,7 +714,7 @@ export default function FastSearchResults() {
 }
 
 // Images Carousel Component
-function ImagesCarousel({ images }: { images: Array<{ url: string; title: string; source: string }> }) {
+function ImagesCarousel({ images, featuredFirst = false }: { images: Array<{ url: string; title: string; source: string }>; featuredFirst?: boolean }) {
   const [scrollPosition, setScrollPosition] = useState(0);
   const [imageDimensions, setImageDimensions] = useState<Map<number, { width: number; height: number }>>(new Map());
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -737,6 +736,9 @@ function ImagesCarousel({ images }: { images: Array<{ url: string; title: string
   };
 
   const getImageClass = (index: number) => {
+    // Featured hero (Ask Deeper generated image) leads the carousel ~2 tiles wide.
+    if (featuredFirst && index === 0) return 'w-80 h-40';
+
     const dims = imageDimensions.get(index);
     if (!dims) return 'w-48 h-40'; // Default landscape while loading
 

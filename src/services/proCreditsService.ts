@@ -33,14 +33,24 @@ export interface CreditState {
 const GUEST_STORAGE_KEY = 'curios_pro_credits_guest';
 
 // ── Date helpers (local day granularity) ─────────────────────────────────────
+// Use the LOCAL calendar day (not UTC) so the daily reset lands on the user's
+// midnight. UTC would lag behind for positive-offset timezones, leaving a
+// window after local midnight where the reset hasn't fired yet.
+function localDayKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`; // YYYY-MM-DD (local day)
+}
+
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC day)
+  return localDayKey(new Date());
 }
 
 function dayKeyOf(value: string | null | undefined): string {
   if (!value) return '';
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+  return Number.isNaN(d.getTime()) ? '' : localDayKey(d);
 }
 
 function needsReset(lastResetDay: string): boolean {

@@ -2,7 +2,7 @@
 // Single-LLM pipeline architecture for faster search responses
 
 import { executeWebSearch } from './providers/webSearchProvider';
-import { searchImages, searchVideos } from './providers/mediaSearchProvider';
+import { searchImages, searchVideos, type ImageResult } from './providers/mediaSearchProvider';
 import { generateAnswer, generateAnswerStreaming, extractFollowUps } from './providers/llmProvider';
 import { expandQuery } from './deep/queryExpansion';
 import { executeDeepRetrieval } from './deep/deepRetrieval';
@@ -334,6 +334,20 @@ export async function executeFastSearchStreaming(
  * Gating (Pro Credits) is the caller's responsibility — call this only after
  * requestProAccess() has returned true.
  */
+/** Merge image groups in order, dropping repeats by URL. */
+function dedupeImagesByUrl(groups: ImageResult[][], cap = 24): ImageResult[] {
+  const seen = new Set<string>();
+  const out: ImageResult[] = [];
+  for (const group of groups) {
+    for (const img of group) {
+      if (!img?.url || seen.has(img.url)) continue;
+      seen.add(img.url);
+      out.push(img);
+    }
+  }
+  return out.slice(0, cap);
+}
+
 export async function executeDeepFastSearchStreaming(
   request: FastSearchRequest,
   onChunk: (chunk: string) => void,
@@ -351,12 +365,21 @@ export async function executeDeepFastSearchStreaming(
     // Step A: expand the query into 3 complementary angles.
     const expanded = await expandQuery(query, locale);
 
-    // Step B: broad parallel retrieval + dedupe/rerank.
-    const { webResults, images, videos } = await executeDeepRetrieval(expanded);
+    // Step B: broad parallel retrieval + dedupe/rerank. In parallel, re-fetch the
+    // ORIGINAL query's images so Ask Deeper expands the gallery instead of
+    // replacing it: base images are kept and the expanded-angle ones are added,
+    // deduped by URL so nothing repeats or disappears.
+    const [{ webResults, images: deepImages, videos }, baseImages] = await Promise.all([
+      executeDeepRetrieval(expanded),
+      searchImages(query).catch(() => [] as ImageResult[]),
+    ]);
+    const images = dedupeImagesByUrl([baseImages, deepImages]);
 
     const searchTime = Date.now() - startTime;
     logger.info('FastSearch[Deep]: Retrieval completed', {
       webResultCount: webResults.length,
+      baseImageCount: baseImages.length,
+      deepImageCount: deepImages.length,
       imageCount: images.length,
       videoCount: videos.length,
       searchTimeMs: searchTime

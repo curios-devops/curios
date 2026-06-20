@@ -54,7 +54,7 @@ const ProCreditsContext = createContext<ProCreditsContextValue | null>(null);
 
 export function ProCreditsProvider({ children }: { children: ReactNode }) {
   const { session } = useSession();
-  const { subscription } = useSubscription(session);
+  const { subscription, loading: subLoading } = useSubscription(session);
   const tier = getUserTier(session, subscription);
 
   const [state, setState] = useState<CreditState>(() => ({
@@ -72,11 +72,16 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
   const consuming = useRef(false);
 
   const load = useCallback(async () => {
+    // Wait until the subscription has resolved before reading/writing credits.
+    // Otherwise a Pro user is briefly seen as 'free', and a daily reset firing
+    // in that window would persist the free allowance under today's reset date,
+    // pinning them to the free count until the next reset.
+    if (subLoading) return;
     setLoading(true);
     const next = await getCreditState(tier, session);
     setState(next);
     setLoading(false);
-  }, [tier, session]);
+  }, [tier, session, subLoading]);
 
   useEffect(() => {
     void load();
