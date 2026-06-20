@@ -137,6 +137,20 @@ export default function Home() {
         paddingTop: '160px',
       }}
     >
+      {/* Calm on-brand entrance for the title + search box (replaces the old
+          flying-in look): a subtle rise + fade, lightly staggered. */}
+      <style>{`
+        @keyframes homeRise {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .home-rise { animation: homeRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .home-rise-delay { animation-delay: 0.12s; }
+        @media (prefers-reduced-motion: reduce) {
+          .home-rise { animation: none; }
+        }
+      `}</style>
+
       {/* Top right: ThemeToggle, Login and Get Started buttons */}
       {/* On desktop, show in current position. On mobile, these are hidden and shown in the header */}
       {/* Pro Credits battery — centered at the top, separated from the right cluster */}
@@ -201,7 +215,7 @@ export default function Home() {
       </div>
 
       <div className="max-w-[720px] mx-auto px-6 sm:px-8">
-        <div className="flex flex-col items-center justify-center mb-12">
+        <div className="flex flex-col items-center justify-center mb-12 home-rise">
           <h1
             className="text-center leading-tight transition-opacity duration-300"
             style={{
@@ -215,7 +229,9 @@ export default function Home() {
             {t('mainTitle')}
           </h1>
         </div>
-        <InputContainer onModeChange={setCurrentMode} />
+        <div className="home-rise home-rise-delay">
+          <InputContainer onModeChange={setCurrentMode} />
+        </div>
       </div>
 
       {/* Bottom right: Language and Help */}
