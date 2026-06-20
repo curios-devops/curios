@@ -1,12 +1,17 @@
 // Share URL builders — replicate Search's working ShareMenu exactly so Fast
 // Search previews carry the same title/snippet/image. The crawler-meta networks
-// (X / Bluesky / LinkedIn / Facebook / Reddit) point at the Supabase social-share
-// function, fronted by the curiosai.com /api/social-share proxy (brand domain so
-// LinkedIn doesn't choke on *.supabase.co). WhatsApp/Email use the raw deep link.
+// (X / Bluesky / LinkedIn / Facebook / Reddit) point at the proven Netlify
+// social-share function (the same one Search uses). WhatsApp/Email use the raw
+// deep link.
+//
+// NOTE: we tried serving this from a Supabase edge function via a curiosai.com
+// /api/social-share proxy, but it didn't work reliably for previews, so we
+// reverted to Netlify. Kept here for reference:
+//   const SHARE_FN = 'https://curiosai.com/api/social-share';
 
 import type { SocialNetwork, SharePayload } from './shareConfig';
 
-const SHARE_FN = 'https://curiosai.com/api/social-share';
+const SHARE_FN = 'https://curiosai.com/.netlify/functions/social-share';
 
 // First-sentence snippet, matching ShareMenu's logic: clamp to 160 and pad short
 // snippets toward LinkedIn's optimal 70-160 char window.
