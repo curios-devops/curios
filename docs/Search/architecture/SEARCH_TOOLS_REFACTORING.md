@@ -110,7 +110,7 @@ src/commonService/searchTools/
 ├── tavily.ts (existing)
 └── searxService.ts (existing)
 
-src/services/search/regular/agents/
+src/services/legacy-search/regular/agents/
 └── searchRetrieverAgent.ts
     BEFORE: 329 lines (complex inline logic)
     AFTER: 179 lines (simple tool orchestration) ✅

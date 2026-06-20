@@ -29,7 +29,7 @@ npm install @anam-ai/js-sdk
   - LLM: `gpt-4o-mini`
 
 ### 3. Created Anam Service
-**Location:** `src/services/search/avatar/services/anamAvatarService.ts`
+**Location:** `src/services/legacy-search/avatar/services/anamAvatarService.ts`
 
 **Features:**
 - ✅ Singleton service for managing Anam client
@@ -41,7 +41,7 @@ npm install @anam-ai/js-sdk
 - ✅ `isReady()` - Check initialization status
 
 ### 4. Created Test Component
-**Location:** `src/services/search/avatar/components/AnamAvatarTest.tsx`
+**Location:** `src/services/legacy-search/avatar/components/AnamAvatarTest.tsx`
 
 **Features:**
 - ✅ Simple UI to test Anam integration
@@ -184,8 +184,8 @@ Streaming Avatar Video
 ## 📁 Related Files
 
 - `supabase/functions/get-anam-token/index.ts` - Session token endpoint
-- `src/services/search/avatar/services/anamAvatarService.ts` - Service layer
-- `src/services/search/avatar/components/AnamAvatarTest.tsx` - Test UI
+- `src/services/legacy-search/avatar/services/anamAvatarService.ts` - Service layer
+- `src/services/legacy-search/avatar/components/AnamAvatarTest.tsx` - Test UI
 - `src/main.tsx` - Routing (added `/anam-test` route)
 
 ## ⏭️ Integration with Avatar Search

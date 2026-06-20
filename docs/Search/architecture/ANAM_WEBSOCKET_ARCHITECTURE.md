@@ -82,7 +82,7 @@ Frontend → WebSocket → Anam Streaming API
 
 ### 1. Servicio de Streaming
 
-**Archivo:** `src/services/search/avatar/services/anamStreamingService.ts`
+**Archivo:** `src/services/legacy-search/avatar/services/anamStreamingService.ts`
 
 ```typescript
 export class AnamStreamingClient {
@@ -135,7 +135,7 @@ export class AnamStreamingClient {
 
 ### 2. Componente de Player
 
-**Archivo:** `src/services/search/avatar/components/AnamAvatarPlayer.tsx`
+**Archivo:** `src/services/legacy-search/avatar/components/AnamAvatarPlayer.tsx`
 
 ```typescript
 export default function AnamAvatarPlayer({ audioBlob, personaId }: Props) {

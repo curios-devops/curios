@@ -25,7 +25,7 @@ Query → Tavily/Brave search → Results → OpenAI GPT-5 → Response
 
 ### 1. Search Provider Refactor
 
-**File**: `src/services/fast-search/providers/llmProvider.ts`
+**File**: `src/services/search/providers/llmProvider.ts`
 
 - ✅ Removed OpenAI `web_search` tool completely
 - ✅ Added `extractSiteName()` helper for citation formatting
@@ -36,7 +36,7 @@ Query → Tavily/Brave search → Results → OpenAI GPT-5 → Response
 
 ### 2. Controller Updates
 
-**File**: `src/services/fast-search/controller.ts`
+**File**: `src/services/search/controller.ts`
 
 - ✅ Execute web search in parallel with media searches (line 192-196)
 - ✅ Pass real `webResults` from Tavily/Brave to LLM (line 212)
@@ -48,7 +48,7 @@ Query → Tavily/Brave search → Results → OpenAI GPT-5 → Response
 
 ### 3. UI Enhancements
 
-**File**: `src/services/fast-search/pages/FastSearchResults.tsx`
+**File**: `src/services/search/pages/FastSearchResults.tsx`
 
 - ✅ Moved images to top between tabs and AI Overview (line 187-190)
 - ✅ Added source count with stacked favicon icons (line 204-241)
@@ -129,7 +129,7 @@ Pattern-based question generation:
 ## Files Modified
 
 ```
-src/services/fast-search/
+src/services/search/
 ├── controller.ts                    # Added dynamic follow-ups, web search
 ├── providers/
 │   ├── llmProvider.ts              # Removed web_search tool, added citation format

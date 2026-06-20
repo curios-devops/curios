@@ -1,8 +1,8 @@
-# PR.md — Fast Search v2
+# PR.md — Search v2
 
 ## Overview
 
-Introduce a new **Fast Search** capability designed to replace the current Search implementation with a significantly faster, simpler, and more maintainable architecture.
+Introduce a new **Search** capability designed to replace the current Search implementation with a significantly faster, simpler, and more maintainable architecture.
 
 The new version preserves the current user experience and response quality while removing the multi-agent orchestration model in favor of a **single direct LLM pipeline**.
 
@@ -33,7 +33,7 @@ Multi-agent swarm flow:
 * Writer agent
 * Orchestrator
 
-### New Fast Search Model
+### New Search Model
 
 Single-pass direct generation flow:
 
@@ -289,7 +289,7 @@ Capture:
 
 ## Phase 1
 
-Launch Fast Search behind feature flag.
+Launch Search behind feature flag.
 
 ## Phase 2
 
@@ -304,7 +304,7 @@ Measure:
 
 ## Phase 3
 
-Promote Fast Search as default.
+Promote Search as default.
 
 ## Phase 4
 
@@ -346,7 +346,7 @@ Recreate only needed logic in a clean isolated module so legacy Search can be de
 Recommended module names:
 
 ```txt
-fast-search/
+search/
   controller.ts
   providers/
   prompts/

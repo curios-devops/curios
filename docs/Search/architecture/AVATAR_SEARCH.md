@@ -108,7 +108,7 @@ Visualización en la página
 - `src/components/boxContainer/ButtonBar.tsx` - Added EqualizerIcon, User icon, dual button modes
 - `src/components/boxContainer/QueryBoxContainer.tsx` - Split handlers: `handleVoiceClick` (Mic) + `handleAvatarClick` (Avatar)
 - `src/services/whisper/whisperService.ts` - Whisper API integration
-- `src/services/search/avatar/` - All avatar search components and services
+- `src/services/legacy-search/avatar/` - All avatar search components and services
 - `src/main.tsx` - Added `/avatar-search` route
 
 ### API Keys Used:

@@ -1,4 +1,4 @@
-# Fast Search v2 - Implementation Plan
+# Search v2 - Implementation Plan
 
 ## Overview
 Replace the current multi-agent Search system with a streamlined single-LLM pipeline that delivers faster responses while maintaining quality and UX familiarity. Implementation will use the existing mode selector dropdown (Search, Stories, Cinematic, Avatar) by adding **"FastSearch"** as a new mode option.
@@ -7,7 +7,7 @@ Replace the current multi-agent Search system with a streamlined single-LLM pipe
 
 ### 1.1 Create Module Structure
 ```
-src/services/fast-search/
+src/services/search/
 ├── controller.ts              # Main orchestrator
 ├── providers/
 │   ├── webSearch.ts          # OpenAI web tool + Tavily fallback
@@ -52,7 +52,7 @@ export type ModeType = 'search' | 'stories' | 'cinematic' | 'avatar' | 'fastsear
 ```typescript
 // All locale files (en.json, es.json, etc.)
 {
-  "fastSearch": "Fast Search",
+  "fastSearch": "Search",
   "placeholderFastSearch": "Ask anything - get faster results"
 }
 ```

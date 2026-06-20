@@ -56,7 +56,7 @@ GET https://serpapi.com/search.json?engine=google_reverse_image&image_url={url}&
 
 ## 📝 Files Modified
 
-### 1. `/src/services/search/regular/agents/searchRetrieverAgent.ts`
+### 1. `/src/services/legacy-search/regular/agents/searchRetrieverAgent.ts`
 **Changes**:
 - Added optional `imageUrls?: string[]` parameter to `execute()` method
 - Implemented three search strategies:
@@ -93,7 +93,7 @@ Input Detection → Strategy Selection → Search Execution → Result Merging �
 
 ---
 
-### 2. `/src/services/search/searchService.ts`
+### 2. `/src/services/legacy-search/searchService.ts`
 **Changes**:
 - Added `imageUrls?: string[]` to `SearchOptions` interface
 - Passes `imageUrls` to `retrieverAgent.execute(query, onStatusUpdate, imageUrls)`
@@ -125,7 +125,7 @@ export async function performSearch(
 
 ---
 
-### 4. `/src/services/search/regular/pages/SearchResults.tsx`
+### 4. `/src/services/legacy-search/regular/pages/SearchResults.tsx`
 **Changes**:
 - Parse `images` parameter from URL: `searchParams.get('images')`
 - Split comma-separated URLs: `imageUrlsParam.split(',')`

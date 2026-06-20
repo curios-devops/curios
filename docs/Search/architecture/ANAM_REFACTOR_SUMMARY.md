@@ -17,7 +17,7 @@
   - Comprehensive error handling
 
 ### 2. ✅ Refactored TTS + Avatar Pipeline
-- **File:** `src/services/search/avatar/services/elevenLabsAurora.ts`
+- **File:** `src/services/legacy-search/avatar/services/elevenLabsAurora.ts`
 - **Changes:**
   - Renamed from "elevenLabsAurora" (ElevenLabs Aurora no longer used)
   - Now handles: ElevenLabs TTS → OpenAI TTS fallback → Anam Avatar
@@ -26,7 +26,7 @@
   - Returns video + audio + optional video blob
 
 ### 3. ✅ Updated Frontend Avatar Display
-- **File:** `src/services/search/avatar/components/AvatarDisplay.tsx`
+- **File:** `src/services/legacy-search/avatar/components/AvatarDisplay.tsx`
 - **Changes:**
   - Updated video playback to handle Anam videos
   - Improved audio synchronization
@@ -200,16 +200,16 @@ ANAM_API_KEY=OGY2N2UxN2MtMmUxMS00MGM5LTg4N2UtZDNjM2NhZDNjMDIwOi9lMUEzTmdhZ1hoSEJ
 - `docs/Search/architecture/ANAM_REFACTOR_SUMMARY.md` - This file
 
 ### Modified Files
-- `src/services/search/avatar/services/elevenLabsAurora.ts` - Refactored pipeline
-- `src/services/search/avatar/components/AvatarDisplay.tsx` - Video playback
+- `src/services/legacy-search/avatar/services/elevenLabsAurora.ts` - Refactored pipeline
+- `src/services/legacy-search/avatar/components/AvatarDisplay.tsx` - Video playback
 - `.env` - Already contains `ANAM_API_KEY`
 
 ### No Changes Needed
-- `src/services/search/avatar/pages/AvatarSearchResults.tsx` - Still works
-- `src/services/search/avatar/services/narrativeGenerator.ts` - Still works
-- `src/services/search/avatar/components/SubtitleControls.tsx` - Still works
-- `src/services/search/avatar/components/NarrativeText.tsx` - Still works
-- `src/services/search/avatar/components/AvatarActionButtons.tsx` - Still works
+- `src/services/legacy-search/avatar/pages/AvatarSearchResults.tsx` - Still works
+- `src/services/legacy-search/avatar/services/narrativeGenerator.ts` - Still works
+- `src/services/legacy-search/avatar/components/SubtitleControls.tsx` - Still works
+- `src/services/legacy-search/avatar/components/NarrativeText.tsx` - Still works
+- `src/services/legacy-search/avatar/components/AvatarActionButtons.tsx` - Still works
 
 ---
 

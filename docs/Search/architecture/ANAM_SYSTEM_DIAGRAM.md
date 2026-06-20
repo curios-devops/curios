@@ -129,7 +129,7 @@
 ### 1. Frontend Components
 
 ```
-src/services/search/avatar/
+src/services/legacy-search/avatar/
 │
 ├── pages/
 │   └── AvatarSearchResults.tsx      ← Main orchestration component
@@ -448,7 +448,7 @@ Total: ~16-46 seconds (typical: ~25s)
 │                      Developer Machine                          │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ Source Code:                                             │  │
-│  │  - Frontend: src/services/search/avatar/                 │  │
+│  │  - Frontend: src/services/legacy-search/avatar/                 │  │
 │  │  - Functions: supabase/functions/anam-avatar/            │  │
 │  │  - Config: .env                                          │  │
 │  └──────────────────────────────────────────────────────────┘  │

@@ -1,7 +1,7 @@
 🧠 BLUEPRINT DE REFACTOR — SEARCH → ASK DEEPER (PRO 👑)
 0. OBJETIVO DEL REFACTOR
 
-Convertir el actual Fast Search en un sistema de 2 niveles:
+Convertir el actual Search en un sistema de 2 niveles:
 
 ⚡ Default Search (más corto que ahora)
 respuesta más concisa que el estado actual

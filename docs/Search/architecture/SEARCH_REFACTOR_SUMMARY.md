@@ -14,7 +14,7 @@ Created separate service files that ensure complete isolation:
 
 ## Files Created
 
-### 1. `src/services/search/regular/regularSearchService.ts`
+### 1. `src/services/legacy-search/regular/regularSearchService.ts`
 **Purpose:** Handles all regular (non-pro) searches
 
 **Flow:**
@@ -34,7 +34,7 @@ User Query → SearchRetrieverAgent → SearchWriterAgent → Final Answer
 
 ---
 
-### 2. `src/services/search/pro/proSearchService.ts`
+### 2. `src/services/legacy-search/pro/proSearchService.ts`
 **Purpose:** Handles all pro searches
 
 **Flow:**
@@ -52,7 +52,7 @@ User Query → SwarmController → PerspectiveAgent → RetrieverAgent → Write
 
 ---
 
-### 3. `src/services/search/searchService.ts` (Refactored)
+### 3. `src/services/legacy-search/searchService.ts` (Refactored)
 **Purpose:** Unified entry point that routes to appropriate service
 
 **Changes:**
@@ -67,14 +67,14 @@ User Query → SwarmController → PerspectiveAgent → RetrieverAgent → Write
 
 ## Files Modified
 
-### 1. `src/services/search/regular/searchRegularIndex.ts`
+### 1. `src/services/legacy-search/regular/searchRegularIndex.ts`
 **Change:** Now exports `performRegularSearch` as `performSearch`
 ```typescript
 // Before: export { performSearch } from '../searchService.ts';
 // After: export { performRegularSearch as performSearch } from './regularSearchService.ts';
 ```
 
-### 2. `src/services/search/pro/searchProIndex.ts`
+### 2. `src/services/legacy-search/pro/searchProIndex.ts`
 **Change:** Now exports `performProSearch` as `performSearch`
 ```typescript
 export { performProSearch as performSearch } from './proSearchService.ts';
@@ -119,7 +119,7 @@ export { performProSearch as performSearch } from './proSearchService.ts';
 
 ### Regular Search (from home page or regular search page)
 ```typescript
-import { performSearch } from '../services/search/regular/searchRegularIndex.ts';
+import { performSearch } from '../services/legacy-search/regular/searchRegularIndex.ts';
 
 // Automatically routes to performRegularSearch
 const response = await performSearch(query, {
@@ -130,7 +130,7 @@ const response = await performSearch(query, {
 
 ### Pro Search (from pro search page)
 ```typescript
-import { performSearch } from '../services/search/pro/searchProIndex.ts';
+import { performSearch } from '../services/legacy-search/pro/searchProIndex.ts';
 
 // Automatically routes to performProSearch
 const response = await performSearch(query, {
@@ -141,7 +141,7 @@ const response = await performSearch(query, {
 
 ### Unified Router (for backwards compatibility)
 ```typescript
-import { performSearch } from '../services/search/searchService.ts';
+import { performSearch } from '../services/legacy-search/searchService.ts';
 
 // Routes based on isPro flag
 const response = await performSearch(query, {
@@ -173,16 +173,16 @@ However, if you want to be explicit about which service you're using:
 
 **Old way (still works):**
 ```typescript
-import { performSearch } from '../services/search/searchService.ts';
+import { performSearch } from '../services/legacy-search/searchService.ts';
 ```
 
 **New way (more explicit):**
 ```typescript
 // For regular search
-import { performSearch } from '../services/search/regular/searchRegularIndex.ts';
+import { performSearch } from '../services/legacy-search/regular/searchRegularIndex.ts';
 
 // For pro search  
-import { performSearch } from '../services/search/pro/searchProIndex.ts';
+import { performSearch } from '../services/legacy-search/pro/searchProIndex.ts';
 ```
 
 ---
