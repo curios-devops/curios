@@ -101,7 +101,7 @@ export default function NavItem({
           {isActive && (
             <div
               className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: '#ef4444' }}
+              style={{ backgroundColor: 'var(--accent-primary)' }}
             />
           )}
         </>

@@ -59,7 +59,9 @@ export async function generateHeaderImage(
         quality: IMAGE_QUALITY,
         n: 1,
         // Upload server-side and return a hosted public URL (shareable).
-        // Reuse the existing public bucket to avoid new storage infra.
+        // TODO(tech-debt): reusing Movie's 'movie-assets' bucket to avoid new
+        // storage infra. Move Fast Search images to a dedicated public bucket
+        // (e.g. 'fast-search-assets') with its own policy later.
         storageBucket: 'movie-assets',
         storagePath: `fast-search/${crypto.randomUUID()}.png`,
       }),

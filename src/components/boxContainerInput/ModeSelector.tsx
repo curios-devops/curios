@@ -1,4 +1,4 @@
-import { BookOpen, Clapperboard, Popcorn, UserCircle, Zap } from 'lucide-react';
+import { BookOpen, Clapperboard, Popcorn, UserCircle, Search } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
@@ -13,7 +13,7 @@ interface Mode {
 // 'fastsearch' is the new primary "Search" (default). Legacy 'search' is kept in
 // the type for old routes but is no longer offered in the dropdown.
 const modes: Mode[] = [
-  { id: 'fastsearch', label: 'search', icon: Zap },
+  { id: 'fastsearch', label: 'search', icon: Search },
   { id: 'stories', label: 'stories', icon: BookOpen },
   { id: 'cinematic', label: 'cinematic', icon: Clapperboard },
   { id: 'movie', label: 'movie', icon: Popcorn },
@@ -73,7 +73,7 @@ export default function ModeSelector({ selectedMode, onModeSelect, onClose }: Mo
             {isActive && (
               <div
                 className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: '#ef4444' }}
+                style={{ backgroundColor: accentColor.primary }}
               />
             )}
           </button>
