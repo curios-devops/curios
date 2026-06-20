@@ -1,13 +1,15 @@
-// Share URL builders — replicated from Search's working ShareMenu, written once.
-// X / LinkedIn / Facebook share through the social-share Netlify function so the
-// crawler gets proper Open Graph / Twitter Card meta tags (image + snippet).
-// WhatsApp shares the raw deep link. Copy is handled in the component.
+// Share URL builders — replicate Search's working ShareMenu exactly so Fast
+// Search previews carry the same title/snippet/image. The crawler-meta networks
+// (X / Bluesky / LinkedIn / Facebook / Reddit) point at the Supabase social-share
+// function, fronted by the curiosai.com /api/social-share proxy (brand domain so
+// LinkedIn doesn't choke on *.supabase.co). WhatsApp/Email use the raw deep link.
 
 import type { SocialNetwork, SharePayload } from './shareConfig';
 
-const SHARE_FN = 'https://curiosai.com/.netlify/functions/social-share';
+const SHARE_FN = 'https://curiosai.com/api/social-share';
 
-// First-sentence snippet, clamped to LinkedIn's optimal 70-160 char window.
+// First-sentence snippet, matching ShareMenu's logic: clamp to 160 and pad short
+// snippets toward LinkedIn's optimal 70-160 char window.
 function buildSnippet(source: string | undefined, fallbackQuery: string): string {
   let snippet = '';
   if (source && source.length > 20) {
@@ -18,10 +20,15 @@ function buildSnippet(source: string | undefined, fallbackQuery: string): string
     }
   }
   if (!snippet) {
-    snippet = `AI-powered insights for "${fallbackQuery}" with CuriosAI.`;
+    snippet = `Get AI-powered insights and comprehensive analysis for "${fallbackQuery}" with CuriosAI.`;
   }
   if (snippet.length > 160) {
     snippet = snippet.substring(0, 157) + '...';
+  } else if (snippet.length < 70 && snippet.length > 0) {
+    snippet = `${snippet} Discover comprehensive AI insights with CuriosAI.`;
+    if (snippet.length > 160) {
+      snippet = snippet.substring(0, 157) + '...';
+    }
   }
   return snippet;
 }
@@ -60,7 +67,7 @@ export function buildShareHref(network: SocialNetwork, payload: SharePayload): s
       // Bluesky composes from text; it unfurls the URL into an OG link card.
       return `https://bsky.app/intent/compose?text=${encodedTitle}%20${crawlerUrl}`;
     case 'linkedin':
-      return `https://www.linkedin.com/shareArticle?mini=true&url=${crawlerUrl}&title=${encodedTitle}&summary=${encodedSnippet}&source=CuriosAI`;
+      return `https://www.linkedin.com/shareArticle?mini=true&url=${crawlerUrl}&title=${encodedTitle}&text=${encodedTitle}&summary=${encodedSnippet}&source=CuriosAI`;
     case 'facebook':
       return `https://www.facebook.com/sharer/sharer.php?u=${crawlerUrl}`;
     case 'whatsapp':

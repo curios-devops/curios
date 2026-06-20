@@ -270,6 +270,11 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+# Public so social crawlers (LinkedIn/Facebook/X bots) can fetch OG meta tags.
+[functions.social-share]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

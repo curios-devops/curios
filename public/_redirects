@@ -2,5 +2,9 @@
 # EXCEPT social-share which needs Netlify to force correct Content-Type
 /functions/v1/social-share /.netlify/functions/social-share 200
 
+# Fast Search share: brand-domain proxy to the Supabase social-share function
+# (keeps the shared URL on curiosai.com so LinkedIn doesn't choke on *.supabase.co)
+/api/social-share https://gpfccicfqynahflehpqo.supabase.co/functions/v1/social-share 200
+
 # SPA fallback - must be last
 /* /index.html 200

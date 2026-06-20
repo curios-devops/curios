@@ -21,6 +21,12 @@
   [headers.values]
     Content-Type = "text/html; charset=utf-8"
 
+# Same for the Fast Search brand-domain proxy to the Supabase social-share function
+[[headers]]
+  for = "/api/social-share"
+  [headers.values]
+    Content-Type = "text/html; charset=utf-8"
+
 # Note: Redirects are handled in public/_redirects file
 # Video rendering removed - now using client-side rendering
 # Removed: render-chunk, render-video functions
