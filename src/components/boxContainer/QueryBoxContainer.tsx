@@ -22,7 +22,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  const [selectedMode, setSelectedMode] = useState<ModeType>('search');
+  const [selectedMode, setSelectedMode] = useState<ModeType>('fastsearch');
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [signInContext, setSignInContext] = useState<'default' | 'reverse-image' | 'document'>('default');
   const [showAttachMenu, setShowAttachMenu] = useState(false);
@@ -78,7 +78,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
   };
 
   const handleModeClear = () => {
-    setSelectedMode('search');
+    setSelectedMode('fastsearch');
   };
 
   const handleSearch = async () => {

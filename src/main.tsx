@@ -23,13 +23,15 @@ import { applyThemeColors, type AccentColor } from './config/themeColors';
 })();
 
 // Lazy load page components from their respective service directories
-const SearchResults = lazy(() => import('./services/search/regular/pages/SearchResults.tsx'));
-const FastSearchResults = lazy(() => import('./services/fast-search/pages/FastSearchResults.tsx'));
-const AvatarSearchResults = lazy(() => import('./services/search/avatar/pages/AvatarSearchResults.tsx'));
+// Legacy search (hidden from the dropdown, slated for removal) now lives under services/legacy-search.
+const SearchResults = lazy(() => import('./services/legacy-search/regular/pages/SearchResults.tsx'));
+// Fast Search is now the primary "Search" and lives under services/search.
+const FastSearchResults = lazy(() => import('./services/search/pages/FastSearchResults.tsx'));
+const AvatarSearchResults = lazy(() => import('./services/legacy-search/avatar/pages/AvatarSearchResults.tsx'));
 // Research temporarily disabled (not working + caused a production chunk-init crash).
 // const DeepResearchResults = lazy(() => import('./services/research/pro/pages/ResearchResults.tsx'));
-const ProSearchResults = lazy(() => import('./services/search/pro/pages/ProSearchResults.tsx'));
-const ProSearchTest = lazy(() => import('./services/search/pro/pages/ProSearchTest.tsx'));
+const ProSearchResults = lazy(() => import('./services/legacy-search/pro/pages/ProSearchResults.tsx'));
+const ProSearchTest = lazy(() => import('./services/legacy-search/pro/pages/ProSearchTest.tsx'));
 // const InsightsResults = lazy(() => import('./services/research/regular/pages/InsightsResults.tsx'));
 // const TavilySearchTest = lazy(() => import('./services/research/regular/pages/TavilySearchTest.tsx'));
 // const ResearcherResults = lazy(() => import('./services/research/pro/pages/ResearcherResults.tsx'));
@@ -45,7 +47,7 @@ const TestPage = lazy(() => import('./pages/test.tsx'));
 const ImageTest = lazy(() => import('./pages/ImageTest.tsx'));
 const SerpApiTest = lazy(() => import('./pages/SerpApiTest'));
 const ReverseImageVsTest = lazy(() => import('./pages/ReverseImageVsTest'));
-const AnamAvatarTest = lazy(() => import('./services/search/avatar/components/AnamAvatarTest.tsx'));
+const AnamAvatarTest = lazy(() => import('./services/legacy-search/avatar/components/AnamAvatarTest.tsx'));
 // Phase6TestPage removed - obsolete chunk rendering test
 const Policies = lazy(() => import('./mainPages/Policies.tsx'));
 const AuthCallback = lazy(() => import('./components/auth/AuthCallback.tsx'));

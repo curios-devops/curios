@@ -53,7 +53,7 @@ export default function TopBar({
             >
               <ArrowLeft size={20} />
             </button>
-            <h1 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white break-words">{query}</h1>
+            <h1 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white break-words max-h-24 overflow-y-auto pr-1">{query}</h1>
             <div className="hidden sm:flex items-center gap-1.5 text-gray-500 dark:text-gray-400 flex-shrink-0">
               <Clock size={14} />
               <span className="text-xs">{timeAgo}</span>

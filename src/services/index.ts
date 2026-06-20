@@ -3,9 +3,9 @@
 // Export all services
 
 // Explicitly re-export only unique symbols to avoid ambiguity
-export { WriterAgent as SearchWriterAgent, RetrieverAgent } from './search/regular/searchRegularIndex';
-export { ProSearchResultsPage, SwarmController, PerspectiveAgent } from './search/pro/searchProIndex';
-export { default as SearchResultsPage } from './search/regular/pages/SearchResults.tsx';
+export { WriterAgent as SearchWriterAgent, RetrieverAgent } from './legacy-search/regular/searchRegularIndex';
+export { ProSearchResultsPage, SwarmController, PerspectiveAgent } from './legacy-search/pro/searchProIndex';
+export { default as SearchResultsPage } from './legacy-search/regular/pages/SearchResults.tsx';
 
 export { generateArtifact, PlannerAgent, ResearcherAgent, WriterAgent as LabWriterAgent, FormatterAgent, LabController, orchestrateArtifact } from './lab/regular/regularIndex.ts';
 export { default as LabsResultsPage } from './lab/regular/pages/LabsResults.tsx';

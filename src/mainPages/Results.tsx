@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { performSearchWithStreaming } from '../services/search/searchService';
+import { performSearchWithStreaming } from '../services/legacy-search/searchService';
 import { formatTimeAgo } from '../utils/time';
 import ShareMenu from '../components/ShareMenu';
 import TopBar from '../components/results/TopBar';

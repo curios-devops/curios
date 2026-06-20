@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Clock, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
-import { performSearch } from '../services/search/searchService';
+import { performSearch } from '../services/legacy-search/searchService';
 import type { SearchState } from '../types';
 import AdBanner from './AdBanner';
 import SourcesSection from './SourcesSection';

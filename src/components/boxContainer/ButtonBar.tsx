@@ -89,7 +89,8 @@ export default function ButtonBar({
       case 'search':
         return t('search') || 'Search';
       case 'fastsearch':
-        return t('fastSearch') || 'Fast Search';
+        // Fast Search is now the primary "Search" (legacy 'search' is hidden).
+        return t('search') || 'Search';
       case 'stories':
         return t('stories') || 'Stories';
       case 'cinematic':
@@ -180,44 +181,10 @@ export default function ButtonBar({
                 boxShadow: '0 14px 28px var(--ui-shadow-elevated)',
               }}
             >
-              {/* Search mode (default) - first option */}
-              <button
-                onClick={() => {
-                  onModeSelect('search');
-                  setShowModeMenu(false);
-                }}
-                className="w-full flex items-center justify-between gap-3 px-4 py-3 transition-colors text-left relative"
-                style={{
-                  color: selectedMode === 'search' ? accentColor.primary : 'var(--ui-text-primary)',
-                  fontWeight: selectedMode === 'search' ? 500 : 400,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <Search
-                    size={18}
-                    style={{
-                      color: selectedMode === 'search' ? accentColor.primary : 'var(--ui-text-secondary)'
-                    }}
-                  />
-                  <span className="font-medium">
-                    {t('search') || 'Search'}
-                  </span>
-                </div>
-                {selectedMode === 'search' && (
-                  <div
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: '#ef4444' }}
-                  />
-                )}
-              </button>
+              {/* Legacy "Search" option removed — Fast Search (now "Search") is
+                  the default and leads the ModeSelector list below. */}
 
-              {/* Mode Selector - Fast Search, Stories, Avatar, Cinematic */}
+              {/* Mode Selector - Search (formerly Fast Search), Stories, Avatar, Cinematic */}
               <ModeSelector
                 selectedMode={selectedMode}
                 onModeSelect={onModeSelect}

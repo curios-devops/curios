@@ -10,9 +10,10 @@ interface Mode {
   icon: React.ElementType;
 }
 
-// Note: 'search' is not in this list - it's the default mode when nothing is selected
+// 'fastsearch' is the new primary "Search" (default). Legacy 'search' is kept in
+// the type for old routes but is no longer offered in the dropdown.
 const modes: Mode[] = [
-  { id: 'fastsearch', label: 'fastSearch', icon: Zap },
+  { id: 'fastsearch', label: 'search', icon: Zap },
   { id: 'stories', label: 'stories', icon: BookOpen },
   { id: 'cinematic', label: 'cinematic', icon: Clapperboard },
   { id: 'movie', label: 'movie', icon: Popcorn },

@@ -1,6 +1,6 @@
 // Secure OpenAI service that uses Netlify functions instead of direct API calls
 import { AgentResponse, SearchResult, WebSearchItem } from '../../types';
-import { performSearch } from '../../../search/searchService';
+import { performSearch } from '../../../legacy-search/searchService';
 import { logger } from '../../../../utils/logger';
 // TODO: Refactor to use Supabase Edge Function for OpenAI chat completions
 export class ResearchRetrieverAgent {
