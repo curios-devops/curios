@@ -1,7 +1,9 @@
 // Ask Deeper — Step D: contextual header image.
 // Adapts Movie's gpt-image-2 approach (newer than research's DALL-E service).
-// No storageBucket is passed, so the edge function returns an inline data URL —
-// perfect for rendering in the header and embedding directly into the PDF export.
+// A storageBucket is passed so the edge function uploads the PNG and returns a
+// hosted http URL (not an inline data URL). That hosted URL is required so the
+// image can lead the carousel AND be used as the social-share OG image — a
+// data: URL can't be shared to crawlers.
 
 import { logger } from '../../../utils/logger';
 
@@ -56,6 +58,10 @@ export async function generateHeaderImage(
         size: IMAGE_SIZE,
         quality: IMAGE_QUALITY,
         n: 1,
+        // Upload server-side and return a hosted public URL (shareable).
+        // Reuse the existing public bucket to avoid new storage infra.
+        storageBucket: 'movie-assets',
+        storagePath: `fast-search/${crypto.randomUUID()}.png`,
       }),
       signal: controller.signal,
     });
