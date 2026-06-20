@@ -325,6 +325,27 @@ export default function FastSearchResults() {
         .fast-search-page nav button:first-child {
           display: none;
         }
+        /* Claude-style shimmering loading text that cross-fades between phrases. */
+        @keyframes fsShimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        @keyframes fsFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .fs-shimmer {
+          background: linear-gradient(90deg,
+            var(--ui-text-secondary, #9ca3af) 0%,
+            var(--accent-primary) 50%,
+            var(--ui-text-secondary, #9ca3af) 100%);
+          background-size: 200% 100%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          animation: fsShimmer 2.4s linear infinite, fsFadeIn 0.45s ease;
+        }
       `}</style>
       <TopBar
         query={query}
@@ -418,11 +439,9 @@ export default function FastSearchResults() {
         {/* Ask Deeper: generating the contextual hero image (copied from legacy
             search's "Generating answer..." dot) so the user waits for it. */}
         {effectiveDeep && !showSearching && isLoading && activeTab === 'answer' && (
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <div className="animate-pulse flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
-              <span>Generating image…</span>
-            </div>
+          <div className="flex items-center gap-2 text-sm">
+            <div className="w-2 h-2 rounded-full animate-ping flex-shrink-0" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
+            <GeneratingPhrases />
           </div>
         )}
 
@@ -725,6 +744,39 @@ export default function FastSearchResults() {
 }
 
 // Images Carousel Component
+// Rotating, shimmering loading phrases (Claude-style): each phrase overwrites the
+// previous with a cross-fade while the contextual image is generated.
+const GENERATING_PHRASES = [
+  'Generating image',
+  'Setting the scene',
+  'Composing the shot',
+  'Polishing details',
+  'Refining the light',
+  'Adding final touches',
+  'Bringing it to life',
+  'Almost there',
+  'One last tweak',
+  'Finishing up',
+];
+
+function GeneratingPhrases() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % GENERATING_PHRASES.length);
+    }, 2200);
+    return () => clearInterval(id);
+  }, []);
+
+  // key={index} remounts the span so the fade-in (overwrite) replays each phrase.
+  return (
+    <span key={index} className="fs-shimmer font-medium">
+      {GENERATING_PHRASES[index]}…
+    </span>
+  );
+}
+
 function ImagesCarousel({ images, featuredFirst = false }: { images: Array<{ url: string; title: string; source: string }>; featuredFirst?: boolean }) {
   const [scrollPosition, setScrollPosition] = useState(0);
   const [imageDimensions, setImageDimensions] = useState<Map<number, { width: number; height: number }>>(new Map());

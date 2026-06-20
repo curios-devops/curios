@@ -21,7 +21,11 @@ interface QueryBoxContainerProps {
 export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => {
+    // Restore any draft so a mobile reload (iOS discards backgrounded tabs and
+    // reloads on return) doesn't wipe what the user was typing.
+    try { return sessionStorage.getItem('home_search_draft') ?? ''; } catch { return ''; }
+  });
   const [selectedMode, setSelectedMode] = useState<ModeType>('fastsearch');
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [signInContext, setSignInContext] = useState<'default' | 'reverse-image' | 'document'>('default');
@@ -38,6 +42,11 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
   useEffect(() => {
     onModeChange?.(selectedMode);
   }, [selectedMode, onModeChange]);
+
+  // Persist the draft query so it survives a reload/tab-discard on mobile.
+  useEffect(() => {
+    try { sessionStorage.setItem('home_search_draft', query); } catch { /* ignore */ }
+  }, [query]);
 
   // Close attach menu when clicking outside
   useEffect(() => {
@@ -111,15 +120,14 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
     // Pass image URLs as URL parameters (comma-separated)
     const imageParam = imageUrls.length > 0 ? `&images=${encodeURIComponent(imageUrls.join(','))}` : '';
 
+    // Launched — drop the saved draft so we don't restore a stale query later.
+    try { sessionStorage.removeItem('home_search_draft'); } catch { /* ignore */ }
+
     navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${imageParam}`);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSearch();
-    }
-  };
+  // Enter no longer launches the search — it inserts a newline (use the arrow
+  // button to submit). Shift+Enter also just adds a line.
 
   // Mic button: Record and transcribe into search box (does NOT navigate)
   const handleVoiceClick = async () => {
@@ -238,7 +246,6 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
           <SearchTextArea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
             className="px-0"
             mode={selectedMode}
           />

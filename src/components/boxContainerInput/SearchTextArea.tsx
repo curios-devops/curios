@@ -5,7 +5,7 @@ import type { ModeType } from './ModeSelector.tsx';
 interface SearchTextAreaProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onKeyDown: (e: React.KeyboardEvent) => void;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
   className?: string;
   mode?: ModeType;
 }
