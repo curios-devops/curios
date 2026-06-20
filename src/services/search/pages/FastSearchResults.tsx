@@ -396,8 +396,8 @@ export default function FastSearchResults() {
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
                   </div>
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-base flex-shrink-0">Analyzing</span>
-                    <span className="text-base font-medium text-gray-900 dark:text-white truncate">
+                    <span className="text-base flex-shrink-0 fs-shimmer">Analyzing</span>
+                    <span className="text-base font-medium truncate fs-shimmer">
                       {typewriterText}<span className="animate-pulse">|</span>
                     </span>
                   </div>
