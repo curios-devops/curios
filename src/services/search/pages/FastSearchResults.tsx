@@ -307,6 +307,21 @@ export default function FastSearchResults() {
           color: transparent;
           animation: fsShimmer 2.4s linear infinite, fsFadeIn 0.45s ease;
         }
+        /* Answer body: a touch smaller, tighter spacing, accent bullets, and
+           less indent so it uses the full width (especially on mobile). Scoped
+           here so the shared CustomMarkdown is untouched. */
+        .fs-answer-body p,
+        .fs-answer-body li {
+          font-size: 0.9375rem;
+          line-height: 1.55;
+        }
+        .fs-answer-body p { margin-bottom: 0.5rem; }
+        .fs-answer-body ul,
+        .fs-answer-body ol { margin-bottom: 0.5rem; padding-left: 0.25rem; }
+        .fs-answer-body li { margin-bottom: 0.15rem; }
+        .fs-answer-body li::marker { color: var(--accent-primary); }
+        .fs-answer-body h2 { font-size: 1.0625rem; margin-top: 0.85rem; margin-bottom: 0.4rem; }
+        .fs-answer-body h3 { font-size: 1rem; margin-top: 0.7rem; margin-bottom: 0.35rem; }
       `}</style>
       <TopBar
         query={query}
@@ -494,8 +509,8 @@ export default function FastSearchResults() {
                     </div>
                   )}
                 </div>
-                <div className="p-6">
-                  <div className="prose dark:prose-invert max-w-none break-words [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_table]:block [&_table]:overflow-x-auto">
+                <div className="px-4 py-5 sm:p-6">
+                  <div className="fs-answer-body prose dark:prose-invert max-w-none break-words [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_table]:block [&_table]:overflow-x-auto">
                     <CustomMarkdown citations={citations}>
                       {processedAnswer}
                     </CustomMarkdown>
