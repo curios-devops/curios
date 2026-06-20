@@ -55,7 +55,6 @@ export default function FastSearchResults() {
   const [showSearching, setShowSearching] = useState(true);
   const [foundSources, setFoundSources] = useState<Array<{ title: string; url: string; snippet: string }>>([]);
   const [frozenSourcesForAnimation, setFrozenSourcesForAnimation] = useState<Array<{ title: string; url: string; snippet: string }>>([]);
-  const [typewriterText, setTypewriterText] = useState('');
   const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
   const [images, setImages] = useState<Array<{ url: string; title: string; source: string }>>([]);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
@@ -142,56 +141,18 @@ export default function FastSearchResults() {
     return () => clearInterval(interval);
   }, [searchStartTime]);
 
-  // Typewriter effect for source names - no loop, just cycle through once
+  // Cycle through source names while searching — Claude-style: each full name
+  // overwrites the previous with a cross-fade (the .fs-shimmer span keys off the
+  // index), no letter-by-letter typing/erasing.
   useEffect(() => {
     if (frozenSourcesForAnimation.length === 0 || !showSearching) {
       return;
     }
-
-    // Stop after going through all sources once
-    if (currentSourceIndex >= frozenSourcesForAnimation.length) {
-      return;
-    }
-
-    const currentSource = frozenSourcesForAnimation[currentSourceIndex];
-    if (!currentSource) return;
-
-    const sourceName = currentSource.title.substring(0, 30); // Max 30 chars
-    let charIndex = 0;
-    let isTyping = true;
-    let pauseTimeout: NodeJS.Timeout | null = null;
-
-    const typeInterval = setInterval(() => {
-      if (isTyping) {
-        // Typing phase
-        if (charIndex < sourceName.length) {
-          setTypewriterText(sourceName.substring(0, charIndex + 1));
-          charIndex++;
-        } else {
-          // Pause before erasing
-          pauseTimeout = setTimeout(() => {
-            isTyping = false;
-            charIndex = sourceName.length;
-          }, 500);
-        }
-      } else {
-        // Erasing phase
-        if (charIndex > 0) {
-          setTypewriterText(sourceName.substring(0, charIndex - 1));
-          charIndex--;
-        } else {
-          // Move to next source (no loop - just increment)
-          setCurrentSourceIndex((prev) => prev + 1);
-          isTyping = true;
-        }
-      }
-    }, 40); // 40ms per character (faster)
-
-    return () => {
-      clearInterval(typeInterval);
-      if (pauseTimeout) clearTimeout(pauseTimeout);
-    };
-  }, [frozenSourcesForAnimation, currentSourceIndex, showSearching]);
+    const id = setInterval(() => {
+      setCurrentSourceIndex((prev) => (prev + 1) % frozenSourcesForAnimation.length);
+    }, 1500);
+    return () => clearInterval(id);
+  }, [frozenSourcesForAnimation.length, showSearching]);
 
   // Execute search with streaming
   useEffect(() => {
@@ -397,8 +358,11 @@ export default function FastSearchResults() {
                   </div>
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-base flex-shrink-0 fs-shimmer">Analyzing</span>
-                    <span className="text-base font-medium truncate fs-shimmer">
-                      {typewriterText}<span className="animate-pulse">|</span>
+                    <span
+                      key={currentSourceIndex}
+                      className="text-base font-medium truncate fs-shimmer"
+                    >
+                      {frozenSourcesForAnimation[currentSourceIndex % frozenSourcesForAnimation.length]?.title?.slice(0, 40) || ''}
                     </span>
                   </div>
                 </div>
