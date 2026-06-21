@@ -282,11 +282,15 @@ export class InsightAgent {
   }
 
   // Image search: SerpApi (primary) → Brave, via the shared media provider.
+  // `url` keeps the full-res original (hero + click-through); `image` carries the
+  // reliably-hosted thumbnail the gallery displays (originals often hotlink-403,
+  // which would otherwise leave the Images tab empty).
   private async searchImages(query: string): Promise<ImageResult[]> {
     try {
       const media = await searchSerpBraveImages(query);
       return media.map((img) => ({
         url: img.url,
+        image: img.thumbnail || img.url,
         alt: img.title || query,
         title: img.title,
         source_url: img.source

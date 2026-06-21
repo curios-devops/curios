@@ -179,9 +179,10 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
       });
     };
 
-    // Validate all images in parallel
+    // Validate all images in parallel — validate the thumbnail we actually
+    // display (img.image), falling back to the full URL when there's no thumbnail.
     Promise.all(
-      result.images.map((img: any, index: number) => validateImage(img.url, index))
+      result.images.map((img: any, index: number) => validateImage(img.image || img.url, index))
     ).then((results) => {
       const validIndices = results.filter((idx): idx is number => idx !== null);
       console.log(`🖼️ [IMAGE-VALIDATION] ${validIndices.length}/${result.images.length} images are valid`);
@@ -740,7 +741,7 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                   return (
                     <div key={imageIndex} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group relative">
                       <img
-                        src={image.url}
+                        src={image.image || image.url}
                         alt={image.alt || `Image ${imageIndex + 1}`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
                         onClick={() => window.open(image.url, '_blank')}
