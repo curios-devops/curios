@@ -7,13 +7,14 @@ import { useProCredits } from '../providers/ProCreditsProvider';
 import { generateArticleImage, extractArticleSummary } from '../services/research/regular/agents/imageGenerationService';
 import { NarrationService } from '../services/cinematic/audio/NarrationService';
 
-// ElevenLabs premade voices for the "Listen to this article" picker.
-const ELEVENLABS_VOICES: { id: string; name: string }[] = [
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah' },
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel' },
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam' },
-  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi' },
+// Standard ElevenLabs premade voices for the "Listen to this article" picker.
+const ELEVENLABS_VOICES: { id: string; name: string; tone: string }[] = [
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', tone: 'Soft' },
+  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', tone: 'Calm' },
+  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi', tone: 'Strong' },
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', tone: 'Deep' },
+  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', tone: 'Warm' },
+  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh', tone: 'Young' },
 ];
 
 // Strip markdown/HTML and cap length so the TTS request stays within provider limits.
@@ -702,9 +703,10 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                                         setShowVoiceDropdown(false);
                                         resetAudio();
                                       }}
-                                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${v.id === selectedVoice ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}
+                                      className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${v.id === selectedVoice ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}
                                     >
-                                      {v.name}
+                                      <span>{v.name}</span>
+                                      <span className="text-[10px] text-gray-400 dark:text-gray-500">{v.tone}</span>
                                     </button>
                                   ))}
                                 </div>
