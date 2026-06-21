@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Image, List, Globe, ChevronDown, Wand2, Loader2 } from 'lucide-react';
+import { Image, Video, List, Globe, ChevronDown, Wand2, Loader2 } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useSession } from '../hooks/useSession';
 import { useSubscription } from '../hooks/useSubscription';
@@ -98,7 +98,7 @@ const SourceItem: React.FC<SourceItemProps> = ({ source, index }) => (
 );
 
 export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loading, focusCategory, onFocusChange }) => {
-  const [activeTab, setActiveTab] = useState<'curios' | 'steps' | 'sources' | 'images'>('curios');
+  const [activeTab, setActiveTab] = useState<'curios' | 'steps' | 'sources' | 'images' | 'videos'>('curios');
   const [showFocusDropdown, setShowFocusDropdown] = useState(false);
   const [featuredImageIndex, setFeaturedImageIndex] = useState(0);
   const [validImageIndices, setValidImageIndices] = useState<number[]>([]); // Track which images successfully load
@@ -352,12 +352,18 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
     },
     // Only show images tab if we have valid images
     ...(validImageIndices.length > 0 ? [{
-      id: 'images', 
+      id: 'images',
       label: `Images · ${validImageIndices.length}`,
       icon: <Image size={16} />
     }] : []),
-    { 
-      id: 'steps', 
+    // Only show videos tab if we have videos
+    ...(result?.videos && result.videos.length > 0 ? [{
+      id: 'videos',
+      label: `Videos · ${result.videos.length}`,
+      icon: <Video size={16} />
+    }] : []),
+    {
+      id: 'steps',
       label: 'Steps',
       icon: <List size={16} />
     },
@@ -766,6 +772,57 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
               <div className="text-center py-8">
                 <div className="text-gray-500 dark:text-gray-400">
                   {isValidatingImages ? 'Validating images...' : 'No valid images found for this search.'}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'videos' && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+              Videos ({result?.videos?.length || 0})
+            </h2>
+
+            {result?.videos && result.videos.length > 0 ? (
+              <div className="grid gap-4">
+                {result.videos.map((video: any, index: number) => (
+                  <div key={index} className="flex gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
+                    <div className="flex-shrink-0 w-32 h-20 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
+                      {video.thumbnail ? (
+                        <img
+                          src={video.thumbnail}
+                          alt={video.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Video size={24} className="text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-gray-900 dark:text-white hover:underline line-clamp-2"
+                      >
+                        {video.title}
+                      </a>
+                      {video.duration && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Duration: {video.duration}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-500 dark:text-gray-400">
+                  {loading ? 'Searching for videos...' : 'No videos found for this search.'}
                 </div>
               </div>
             )}
