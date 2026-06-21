@@ -4,18 +4,17 @@
 // InsightWriterAgent + InsightSwarmController). The analyzer's separate LLM call was
 // redundant — the retriever simply joins queries into one search — so query expansion
 // is now deterministic, leaving a single LLM call (the writer) to synthesise the
-// article. Search is split: text via Exa → Tavily → Brave (text only), images via
-// SerpApi → Brave, videos via Brave → SerpApi. The output shape (InsightResult) and
-// progress phases are unchanged so the UI stays untouched.
+// article. Search runs 3 calls concurrently — Brave (principal: text + images +
+// videos) plus Exa and Tavily (text perspectives) — with a single lean SerpApi
+// fallback for media only when Brave is sparse. The output shape (InsightResult)
+// and progress phases are unchanged so the UI stays untouched.
 
 import { SearchResult, ImageResult, VideoResult } from '../../../../commonApp/types/index';
-import { braveSearchTool } from '../../../../commonService/searchTools/braveSearchTool';
+import { braveSearchTool, type BraveSearchResults } from '../../../../commonService/searchTools/braveSearchTool';
 import { searchWithTavily } from '../../../../commonService/searchTools/tavilyService';
 import { searchExa } from '../../../search/providers/engines/exaService';
-import {
-  searchImages as searchSerpBraveImages,
-  searchVideos as searchSerpBraveVideos
-} from '../../../search/providers/mediaSearchProvider';
+import { searchSerpApiImages } from '../../../search/providers/engines/serpApiImages';
+import { searchSerpApiVideos } from '../../../search/providers/engines/serpApiVideos';
 import { logger } from '../../../../utils/logger';
 
 export interface InsightRequest {
@@ -215,24 +214,30 @@ export class InsightAgent {
     ];
   }
 
-  // ---- Step 2: search — text + images + videos all in parallel ----
-  // Exa carries the main results; Tavily and Brave add additional perspectives
-  // (merged + deduped); images come from SerpApi → Brave, videos from Brave →
-  // SerpApi. Everything runs concurrently to keep latency down.
+  // ---- Step 2: search — 3 concurrent calls + independent media fallbacks ----
+  // Brave is the principal: one call returns text (web), images and videos. Exa and
+  // Tavily run alongside as text perspectives. Brave's media is used directly; if it
+  // returns too few images we fall back to SerpApi google_images, and — separately —
+  // if too few videos we fall back to SerpApi google_videos. Each fallback is
+  // independent and fires only when its own media is sparse, keeping API usage low.
 
   private async search(queries: string[]): Promise<{ results: SearchResult[]; images: ImageResult[]; videos: VideoResult[] }> {
     const query = queries.join(' ').trim();
-    const [exa, tavily, brave, images, videos] = await Promise.all([
-      this.runExa(query),
-      this.runTavily(query),
+
+    const [brave, exa, tavily] = await Promise.all([
       this.runBrave(query),
-      this.searchImages(query),
-      this.searchVideos(query)
+      this.runExa(query),
+      this.runTavily(query)
     ]);
 
-    const results = this.mergeText(exa, tavily, brave);
-    logger.info('InsightAgent: parallel search complete', {
-      exa: exa.length, tavily: tavily.length, brave: brave.length,
+    const results = this.mergeText(this.clean(brave.web), exa, tavily);
+    const [images, videos] = await Promise.all([
+      this.resolveImages(query, brave.images),
+      this.resolveVideos(query, brave.videos)
+    ]);
+
+    logger.info('InsightAgent: search complete', {
+      braveWeb: brave.web.length, exa: exa.length, tavily: tavily.length,
       merged: results.length, images: images.length, videos: videos.length
     });
     return { results, images, videos };
@@ -242,8 +247,18 @@ export class InsightAgent {
     return results.filter((r) => r.url && r.url !== '#' && r.title && r.content).slice(0, 10);
   }
 
-  // Exa — main web search. Each engine is self-guarded so one failure never sinks
-  // the Promise.all; empty results just mean the others carry the load.
+  // Brave — principal: one call yields web (text), images and videos. Self-guarded
+  // so a failure never sinks the Promise.all (the perspectives carry the load).
+  private async runBrave(query: string): Promise<BraveSearchResults> {
+    try {
+      return await braveSearchTool(query);
+    } catch (error) {
+      logger.warn('InsightAgent: Brave search failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+      return { web: [], images: [], news: [], videos: [] };
+    }
+  }
+
+  // Exa — text perspective.
   private async runExa(query: string): Promise<SearchResult[]> {
     try {
       return this.clean(await searchExa(query, 10));
@@ -253,7 +268,7 @@ export class InsightAgent {
     }
   }
 
-  // Tavily — perspective source.
+  // Tavily — text perspective.
   private async runTavily(query: string): Promise<SearchResult[]> {
     try {
       const tavily = await searchWithTavily(query);
@@ -264,22 +279,11 @@ export class InsightAgent {
     }
   }
 
-  // Brave — perspective source.
-  private async runBrave(query: string): Promise<SearchResult[]> {
-    try {
-      const brave = await braveSearchTool(query);
-      return this.clean(brave.web || []);
-    } catch (error) {
-      logger.warn('InsightAgent: Brave search failed', { error: error instanceof Error ? error.message : 'Unknown error' });
-      return [];
-    }
-  }
-
-  // Merge Exa (main) with Tavily + Brave (perspectives), dedupe by URL, cap at 12.
-  private mergeText(exa: SearchResult[], tavily: SearchResult[], brave: SearchResult[]): SearchResult[] {
+  // Merge Brave (principal) with Exa + Tavily (perspectives), dedupe by URL, cap 12.
+  private mergeText(brave: SearchResult[], exa: SearchResult[], tavily: SearchResult[]): SearchResult[] {
     const seen = new Set<string>();
     const merged: SearchResult[] = [];
-    for (const r of [...exa, ...tavily, ...brave]) {
+    for (const r of [...brave, ...exa, ...tavily]) {
       if (seen.has(r.url)) continue;
       seen.add(r.url);
       merged.push(r);
@@ -287,13 +291,23 @@ export class InsightAgent {
     return merged.slice(0, 12);
   }
 
-  // Image search: SerpApi (primary) → Brave, via the shared media provider.
-  // `url` keeps the full-res original (hero + click-through); `image` carries the
-  // reliably-hosted thumbnail the gallery displays (originals often hotlink-403,
-  // which would otherwise leave the Images tab empty).
-  private async searchImages(query: string): Promise<ImageResult[]> {
+  // Images: Brave primary; fall back to SerpApi google_images only if Brave is sparse.
+  private async resolveImages(query: string, braveImages: BraveSearchResults['images']): Promise<ImageResult[]> {
+    const MIN_IMAGES = 4;
+    const images = braveImages
+      .filter((img) => !!img.url)
+      .map((img) => ({ url: img.url, image: img.url, alt: img.alt || query, source_url: img.source_url }));
+
+    if (images.length >= MIN_IMAGES) return images;
+
+    const serp = await this.serpImages(query);
+    return this.dedupeByUrl([...images, ...serp]).slice(0, 12);
+  }
+
+  private async serpImages(query: string): Promise<ImageResult[]> {
     try {
-      const media = await searchSerpBraveImages(query);
+      const media = await searchSerpApiImages(query, 12);
+      // `image` carries the reliably-hosted thumbnail the gallery displays.
       return media.map((img) => ({
         url: img.url,
         image: img.thumbnail || img.url,
@@ -302,29 +316,43 @@ export class InsightAgent {
         source_url: img.source
       }));
     } catch (error) {
-      logger.warn('InsightAgent: image search failed', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      logger.warn('InsightAgent: SerpApi image fallback failed', { error: error instanceof Error ? error.message : 'Unknown error' });
       return [];
     }
   }
 
-  // Video search: Brave (primary) → SerpApi, via the shared media provider.
-  private async searchVideos(query: string): Promise<VideoResult[]> {
+  // Videos: Brave primary; fall back to SerpApi google_videos only if Brave is sparse.
+  private async resolveVideos(query: string, braveVideos: BraveSearchResults['videos']): Promise<VideoResult[]> {
+    const MIN_VIDEOS = 2;
+    const videos = braveVideos
+      .filter((v) => !!v.url)
+      .map((v) => ({ title: v.title, url: v.url, thumbnail: v.thumbnail, duration: v.duration }));
+
+    if (videos.length >= MIN_VIDEOS) return videos;
+
+    const serp = await this.serpVideos(query);
+    return this.dedupeByUrl([...videos, ...serp]).slice(0, 10);
+  }
+
+  private async serpVideos(query: string): Promise<VideoResult[]> {
     try {
-      const media = await searchSerpBraveVideos(query);
-      return media.map((v) => ({
-        title: v.title,
-        url: v.url,
-        thumbnail: v.thumbnail,
-        duration: v.duration
-      }));
+      const media = await searchSerpApiVideos(query, 10);
+      return media.map((v) => ({ title: v.title, url: v.url, thumbnail: v.thumbnail, duration: v.duration }));
     } catch (error) {
-      logger.warn('InsightAgent: video search failed', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      logger.warn('InsightAgent: SerpApi video fallback failed', { error: error instanceof Error ? error.message : 'Unknown error' });
       return [];
     }
+  }
+
+  private dedupeByUrl<T extends { url: string }>(items: T[]): T[] {
+    const seen = new Set<string>();
+    const out: T[] = [];
+    for (const item of items) {
+      if (!item.url || seen.has(item.url)) continue;
+      seen.add(item.url);
+      out.push(item);
+    }
+    return out;
   }
 
   // ---- Step 3: writer (single LLM call, journalistic article) ----
