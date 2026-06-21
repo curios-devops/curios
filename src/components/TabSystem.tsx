@@ -1,10 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Image, Video, List, Globe, ChevronDown, Wand2, Loader2 } from 'lucide-react';
+import { Image, Video, List, Globe, ChevronDown, Wand2, Loader2, Crown, Headphones, Pause } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useSession } from '../hooks/useSession';
 import { useSubscription } from '../hooks/useSubscription';
 import { useProCredits } from '../providers/ProCreditsProvider';
 import { generateArticleImage, extractArticleSummary } from '../services/research/regular/agents/imageGenerationService';
+import { NarrationService } from '../services/cinematic/audio/NarrationService';
+
+// ElevenLabs premade voices for the "Listen to this article" picker.
+const ELEVENLABS_VOICES: { id: string; name: string }[] = [
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah' },
+  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel' },
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam' },
+  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni' },
+  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi' },
+];
+
+// Strip markdown/HTML and cap length so the TTS request stays within provider limits.
+const stripForTts = (md: string): string =>
+  md
+    .replace(/<[^>]*>/g, '')
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+    .replace(/[#*_`>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 5000);
 import ImageGenerationModal from './common/ImageGenerationModal';
 import SignInModal from './auth/SignInModal';
 import ProModal from './subscription/ProModal';
@@ -109,6 +129,13 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
   const [isHDEnabled, setIsHDEnabled] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
+  // "Listen to this article" (Pro TTS) state
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState(ELEVENLABS_VOICES[0].id);
+  const [showVoiceDropdown, setShowVoiceDropdown] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const voiceDropdownRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const imageModalTimeoutRef = useRef<number | null>(null);
   const accent = useAccentColor();
@@ -339,6 +366,83 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
     };
   }, []);
 
+  // Stop audio playback on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Close voice dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (voiceDropdownRef.current && !voiceDropdownRef.current.contains(event.target as Node)) {
+        setShowVoiceDropdown(false);
+      }
+    };
+    if (showVoiceDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showVoiceDropdown]);
+
+  // Reset any generated audio (e.g. after a voice change) so the next play regenerates.
+  const resetAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsPlaying(false);
+  };
+
+  // "Listen to this article" — Pro TTS via ElevenLabs, gated by Pro Credits.
+  const handleListen = async () => {
+    // Toggle pause while playing.
+    if (isPlaying && audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    // Resume already-generated audio without spending another credit.
+    if (audioRef.current) {
+      if (audioRef.current.ended) audioRef.current.currentTime = 0;
+      await audioRef.current.play().catch(() => {});
+      setIsPlaying(true);
+      return;
+    }
+
+    // First play is a Pro feature — consume a daily credit. requestProAccess opens
+    // the register/upgrade/quota modal and returns false when access is blocked.
+    const allowed = await requestProAccess();
+    if (!allowed) return;
+
+    const text = stripForTts(result?.markdown_report || '');
+    if (!text) return;
+
+    try {
+      setIsGeneratingAudio(true);
+      const narration = new NarrationService();
+      const res = await narration.generateNarration(
+        [{ text, startTime: 0, duration: 0 }],
+        { voice: selectedVoice }
+      );
+      const audio = new Audio(res.audioUrl);
+      audio.onended = () => setIsPlaying(false);
+      audio.onerror = () => setIsPlaying(false);
+      audioRef.current = audio;
+      await audio.play();
+      setIsPlaying(true);
+    } catch (error) {
+      console.error('[Listen] TTS generation failed', error);
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
   const tabs = [
     { 
       id: 'curios', 
@@ -549,18 +653,65 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
 
                       {/* Image generation controls and Listen - always show when there's a result */}
                       <div className="flex justify-between items-center mt-3">
-                        {/* Listen to article section - left side */}
-                        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                          {(() => {
-                            const { listeningTime } = calculateReadingTime(result.markdown_report || '');
-                            return (
-                              <div className="flex items-center gap-2">
-                                <span>🎧</span>
+                        {/* Listen to article (Pro TTS) - left side */}
+                        {(() => {
+                          const { listeningTime } = calculateReadingTime(result.markdown_report || '');
+                          const selectedVoiceName = ELEVENLABS_VOICES.find(v => v.id === selectedVoice)?.name || 'Voice';
+                          return (
+                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 relative" ref={voiceDropdownRef}>
+                              {/* Listen / play-pause button */}
+                              <button
+                                type="button"
+                                onClick={handleListen}
+                                disabled={isGeneratingAudio}
+                                title={canUseProFeature ? 'Listen to this article (Pro)' : 'Pro feature — out of daily credits'}
+                                className="flex items-center gap-2 transition-opacity hover:opacity-80 disabled:cursor-wait"
+                                style={{ opacity: canUseProFeature ? 1 : 0.5 }}
+                              >
+                                {isGeneratingAudio ? (
+                                  <Loader2 size={16} className="animate-spin" />
+                                ) : isPlaying ? (
+                                  <Pause size={16} />
+                                ) : (
+                                  <Headphones size={16} />
+                                )}
                                 <span>Listen to this article · {listeningTime} min</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
+                                {/* Pro marker */}
+                                <Crown size={13} style={{ color: '#F5B301' }} />
+                              </button>
+
+                              {/* Voice selector */}
+                              <button
+                                type="button"
+                                onClick={() => setShowVoiceDropdown(v => !v)}
+                                title="Select voice"
+                                className="flex items-center gap-1 px-2 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              >
+                                <span className="text-xs">{selectedVoiceName}</span>
+                                <ChevronDown size={12} />
+                              </button>
+
+                              {showVoiceDropdown && (
+                                <div className="absolute bottom-full left-0 mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20 min-w-[150px] overflow-hidden">
+                                  {ELEVENLABS_VOICES.map(v => (
+                                    <button
+                                      key={v.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedVoice(v.id);
+                                        setShowVoiceDropdown(false);
+                                        resetAudio();
+                                      }}
+                                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${v.id === selectedVoice ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}
+                                    >
+                                      {v.name}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Generate Image button - right side */}
                         <div className="relative">
