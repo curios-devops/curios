@@ -210,63 +210,75 @@ export class InsightAgent {
     ];
   }
 
-  // ---- Step 2: search — text + images run in parallel and independently ----
-  // Text: Exa → Tavily → Brave (text only). Images: SerpApi → Brave.
+  // ---- Step 2: search — Exa + Tavily + Brave + SerpApi(images) all in parallel ----
+  // Exa carries the main results; Tavily and Brave add additional perspectives
+  // (merged + deduped); images come from SerpApi → Brave. Everything runs
+  // concurrently to keep latency down — no sequential fallback chain.
 
   private async search(queries: string[]): Promise<{ results: SearchResult[]; images: ImageResult[] }> {
-    const combinedQuery = queries.join(' ').trim();
-    const [results, images] = await Promise.all([
-      this.searchText(combinedQuery),
-      this.searchImages(combinedQuery)
+    const query = queries.join(' ').trim();
+    const [exa, tavily, brave, images] = await Promise.all([
+      this.runExa(query),
+      this.runTavily(query),
+      this.runBrave(query),
+      this.searchImages(query)
     ]);
+
+    const results = this.mergeText(exa, tavily, brave);
+    logger.info('InsightAgent: parallel search complete', {
+      exa: exa.length, tavily: tavily.length, brave: brave.length,
+      merged: results.length, images: images.length
+    });
     return { results, images };
   }
 
-  // Text search: Exa (primary) → Tavily → Brave. Each tier is tried only if the
-  // previous returns no usable results. Text only — images come from searchImages().
-  private async searchText(query: string): Promise<SearchResult[]> {
-    const clean = (results: SearchResult[]) =>
-      results.filter((r) => r.url && r.url !== '#' && r.title && r.content).slice(0, 10);
+  private clean(results: SearchResult[]): SearchResult[] {
+    return results.filter((r) => r.url && r.url !== '#' && r.title && r.content).slice(0, 10);
+  }
 
-    // 1) Exa (primary).
+  // Exa — main web search. Each engine is self-guarded so one failure never sinks
+  // the Promise.all; empty results just mean the others carry the load.
+  private async runExa(query: string): Promise<SearchResult[]> {
     try {
-      const results = clean(await searchExa(query, 10));
-      if (results.length > 0) {
-        logger.info('InsightAgent: Exa text search successful', { resultsCount: results.length });
-        return results;
-      }
+      return this.clean(await searchExa(query, 10));
     } catch (error) {
-      logger.warn('InsightAgent: Exa failed, falling back to Tavily', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-
-    // 2) Tavily.
-    try {
-      const tavily = await searchWithTavily(query);
-      const results = clean(tavily.results || []);
-      if (results.length > 0) {
-        logger.info('InsightAgent: Tavily text fallback successful', { resultsCount: results.length });
-        return results;
-      }
-    } catch (error) {
-      logger.warn('InsightAgent: Tavily failed, falling back to Brave', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-
-    // 3) Brave (last resort).
-    try {
-      const brave = await braveSearchTool(query);
-      const results = clean(brave.web || []);
-      logger.info('InsightAgent: Brave text fallback', { resultsCount: results.length });
-      return results;
-    } catch (error) {
-      logger.error('InsightAgent: all text engines failed (Exa, Tavily, Brave)', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      logger.warn('InsightAgent: Exa search failed', { error: error instanceof Error ? error.message : 'Unknown error' });
       return [];
     }
+  }
+
+  // Tavily — perspective source.
+  private async runTavily(query: string): Promise<SearchResult[]> {
+    try {
+      const tavily = await searchWithTavily(query);
+      return this.clean(tavily.results || []);
+    } catch (error) {
+      logger.warn('InsightAgent: Tavily search failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+      return [];
+    }
+  }
+
+  // Brave — perspective source.
+  private async runBrave(query: string): Promise<SearchResult[]> {
+    try {
+      const brave = await braveSearchTool(query);
+      return this.clean(brave.web || []);
+    } catch (error) {
+      logger.warn('InsightAgent: Brave search failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+      return [];
+    }
+  }
+
+  // Merge Exa (main) with Tavily + Brave (perspectives), dedupe by URL, cap at 12.
+  private mergeText(exa: SearchResult[], tavily: SearchResult[], brave: SearchResult[]): SearchResult[] {
+    const seen = new Set<string>();
+    const merged: SearchResult[] = [];
+    for (const r of [...exa, ...tavily, ...brave]) {
+      if (seen.has(r.url)) continue;
+      seen.add(r.url);
+      merged.push(r);
+    }
+    return merged.slice(0, 12);
   }
 
   // Image search: SerpApi (primary) → Brave, via the shared media provider.
