@@ -16,21 +16,22 @@ const OPENAI_ORG_ID = Deno.env.get("OPENAI_ORG_ID");
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const TIMEOUT_MS = 8000; // Keep fast — Auto must not block the user.
 
-type Mode = "search" | "avatar" | "movie";
-const VALID_MODES: Mode[] = ["search", "avatar", "movie"];
+type Mode = "search" | "avatar" | "movie" | "stories";
+const VALID_MODES: Mode[] = ["search", "avatar", "movie", "stories"];
 
 const SYSTEM_PROMPT = `You are an intent router. Classify the user's query into exactly ONE mode:
 
-- "search": informational, factual, news, prices, trends, "what's happening / what's new" questions. Examples: "Tesla stock price", "Latest OpenAI news", "What's new in AI in 2026".
-- "avatar": educational / explainer requests where the user wants to learn or understand a topic. Examples: "Explain black holes", "Teach me calculus", "Help me understand inflation".
-- "movie": entertainment / storytelling requests. Examples: "Tell me the story of Rome", "Explain WW2 as a movie".
+- "search": a specific, factual lookup with a concrete answer — facts, prices, definitions, a single piece of news. Examples: "Tesla stock price", "Who won the 2026 election", "Latest iPhone release date".
+- "stories": a request to understand what's happening, trending, or emerging around a topic — trend analysis and "what's new / what's happening / latest developments" framed broadly. Examples: "What's happening with AI?", "What's new in technology this year?", "Latest trends in startups", "Tell me about quantum computing developments".
+- "avatar": educational / explainer requests where the user wants to learn or understand a concept. Examples: "Explain black holes", "Teach me calculus", "Help me understand inflation".
+- "movie": entertainment / storytelling requests meant to be experienced as a narrative. Examples: "Tell me the story of Rome", "Explain WW2 as a movie".
 
 Rules:
-- Fold any trends/news/"latest"/Stories-type query into "search".
-- Never output "cinematic" or "stories".
+- "search" is for a single concrete fact; "stories" is for broader trends/developments on a topic.
+- Never output "cinematic".
 - When unsure, choose "search".
 
-Respond with strict JSON only: {"mode":"search|avatar|movie","reasoning":"<short>"}.`;
+Respond with strict JSON only: {"mode":"search|stories|avatar|movie","reasoning":"<short>"}.`;
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

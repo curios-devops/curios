@@ -28,13 +28,10 @@ const SearchResults = lazy(() => import('./services/legacy-search/regular/pages/
 // Fast Search is now the primary "Search" and lives under services/search.
 const FastSearchResults = lazy(() => import('./services/search/pages/FastSearchResults.tsx'));
 const AvatarSearchResults = lazy(() => import('./services/legacy-search/avatar/pages/AvatarSearchResults.tsx'));
-// Research temporarily disabled (not working + caused a production chunk-init crash).
-// const DeepResearchResults = lazy(() => import('./services/research/pro/pages/ResearchResults.tsx'));
 const ProSearchResults = lazy(() => import('./services/legacy-search/pro/pages/ProSearchResults.tsx'));
 const ProSearchTest = lazy(() => import('./services/legacy-search/pro/pages/ProSearchTest.tsx'));
-// const InsightsResults = lazy(() => import('./services/research/regular/pages/InsightsResults.tsx'));
-// const TavilySearchTest = lazy(() => import('./services/research/regular/pages/TavilySearchTest.tsx'));
-// const ResearcherResults = lazy(() => import('./services/research/pro/pages/ResearcherResults.tsx'));
+// Insights (Stories) — regular research workflow. Pro research was removed.
+const InsightsResults = lazy(() => import('./services/research/regular/pages/InsightsResults.tsx'));
 // const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx')); // Replaced by Studio
 const StudioResults = lazy(() => import('./services/studio/pages/StudioResults.tsx'));
 const CinematicResults = lazy(() => import('./services/cinematic/pages/CinematicResults.tsx'));
@@ -84,12 +81,8 @@ const router = createBrowserRouter(
         { path: '/avatar-search', element: <LazyPageWrapper><AvatarSearchResults /></LazyPageWrapper> },
         { path: '/pro-search', element: <LazyPageWrapper><ProSearchResults /></LazyPageWrapper> },
         { path: '/pro-search-test', element: <LazyPageWrapper><ProSearchTest /></LazyPageWrapper> },
-        // Research routes temporarily disabled (see lazy imports above).
-        // { path: '/deep-research', element: <LazyPageWrapper><DeepResearchResults /></LazyPageWrapper> },
-        // { path: '/insights-results', element: <LazyPageWrapper><InsightsResults /></LazyPageWrapper> },
-        // { path: '/tavily-search', element: <LazyPageWrapper><TavilySearchTest /></LazyPageWrapper> },
-        // { path: '/research-results', element: <LazyPageWrapper><ResearcherResults /></LazyPageWrapper> },
-        // { path: '/researcher-results', element: <LazyPageWrapper><ResearcherResults /></LazyPageWrapper> },
+        { path: '/insights-results', element: <LazyPageWrapper><InsightsResults /></LazyPageWrapper> },
+        // Pro research routes removed (legacy code deleted).
         // Labs routes replaced by Studio
         // { path: '/labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
         // { path: '/pro-labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },

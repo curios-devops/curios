@@ -1,8 +1,7 @@
-// InsightsService - Regular/Free-tier Insights ONLY
-// Maintains strict isolation from pro research workflow
-// Independent service for insights analysis
+// InsightsService - Regular/Free-tier Insights (Stories) ONLY
+// Thin wrapper around the single-agent InsightAgent pipeline.
 
-import { InsightSwarmController, InsightRequest, InsightResult } from './insightSwarmController';
+import { InsightAgent, InsightRequest, InsightResult } from './insightAgent';
 import { logger } from '../../../../utils/logger';
 
 export type InsightProgressCallback = (
@@ -23,11 +22,16 @@ export type InsightProgressCallback = (
 ) => void;
 
 class InsightsService {
-  private insightSwarmController: InsightSwarmController;
+  // Lazily created on first use — keeps module evaluation side-effect free to
+  // avoid the cross-chunk TDZ crash that previously took down this route.
+  private agent: InsightAgent | null = null;
 
-  constructor() {
-    this.insightSwarmController = new InsightSwarmController();
-    logger.info('InsightsService initialized (Free-tier workflow)');
+  private getAgent(): InsightAgent {
+    if (!this.agent) {
+      this.agent = new InsightAgent();
+      logger.info('InsightsService initialized (Free-tier workflow)');
+    }
+    return this.agent;
   }
 
   async performInsightAnalysis(
@@ -44,8 +48,8 @@ class InsightsService {
         focusCategory: focusCategory // No default - let auto-detection work
       };
 
-      const result = await this.insightSwarmController.processInsightQuery(request, onProgress);
-      
+      const result = await this.getAgent().process(request, onProgress);
+
       logger.info('InsightsService: Insight analysis completed successfully', {
         query,
         reportLength: result.markdown_report.length,
@@ -59,7 +63,7 @@ class InsightsService {
         error: error instanceof Error ? error.message : 'Unknown error',
         query
       });
-      
+
       throw new Error(`Insight analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -69,4 +73,4 @@ class InsightsService {
 export const insightsService = new InsightsService();
 
 // Export types for external use
-export type { InsightResult, InsightRequest } from './insightSwarmController';
+export type { InsightResult, InsightRequest } from './insightAgent';

@@ -129,7 +129,11 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
       } else {
         setIsRouting(true);
         const intent = await classifyIntent(trimmedQuery);
-        resolvedMode = intent === 'avatar' ? 'avatar' : intent === 'movie' ? 'movie' : 'fastsearch';
+        resolvedMode =
+          intent === 'avatar' ? 'avatar'
+          : intent === 'movie' ? 'movie'
+          : intent === 'stories' ? 'stories'
+          : 'fastsearch';
         setIsRouting(false);
       }
     }

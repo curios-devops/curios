@@ -1,8 +1,8 @@
 import { supabase } from '../../lib/supabase.ts';
 import { logger } from '../../utils/logger.ts';
 
-// Modes that Auto can resolve to. Cinematic/Stories are never auto-routed.
-export type AutoIntent = 'search' | 'avatar' | 'movie';
+// Modes that Auto can resolve to. Cinematic is never auto-routed.
+export type AutoIntent = 'search' | 'avatar' | 'movie' | 'stories';
 
 const CLASSIFY_TIMEOUT_MS = 3000;
 
@@ -18,7 +18,7 @@ export async function classifyIntent(query: string): Promise<AutoIntent> {
       .then(({ data, error }) => {
         if (error) throw error;
         const mode = (data as { mode?: string } | null)?.mode;
-        return mode === 'avatar' || mode === 'movie' ? mode : 'search';
+        return mode === 'avatar' || mode === 'movie' || mode === 'stories' ? mode : 'search';
       });
 
     const timeout = new Promise<AutoIntent>((resolve) =>
