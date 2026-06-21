@@ -13,6 +13,7 @@ import { uploadMultipleImages } from '../../utils/imageUpload.ts';
 import { logger } from '../../utils/logger.ts';
 import { useVoiceRecording } from '../../hooks/useVoiceRecording.ts';
 import { transcribeAudioWithFallback } from '../../services/stt/transcriptionService.ts';
+import { classifyIntent } from '../../services/auto/intentRouter.ts';
 
 interface QueryBoxContainerProps {
   onModeChange?: (mode: ModeType) => void;
@@ -26,7 +27,8 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
     // reloads on return) doesn't wipe what the user was typing.
     try { return sessionStorage.getItem('home_search_draft') ?? ''; } catch { return ''; }
   });
-  const [selectedMode, setSelectedMode] = useState<ModeType>('fastsearch');
+  const [selectedMode, setSelectedMode] = useState<ModeType>('auto');
+  const [isRouting, setIsRouting] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [signInContext, setSignInContext] = useState<'default' | 'reverse-image' | 'document'>('default');
   const [showAttachMenu, setShowAttachMenu] = useState(false);
@@ -65,6 +67,8 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
   // Mode mapping for navigation
   const getModeRoute = (mode: ModeType): string => {
     switch (mode) {
+      case 'auto':
+        return '/fast-search';
       case 'search':
         return '/search';
       case 'fastsearch':
@@ -87,7 +91,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
   };
 
   const handleModeClear = () => {
-    setSelectedMode('fastsearch');
+    setSelectedMode('auto');
   };
 
   const handleSearch = async () => {
@@ -115,7 +119,22 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
       }
     }
 
-    const route = getModeRoute(selectedMode);
+    // Auto mode: detect intent and resolve to a concrete mode before routing.
+    // Explicit modes (selectedMode !== 'auto') are honored as-is — no classification.
+    let resolvedMode = selectedMode;
+    if (selectedMode === 'auto') {
+      if (hasImages) {
+        // Images always mean reverse-image search — skip classification.
+        resolvedMode = 'fastsearch';
+      } else {
+        setIsRouting(true);
+        const intent = await classifyIntent(trimmedQuery);
+        resolvedMode = intent === 'avatar' ? 'avatar' : intent === 'movie' ? 'movie' : 'fastsearch';
+        setIsRouting(false);
+      }
+    }
+
+    const route = getModeRoute(resolvedMode);
 
     // Pass image URLs as URL parameters (comma-separated)
     const imageParam = imageUrls.length > 0 ? `&images=${encodeURIComponent(imageUrls.join(','))}` : '';
@@ -266,6 +285,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
           setShowAttachMenu={setShowAttachMenu}
           reverseImageRef={reverseImageRef}
           onSearchClick={handleSearch}
+          isRouting={isRouting}
           isSearchDisabled={!query.trim() && imageAttachments.length === 0}
           isSearchActive={query.trim().length > 0 || imageAttachments.length > 0}
           attachMenuRef={attachMenuRef}

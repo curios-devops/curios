@@ -13,6 +13,8 @@ interface SearchTextAreaProps {
 // Get placeholder based on mode
 const getPlaceholderKey = (mode: ModeType): string => {
   switch (mode) {
+    case 'auto':
+      return 'placeholderAuto';
     case 'search':
       return 'placeholderSearch';
     case 'stories':

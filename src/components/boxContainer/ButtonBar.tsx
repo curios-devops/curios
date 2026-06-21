@@ -41,6 +41,7 @@ interface ButtonBarProps {
   setShowAttachMenu: (show: boolean) => void;
   reverseImageRef: React.RefObject<ReverseImageSearchHandle>;
   onSearchClick: () => void;
+  isRouting?: boolean;
   isSearchDisabled: boolean;
   isSearchActive: boolean;
   attachMenuRef: React.RefObject<HTMLDivElement>;
@@ -57,6 +58,7 @@ export default function ButtonBar({
   setShowAttachMenu,
   reverseImageRef,
   onSearchClick,
+  isRouting = false,
   isSearchDisabled,
   isSearchActive,
   attachMenuRef,
@@ -86,6 +88,8 @@ export default function ButtonBar({
   // Get mode label
   const getModeLabel = (mode: ModeType): string => {
     switch (mode) {
+      case 'auto':
+        return t('auto') || 'Auto';
       case 'search':
         return t('search') || 'Search';
       case 'fastsearch':
@@ -222,7 +226,8 @@ export default function ButtonBar({
           <SearchButton
             onClick={onSearchClick}
             isActive={isSearchActive}
-            disabled={isSearchDisabled}
+            disabled={isSearchDisabled || isRouting}
+            isRouting={isRouting}
           />
         )}
       </div>

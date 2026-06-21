@@ -1,8 +1,8 @@
-import { BookOpen, Clapperboard, Popcorn, UserCircle, Search } from 'lucide-react';
+import { BookOpen, Clapperboard, Popcorn, UserCircle, Search, Rocket } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
-export type ModeType = 'search' | 'stories' | 'cinematic' | 'movie' | 'avatar' | 'fastsearch';
+export type ModeType = 'auto' | 'search' | 'stories' | 'cinematic' | 'movie' | 'avatar' | 'fastsearch';
 
 interface Mode {
   id: ModeType;
@@ -13,6 +13,7 @@ interface Mode {
 // 'fastsearch' is the new primary "Search" (default). Legacy 'search' is kept in
 // the type for old routes but is no longer offered in the dropdown.
 const modes: Mode[] = [
+  { id: 'auto', label: 'auto', icon: Rocket },
   { id: 'fastsearch', label: 'search', icon: Search },
   { id: 'stories', label: 'stories', icon: BookOpen },
   { id: 'cinematic', label: 'cinematic', icon: Clapperboard },

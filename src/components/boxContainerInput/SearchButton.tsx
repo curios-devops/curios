@@ -5,9 +5,10 @@ interface SearchButtonProps {
   onClick: () => void;
   disabled: boolean;
   isActive: boolean;
+  isRouting?: boolean;
 }
 
-export default function SearchButton({ onClick, disabled }: SearchButtonProps) {
+export default function SearchButton({ onClick, disabled, isRouting = false }: SearchButtonProps) {
   const accentColor = useAccentColor();
   return (
     <button
@@ -39,10 +40,14 @@ export default function SearchButton({ onClick, disabled }: SearchButtonProps) {
       }}
       aria-label="Search"
     >
-      <ArrowRight 
-        size={18} 
-        className="transition-colors duration-250 ease-in-out text-white"
-      />
+      {isRouting ? (
+        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      ) : (
+        <ArrowRight
+          size={18}
+          className="transition-colors duration-250 ease-in-out text-white"
+        />
+      )}
     </button>
   );
 }
