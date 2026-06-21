@@ -1,4 +1,4 @@
-import { type LucideIcon, Plus, Image as ImageIcon, Search, ChevronDown } from 'lucide-react';
+import { type LucideIcon, Plus, Image as ImageIcon, Search, ChevronDown, Rocket } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 import ActionButton from '../boxContainerInput/ActionButton.tsx';
 import ModeSelector from '../boxContainerInput/ModeSelector.tsx';
@@ -168,7 +168,7 @@ export default function ButtonBar({
               e.currentTarget.style.color = '';
             }}
           >
-            <Search size={16} />
+            {selectedMode === 'auto' ? <Rocket size={16} /> : <Search size={16} />}
             <span className="text-sm font-medium whitespace-nowrap">
               {getModeLabel(selectedMode)}
             </span>

@@ -1,5 +1,6 @@
 // Image Generation Service for Insights Articles
-// Uses OpenAI gpt-image-2 (same model as Movie) via the fetch-openai edge function.
+// Uses OpenAI gpt-image-2 (same model as Movie) via the fetch-openai edge function,
+// falling back to dall-e-3 if gpt-image-2 is unavailable.
 // Quality lever: 'low' (free/standard) | 'medium' (HD / Pro).
 
 // Focus category type from our insights system
@@ -106,27 +107,44 @@ export async function generateArticleImage(
       throw new Error('Supabase configuration missing (VITE_OPENAI_API_URL or VITE_SUPABASE_ANON_KEY)');
     }
 
-    // gpt-image-2 (same model Movie uses). Returns base64 → the edge function hands
-    // back a data URL when no storageBucket is requested, which the hero <img> renders.
-    const response = await fetch(supabaseEdgeUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`
-      },
-      body: JSON.stringify({
-        imageGeneration: true,
-        prompt,
-        model,
-        size: '1024x1536', // portrait hero
-        quality,
-        n: 1
-      })
+    const callEdge = (payload: Record<string, unknown>) =>
+      fetch(supabaseEdgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+    // Primary: gpt-image-2 (same model Movie uses). Returns base64 → the edge function
+    // hands back a data URL when no storageBucket is requested, which the hero renders.
+    let response = await callEdge({
+      imageGeneration: true,
+      prompt,
+      model,
+      size: '1024x1536', // portrait hero
+      quality,
+      n: 1
     });
 
+    // Fallback: dall-e-3 if gpt-image-2 is unavailable (e.g. org not verified).
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Image generation failed (${response.status}): ${errorText}`);
+      console.warn('⚠️ [Image] gpt-image-2 failed, falling back to dall-e-3:', errorText);
+      response = await callEdge({
+        imageGeneration: true,
+        prompt,
+        model: 'dall-e-3',
+        size: '1024x1792', // portrait for dall-e-3
+        quality: quality === 'low' ? 'standard' : 'hd', // dall-e-3 quality scale
+        n: 1
+      });
+
+      if (!response.ok) {
+        const fallbackError = await response.text();
+        throw new Error(`Image generation failed with both models (${response.status}): ${fallbackError}`);
+      }
     }
 
     const data = await response.json();
