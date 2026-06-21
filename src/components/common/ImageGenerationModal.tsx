@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { Check, Wand2 } from 'lucide-react';
+import { Check, Wand2, Crown } from 'lucide-react';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
 interface ImageGenerationModalProps {
@@ -54,83 +54,9 @@ export default function ImageGenerationModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
-  // Render different UI based on user type
-  if (userType === 'guest') {
-    return (
-      <div
-        ref={modalRef}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        className="absolute bottom-full right-0 mb-2 bg-white dark:bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
-      >
-        {/* Header */}
-        <div className="text-left mb-2.5">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-xs font-medium text-gray-900 dark:text-white">AI Image</h3>
-          </div>
-          <p className="text-gray-600 dark:text-gray-400 text-[10px]">Generate images with AI - Free for everyone</p>
-        </div>
-        
-        {/* Divider */}
-        <div className="border-t border-gray-200 dark:border-gray-700 my-2.5"></div>
-        
-        {/* Pro Toggle Section */}
-        <div className="mb-2.5">
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
-                PRO
-              </span>
-              <span className="text-[10px] font-bold" style={{ color: accentColor.primary }}>HD Quality</span>
-            </div>
-            {/* Interactive Toggle Switch for Guests (triggers sign-in) */}
-            <button
-              type="button"
-              onClick={onSignIn}
-              className="relative w-8 h-4 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer group"
-              title="Sign in to use HD quality"
-              onMouseEnter={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor.primary}4D`}
-              onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
-            >
-              <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-all group-hover:bg-gray-100"></div>
-            </button>
-          </div>
-          <p className="text-gray-600 dark:text-gray-300 text-[10px] mb-1.5">Sign in for HD quality - sharper visuals, full HD resolution.</p>
-        </div>
-        
-        {/* Generate Button - FREE for guests */}
-        <button
-          type="button"
-          onClick={() => onGenerate(false)}
-          className="w-full text-white py-2 rounded-lg transition-colors text-[10px] font-medium mb-2"
-          style={{ backgroundColor: accentColor.primary }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accentColor.hover}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor.primary}
-        >
-          Generate with AI (Free)
-        </button>
-
-        {/* Sign In CTA */}
-        <button
-          type="button"
-          onClick={onSignIn}
-          className="w-full border py-1.5 rounded-lg transition-colors text-[10px] font-medium"
-          style={{ borderColor: accentColor.primary, color: accentColor.primary }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = `${accentColor.primary}15`;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}
-        >
-          Sign In for HD
-        </button>
-        
-        {/* Arrow pointer */}
-        <div className="absolute -bottom-2 right-4 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-r border-b border-gray-200 dark:border-gray-800 rotate-45"></div>
-      </div>
-    );
-  }
+  // Render different UI based on user type. Guests and free users share the same
+  // credit-gated UI below (guests get a daily Pro credit); only premium differs.
+  void onSignIn;
 
   if (userType === 'premium') {
     // Premium user UI - unlimited HD images
@@ -241,8 +167,8 @@ export default function ImageGenerationModal({
     );
   }
 
-  if (userType === 'free') {
-    // Free user UI - with Pro quota and upgrade prompts
+  if (userType === 'free' || userType === 'guest') {
+    // Free / guest UI — credit-gated HD (both tiers get daily Pro credits)
     return (
       <div
         ref={modalRef}
@@ -273,8 +199,8 @@ export default function ImageGenerationModal({
             <div className="flex items-center gap-2">
               <Wand2 size={16} style={{ color: accentColor.primary }} />
               <span className="text-sm font-medium text-gray-900 dark:text-white">HD Quality</span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded font-medium">
-                Pro
+              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded font-medium">
+                <Crown size={11} style={{ color: '#F5B301' }} /> Pro
               </span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">

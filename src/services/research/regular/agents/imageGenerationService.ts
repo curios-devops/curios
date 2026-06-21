@@ -1,5 +1,6 @@
 // Image Generation Service for Insights Articles
-// Uses OpenAI's DALL-E API via Supabase Edge Function to generate custom images
+// Uses OpenAI gpt-image-2 (same model as Movie) via the fetch-openai edge function.
+// Quality lever: 'low' (free/standard) | 'medium' (HD / Pro).
 
 // Focus category type from our insights system
 type FocusCategory = 'ANALYSIS' | 'ARTS' | 'BUSINESS' | 'HEALTH & SPORT' | 'SCIENCES & TECH';
@@ -91,32 +92,23 @@ Balanced composition, soft lighting, and visually clear storytelling.
  * Generate an image using OpenAI's image generation API via Supabase Edge Function
  */
 export async function generateArticleImage(
-  options: ImagePromptOptions
+  options: ImagePromptOptions & { quality?: 'low' | 'medium' | 'high' }
 ): Promise<GeneratedImageResult> {
-  console.log('🎨 [Service] generateArticleImage called with options:', options);
-  
   try {
-    // Build the prompt
     const prompt = buildImagePrompt(options);
-    console.log('� [Service] Built prompt:', prompt);
-    console.log('📏 [Service] Prompt length:', prompt.length);
+    const quality = options.quality || 'low'; // 'low' = free/standard, 'medium' = HD/Pro
+    const model = import.meta.env.VITE_MOVIE_IMAGE_MODEL || 'gpt-image-2';
 
-    // Use Supabase Edge Function for OpenAI API calls (same as insightWriterAgent)
     const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    console.log('🔧 [Service] Using Supabase Edge Function');
-    console.log('🌐 [Service] Edge URL present:', !!supabaseEdgeUrl);
-    console.log('� [Service] Anon Key present:', !!supabaseAnonKey);
 
     if (!supabaseEdgeUrl || !supabaseAnonKey) {
       throw new Error('Supabase configuration missing (VITE_OPENAI_API_URL or VITE_SUPABASE_ANON_KEY)');
     }
 
-    // Try gpt-image-1 first, fallback to dall-e-3 if it fails
-    console.log('🚀 [Service] Trying gpt-image-1 first...');
-    
-    let response = await fetch(supabaseEdgeUrl, {
+    // gpt-image-2 (same model Movie uses). Returns base64 → the edge function hands
+    // back a data URL when no storageBucket is requested, which the hero <img> renders.
+    const response = await fetch(supabaseEdgeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -124,60 +116,26 @@ export async function generateArticleImage(
       },
       body: JSON.stringify({
         imageGeneration: true,
-        prompt: prompt,
-        model: 'gpt-image-1',
-        size: '1024x1536', // Portrait for gpt-image-1
-        quality: 'low',
+        prompt,
+        model,
+        size: '1024x1536', // portrait hero
+        quality,
         n: 1
       })
     });
 
-    console.log('📊 [Service] gpt-image-1 response status:', response.status);
-    
-    // If gpt-image-1 fails (403 = org not verified, etc), fallback to dall-e-3
     if (!response.ok) {
       const errorText = await response.text();
-      console.warn('⚠️ [Service] gpt-image-1 failed, falling back to dall-e-3:', errorText);
-      
-      console.log('🔄 [Service] Retrying with dall-e-3...');
-      response = await fetch(supabaseEdgeUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({
-          imageGeneration: true,
-          prompt: prompt,
-          model: 'dall-e-3',
-          size: '1024x1792', // Portrait for dall-e-3
-          quality: 'standard',
-          n: 1
-        })
-      });
-      
-      console.log('📊 [Service] dall-e-3 response status:', response.status);
-      
-      if (!response.ok) {
-        const fallbackError = await response.text();
-        console.error('❌ [Service] Both models failed. dall-e-3 error:', fallbackError);
-        throw new Error(`Image generation failed with both models: ${response.status}`);
-      }
+      throw new Error(`Image generation failed (${response.status}): ${errorText}`);
     }
 
     const data = await response.json();
-    console.log('✅ [Service] Response data:', data);
-
-    // Handle different response formats
     const imageUrl = data.url || data.data?.[0]?.url || data.image_url;
     const revisedPrompt = data.revised_prompt || data.data?.[0]?.revised_prompt;
 
     if (!imageUrl) {
-      console.error('❌ [Service] No image URL in response:', data);
       throw new Error('No image URL returned from API');
     }
-    
-    console.log('✅ [Service] Image generated successfully:', imageUrl);
 
     return {
       url: imageUrl,
@@ -186,8 +144,8 @@ export async function generateArticleImage(
   } catch (error) {
     console.error('❌ Image generation failed:', error);
     throw new Error(
-      error instanceof Error 
-        ? `Failed to generate image: ${error.message}` 
+      error instanceof Error
+        ? `Failed to generate image: ${error.message}`
         : 'Failed to generate image'
     );
   }

@@ -275,23 +275,15 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
     setShowImageModal(false);
   };
 
-  // Handle HD toggle - only for signed-in users
-  const handleHDToggle = () => {
-    // Guests need to sign in
-    if (userType === 'guest') {
+  // HD = medium-quality gpt-image-2, a Pro feature. Same logic as the audio feature:
+  // if out of daily Pro Credits, surface the register/upgrade/quota modal (without
+  // consuming a credit) instead of enabling HD. Otherwise just toggle.
+  const handleHDToggle = async () => {
+    if (!isHDEnabled && !canUseProFeature) {
       setShowImageModal(false);
-      setShowSignInModal(true);
+      await requestProAccess();
       return;
     }
-    
-    // Free users: surface upgrade before enabling HD when out of Pro Credits
-    if (userType === 'free' && !isHDEnabled && !canUseProFeature) {
-      setShowImageModal(false);
-      setShowProModal(true);
-      return;
-    }
-
-    // Toggle HD state
     setIsHDEnabled(!isHDEnabled);
   };
 
@@ -309,9 +301,9 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
       return;
     }
 
-    // HD generation is a Pro Feature: consume a Pro Credit (free & pro tiers).
-    // The provider opens the tier-appropriate modal if access is blocked.
-    if (useHD && userType !== 'guest') {
+    // HD (medium quality) is a Pro Feature: consume a daily Pro Credit for every tier
+    // (guests included). The provider opens the register/upgrade/quota modal if blocked.
+    if (useHD) {
       const allowed = await requestProAccess();
       if (!allowed) {
         setShowImageModal(false);
@@ -339,7 +331,8 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
       const imageResult = await generateArticleImage({
         articleTitle: result.headline,
         articleSummary: summary,
-        focusCategory: (focusCategory || result.focus_category) as any
+        focusCategory: (focusCategory || result.focus_category) as any,
+        quality: useHD ? 'medium' : 'low'
       });
 
       console.log('✅ [Image Generation] Image generated successfully:', imageResult.url);
