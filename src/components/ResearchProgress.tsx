@@ -53,7 +53,7 @@ export const ResearchProgress: React.FC<ResearchProgressProps> = ({
       {/* Title */}
       <div className="flex items-center gap-3 mb-6">
         <Brain style={{ color: accentColors.primary }} size={24} />
-        <h3 className="text-lg font-medium">Curios AI Insights</h3>
+        <h3 className="text-lg font-medium">Curios AI Stories</h3>
       </div>
       
       {/* Vertical Timeline Progress */}
@@ -73,7 +73,7 @@ export const ResearchProgress: React.FC<ResearchProgressProps> = ({
           />
         )}
 
-        {/* Step 1: Insights */}
+        {/* Step 1: Story */}
         <div className="relative mb-1">
           <div className="absolute -left-8 w-6 h-6 flex items-center justify-center z-10">
             {isAnalyzing ? (
@@ -85,7 +85,7 @@ export const ResearchProgress: React.FC<ResearchProgressProps> = ({
           <div className="opacity-0 animate-fade-in-up">
             <div className="font-medium text-sm mb-1 flex items-center gap-2" style={{ color: accentColors.primary }}>
               <Lightbulb size={16} />
-              <span>Insights</span>
+              <span>Story</span>
             </div>
             {visibleSteps.length > 0 && (
               <div className="text-gray-400 text-xs space-y-1 mt-2">

@@ -1,13 +1,21 @@
 // Insights Results page with multi-agent workflow integration
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Search, Brain, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Search, Brain, Sparkles, CheckCircle2, ChevronDown } from 'lucide-react';
 import { insightsService, InsightProgressCallback } from '../agents/insightsService';
 import { SearchResult } from '../../types.ts';
 import ResearchProgress from '../../../../components/ResearchProgress';
 import TabSystem from '../../../../components/TabSystem';
-import ShareMenu from '../../../../components/ShareMenu';
 import { useAccentColor } from '../../../../hooks/useAccentColor';
+
+// Topic categories for the header dropdown (label = what the user sees).
+const FOCUS_CATEGORIES = [
+  { id: 'ANALYSIS', label: 'ANALYSIS' },
+  { id: 'ARTS', label: 'ARTS & ENTERTAINMENT' },
+  { id: 'BUSINESS', label: 'BUSINESS & INNOVATION' },
+  { id: 'HEALTH & SPORT', label: 'HEALTH & SPORT' },
+  { id: 'SCIENCES & TECH', label: 'SCIENCES & TECH' }
+];
 
 interface ProgressState {
   stage: string;
@@ -35,7 +43,9 @@ export default function InsightsResults() {
   const [error, setError] = useState<string | null>(null);
   const [workflowStarted, setWorkflowStarted] = useState(false);
   const [showPhaseIndicator, setShowPhaseIndicator] = useState(true);
-  
+  const [showFocusDropdown, setShowFocusDropdown] = useState(false);
+  const focusDropdownRef = useRef<HTMLDivElement>(null);
+
   // Handle focus category change
   const handleFocusChange = (newFocus: string) => {
     const params = new URLSearchParams(window.location.search);
@@ -43,14 +53,27 @@ export default function InsightsResults() {
     window.location.href = `/insights-results?${params.toString()}`;
   };
 
+  // Close the focus dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (focusDropdownRef.current && !focusDropdownRef.current.contains(event.target as Node)) {
+        setShowFocusDropdown(false);
+      }
+    };
+    if (showFocusDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showFocusDropdown]);
+
   const [progressState, setProgressState] = useState<ProgressState>({
-    stage: 'Initializing Insight Analysis',
+    stage: 'Starting Your Story',
     timeRemaining: 'About 2-3 minutes remaining',
     progress: 0,
     thinkingSteps: [],
     searchTerms: [],
     sources: [],
-    currentAgent: 'InsightAnalyzer',
+    currentAgent: 'StoryWriter',
     agentActions: [],
     insightPhase: 'analyzing'
   });
@@ -159,18 +182,48 @@ export default function InsightsResults() {
             )}
           </div>
         </div>
-        {/* Share Menu */}
+        {/* Topic category dropdown (accent) — replaces the old share button */}
         {!loading && result && (
-          <ShareMenu
-            url={globalThis.location.href}
-            title={result.headline || `Insights: ${query}`}
-            text={result.subtitle || result.markdown_report?.slice(0, 150) + '...' || ''}
-            query={query}
-            images={result.images || []}
-          />
+          <div className="relative flex-shrink-0" ref={focusDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setShowFocusDropdown(v => !v)}
+              title="Select topic category"
+              className="px-3 py-1.5 text-sm font-medium uppercase tracking-wider rounded-lg flex items-center gap-2 text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: accent.primary }}
+            >
+              {focusCategory || result?.focus_category || 'ANALYSIS'}
+              <ChevronDown className="w-4 h-4" />
+            </button>
+
+            {showFocusDropdown && (
+              <div className="absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg z-20 min-w-[210px] rounded-md overflow-hidden">
+                {FOCUS_CATEGORIES.map((category) => {
+                  const current = focusCategory || result?.focus_category || 'ANALYSIS';
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => {
+                        setShowFocusDropdown(false);
+                        if (category.id !== current) handleFocusChange(category.id);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm font-medium uppercase tracking-wider hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                        category.id === current
+                          ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white'
+                          : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {category.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
       </header>
-      <main className="max-w-4xl mx-auto px-6 py-6">
+      <main className="max-w-4xl mx-auto px-0 sm:px-6 py-6">
         {loading && (
           <div className="space-y-3">
             <ResearchProgress
@@ -242,12 +295,11 @@ export default function InsightsResults() {
           </div>
         )}
         {!loading && result && (
-          <TabSystem 
+          <TabSystem
             result={result}
             progressState={progressState}
             loading={loading}
             focusCategory={focusCategory}
-            onFocusChange={handleFocusChange}
           />
         )}
       </main>

@@ -33,6 +33,13 @@ export interface NarrationOptions {
 export class NarrationService {
   private readonly ttsTimeoutMs = 25000;
 
+  // Valid OpenAI TTS voices. The `voice` option may carry an ElevenLabs voice ID
+  // (used by the primary provider); if that leaks into the OpenAI fallback it
+  // 400s and narration fails entirely. Guard the fallback with the default voice.
+  private static readonly OPENAI_VOICES = new Set([
+    'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer',
+  ]);
+
   /**
    * Generate narration audio from text segments
    */
@@ -122,7 +129,9 @@ export class NarrationService {
     text: string,
     options: NarrationOptions
   ): Promise<NarrationResult> {
-    const voice = options.voice || 'alloy';
+    const voice = options.voice && NarrationService.OPENAI_VOICES.has(options.voice)
+      ? options.voice
+      : 'alloy';
     const speed = options.speed ?? 1.0;
 
     const data = await this.invokeTtsFunction('openai-tts', {

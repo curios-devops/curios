@@ -90,31 +90,31 @@ export class InsightAgent {
       const analysisStrategy = `Insight analysis on "${query}" — surface trends, patterns and actionable intelligence.`;
 
       onStatusUpdate?.(
-        'Analyzing Query for Insight Opportunities',
+        'Shaping Your Story',
         'About 1-2 minutes remaining',
         10,
-        'Identifying key areas for actionable insights',
+        'Finding the angle for your story',
         [],
         [],
-        'InsightAgent',
-        'Mapping insight areas and search strategy',
+        'StoryWriter',
+        'Mapping the story and search strategy',
         'analyzing'
       );
 
       // Step 2 — Search.
       onStatusUpdate?.(
-        'Searching for Insights',
+        'Gathering Sources for Your Story',
         'About 30 seconds remaining',
         40,
         'Searching for relevant sources and information',
         searchQueries,
         [],
-        'InsightAgent',
+        'StoryWriter',
         'Searching for sources across the web',
         'searching'
       );
 
-      const { results, images, videos } = await this.search(searchQueries);
+      const { results, images, videos } = await this.search(searchQueries, query);
 
       logger.info('InsightAgent: search complete', {
         resultsCount: results.length, imagesCount: images.length, videosCount: videos.length
@@ -122,14 +122,14 @@ export class InsightAgent {
 
       // Step 3 — Synthesis (single LLM call).
       onStatusUpdate?.(
-        'Generating Actionable Insights',
+        'Writing Your Story',
         'Almost complete',
         70,
-        'Synthesising data into actionable intelligence',
+        'Weaving the sources into a story',
         searchQueries,
         results.slice(0, 5),
-        'InsightAgent',
-        'Analysing patterns and writing the article',
+        'StoryWriter',
+        'Analysing patterns and writing the story',
         'synthesizing'
       );
 
@@ -180,7 +180,7 @@ export class InsightAgent {
         focusCategory: result.focus_category
       });
 
-      onStatusUpdate?.('Complete', 'Complete', 100, 'Insight generation complete', searchQueries, results.slice(0, 5), 'Complete', 'Ready', 'finalizing');
+      onStatusUpdate?.('Complete', 'Complete', 100, 'Your story is ready', searchQueries, results.slice(0, 5), 'Complete', 'Ready', 'finalizing');
 
       return result;
     } catch (error) {
@@ -205,13 +205,36 @@ export class InsightAgent {
     ];
   }
 
+  // Five differentiated angles routed to three engines (see `search`):
+  //   [0] expanded original question      → Exa
+  //   [1],[2] two "perspective" questions → Tavily (concatenated, one call)
+  //   [3],[4] two "counterpoint" questions → Brave (concatenated, one call)
   private buildSearchQueries(query: string): string[] {
+    const q = query.trim();
     return [
-      `${query} trends analysis`,
-      `${query} market insights`,
-      `${query} growth forecast`,
-      `${query} industry analysis`
+      `${q} latest developments and key facts`,
+      `What are the main benefits and opportunities of ${q}?`,
+      `Why does ${q} matter and who is most affected?`,
+      `What are the risks, downsides and criticisms of ${q}?`,
+      `What challenges and controversies surround ${q}?`
     ];
+  }
+
+  // A concrete, reformulated version of the user's query for IMAGE/VIDEO search.
+  // The raw query is often a question ("is X worth it?") which returns poorly
+  // aligned visuals — strip interrogatives/filler so search keys off the nouns.
+  private buildImageQuery(query: string): string {
+    const stopwords = /^\s*(what|why|how|who|when|where|which|whose|is|are|was|were|do|does|did|can|could|should|would|will|the|a|an)\b\s*/i;
+    let q = query.trim().replace(/\?+/g, ' ');
+    q = q.replace(stopwords, '').replace(stopwords, ''); // two passes for stacked stopwords
+    return q.replace(/\s+/g, ' ').trim() || query.trim();
+  }
+
+  // Hook-y, SEO-friendly fallback headline. Deliberately avoids "Understanding …".
+  private buildFallbackHeadline(query: string): string {
+    const q = query.trim().replace(/\?+$/, '');
+    const titled = q.charAt(0).toUpperCase() + q.slice(1);
+    return `${titled}: What's Happening and Why It Matters`;
   }
 
   // ---- Step 2: search — 3 concurrent calls + independent media fallbacks ----
@@ -221,19 +244,22 @@ export class InsightAgent {
   // if too few videos we fall back to SerpApi google_videos. Each fallback is
   // independent and fires only when its own media is sparse, keeping API usage low.
 
-  private async search(queries: string[]): Promise<{ results: SearchResult[]; images: ImageResult[]; videos: VideoResult[] }> {
-    const query = queries.join(' ').trim();
+  private async search(queries: string[], originalQuery: string): Promise<{ results: SearchResult[]; images: ImageResult[]; videos: VideoResult[] }> {
+    const [expanded, perspectiveA, perspectiveB, counterA, counterB] = queries;
+    const imageQuery = this.buildImageQuery(originalQuery);
 
+    // Each engine gets a distinct angle so the perspectives genuinely differ.
     const [brave, exa, tavily] = await Promise.all([
-      this.runBrave(query),
-      this.runExa(query),
-      this.runTavily(query)
+      this.runBrave(`${counterA} ${counterB}`.trim()),
+      this.runExa(expanded),
+      this.runTavily(`${perspectiveA} ${perspectiveB}`.trim())
     ]);
 
     const results = this.mergeText(this.clean(brave.web), exa, tavily);
+    // Media keys off the reformulated topic query, NOT the counterpoint web query.
     const [images, videos] = await Promise.all([
-      this.resolveImages(query, brave.images),
-      this.resolveVideos(query, brave.videos)
+      this.resolveImages(imageQuery, brave.images),
+      this.resolveVideos(imageQuery, brave.videos)
     ]);
 
     logger.info('InsightAgent: search complete', {
@@ -258,10 +284,17 @@ export class InsightAgent {
     }
   }
 
-  // Exa — text perspective.
+  // Exa — text perspective. Exa returns WebSearchResult (content optional, carries a
+  // snippet) — map it into SearchResult shape (content required) before cleaning.
   private async runExa(query: string): Promise<SearchResult[]> {
     try {
-      return this.clean(await searchExa(query, 10));
+      const exa = await searchExa(query, 10);
+      const mapped: SearchResult[] = exa.map((r) => ({
+        title: r.title,
+        url: r.url,
+        content: r.content || r.snippet || ''
+      }));
+      return this.clean(mapped);
     } catch (error) {
       logger.warn('InsightAgent: Exa search failed', { error: error instanceof Error ? error.message : 'Unknown error' });
       return [];
@@ -291,17 +324,20 @@ export class InsightAgent {
     return merged.slice(0, 12);
   }
 
-  // Images: Brave primary; fall back to SerpApi google_images only if Brave is sparse.
+  // Images: SerpApi keyed on the reformulated topic query is the primary source so
+  // visuals stay aligned with the user's subject. Brave images (from the counterpoint
+  // web query) are used ONLY as a fallback when SerpApi is sparse — never merged in
+  // routinely — to avoid leaning on (and rate-limiting) Brave.
   private async resolveImages(query: string, braveImages: BraveSearchResults['images']): Promise<ImageResult[]> {
     const MIN_IMAGES = 4;
-    const images = braveImages
+    const serp = await this.serpImages(query);
+    if (serp.length >= MIN_IMAGES) return serp.slice(0, 12);
+
+    const brave = braveImages
       .filter((img) => !!img.url)
       .map((img) => ({ url: img.url, image: img.url, alt: img.alt || query, source_url: img.source_url }));
 
-    if (images.length >= MIN_IMAGES) return images;
-
-    const serp = await this.serpImages(query);
-    return this.dedupeByUrl([...images, ...serp]).slice(0, 12);
+    return this.dedupeByUrl([...serp, ...brave]).slice(0, 12);
   }
 
   private async serpImages(query: string): Promise<ImageResult[]> {
@@ -385,7 +421,7 @@ JSON OUTPUT FORMAT:
 {
   "focus_category": "${detectedCategory}",
   "style_source": "${editorialStyle.source}",
-  "headline": "Compelling, NYT-style headline (8-12 words) that captures the core tension or development",
+  "headline": "A real, hook-y, SEO-friendly story title (8-12 words) that leads with the core development, tension or stakes. NEVER start with 'Understanding', 'Exploring', 'A Look at', or generic framing. Make a reader want to click.",
   "subtitle": "Contextual subheading (12-20 words) that expands on the headline with specifics",
   "short_summary": "Strong 2-3 sentence lede that answers: What happened? Why does it matter? What's at stake? (60-100 words)",
   "markdown_report": "FULL 800-1200 word article. Start with **Opening Section Title** (like 'The Shift', 'Breaking Ground', 'A New Era') followed by 3-4 engaging paragraphs. Then continue with 3-4 more **Bold Sections** with 2-3 paragraphs each. Write in natural, flowing journalistic prose. NO bullet points. NO lists. Pure narrative storytelling with facts, context, expert voices, and implications woven throughout.",
@@ -492,7 +528,7 @@ Make this feel like a premium piece of journalism that readers will want to fini
 
     result.focus_category = detectedCategory;
     result.style_source = result.style_source || editorialStyle.source;
-    result.headline = result.headline || `Understanding ${query}`;
+    result.headline = result.headline || this.buildFallbackHeadline(query);
     result.subtitle = result.subtitle || 'What You Need to Know About This Emerging Development';
     result.short_summary = result.short_summary || `Recent developments in ${query} are reshaping the landscape. Here's what experts say about the implications and what to watch for next.`;
 
@@ -618,7 +654,7 @@ Make this feel like a premium piece of journalism that readers will want to fini
     return {
       focus_category: detectedCategory,
       style_source: editorialStyle.source,
-      headline: `Understanding ${query}`,
+      headline: this.buildFallbackHeadline(query),
       subtitle: 'A Look at Recent Developments and What They Mean',
       short_summary: `Analysis of ${query} reveals emerging trends and significant changes. Experts are monitoring the situation as developments unfold and implications become clearer.`,
       markdown_report: this.generateStyledReport(query, results, detectedCategory),

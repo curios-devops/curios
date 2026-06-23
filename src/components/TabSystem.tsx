@@ -26,10 +26,22 @@ const stripForTts = (md: string): string =>
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 5000);
-import ImageGenerationModal from './common/ImageGenerationModal';
-import SignInModal from './auth/SignInModal';
-import ProModal from './subscription/ProModal';
 import CuriosLogo from './common/CuriosLogo';
+import CustomMarkdown from './CustomMarkdown';
+import ShareMenu from './ShareMenu';
+
+// Relative time: "Just now" → "5 min ago" → "3 hours ago" → "2 days ago" → "Jun 12, 2026".
+const formatRelativeTime = (date: Date): string => {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return 'Just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
 
 // Helper function to calculate reading and listening time
 const calculateReadingTime = (text: string) => {
@@ -57,26 +69,11 @@ const calculateReadingTime = (text: string) => {
   };
 };
 
-// Helper function to format current date and time
-const getCurrentDateTime = () => {
-  const now = new Date();
-  const options: Intl.DateTimeFormatOptions = {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  };
-  return now.toLocaleDateString('en-US', options).toUpperCase();
-};
-
 interface TabSystemProps {
   result: any;
   progressState: any;
   loading: boolean;
   focusCategory?: string;
-  onFocusChange?: (newFocus: string) => void;
 }
 
 interface SourceItemProps {
@@ -118,18 +115,14 @@ const SourceItem: React.FC<SourceItemProps> = ({ source, index }) => (
   </div>
 );
 
-export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loading, focusCategory, onFocusChange }) => {
+export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loading, focusCategory }) => {
   const [activeTab, setActiveTab] = useState<'curios' | 'steps' | 'sources' | 'images' | 'videos'>('curios');
-  const [showFocusDropdown, setShowFocusDropdown] = useState(false);
   const [featuredImageIndex, setFeaturedImageIndex] = useState(0);
   const [validImageIndices, setValidImageIndices] = useState<number[]>([]); // Track which images successfully load
   const [isValidatingImages, setIsValidatingImages] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [isHDEnabled, setIsHDEnabled] = useState(false);
-  const [showSignInModal, setShowSignInModal] = useState(false);
-  const [showProModal, setShowProModal] = useState(false);
+  const [showImageDropdown, setShowImageDropdown] = useState(false);
   // "Listen to this article" (Pro TTS) state
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -137,12 +130,11 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
   const [showVoiceDropdown, setShowVoiceDropdown] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const voiceDropdownRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const imageModalTimeoutRef = useRef<number | null>(null);
+  const imageDropdownRef = useRef<HTMLDivElement>(null);
   const accent = useAccentColor();
   const { session } = useSession();
   const { subscription } = useSubscription(session);
-  const { remaining, canUseProFeature, requestProAccess } = useProCredits();
+  const { canUseProFeature, requestProAccess } = useProCredits();
 
   // Determine user type
   const getUserType = (): 'guest' | 'free' | 'premium' => {
@@ -151,29 +143,6 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
   };
 
   const userType = getUserType();
-
-  // Focus category options
-  const focusCategories = [
-    { id: 'ANALYSIS', label: 'ANALYSIS' },
-    { id: 'ARTS', label: 'ARTS & ENTERTAINMENT' },
-    { id: 'BUSINESS', label: 'BUSINESS & INNOVATION' },
-    { id: 'HEALTH & SPORT', label: 'HEALTH & SPORT' },
-    { id: 'SCIENCES & TECH', label: 'SCIENCES & TECH' }
-  ];
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowFocusDropdown(false);
-      }
-    };
-
-    if (showFocusDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showFocusDropdown]);
 
   // Validate images on load - only show images that successfully load
   useEffect(() => {
@@ -234,59 +203,6 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
     window.location.href = `/insights-results?${searchParams.toString()}`;
   };
 
-  // Handle image generation modal on hover
-  const handleImageButtonMouseEnter = () => {
-    // Clear any existing timeout
-    if (imageModalTimeoutRef.current) {
-      clearTimeout(imageModalTimeoutRef.current);
-      imageModalTimeoutRef.current = null;
-    }
-    setShowImageModal(true);
-  };
-
-  const handleImageButtonMouseLeave = () => {
-    // Don't close immediately - wait to see if user moves to modal
-    imageModalTimeoutRef.current = window.setTimeout(() => {
-      setShowImageModal(false);
-    }, 300);
-  };
-
-  const handleImageModalMouseEnter = () => {
-    // Clear any pending close timeout when entering modal
-    if (imageModalTimeoutRef.current) {
-      clearTimeout(imageModalTimeoutRef.current);
-      imageModalTimeoutRef.current = null;
-    }
-  };
-
-  const handleImageModalMouseLeave = () => {
-    // Close modal after a delay when leaving modal area
-    imageModalTimeoutRef.current = window.setTimeout(() => {
-      setShowImageModal(false);
-    }, 300);
-  };
-
-  const handleImageModalClose = () => {
-    // Clear any timeouts and close immediately
-    if (imageModalTimeoutRef.current) {
-      clearTimeout(imageModalTimeoutRef.current);
-      imageModalTimeoutRef.current = null;
-    }
-    setShowImageModal(false);
-  };
-
-  // HD = medium-quality gpt-image-2, a Pro feature. Same logic as the audio feature:
-  // if out of daily Pro Credits, surface the register/upgrade/quota modal (without
-  // consuming a credit) instead of enabling HD. Otherwise just toggle.
-  const handleHDToggle = async () => {
-    if (!isHDEnabled && !canUseProFeature) {
-      setShowImageModal(false);
-      await requestProAccess();
-      return;
-    }
-    setIsHDEnabled(!isHDEnabled);
-  };
-
   // Handle image generation - FREE for everyone, HD uses quota for free users
   const handleGenerateImage = async (useHD: boolean) => {
     console.log('🎨 [Image Generation] Generate clicked', { useHD, userType });
@@ -306,7 +222,6 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
     if (useHD) {
       const allowed = await requestProAccess();
       if (!allowed) {
-        setShowImageModal(false);
         return;
       }
     }
@@ -321,7 +236,6 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
 
     try {
       setIsGeneratingImage(true);
-      setShowImageModal(false); // Close modal when generating
       console.log('⏳ [Image Generation] Loading state set to true');
       
       const summary = extractArticleSummary(result.markdown_report || '');
@@ -351,14 +265,18 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
     }
   };
 
-  // Cleanup timeout on unmount
+  // Close the image generation dropdown when clicking outside
   useEffect(() => {
-    return () => {
-      if (imageModalTimeoutRef.current) {
-        clearTimeout(imageModalTimeoutRef.current);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (imageDropdownRef.current && !imageDropdownRef.current.contains(event.target as Node)) {
+        setShowImageDropdown(false);
       }
     };
-  }, []);
+    if (showImageDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showImageDropdown]);
 
   // Stop audio playback on unmount
   useEffect(() => {
@@ -461,19 +379,19 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
       icon: <Video size={16} />
     }] : []),
     {
+      id: 'sources',
+      label: `Sources${result?.sources ? ` · ${result.sources.length}` : ''}`,
+      icon: <Globe size={16} />
+    },
+    {
       id: 'steps',
       label: 'Steps',
       icon: <List size={16} />
-    },
-    { 
-      id: 'sources', 
-      label: `Sources${result?.sources ? ` · ${result.sources.length}` : ''}`,
-      icon: <Globe size={16} />
     }
   ];
 
   return (
-    <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+    <div className="bg-white dark:bg-[#1a1a1a] overflow-hidden border-y border-gray-200 dark:border-gray-800 sm:rounded-xl sm:border">
       {/* Tab Headers */}
       <div className="border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
         <div className="flex min-w-max">
@@ -521,68 +439,23 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
       <div className="p-6">
         {activeTab === 'curios' && (
           <div className="space-y-6">
-            {/* Focus Category Selector - Part of Curios Tab */}
-            <div className="-mx-6 px-6 -mt-6 mb-6 pt-6">
-              <div className="flex items-center gap-3 relative" ref={dropdownRef}>
-                <button
-                  onClick={() => {
-                    console.log('🎯 [FOCUS-BUTTON] Button state:', {
-                      focusCategory,
-                      resultFocusCategory: result?.focus_category,
-                      displayed: focusCategory || result?.focus_category || 'ANALYSIS'
-                    });
-                    setShowFocusDropdown(!showFocusDropdown);
-                  }}
-                  title="Select topic category"
-                  className="px-3 py-1 text-sm font-medium uppercase tracking-wider transition-colors flex items-center gap-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600"
-                >
-                  {focusCategory || result?.focus_category || 'ANALYSIS'}
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-                
-                {/* Dropdown Menu */}
-                {showFocusDropdown && (
-                  <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg z-10 min-w-[200px] rounded-md overflow-hidden">
-                    {focusCategories.map((category) => (
-                      <button
-                        key={category.id}
-                        onClick={() => {
-                          setShowFocusDropdown(false);
-                          if (category.id !== (focusCategory || result?.focus_category || 'ANALYSIS')) {
-                            onFocusChange?.(category.id);
-                          }
-                        }}
-                        className={`w-full text-left px-4 py-2 text-sm font-medium uppercase tracking-wider hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                          category.id === (focusCategory || result?.focus_category || 'ANALYSIS')
-                            ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white'
-                            : 'text-gray-700 dark:text-gray-300'
-                        }`}
-                      >
-                        {category.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
             {!loading && result ? (
               <>
                 {/* News Article Header */}
-                <div className="space-y-4">
-                  {/* Date and Time */}
-                  <div className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-                    {getCurrentDateTime()}
+                <div className="space-y-3">
+                  {/* Relative publish time */}
+                  <div className="text-gray-500 dark:text-gray-400 text-xs font-medium">
+                    {formatRelativeTime(new Date())}
                   </div>
-                  
+
                   {/* Headline */}
-                  <h1 className="text-xl font-semibold text-gray-900 dark:text-white leading-tight">
+                  <h1 className="text-lg font-semibold text-gray-900 dark:text-white leading-snug">
                     {result.headline || 'Breaking Analysis'}
                   </h1>
-                  
+
                   {/* Subtitle */}
                   {result.subtitle && (
-                    <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
+                    <p className="text-base text-gray-600 dark:text-gray-300 leading-relaxed">
                       {result.subtitle}
                     </p>
                   )}
@@ -591,9 +464,9 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                   {result && (
                     <div className="my-6 relative group">
                       {/* Only show image container if we have an image to display */}
-                      {/* Image Container - Only show if we have a valid image or generated image */}
+                      {/* Image Container — edge-to-edge on mobile, framed on sm+ */}
                       {(generatedImageUrl || (validImageIndices.length > 0 && !isValidatingImages)) && (
-                        <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 relative mb-3">
+                        <div className="-mx-6 sm:mx-0 overflow-hidden border-y border-gray-200 dark:border-gray-700 sm:rounded-xl sm:border relative mb-3">
 
                           {/* Image */}
                           <img
@@ -650,17 +523,19 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                         {/* Listen to article (Pro TTS) - left side */}
                         {(() => {
                           const { listeningTime } = calculateReadingTime(result.markdown_report || '');
-                          const selectedVoiceName = ELEVENLABS_VOICES.find(v => v.id === selectedVoice)?.name || 'Voice';
                           return (
-                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 relative" ref={voiceDropdownRef}>
-                              {/* Listen / play-pause button */}
+                            <div className="flex items-center gap-1.5 text-sm relative" ref={voiceDropdownRef}>
+                              {/* Listen / play-pause button — gray/inactive when out of credits */}
                               <button
                                 type="button"
                                 onClick={handleListen}
                                 disabled={isGeneratingAudio}
                                 title={canUseProFeature ? 'Listen to this article (Pro)' : 'Pro feature — out of daily credits'}
-                                className="flex items-center gap-2 transition-opacity hover:opacity-80 disabled:cursor-wait"
-                                style={{ opacity: canUseProFeature ? 1 : 0.5 }}
+                                className={`flex items-center gap-2 transition-colors disabled:cursor-wait ${
+                                  canUseProFeature
+                                    ? 'text-gray-700 dark:text-gray-300 hover:opacity-80'
+                                    : 'text-gray-400 dark:text-gray-600'
+                                }`}
                               >
                                 {isGeneratingAudio ? (
                                   <Loader2 size={16} className="animate-spin" />
@@ -670,19 +545,23 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                                   <Headphones size={16} />
                                 )}
                                 <span>Listen to this article · {listeningTime} min</span>
-                                {/* Pro marker */}
-                                <Crown size={13} style={{ color: '#F5B301' }} />
+                                {/* Pro badge: gold crown on an accent square */}
+                                <span
+                                  className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-md"
+                                  style={{ backgroundColor: accent.primary }}
+                                >
+                                  <Crown size={11} style={{ color: '#F5B301' }} />
+                                </span>
                               </button>
 
-                              {/* Voice selector */}
+                              {/* Voice selector — active voice name hidden to save space */}
                               <button
                                 type="button"
                                 onClick={() => setShowVoiceDropdown(v => !v)}
                                 title="Select voice"
-                                className="flex items-center gap-1 px-2 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                className="flex items-center px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                               >
-                                <span className="text-xs">{selectedVoiceName}</span>
-                                <ChevronDown size={12} />
+                                <ChevronDown size={14} />
                               </button>
 
                               {showVoiceDropdown && (
@@ -708,63 +587,67 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                           );
                         })()}
 
-                        {/* Generate Image button - right side */}
-                        <div className="relative">
+                        {/* Generate Photo dropdown - right side */}
+                        <div className="relative" ref={imageDropdownRef}>
                           <button
-                            data-image-gen-button
-                            onMouseEnter={handleImageButtonMouseEnter}
-                            onMouseLeave={handleImageButtonMouseLeave}
+                            onClick={() => setShowImageDropdown(v => !v)}
                             disabled={isGeneratingImage}
-                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                            title="Generate photo"
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-1"
                           >
                             <Wand2 size={18} style={{ color: accent.primary }} />
+                            <ChevronDown size={14} className="text-gray-400" />
                           </button>
 
-                          {/* Image Generation Modal */}
-                          {showImageModal && (
-                            <ImageGenerationModal
-                              userType={userType}
-                              remainingQuota={remaining}
-                              isHDEnabled={isHDEnabled}
-                              onHDToggle={handleHDToggle}
-                              onGenerate={handleGenerateImage}
-                              onUpgrade={() => {
-                                setShowImageModal(false);
-                                setShowProModal(true);
-                              }}
-                              onSignIn={() => {
-                                setShowImageModal(false);
-                                setShowSignInModal(true);
-                              }}
-                              onClose={handleImageModalClose}
-                              onMouseEnter={handleImageModalMouseEnter}
-                              onMouseLeave={handleImageModalMouseLeave}
-                            />
+                          {showImageDropdown && (
+                            <div className="absolute bottom-full right-0 mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20 min-w-[190px] overflow-hidden">
+                              {/* Default — standard quality, free */}
+                              <button
+                                type="button"
+                                onClick={() => { setShowImageDropdown(false); handleGenerateImage(false); }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              >
+                                <Wand2 size={15} style={{ color: accent.primary }} />
+                                <span>Generate Photo</span>
+                              </button>
+                              {/* HD — Pro: consumes 1 credit, subscription modal if none */}
+                              <button
+                                type="button"
+                                onClick={() => { setShowImageDropdown(false); handleGenerateImage(true); }}
+                                className="w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              >
+                                <span>HD quality</span>
+                                <span
+                                  className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-md"
+                                  style={{ backgroundColor: accent.primary }}
+                                >
+                                  <Crown size={11} style={{ color: '#F5B301' }} />
+                                </span>
+                              </button>
+                            </div>
                           )}
                         </div>
+                      </div>
+
+                      {/* Share row — directly under the Listen / generate controls */}
+                      <div className="mt-3">
+                        <ShareMenu
+                          url={globalThis.location.href}
+                          title={result.headline || 'Curios Story'}
+                          text={result.subtitle || (result.markdown_report ? result.markdown_report.slice(0, 150) + '...' : '')}
+                          query={result.query}
+                          images={result.images || []}
+                          validImageIndices={validImageIndices}
+                        />
                       </div>
                     </div>
                   )}
 
                 </div>
 
-                {/* Article Body */}
-                <div className="prose dark:prose-invert max-w-none">
-                  <div 
-                    className="text-gray-700 dark:text-gray-300 leading-relaxed"
-                    dangerouslySetInnerHTML={{ 
-                      __html: result.markdown_report
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\n/g, '<br/>')
-                        // More comprehensive # removal - handles "# Text" or "## Text" at start of lines
-                        .replace(/^#{1,6}\s*/gm, '')
-                        .replace(/<br\s*\/?>\s*#{1,6}\s*/g, '<br/>')
-                        .replace(/#{1,6}\s*(.*?)<br\/>/g, '<h2 class="text-xl font-semibold mt-6 mb-3 text-gray-900 dark:text-white">$1</h2>')
-                        .replace(/#{1,6}\s*(.*?)$/gm, '<h2 class="text-xl font-semibold mt-6 mb-3 text-gray-900 dark:text-white">$1</h2>')
-                        // Convert standalone bold text (likely headers) to proper headers  
-                        .replace(/<br\/><strong>([^<]+)<\/strong><br\/>/g, '<h2 class="text-xl font-semibold mt-6 mb-3 text-gray-900 dark:text-white">$1</h2>')
-                    }} 
-                  />
+                {/* Article Body — same markdown renderer as Search */}
+                <div className="prose dark:prose-invert max-w-none break-words">
+                  <CustomMarkdown>{result.markdown_report || ''}</CustomMarkdown>
                 </div>
 
                 {/* Follow-up Questions */}
@@ -975,20 +858,6 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
           </div>
         )}
       </div>
-
-      {/* Modals */}
-      <SignInModal 
-        isOpen={showSignInModal}
-        onClose={() => setShowSignInModal(false)}
-        currentLanguage={{ code: 'en', name: 'English', flag: '🇺🇸' }}
-        title="Sign In to Generate Images"
-        subtitle="Create custom AI-generated images for your articles"
-      />
-
-      <ProModal 
-        isOpen={showProModal}
-        onClose={() => setShowProModal(false)}
-      />
     </div>
   );
 };
