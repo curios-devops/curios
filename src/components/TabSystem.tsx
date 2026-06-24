@@ -28,7 +28,7 @@ const stripForTts = (md: string): string =>
     .slice(0, 5000);
 import CuriosLogo from './common/CuriosLogo';
 import CustomMarkdown from './CustomMarkdown';
-import ShareMenu from './ShareMenu';
+import DynamicShareRow from './share/DynamicShareRow';
 
 // Relative time: "Just now" → "5 min ago" → "3 hours ago" → "2 days ago" → "Jun 12, 2026".
 const formatRelativeTime = (date: Date): string => {
@@ -629,15 +629,17 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                         </div>
                       </div>
 
-                      {/* Share row — directly under the Listen / generate controls */}
+                      {/* Share row — same DynamicShareRow used in Search */}
                       <div className="mt-3">
-                        <ShareMenu
-                          url={globalThis.location.href}
-                          title={result.headline || 'Curios Story'}
-                          text={result.subtitle || (result.markdown_report ? result.markdown_report.slice(0, 150) + '...' : '')}
-                          query={result.query}
-                          images={result.images || []}
-                          validImageIndices={validImageIndices}
+                        <DynamicShareRow
+                          serviceType="stories"
+                          payload={{
+                            title: result.headline || 'Curios Story',
+                            description: result.subtitle || (result.markdown_report ? result.markdown_report.slice(0, 200) : ''),
+                            text: result.subtitle || (result.markdown_report ? result.markdown_report.slice(0, 100) : ''),
+                            imageUrls: (result.images || []).map((img: any) => img.url),
+                            deepLink: globalThis.location.href,
+                          }}
                         />
                       </div>
                     </div>

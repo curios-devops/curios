@@ -17,6 +17,9 @@ const FOCUS_CATEGORIES = [
   { id: 'SCIENCES & TECH', label: 'SCIENCES & TECH' }
 ];
 
+// First letter uppercase, rest lowercase (matches Search's button/label casing).
+const toSentenceCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+
 interface ProgressState {
   stage: string;
   timeRemaining: string;
@@ -156,6 +159,12 @@ export default function InsightsResults() {
     }
   };
 
+  // Current topic shown on the header button, in Search's sentence-case style.
+  const currentFocusId = focusCategory || result?.focus_category || 'ANALYSIS';
+  const currentFocusLabel = toSentenceCase(
+    FOCUS_CATEGORIES.find(c => c.id === currentFocusId)?.label ?? currentFocusId
+  );
+
   return (
     <div className="insights-result-page min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e0e7ef] dark:from-[#111111] dark:to-black text-gray-900 dark:text-white transition-colors duration-200">
       <header className="flex items-center gap-4 px-6 py-6 overflow-x-auto scrollbar-hide">
@@ -182,17 +191,17 @@ export default function InsightsResults() {
             )}
           </div>
         </div>
-        {/* Topic category dropdown (accent) — replaces the old share button */}
+        {/* Topic category dropdown — same button style as Search's header pill */}
         {!loading && result && (
           <div className="relative flex-shrink-0" ref={focusDropdownRef}>
             <button
               type="button"
               onClick={() => setShowFocusDropdown(v => !v)}
               title="Select topic category"
-              className="px-3 py-1.5 text-sm font-medium uppercase tracking-wider rounded-lg flex items-center gap-2 text-white transition-opacity hover:opacity-90"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-all cursor-pointer hover:opacity-90"
               style={{ backgroundColor: accent.primary }}
             >
-              {focusCategory || result?.focus_category || 'ANALYSIS'}
+              <span>{currentFocusLabel}</span>
               <ChevronDown className="w-4 h-4" />
             </button>
 
@@ -208,13 +217,13 @@ export default function InsightsResults() {
                         setShowFocusDropdown(false);
                         if (category.id !== current) handleFocusChange(category.id);
                       }}
-                      className={`w-full text-left px-4 py-2 text-sm font-medium uppercase tracking-wider hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                      className={`w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
                         category.id === current
                           ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white'
                           : 'text-gray-700 dark:text-gray-300'
                       }`}
                     >
-                      {category.label}
+                      {toSentenceCase(category.label)}
                     </button>
                   );
                 })}
