@@ -25,9 +25,21 @@ export default function ArticleDetail() {
   const { theme } = useTheme();
   const accentColors = useAccentColor();
 
-  const [article, setArticle] = useState<ArticleData | null>(
-    location.state?.article || null
-  );
+  // Article data normally arrives via in-app navigation state. For a cold load of a
+  // shared link there's no state, so reconstruct a minimal article from the URL (the
+  // :articleId is the encoded title) — content is then generated from the title alone.
+  const [article, setArticle] = useState<ArticleData | null>(() => {
+    if (location.state?.article) return location.state.article;
+    if (articleId) {
+      let title = articleId;
+      try { title = decodeURIComponent(articleId); } catch { /* param already decoded */ }
+      title = title.trim();
+      if (title) {
+        return { title, snippet: '', link: '', source: '', date: '', thumbnail: undefined };
+      }
+    }
+    return null;
+  });
   const [streamingContent, setStreamingContent] = useState<string>('');
   const [sources, setSources] = useState<ArticleSource[]>([]);
   const [isGenerating, setIsGenerating] = useState(true);
@@ -256,24 +268,32 @@ export default function ArticleDetail() {
             {article.title}
           </h1>
 
-          {/* Metadata */}
-          <div className="flex items-center gap-2 mb-8">
-            <span
-              style={{
-                color: 'var(--ui-text-tertiary)',
-                fontSize: '13px',
-                fontWeight: '600',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}
-            >
-              {article.source}
-            </span>
-            <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '13px' }}>•</span>
-            <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '13px' }}>
-              {article.date}
-            </span>
-          </div>
+          {/* Metadata — hidden when absent (e.g. a cold-loaded shared link) */}
+          {(article.source || article.date) && (
+            <div className="flex items-center gap-2 mb-8">
+              {article.source && (
+                <span
+                  style={{
+                    color: 'var(--ui-text-tertiary)',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  {article.source}
+                </span>
+              )}
+              {article.source && article.date && (
+                <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '13px' }}>•</span>
+              )}
+              {article.date && (
+                <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '13px' }}>
+                  {article.date}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Main Image */}
           {article.thumbnail && (
