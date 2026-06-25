@@ -53,6 +53,11 @@ function buildCrawlerShareUrl(payload: SharePayload): string {
   const image = firstValidImageUrl(payload.imageUrls);
   const params = new URLSearchParams({ query, snippet });
   if (image) params.set('image', image);
+  // Carry the page's own deep link so the share function returns a human visitor to
+  // the right service (Stories / new Search) instead of the legacy /search fallback.
+  // Only forward prod curiosai.com links; the function re-validates the origin too.
+  const deepLink = payload.deepLink || '';
+  if (/^https:\/\/curiosai\.com\//i.test(deepLink)) params.set('redirect', deepLink);
   return `${SHARE_FN}?${params.toString()}`;
 }
 

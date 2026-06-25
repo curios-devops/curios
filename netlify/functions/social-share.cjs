@@ -51,7 +51,16 @@ const getHeader = (headers = {}, name) => {
   return headers[name] || headers[lower] || '';
 };
 
-const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, shareUrl, query }) => `<!DOCTYPE html>
+// Where to send a returning human visitor. Prefer the page's own deep link (passed
+// as `redirect`) so each service — Stories (/insights-results) or new Search
+// (/fast-search) — returns to itself. Origin-validated to curiosai.com to avoid an
+// open redirect; falls back to legacy /search when absent/invalid (back-compat).
+const buildReturnUrl = (redirect, query) => {
+  if (redirect && /^https:\/\/curiosai\.com\//i.test(redirect)) return redirect;
+  return `https://curiosai.com/search?q=${encodeURIComponent(query)}`;
+};
+
+const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, shareUrl, returnUrl }) => `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -83,7 +92,7 @@ const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, 
     <h1 style="color: #0095FF; margin-bottom: 20px;">CuriosAI</h1>
     <h2 style="color: #333; margin-bottom: 16px;">${title}</h2>
     <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">${description}</p>
-    <a href="https://curiosai.com/search?q=${encodeURIComponent(query)}" style="background: #0095FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 500;">Explore More with CuriosAI</a>
+    <a href="${returnUrl}" style="background: #0095FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 500;">Explore More with CuriosAI</a>
   </div>
 </body>
 </html>`;
@@ -93,6 +102,8 @@ exports.handler = async (event) => {
   const query = params.query || DEFAULT_TITLE;
   const snippet = params.snippet || DEFAULT_DESCRIPTION;
   const image = params.image || '';
+  const redirect = params.redirect || '';
+  const returnUrl = buildReturnUrl(redirect, query);
 
   const userAgent = getHeader(event.headers, 'user-agent');
   const acceptHeader = getHeader(event.headers, 'accept');
@@ -104,13 +115,13 @@ exports.handler = async (event) => {
   const imageWidth = '1200';
   const imageHeight = '627';
   // Prefer the direct Netlify function path to avoid hitting any Supabase proxy or stale endpoints.
-  const shareUrl = `https://curiosai.com/.netlify/functions/social-share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}`;
+  const shareUrl = `https://curiosai.com/.netlify/functions/social-share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}${redirect ? `&redirect=${encodeURIComponent(redirect)}` : ''}`;
 
   if (!isBot && userAgent && userAgent.includes('Mozilla') && (acceptHeader || '').includes('text/html')) {
     return {
       statusCode: 302,
       headers: {
-        Location: `https://curiosai.com/search?q=${encodeURIComponent(query)}`,
+        Location: returnUrl,
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
     };
@@ -122,6 +133,6 @@ exports.handler = async (event) => {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     },
-    body: buildShareHtml({ title, description, ogImage, imageWidth, imageHeight, shareUrl, query })
+    body: buildShareHtml({ title, description, ogImage, imageWidth, imageHeight, shareUrl, returnUrl })
   };
 };
