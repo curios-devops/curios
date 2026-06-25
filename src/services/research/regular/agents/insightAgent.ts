@@ -1,11 +1,12 @@
 // InsightAgent — single-agent Insights (Stories) pipeline.
 //
 // Replaces the former 3-agent swarm (InsightAnalyzerAgent + InsightsRetrieverAgent +
-// InsightWriterAgent + InsightSwarmController). The analyzer's separate LLM call was
-// redundant — the retriever simply joins queries into one search — so query expansion
-// is now deterministic, leaving a single LLM call (the writer) to synthesise the
-// article. Search runs 3 calls concurrently — Brave (principal: text + images +
-// videos) plus Exa and Tavily (text perspectives) — with a single lean SerpApi
+// InsightWriterAgent + InsightSwarmController). Two LLM calls remain: a lightweight
+// query-drafting call that turns the topic into two "perspective" and two
+// "counterpoint" questions (deterministic templates as fallback), and the writer that
+// synthesises the article. Search runs 3 calls concurrently — Brave (principal: the
+// user's main question; returns text + images + videos), Tavily (the perspective
+// questions) and Exa (the counterpoint questions) — with a single lean SerpApi
 // fallback for media only when Brave is sparse. The output shape (InsightResult)
 // and progress phases are unchanged so the UI stays untouched.
 
@@ -84,9 +85,8 @@ export class InsightAgent {
 
       logger.info('InsightAgent: starting', { query, focusCategory: request.focusCategory });
 
-      // Step 1 — Analysis (deterministic, no LLM call).
+      // Step 1 — Analysis. Query expansion is LLM-drafted (perspective + counterpoint).
       const insightAreas = this.buildInsightAreas(query);
-      const searchQueries = this.buildSearchQueries(query);
       const analysisStrategy = `Insight analysis on "${query}" — surface trends, patterns and actionable intelligence.`;
 
       onStatusUpdate?.(
@@ -100,6 +100,8 @@ export class InsightAgent {
         'Mapping the story and search strategy',
         'analyzing'
       );
+
+      const searchQueries = await this.generateSearchQueries(query);
 
       // Step 2 — Search.
       onStatusUpdate?.(
@@ -205,19 +207,94 @@ export class InsightAgent {
     ];
   }
 
-  // Five differentiated angles routed to three engines (see `search`):
-  //   [0] expanded original question      → Exa
-  //   [1],[2] two "perspective" questions → Tavily (concatenated, one call)
-  //   [3],[4] two "counterpoint" questions → Brave (concatenated, one call)
+  // Five questions, one bundle per intent, routed to three engines (see `search`):
+  //   [0] the user's main question         → Brave (principal: text + media)
+  //   [1],[2] two "perspective" questions  → Tavily (concatenated, one call)
+  //   [3],[4] two "counterpoint" questions → Exa    (concatenated, one call) — seek limits/criticism
+  // The templated questions key off a cleaned topic (command/interrogative lead-ins
+  // stripped) so they read naturally even when the raw query is a command.
   private buildSearchQueries(query: string): string[] {
-    const q = query.trim();
+    const main = query.trim();
+    const topic = this.topicOf(query);
     return [
-      `${q} latest developments and key facts`,
-      `What are the main benefits and opportunities of ${q}?`,
-      `Why does ${q} matter and who is most affected?`,
-      `What are the risks, downsides and criticisms of ${q}?`,
-      `What challenges and controversies surround ${q}?`
+      main,
+      `What are the key facts and latest developments about ${topic}?`,
+      `Why does ${topic} matter, and who is most affected?`,
+      `What are the risks, downsides and criticisms of ${topic}?`,
+      `What challenges, controversies or limitations surround ${topic}?`
     ];
+  }
+
+  // Strip a leading command verb / interrogative so templated questions read
+  // naturally — "Tell about the World Cup 2026" → "the World Cup 2026".
+  private topicOf(query: string): string {
+    const lead = /^\s*(please\s+)?(tell me about|tell about|tell me|explain|describe|give me|show me|what is|what are|what's|who is|who are|how to|how do|how does|why is|why does|when is|where is)\b[:,\s]*/i;
+    let q = query.trim().replace(/\?+$/g, '');
+    q = q.replace(lead, '').replace(lead, '').trim(); // two passes for stacked lead-ins
+    return q || query.trim();
+  }
+
+  // LLM-drafted search angles: keeps [0] as the user's verbatim question (Brave) and
+  // asks the model for two sharp "perspective" and two "counterpoint" questions tuned
+  // to the specific topic. Falls back to deterministic templates if the call fails or
+  // returns an incomplete set, so search never blocks on the model.
+  private async generateSearchQueries(query: string): Promise<string[]> {
+    const main = query.trim();
+    try {
+      const systemPrompt = `You craft web-search questions for a research story. Return STRICT JSON only, no markdown:
+{
+  "perspective": ["question 1", "question 2"],
+  "counterpoint": ["question 1", "question 2"]
+}
+- "perspective": two DISTINCT questions exploring the topic's significance, context, key facts or who is most affected.
+- "counterpoint": two questions probing risks, criticisms, downsides, challenges, controversies or limitations.
+Each question must be a single, specific, naturally-phrased question about the topic, max ~16 words, no numbering, no markdown.`;
+      const userPrompt = `Topic: "${main}"`;
+      const content = await this.callLLM(systemPrompt, userPrompt);
+      const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      const parsed = JSON.parse(cleaned);
+      const pick = (v: unknown): string[] =>
+        Array.isArray(v) ? v.filter((q): q is string => typeof q === 'string' && q.trim().length > 0).map((q) => q.trim()) : [];
+      const perspective = pick(parsed.perspective);
+      const counterpoint = pick(parsed.counterpoint);
+      if (perspective.length >= 2 && counterpoint.length >= 2) {
+        logger.info('InsightAgent: LLM drafted search queries', { perspective, counterpoint });
+        return [main, perspective[0], perspective[1], counterpoint[0], counterpoint[1]];
+      }
+      logger.warn('InsightAgent: LLM query draft incomplete, using deterministic fallback');
+    } catch (error) {
+      logger.warn('InsightAgent: LLM query draft failed, using deterministic fallback', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+    return this.buildSearchQueries(query);
+  }
+
+  // Shared call to the OpenAI Supabase edge function (same transport the writer uses).
+  private async callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
+    const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
+      ? import.meta.env.VITE_OPENAI_API_URL
+      : 'VITE_OPENAI_API_URL';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const response = await fetch(supabaseEdgeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        prompt: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ]
+        })
+      })
+    });
+    const data = await response.json();
+    const content = data.text || data.choices?.[0]?.message?.content;
+    if (!content) throw new Error('No response content from LLM');
+    return content;
   }
 
   // A concrete, reformulated version of the user's query for IMAGE/VIDEO search.
@@ -245,18 +322,19 @@ export class InsightAgent {
   // independent and fires only when its own media is sparse, keeping API usage low.
 
   private async search(queries: string[], originalQuery: string): Promise<{ results: SearchResult[]; images: ImageResult[]; videos: VideoResult[] }> {
-    const [expanded, perspectiveA, perspectiveB, counterA, counterB] = queries;
+    const [main, perspectiveA, perspectiveB, counterA, counterB] = queries;
     const imageQuery = this.buildImageQuery(originalQuery);
 
-    // Each engine gets a distinct angle so the perspectives genuinely differ.
-    const [brave, exa, tavily] = await Promise.all([
-      this.runBrave(`${counterA} ${counterB}`.trim()),
-      this.runExa(expanded),
-      this.runTavily(`${perspectiveA} ${perspectiveB}`.trim())
+    // Brave runs the user's main question (and yields the principal media); Tavily
+    // and Exa add the perspective and counterpoint angles, one concatenated call each.
+    const [brave, tavily, exa] = await Promise.all([
+      this.runBrave(main),
+      this.runTavily(`${perspectiveA} ${perspectiveB}`.trim()),
+      this.runExa(`${counterA} ${counterB}`.trim())
     ]);
 
     const results = this.mergeText(this.clean(brave.web), exa, tavily);
-    // Media keys off the reformulated topic query, NOT the counterpoint web query.
+    // Media keys off the reformulated topic query, independent of Brave's web query.
     const [images, videos] = await Promise.all([
       this.resolveImages(imageQuery, brave.images),
       this.resolveVideos(imageQuery, brave.videos)
@@ -325,7 +403,7 @@ export class InsightAgent {
   }
 
   // Images: SerpApi keyed on the reformulated topic query is the primary source so
-  // visuals stay aligned with the user's subject. Brave images (from the counterpoint
+  // visuals stay aligned with the user's subject. Brave images (from the main
   // web query) are used ONLY as a fallback when SerpApi is sparse — never merged in
   // routinely — to avoid leaning on (and rate-limiting) Brave.
   private async resolveImages(query: string, braveImages: BraveSearchResults['images']): Promise<ImageResult[]> {

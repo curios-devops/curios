@@ -166,8 +166,8 @@ export default function InsightsResults() {
   );
 
   return (
-    <div className="insights-result-page min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e0e7ef] dark:from-[#111111] dark:to-black text-gray-900 dark:text-white transition-colors duration-200">
-      <header className="flex items-center gap-4 px-6 py-6 overflow-x-auto scrollbar-hide">
+    <div className="insights-result-page min-h-screen bg-white dark:bg-[#111111] text-gray-900 dark:text-white transition-colors duration-200">
+      <header className="flex items-center gap-4 px-6 py-6">
         <button 
           type="button"
           onClick={() => navigate('/')}

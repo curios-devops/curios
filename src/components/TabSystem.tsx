@@ -26,7 +26,6 @@ const stripForTts = (md: string): string =>
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 5000);
-import CuriosLogo from './common/CuriosLogo';
 import CustomMarkdown from './CustomMarkdown';
 import DynamicShareRow from './share/DynamicShareRow';
 
@@ -355,17 +354,8 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
     }
   };
 
-  const tabs = [
-    { 
-      id: 'curios', 
-      label: 'Curios AI',
-      icon: <CuriosLogo size={16} />,
-      customLabel: (
-        <span>
-          Curios<span style={{ color: accent.primary }}>AI</span>
-        </span>
-      )
-    },
+  const tabs: { id: string; label: string; icon?: React.ReactNode }[] = [
+    { id: 'curios', label: 'Story' },
     // Only show images tab if we have valid images
     ...(validImageIndices.length > 0 ? [{
       id: 'images',
@@ -391,7 +381,7 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
   ];
 
   return (
-    <div className="bg-white dark:bg-[#1a1a1a] overflow-hidden border-y border-gray-200 dark:border-gray-800 sm:rounded-xl sm:border">
+    <div className="bg-white dark:bg-[#111111]">
       {/* Tab Headers — same style as Search (TopBar): underline-on-active, accent color */}
       <div className="border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6">
         <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
@@ -408,20 +398,16 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                 }`}
                 style={isActive ? { borderColor: accent.primary, color: accent.primary } : undefined}
               >
-                <span className="flex items-center">
-                  {tab.icon}
-                </span>
+                {tab.icon && (
+                  <span className="flex items-center">
+                    {tab.icon}
+                  </span>
+                )}
                 <span className="hidden sm:inline">
-                  {tab.customLabel || tab.label}
+                  {tab.label}
                 </span>
                 <span className="sm:hidden">
-                  {tab.customLabel ? (
-                    <span>
-                      Curios<span style={{ color: accent.primary }}>AI</span>
-                    </span>
-                  ) : (
-                    tab.label.split(' ')[0]
-                  )}
+                  {tab.label.split(' ')[0]}
                 </span>
               </button>
             );

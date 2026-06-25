@@ -72,19 +72,11 @@ export default function CustomMarkdown({ children, className = "", citations = [
     const elements: React.ReactNode[] = [];
     let key = 0;
 
-    lines.forEach((line, lineIndex) => {
+    lines.forEach((line) => {
+      // Blank lines: every paragraph already carries its own bottom margin (mb-4),
+      // so skip blank lines instead of inserting a <br> — the <br> on top of the
+      // margin is what doubled the spacing after each paragraph.
       if (line.trim() === '') {
-        // Only add <br> if the previous element was a paragraph, not a header
-        const prevLine = lineIndex > 0 ? lines[lineIndex - 1] : '';
-        const nextLine = lineIndex < lines.length - 1 ? lines[lineIndex + 1] : '';
-        
-        // Don't add <br> if previous line was a header or next line is a header
-        const prevIsHeader = prevLine.match(/^#{1,6}\s/);
-        const nextIsHeader = nextLine.match(/^#{1,6}\s/);
-        
-        if (!prevIsHeader && !nextIsHeader && prevLine.trim() !== '' && nextLine.trim() !== '') {
-          elements.push(<br key={`br-${key++}`} />);
-        }
         return;
       }
 

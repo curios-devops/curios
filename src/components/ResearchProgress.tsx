@@ -113,7 +113,7 @@ export const ResearchProgress: React.FC<ResearchProgressProps> = ({
                 <span>Searching</span>
               </div>
               <div className="text-gray-400 text-xs space-y-1">
-                {searchTerms.slice(0, 3).map((term, index) => (
+                {searchTerms.slice(0, 5).map((term, index) => (
                   <div key={index} className="truncate pl-1">
                     {term}
                   </div>
