@@ -1,13 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Share2, ExternalLink } from 'lucide-react';
-import { useTheme } from '../components/theme/ThemeContext.tsx';
+import { ArrowLeft, Share2 } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
 import QueryBoxContainer from '../components/boxContainer/QueryBoxContainer.tsx';
 import CustomMarkdown from '../components/CustomMarkdown.tsx';
 import DynamicShareRow from '../components/share/DynamicShareRow.tsx';
 import { generateArticleContentStreaming, type ArticleSource } from '../services/explore/articleService';
-import type { CitationInfo } from '../commonApp/types';
 
 interface ArticleData {
   title: string;
@@ -22,13 +20,12 @@ export default function ArticleDetail() {
   const { articleId } = useParams<{ articleId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { theme } = useTheme();
   const accentColors = useAccentColor();
 
   // Article data normally arrives via in-app navigation state. For a cold load of a
   // shared link there's no state, so reconstruct a minimal article from the URL (the
   // :articleId is the encoded title) — content is then generated from the title alone.
-  const [article, setArticle] = useState<ArticleData | null>(() => {
+  const [article] = useState<ArticleData | null>(() => {
     if (location.state?.article) return location.state.article;
     if (articleId) {
       let title = articleId;
@@ -44,7 +41,7 @@ export default function ArticleDetail() {
   const [sources, setSources] = useState<ArticleSource[]>([]);
   const [isGenerating, setIsGenerating] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [relatedArticles, setRelatedArticles] = useState<ArticleData[]>(
+  const [relatedArticles] = useState<ArticleData[]>(
     location.state?.relatedArticles || []
   );
 
@@ -460,7 +457,7 @@ export default function ArticleDetail() {
 
         {/* Floating Follow-up Search Box */}
         <div className="mt-16">
-          <QueryBoxContainer placeholderText="Ask follow-up..." />
+          <QueryBoxContainer />
         </div>
       </div>
     </div>
