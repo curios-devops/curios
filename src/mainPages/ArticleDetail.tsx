@@ -5,6 +5,7 @@ import { useTheme } from '../components/theme/ThemeContext.tsx';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
 import QueryBoxContainer from '../components/boxContainer/QueryBoxContainer.tsx';
 import CustomMarkdown from '../components/CustomMarkdown.tsx';
+import DynamicShareRow from '../components/share/DynamicShareRow.tsx';
 import { generateArticleContentStreaming, type ArticleSource } from '../services/explore/articleService';
 import type { CitationInfo } from '../commonApp/types';
 
@@ -288,6 +289,20 @@ export default function ArticleDetail() {
               />
             </div>
           )}
+
+          {/* Share row — directly under the image; returns sharers to this page */}
+          <div className="mb-8">
+            <DynamicShareRow
+              serviceType="explore"
+              payload={{
+                title: article.title,
+                description: article.snippet,
+                text: article.snippet,
+                imageUrls: article.thumbnail ? [article.thumbnail] : [],
+                deepLink: window.location.href,
+              }}
+            />
+          </div>
 
           {/* Generating State - Shows before streaming starts */}
           {isGenerating && !streamingContent && (

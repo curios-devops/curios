@@ -2,7 +2,7 @@
 // Reusable across services (Fast Search now; Histories / Avatar / Movie next).
 // The row of networks is data-driven so a new service just plugs into this map.
 
-export type ServiceType = 'fast_search' | 'stories' | 'histories' | 'avatar' | 'movie';
+export type ServiceType = 'fast_search' | 'stories' | 'explore' | 'histories' | 'avatar' | 'movie';
 
 export type SocialNetwork =
   | 'x'
@@ -28,6 +28,7 @@ export interface SharePayload {
 export const shareConfig: Record<ServiceType, SocialNetwork[]> = {
   fast_search: ['x', 'bluesky', 'linkedin', 'facebook', 'whatsapp', 'reddit', 'email', 'copy'],
   stories: ['x', 'bluesky', 'linkedin', 'facebook', 'whatsapp', 'reddit', 'email', 'copy'],
+  explore: ['x', 'bluesky', 'linkedin', 'facebook', 'whatsapp', 'reddit', 'email', 'copy'],
   histories: ['x', 'bluesky', 'linkedin', 'facebook', 'whatsapp', 'reddit', 'email', 'copy'],
   avatar: ['x', 'bluesky', 'linkedin', 'facebook', 'whatsapp', 'reddit', 'email', 'copy'],
   movie: ['x', 'bluesky', 'linkedin', 'facebook', 'whatsapp', 'reddit', 'email', 'copy'],
