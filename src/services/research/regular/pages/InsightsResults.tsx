@@ -1,12 +1,13 @@
 // Insights Results page with multi-agent workflow integration
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Search, Brain, Sparkles, CheckCircle2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Search, Brain, Sparkles, CheckCircle2, ChevronDown, Crown } from 'lucide-react';
 import { insightsService, InsightProgressCallback } from '../agents/insightsService';
 import { SearchResult } from '../../types.ts';
 import ResearchProgress from '../../../../components/ResearchProgress';
 import TabSystem from '../../../../components/TabSystem';
 import { useAccentColor } from '../../../../hooks/useAccentColor';
+import { useProCredits } from '../../../../providers/ProCreditsProvider';
 
 // Topic categories for the header dropdown (label = what the user sees).
 const FOCUS_CATEGORIES = [
@@ -36,6 +37,7 @@ export default function InsightsResults() {
   const location = useLocation();
   const navigate = useNavigate();
   const accent = useAccentColor();
+  const { requestProAccess } = useProCredits();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
   // Only use focus category if explicitly provided in URL, otherwise let auto-detection work
@@ -49,8 +51,12 @@ export default function InsightsResults() {
   const [showFocusDropdown, setShowFocusDropdown] = useState(false);
   const focusDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Handle focus category change
-  const handleFocusChange = (newFocus: string) => {
+  // Changing the topic category is a Pro feature — consume one daily Pro Credit.
+  // requestProAccess opens the register/upgrade/quota modal and returns false when
+  // access is blocked, in which case we don't re-run the story.
+  const handleFocusChange = async (newFocus: string) => {
+    const allowed = await requestProAccess();
+    if (!allowed) return;
     const params = new URLSearchParams(window.location.search);
     params.set('focus', newFocus);
     window.location.href = `/insights-results?${params.toString()}`;
@@ -177,7 +183,7 @@ export default function InsightsResults() {
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <h1 className="text-2xl font-medium break-words max-h-24 overflow-y-auto pr-1">{query}</h1>
+          <h1 className="text-base sm:text-lg font-medium break-words max-h-24 overflow-y-auto pr-1">{query}</h1>
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Insight Phase Indicator */}
             {progressState.insightPhase && showPhaseIndicator && (
@@ -197,10 +203,11 @@ export default function InsightsResults() {
             <button
               type="button"
               onClick={() => setShowFocusDropdown(v => !v)}
-              title="Select topic category"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-all cursor-pointer hover:opacity-90"
+              title="Change topic category (Pro · 1 credit)"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all cursor-pointer hover:opacity-90"
               style={{ backgroundColor: accent.primary }}
             >
+              <Crown size={16} />
               <span>{currentFocusLabel}</span>
               <ChevronDown className="w-4 h-4" />
             </button>
