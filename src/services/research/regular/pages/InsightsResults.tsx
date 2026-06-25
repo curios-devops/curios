@@ -177,7 +177,7 @@ export default function InsightsResults() {
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <h1 className="text-2xl font-medium whitespace-nowrap">{query}</h1>
+          <h1 className="text-2xl font-medium break-words max-h-24 overflow-y-auto pr-1">{query}</h1>
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Insight Phase Indicator */}
             {progressState.insightPhase && showPhaseIndicator && (

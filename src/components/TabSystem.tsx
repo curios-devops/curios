@@ -392,47 +392,41 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
 
   return (
     <div className="bg-white dark:bg-[#1a1a1a] overflow-hidden border-y border-gray-200 dark:border-gray-800 sm:rounded-xl sm:border">
-      {/* Tab Headers */}
-      <div className="border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
-        <div className="flex min-w-max">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 sm:px-6 py-4 text-sm font-medium transition-colors relative whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-blue-50 dark:bg-blue-900/20'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-              style={activeTab === tab.id ? { color: accent.primary } : {}}
-            >
-              <span 
-                className="text-base flex items-center"
-                style={activeTab === tab.id ? { color: accent.primary } : {}}
+      {/* Tab Headers — same style as Search (TopBar): underline-on-active, accent color */}
+      <div className="border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6">
+        <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors cursor-pointer whitespace-nowrap flex-shrink-0 ${
+                  isActive
+                    ? ''
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+                style={isActive ? { borderColor: accent.primary, color: accent.primary } : undefined}
               >
-                {tab.icon}
-              </span>
-              <span className="hidden sm:inline">
-                {tab.customLabel || tab.label}
-              </span>
-              <span className="sm:hidden">
-                {tab.customLabel ? (
-                  <span>
-                    Curios<span style={{ color: accent.primary }}>AI</span>
-                  </span>
-                ) : (
-                  tab.label.split(' ')[0]
-                )}
-              </span>
-              {activeTab === tab.id && (
-                <div 
-                  className="absolute bottom-0 left-0 right-0 h-0.5"
-                  style={{ backgroundColor: accent.primary }}
-                ></div>
-              )}
-            </button>
-          ))}
-        </div>
+                <span className="flex items-center">
+                  {tab.icon}
+                </span>
+                <span className="hidden sm:inline">
+                  {tab.customLabel || tab.label}
+                </span>
+                <span className="sm:hidden">
+                  {tab.customLabel ? (
+                    <span>
+                      Curios<span style={{ color: accent.primary }}>AI</span>
+                    </span>
+                  ) : (
+                    tab.label.split(' ')[0]
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       {/* Tab Content */}
