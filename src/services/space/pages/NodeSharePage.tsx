@@ -9,6 +9,7 @@ import CustomMarkdown from '../../../components/CustomMarkdown';
 import DynamicShareRow from '../../../components/share/DynamicShareRow';
 import SaveButton from '../components/SaveButton';
 import { getNodeBySlug, incrementNodeView } from '../nodePersistenceService';
+import { topicSlug } from '../topicService';
 import type { NodeRecord } from '../types';
 
 export default function NodeSharePage() {
@@ -94,6 +95,20 @@ export default function NodeSharePage() {
         <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white break-words">
           {node.query}
         </h1>
+
+        {node.topics.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {node.topics.map((topic) => (
+              <Link
+                key={topic}
+                to={`/topic/${topicSlug(topic)}`}
+                className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-[#222222] text-gray-700 dark:text-gray-300 hover:opacity-80 transition-opacity capitalize"
+              >
+                {topic}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {cover && (
           <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">

@@ -6,6 +6,7 @@
 import { supabase } from '../../lib/supabase';
 import { logger } from '../../utils/logger';
 import type { FeedItem, NodeRecord, NodeSnapshot } from './types';
+import { deriveTopics } from './topicService';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const BASE62 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -69,6 +70,19 @@ export async function saveNode(snapshot: NodeSnapshot): Promise<SavedNodeRef | n
 
     if (error) throw error;
     logger.info('[NodePersistence] Node saved', { id: data.id });
+
+    // Derive topic tags in the background and patch the row (best-effort). Kept
+    // off the critical path so the UI gets its share/save buttons immediately.
+    if (!snapshot.topics?.length) {
+      void deriveTopics(snapshot.query, snapshot.answer).then((topics) => {
+        if (topics.length) {
+          supabase.from('curiosity_nodes').update({ topics }).eq('id', data.id).then(({ error: e }) => {
+            if (e) logger.warn('[NodePersistence] topic update failed', { error: e.message });
+          });
+        }
+      });
+    }
+
     return { id: data.id as string, shareSlug: data.share_slug as string };
   } catch (error) {
     logger.warn('[NodePersistence] Persistence unavailable; node is ephemeral', {
@@ -156,6 +170,22 @@ export async function listSavedNodes(userId: string): Promise<NodeRecord[]> {
   return (data ?? [])
     .map((row: { curiosity_nodes: NodeRecord | null }) => row.curiosity_nodes)
     .filter((n): n is NodeRecord => !!n);
+}
+
+/** Public nodes tagged with a topic — powers the /topic/:slug page. */
+export async function listNodesByTopic(topic: string, limit = 60): Promise<NodeRecord[]> {
+  const { data, error } = await supabase
+    .from('curiosity_nodes')
+    .select('*')
+    .eq('is_public', true)
+    .contains('topics', [topic])
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    logger.error('[NodePersistence] listNodesByTopic failed', { error: error.message });
+    return [];
+  }
+  return (data ?? []) as NodeRecord[];
 }
 
 /** The discovery feed (public nodes + movies + cinematic), recent first. */

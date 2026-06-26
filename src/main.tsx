@@ -41,6 +41,7 @@ const ArticleDetail = lazy(() => import('./mainPages/ArticleDetail.tsx'));
 const NodeSharePage = lazy(() => import('./services/space/pages/NodeSharePage.tsx'));
 const SpacePage = lazy(() => import('./services/space/pages/SpacePage.tsx'));
 const FeedPage = lazy(() => import('./services/space/pages/FeedPage.tsx'));
+const TopicPage = lazy(() => import('./services/space/pages/TopicPage.tsx'));
 const Library = lazy(() => import('./mainPages/Library.tsx'));
 const Settings = lazy(() => import('./mainPages/Settings.tsx'));
 const TestPage = lazy(() => import('./pages/test.tsx'));
@@ -94,6 +95,7 @@ const router = createBrowserRouter(
         { path: '/movie/share/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> },
         // Curiosity Engine routes
         { path: '/s/:slug', element: <LazyPageWrapper><NodeSharePage /></LazyPageWrapper> },
+        { path: '/topic/:slug', element: <LazyPageWrapper><TopicPage /></LazyPageWrapper> },
         { path: '/spaces', element: <LazyPageWrapper><SpacePage /></LazyPageWrapper> },
         { path: '/library', element: <LazyPageWrapper><Library /></LazyPageWrapper> },
         { path: '/feed', element: <LazyPageWrapper><FeedPage /></LazyPageWrapper> },

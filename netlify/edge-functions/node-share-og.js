@@ -110,6 +110,12 @@ function buildPage(node, slug) {
         .map((q) => `<li><a href="${SITE}/?q=${encodeURIComponent(q)}">${escapeHtml(q)}</a></li>`)
         .join('')}</ul></section>`
     : '';
+  const topicSlug = (t) => t.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const topicsHtml = topics.length
+    ? `<nav><h2>Topics</h2>${topics
+        .map((t) => `<a href="${SITE}/topic/${topicSlug(t)}" rel="tag">${escapeHtml(t)}</a>`)
+        .join(' · ')}</nav>`
+    : '';
 
   return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8" />
@@ -138,6 +144,7 @@ function buildPage(node, slug) {
 <h1>${title}</h1>
 ${node.cover_image ? `<img src="${escapeHtml(node.cover_image)}" alt="${title}" width="1200" height="627" />` : ''}
 ${toHtml(node.answer || '')}
+${topicsHtml}
 ${sourcesHtml}
 ${relatedHtml}
 </article>
