@@ -7,6 +7,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Sparkles, ArrowLeft } from 'lucide-react';
 import CustomMarkdown from '../../../components/CustomMarkdown';
 import DynamicShareRow from '../../../components/share/DynamicShareRow';
+import SaveButton from '../components/SaveButton';
 import { getNodeBySlug, incrementNodeView } from '../nodePersistenceService';
 import type { NodeRecord } from '../types';
 
@@ -96,6 +97,7 @@ export default function NodeSharePage() {
             imageUrls: cover ? [cover] : [],
             deepLink: `https://curiosai.com/s/${node.share_slug}`,
           }}
+          trailing={<SaveButton nodeId={node.id} />}
         />
 
         <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">

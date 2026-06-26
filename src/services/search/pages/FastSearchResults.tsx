@@ -13,6 +13,7 @@ import TopBar from '../../../components/results/TopBar';
 import DynamicShareRow from '../../../components/share/DynamicShareRow';
 import { formatTimeAgo } from '../../../utils/time';
 import { saveNode, ensureShared, type SavedNodeRef } from '../../space/nodePersistenceService';
+import SaveButton from '../../space/components/SaveButton';
 
 // Helper to extract clean domain name from URL
 function extractDomainName(url: string): string {
@@ -467,18 +468,21 @@ export default function FastSearchResults() {
                 : window.location.href,
             }}
             trailing={
-              effectiveDeep ? (
-                <button
-                  type="button"
-                  onClick={handleExportPdf}
-                  disabled={isExporting}
-                  title="Export PDF"
-                  aria-label="Export PDF"
-                  className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-gray-100 dark:bg-[#222222] hover:bg-gray-200 dark:hover:bg-[#2a2a2a] text-gray-900 dark:text-white transition-colors disabled:opacity-60"
-                >
-                  <FileText size={18} />
-                </button>
-              ) : undefined
+              <>
+                {savedNode && <SaveButton nodeId={savedNode.id} />}
+                {effectiveDeep && (
+                  <button
+                    type="button"
+                    onClick={handleExportPdf}
+                    disabled={isExporting}
+                    title="Export PDF"
+                    aria-label="Export PDF"
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-gray-100 dark:bg-[#222222] hover:bg-gray-200 dark:hover:bg-[#2a2a2a] text-gray-900 dark:text-white transition-colors disabled:opacity-60"
+                  >
+                    <FileText size={18} />
+                  </button>
+                )}
+              </>
             }
           />
         )}

@@ -8,6 +8,7 @@ import DynamicShareRow from '../components/share/DynamicShareRow.tsx';
 import { generateArticleContentStreaming, type ArticleSource } from '../services/explore/articleService';
 import { resolveExploreHeroImage } from '../services/explore/heroImageService';
 import { saveNode, ensureShared, type SavedNodeRef } from '../services/space/nodePersistenceService';
+import SaveButton from '../services/space/components/SaveButton';
 
 interface ArticleData {
   title: string;
@@ -355,6 +356,7 @@ export default function ArticleDetail() {
                   ? `https://curiosai.com/s/${savedNode.shareSlug}`
                   : window.location.href,
               }}
+              trailing={savedNode ? <SaveButton nodeId={savedNode.id} /> : undefined}
             />
           </div>
 

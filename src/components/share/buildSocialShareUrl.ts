@@ -48,6 +48,11 @@ function firstValidImageUrl(urls: string[] | undefined): string {
 
 // Crawler-friendly URL that renders OG meta tags for X / LinkedIn / Facebook.
 function buildCrawlerShareUrl(payload: SharePayload): string {
+  // Curiosity Share links (/s/:slug) are already short AND serve OG tags via the
+  // node-share-og edge function, so share them directly — no long wrapper needed.
+  const deep = payload.deepLink || '';
+  if (/^https:\/\/curiosai\.com\/s\/[^/?#]+$/i.test(deep)) return deep;
+
   const query = (payload.title || '').trim();
   const snippet = buildSnippet(payload.description || payload.text, query);
   const image = firstValidImageUrl(payload.imageUrls);
