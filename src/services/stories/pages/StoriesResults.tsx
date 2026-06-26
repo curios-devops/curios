@@ -8,6 +8,7 @@ import ResearchProgress from '../../../components/ResearchProgress';
 import TabSystem from '../../../components/TabSystem';
 import { useAccentColor } from '../../../hooks/useAccentColor';
 import { useProCredits } from '../../../providers/ProCreditsProvider';
+import { saveNode } from '../../space/nodePersistenceService';
 
 // Topic categories for the header dropdown (label = what the user sees).
 const FOCUS_CATEGORIES = [
@@ -136,6 +137,19 @@ export default function StoriesResults() {
         console.log('✅ Insights completed', { resultKeys: Object.keys(storyResult) });
         setResult(storyResult);
         setLoading(false);
+
+        // Auto-save this story as a curiosity node (authenticated only; no-op for guests).
+        saveNode({
+          mode: 'stories',
+          query,
+          answer: storyResult.markdown_report,
+          shortSummary: storyResult.short_summary,
+          sources: (storyResult.sources || []).map((s: any) => ({ title: s.title, url: s.url, snippet: s.snippet })),
+          images: (storyResult.images || []).map((i: any) => ({ url: i.url, title: i.title || i.alt || '', source: i.source_url })),
+          videos: (storyResult.videos || []).map((v: any) => ({ url: v.url, title: v.title, thumbnail: v.thumbnail || '' })),
+          followUps: storyResult.follow_up_questions,
+          coverImage: storyResult.images?.[0]?.url,
+        });
       })
       .catch((err: Error) => {
         console.error('❌ Insights failed', { error: err.message });

@@ -1,12 +1,18 @@
-// Library — /library. Nodes the user has saved/bookmarked from anywhere.
+// Private Space — /spaces. The user's personal history of curiosity nodes.
 
 import { useEffect, useState } from 'react';
-import { useSession } from '../hooks/useSession';
-import { listSavedNodes } from '../services/space/nodePersistenceService';
-import type { NodeRecord } from '../services/space/types';
-import ContentCard from '../services/space/components/ContentCard';
+import { useSession } from '../../../hooks/useSession';
+import { listMyNodes } from '../nodePersistenceService';
+import type { NodeRecord } from '../types';
+import ContentCard from '../components/ContentCard';
 
-export default function Library() {
+const MODE_LABEL: Record<string, string> = {
+  fast_search: 'Search',
+  stories: 'Story',
+  explore: 'Article',
+};
+
+export default function SpacePage() {
   const { session, isLoading } = useSession();
   const userId = session?.user?.id;
   const [nodes, setNodes] = useState<NodeRecord[]>([]);
@@ -19,7 +25,7 @@ export default function Library() {
         setLoading(false);
         return;
       }
-      const data = await listSavedNodes(userId);
+      const data = await listMyNodes(userId);
       if (active) {
         setNodes(data);
         setLoading(false);
@@ -30,17 +36,17 @@ export default function Library() {
 
   return (
     <div className="min-h-screen px-4 py-8 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Library</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Answers you've saved for later.</p>
+      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Your Space</h1>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Everything you've asked, saved as you go.</p>
 
       {(loading || isLoading) ? (
         <div className="py-20 flex justify-center">
           <div className="w-7 h-7 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent-primary)', borderTopColor: 'transparent' }} />
         </div>
       ) : !userId ? (
-        <p className="text-gray-500 dark:text-gray-400">Sign in to save answers to your Library.</p>
+        <p className="text-gray-500 dark:text-gray-400">Sign in to build your Space.</p>
       ) : nodes.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400">Nothing saved yet. Tap save on any answer to keep it here.</p>
+        <p className="text-gray-500 dark:text-gray-400">No questions yet. Ask something to start your Space.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {nodes.map((n) => (
@@ -50,6 +56,7 @@ export default function Library() {
               title={n.query}
               summary={n.short_summary || n.answer.slice(0, 140)}
               cover={n.cover_image || n.images[0]?.url}
+              badge={MODE_LABEL[n.mode] || 'Search'}
             />
           ))}
         </div>

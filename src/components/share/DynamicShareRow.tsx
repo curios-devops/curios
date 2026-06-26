@@ -82,9 +82,12 @@ interface DynamicShareRowProps {
   // Optional extra action(s) rendered at the end of the row (e.g. Export PDF in
   // Fast Search's Ask Deeper mode). Kept generic so the row stays service-agnostic.
   trailing?: ReactNode;
+  // Fired once per share interaction (any network), before the share opens.
+  // Lets the page publish its snapshot (flip is_public) and count the share.
+  onShare?: () => void;
 }
 
-export default function DynamicShareRow({ serviceType, payload, trailing }: DynamicShareRowProps) {
+export default function DynamicShareRow({ serviceType, payload, trailing, onShare }: DynamicShareRowProps) {
   const [copied, setCopied] = useState(false);
   const networks = shareConfig[serviceType] || [];
 
@@ -101,6 +104,7 @@ export default function DynamicShareRow({ serviceType, payload, trailing }: Dyna
   };
 
   const handleClick = (network: SocialNetwork) => {
+    onShare?.();
     if (network === 'copy') {
       handleCopy();
       return;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderKanban, Globe2, HomeIcon, Library, User } from "lucide-react";
+import { Compass, FolderKanban, Globe2, HomeIcon, Library, User } from "lucide-react";
 import * as ReactRouterDom from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation.ts";
 import { useSession } from "../hooks/useSession.ts";
@@ -76,6 +76,13 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
               icon={Globe2}
               label={t("explore")}
               isActive={location.pathname === "/explore"} // Pass isActive prop
+              isCollapsed={isCollapsed}
+            />
+            <NavItem
+              to="/feed"
+              icon={Compass}
+              label="Discover"
+              isActive={location.pathname === "/feed"}
               isCollapsed={isCollapsed}
             />
             <NavItem

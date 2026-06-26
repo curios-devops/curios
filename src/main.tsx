@@ -37,6 +37,11 @@ const MovieResults = lazy(() => import('./services/movie/pages/MovieResults.tsx'
 const MovieSharePage = lazy(() => import('./services/movie/pages/MovieSharePage.tsx'));
 const Explore = lazy(() => import('./mainPages/Explore.tsx'));
 const ArticleDetail = lazy(() => import('./mainPages/ArticleDetail.tsx'));
+// Curiosity Engine — Space + Share + Feed
+const NodeSharePage = lazy(() => import('./services/space/pages/NodeSharePage.tsx'));
+const SpacePage = lazy(() => import('./services/space/pages/SpacePage.tsx'));
+const FeedPage = lazy(() => import('./services/space/pages/FeedPage.tsx'));
+const Library = lazy(() => import('./mainPages/Library.tsx'));
 const Settings = lazy(() => import('./mainPages/Settings.tsx'));
 const TestPage = lazy(() => import('./pages/test.tsx'));
 const ImageTest = lazy(() => import('./pages/ImageTest.tsx'));
@@ -87,6 +92,11 @@ const router = createBrowserRouter(
         { path: '/cinematic-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
         { path: '/movie-results', element: <LazyPageWrapper><MovieResults /></LazyPageWrapper> },
         { path: '/movie/share/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> },
+        // Curiosity Engine routes
+        { path: '/s/:slug', element: <LazyPageWrapper><NodeSharePage /></LazyPageWrapper> },
+        { path: '/spaces', element: <LazyPageWrapper><SpacePage /></LazyPageWrapper> },
+        { path: '/library', element: <LazyPageWrapper><Library /></LazyPageWrapper> },
+        { path: '/feed', element: <LazyPageWrapper><FeedPage /></LazyPageWrapper> },
         { path: '/settings', element: <LazyPageWrapper><Settings /></LazyPageWrapper> },
         { path: '/policies', element: <LazyPageWrapper><Policies /></LazyPageWrapper> },
   { path: '/auth/callback', element: <LazyPageWrapper><AuthCallback /></LazyPageWrapper> },

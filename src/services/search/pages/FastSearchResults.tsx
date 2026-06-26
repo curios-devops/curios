@@ -12,6 +12,7 @@ import CustomMarkdown from '../../../components/CustomMarkdown';
 import TopBar from '../../../components/results/TopBar';
 import DynamicShareRow from '../../../components/share/DynamicShareRow';
 import { formatTimeAgo } from '../../../utils/time';
+import { saveNode, ensureShared, type SavedNodeRef } from '../../space/nodePersistenceService';
 
 // Helper to extract clean domain name from URL
 function extractDomainName(url: string): string {
@@ -59,6 +60,8 @@ export default function FastSearchResults() {
   const [images, setImages] = useState<Array<{ url: string; title: string; source: string }>>([]);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('answer');
+  // The persisted curiosity node (authenticated only). Drives the Share snapshot.
+  const [savedNode, setSavedNode] = useState<SavedNodeRef | null>(null);
 
   // Memoize citations separately to prevent recreation on every render
   const citations = useMemo(() => {
@@ -186,12 +189,14 @@ export default function FastSearchResults() {
         setEffectiveDeep(deep);
 
         let isFirstChunk = true;
+        let fullAnswer = '';
         const onChunk = (chunk: string) => {
           // Hide searching animation on first chunk - stream starts immediately
           if (isFirstChunk) {
             setShowSearching(false);
             isFirstChunk = false;
           }
+          fullAnswer += chunk;
           setStreamingAnswer(prev => prev + chunk);
         };
         const onSources = (sources: Array<{ title: string; url: string; snippet: string }>) => {
@@ -232,6 +237,23 @@ export default function FastSearchResults() {
           followUps: response.followUps
         });
         setIsLoading(false);
+
+        // Auto-save this Q&A as a curiosity node (authenticated users only;
+        // saveNode is a no-op for guests). The persisted snapshot is the single
+        // source of truth behind the Share page, Space, and Feed.
+        const coverImage = (response as { headerImage?: string }).headerImage || response.images[0]?.url;
+        saveNode({
+          mode: 'fast_search',
+          query,
+          answer: fullAnswer,
+          sources: response.sources,
+          images: response.images,
+          videos: response.videos,
+          followUps: response.followUps,
+          coverImage,
+        }).then((ref) => {
+          if (ref) setSavedNode(ref);
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Search failed');
         setIsLoading(false);
@@ -434,12 +456,15 @@ export default function FastSearchResults() {
         {!showSearching && streamingAnswer && activeTab === 'answer' && (
           <DynamicShareRow
             serviceType="fast_search"
+            onShare={savedNode ? () => ensureShared(savedNode.id) : undefined}
             payload={{
               title: query,
               description: streamingAnswer.slice(0, 200),
               text: streamingAnswer.slice(0, 100),
               imageUrls: carouselImages.map((img) => img.url),
-              deepLink: window.location.href,
+              deepLink: savedNode
+                ? `https://curiosai.com/s/${savedNode.shareSlug}`
+                : window.location.href,
             }}
             trailing={
               effectiveDeep ? (

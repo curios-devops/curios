@@ -7,6 +7,7 @@ import CustomMarkdown from '../components/CustomMarkdown.tsx';
 import DynamicShareRow from '../components/share/DynamicShareRow.tsx';
 import { generateArticleContentStreaming, type ArticleSource } from '../services/explore/articleService';
 import { resolveExploreHeroImage } from '../services/explore/heroImageService';
+import { saveNode, ensureShared, type SavedNodeRef } from '../services/space/nodePersistenceService';
 
 interface ArticleData {
   title: string;
@@ -47,6 +48,8 @@ export default function ArticleDetail() {
   );
   // Resolved hero image for cold-loaded articles that arrive without a thumbnail.
   const [heroImage, setHeroImage] = useState<string | null>(null);
+  // Persisted curiosity node (authenticated only) — drives the Share snapshot.
+  const [savedNode, setSavedNode] = useState<SavedNodeRef | null>(null);
 
 
   // CRITICAL FIX: Memoize citations separately to prevent re-creation on tooltip state changes
@@ -148,6 +151,7 @@ export default function ArticleDetail() {
       setIsGenerating(true);
 
       let isFirstChunk = true;
+      let fullContent = '';
       const returnedSources = await generateArticleContentStreaming(
         article.title,
         article.snippet,
@@ -158,6 +162,7 @@ export default function ArticleDetail() {
             setIsGenerating(false);
             isFirstChunk = false;
           }
+          fullContent += chunk;
           setStreamingContent(prev => {
             const newContent = prev + chunk;
             return newContent;
@@ -166,6 +171,18 @@ export default function ArticleDetail() {
       );
 
       setSources(returnedSources);
+
+      // Auto-save the article as a curiosity node (authenticated only; no-op for guests).
+      saveNode({
+        mode: 'explore',
+        query: article.title,
+        answer: fullContent,
+        shortSummary: article.snippet || undefined,
+        sources: returnedSources.map((s) => ({ title: s.title, url: s.url, snippet: s.snippet })),
+        coverImage: article.thumbnail || heroImage || undefined,
+      }).then((ref) => {
+        if (ref) setSavedNode(ref);
+      });
     } catch (err) {
       console.error('[ARTICLE DETAIL] Error loading content:', err);
       setError(err instanceof Error ? err.message : 'Failed to load article content');
@@ -328,12 +345,15 @@ export default function ArticleDetail() {
           <div className="mb-8">
             <DynamicShareRow
               serviceType="explore"
+              onShare={savedNode ? () => ensureShared(savedNode.id) : undefined}
               payload={{
                 title: article.title,
                 description: article.snippet,
                 text: article.snippet,
                 imageUrls: hero ? [hero] : [],
-                deepLink: window.location.href,
+                deepLink: savedNode
+                  ? `https://curiosai.com/s/${savedNode.shareSlug}`
+                  : window.location.href,
               }}
             />
           </div>
