@@ -43,3 +43,6 @@ vertex-ai-veo-key.json
 *-veo-key.json
 *-sa-key.json
 *.gcp.json
+
+# TypeScript incremental build info
+*.tsbuildinfo

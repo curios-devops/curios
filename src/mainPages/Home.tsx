@@ -51,27 +51,8 @@ export default function Home() {
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
   const [cookiesAccepted, setCookiesAccepted] = useState(() => !!localStorage.getItem('cookieConsent'));
-  const [currentMode, setCurrentMode] = useState<ModeType>('search');
+  const [, setCurrentMode] = useState<ModeType>('search');
 
-  // Dynamic subtitle based on mode
-  const getModeSubtitle = (mode: ModeType): string => {
-    switch (mode) {
-      case 'search':
-        return 'Always grounded in trusted sources.';
-      case 'fastsearch':
-        return 'Lightning-fast answers with citations.';
-      case 'stories':
-        return 'Based on verified knowledge sources.';
-      case 'cinematic':
-        return 'Visual explanations grounded in facts.';
-      case 'movie':
-        return 'Your question, turned into a shareable movie.';
-      case 'avatar':
-        return 'Guided learning from trusted knowledge.';
-      default:
-        return 'Always grounded in trusted sources.';
-    }
-  };
 
   const isGuest = !session; // Guest = not logged in
   const isStandard = session && !subscription?.isActive; // Logged in but not pro

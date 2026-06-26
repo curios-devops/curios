@@ -119,7 +119,7 @@ export const useArtifactGenerator = () => {
 };
 
 // Mock artifact generation function
-async function generateMockArtifact(request: ArtifactGenerationRequest): Promise<Artifact> {
+async function generateMockArtifact(request: ArtifactGenerationRequest): Promise<UIArtifact> {
   const { prompt, category, type } = request;
   
   const detectedCategory = category || detectCategory(prompt);

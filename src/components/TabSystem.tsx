@@ -4,7 +4,7 @@ import { useAccentColor } from '../hooks/useAccentColor';
 import { useSession } from '../hooks/useSession';
 import { useSubscription } from '../hooks/useSubscription';
 import { useProCredits } from '../providers/ProCreditsProvider';
-import { generateArticleImage, extractArticleSummary } from '../services/research/regular/agents/imageGenerationService';
+import { generateArticleImage, extractArticleSummary } from '../services/stories/agents/imageGenerationService';
 import { NarrationService } from '../services/cinematic/audio/NarrationService';
 
 // Standard ElevenLabs premade voices for the "Listen to this article" picker.
@@ -197,9 +197,9 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
   const handleFollowUpClick = (question: string) => {
     const searchParams = new URLSearchParams();
     searchParams.set('q', question);
-    searchParams.set('type', 'insights');
-    // Force page reload to trigger new insights workflow
-    window.location.href = `/insights-results?${searchParams.toString()}`;
+    searchParams.set('type', 'stories');
+    // Force page reload to trigger new stories workflow
+    window.location.href = `/stories-results?${searchParams.toString()}`;
   };
 
   // Handle image generation - FREE for everyone, HD uses quota for free users

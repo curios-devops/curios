@@ -5,7 +5,7 @@ import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
 
 interface TabTooltipProps {
-  tab: 'search' | 'insights' | 'labs';
+  tab: 'search' | 'stories' | 'labs';
   userType: 'guest' | 'standard' | 'premium';
   remainingSearches?: number;
   maxSearches?: number;
@@ -22,10 +22,10 @@ interface TabConfig {
   badge?: string;
 }
 
-const tabConfig: Record<'search' | 'insights' | 'labs', TabConfig> = {
+const tabConfig: Record<'search' | 'stories' | 'labs', TabConfig> = {
   search: { icon: Sparkles },
   labs: { icon: FlaskConical },
-  insights: { icon: BookOpen }
+  stories: { icon: BookOpen }
 };
 
 // text/content comes from translations via t(...)

@@ -4,7 +4,7 @@ import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 
 interface FunctionTooltipProps {
-  tab: 'search' | 'insights' | 'labs';
+  tab: 'search' | 'stories' | 'labs';
   userType: 'guest' | 'free' | 'premium'; // Updated to match useUserType
   remainingQuota?: number;
   onUpgrade: () => void;
@@ -12,7 +12,7 @@ interface FunctionTooltipProps {
   onClose: () => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
-  onProToggle: (tab: 'search' | 'insights' | 'labs', enabled: boolean) => void;
+  onProToggle: (tab: 'search' | 'stories' | 'labs', enabled: boolean) => void;
 }
 
 interface TabConfig {
@@ -21,9 +21,9 @@ interface TabConfig {
 }
 
 // keep icons/badges in code, but fetch all text (title/description/features/pro text) from translations
-const tabConfig: Record<'search' | 'insights' | 'labs', TabConfig> = {
+const tabConfig: Record<'search' | 'stories' | 'labs', TabConfig> = {
   search: { icon: Sparkles },
-  insights: { icon: BookOpen },
+  stories: { icon: BookOpen },
   labs: { icon: FlaskConical }
 };
 

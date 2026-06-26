@@ -1,9 +1,9 @@
 // SerpAPI image search — reuses the existing `google-images-search` edge
-// function (server-side SERPAPI_API_KEY), same as Studio's GoogleImageService.
+// function (server-side SERPAPI_API_KEY).
 // Primary image engine for the Default tier; callers fall back to Brave.
 
 import type { ImageResult } from '../mediaSearchProvider';
-import { GoogleImageService } from '../../../studio/assets/googleImageService';
+import { GoogleImageService } from './googleImageService';
 import { logger } from '../../../../utils/logger';
 
 const service = new GoogleImageService();

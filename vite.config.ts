@@ -70,11 +70,8 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
               './src/services/legacy-search/regular/agents/searchRetrieverAgent.ts',
               './src/services/legacy-search/regular/agents/searchWriterAgent.ts'
             ],
-            // 'services-research' chunk removed — research pages are temporarily disabled.
-            'services-lab': [
-              './src/services/lab/regular/agents/orchestrator.ts'
-            ],
-            
+            // 'services-research' and 'services-lab' chunks removed — those services were deleted.
+
             // Common service chunks - reduced to avoid circular dependencies
             'common-service': [
               './src/commonService/utils/constants.ts',

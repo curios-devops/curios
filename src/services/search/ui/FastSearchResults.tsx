@@ -1,7 +1,6 @@
 // FastSearch Results Page
 // Displays fast search results with answer, media carousel, sources, and follow-ups
 
-import React from 'react';
 
 interface FastSearchResultsProps {
   query: string;
@@ -28,11 +27,6 @@ interface FastSearchResultsProps {
 export default function FastSearchResults({
   query,
   answer,
-  sources,
-  images,
-  videos,
-  followUps,
-  onFollowUpClick
 }: FastSearchResultsProps) {
   // TODO: Implement UI in Phase 4
   // Match current Search UI styling

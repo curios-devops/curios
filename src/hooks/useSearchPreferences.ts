@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 
 export function useSearchPreferences() {
   const [isProEnabled, setIsProEnabled] = useState(false);

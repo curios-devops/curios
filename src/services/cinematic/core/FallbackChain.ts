@@ -39,7 +39,7 @@ export class FallbackChain {
 
     // 🟡 Intentar WAN
     if (engine === 'WAN') {
-      const wan = await safeGenerate(
+      const wan = await safeGenerate<VideoGenerationResult>(
         'WAN',
         () => this.providers.wan.generate(request),
         this.config.wanEnabled
@@ -56,7 +56,7 @@ export class FallbackChain {
 
     // 🟡 Intentar LTX
     if (engine === 'LTX') {
-      const ltx = await safeGenerate(
+      const ltx = await safeGenerate<VideoGenerationResult>(
         'LTX',
         () => this.providers.ltx.generate(request),
         this.config.ltxEnabled

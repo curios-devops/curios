@@ -86,7 +86,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const color = normalizeAccentColor(data?.accent_color);
         if (color) setAccentColorState(color);
       })
-      .catch(() => {});
+      .then(undefined, () => {});
   }, [userId]);
 
   const setTheme = useCallback((t: Theme) => setThemeState(t), []);
@@ -99,7 +99,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setAccentColor = useCallback((color: AccentColor) => {
     setAccentColorState(color);
     if (userId) {
-      supabase.from('profiles').update({ accent_color: color }).eq('id', userId).catch(() => {});
+      supabase.from('profiles').update({ accent_color: color }).eq('id', userId).then(undefined, () => {});
     }
   }, [userId]);
 

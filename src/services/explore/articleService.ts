@@ -32,8 +32,8 @@ function extractDomain(url: string): string {
  */
 export async function generateArticleContentStreaming(
   title: string,
-  snippet: string,
-  originalUrl: string,
+  _snippet: string,
+  _originalUrl: string,
   onChunk: (chunk: string) => void,
   onSourcesFound?: (sources: ArticleSource[]) => void
 ): Promise<ArticleSource[]> {

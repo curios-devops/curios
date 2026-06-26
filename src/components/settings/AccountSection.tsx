@@ -1,5 +1,3 @@
-import React from 'react';
-import { User, Mail, Database, LogOut } from 'lucide-react';
 import ToggleSwitch from './ToggleSwitch';
 
 interface AccountSectionProps {

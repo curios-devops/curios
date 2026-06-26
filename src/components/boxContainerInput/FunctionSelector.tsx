@@ -8,8 +8,8 @@ import { useTheme } from '../theme/ThemeContext.tsx';
 import FunctionTooltip from './FunctionTooltip.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 
-export type FunctionType = 'search' | 'insights' | 'labs' | 'pro-search' | 'research' | 'pro-labs';
-export type TabType = 'search' | 'insights' | 'labs';
+export type FunctionType = 'search' | 'stories' | 'labs' | 'pro-search' | 'research' | 'pro-labs';
+export type TabType = 'search' | 'stories' | 'labs';
 export type UserType = 'guest' | 'free' | 'premium';
 
 interface Tab {
@@ -30,8 +30,8 @@ const tabs: Tab[] = [
     tooltip: 'Get quick answers with web search and AI analysis'
   },
   {
-    id: 'insights',
-    label: 'Insights',
+    id: 'stories',
+    label: 'Stories',
     description: 'Multi-agent research reports',
     icon: BookOpen,
     tooltip: 'Get in-depth, multi-agent research reports'
@@ -86,9 +86,9 @@ export default function FunctionSelector({
       case 'search':
       case 'pro-search':
         return 'search';
-      case 'insights':
+      case 'stories':
       case 'research':
-        return 'insights';
+        return 'stories';
       case 'labs':
       case 'pro-labs':
         return 'labs';
@@ -103,7 +103,7 @@ export default function FunctionSelector({
       switch (tab) {
         case 'search':
           return 'pro-search';
-        case 'insights':
+        case 'stories':
           return 'research';
         case 'labs':
           return 'pro-labs';

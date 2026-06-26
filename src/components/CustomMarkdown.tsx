@@ -30,8 +30,8 @@ export default function CustomMarkdown({ children, className = "", citations = [
       // Check if there's a semicolon or comma (indicating multiple sources in one bracket)
       if (content.includes(';') || content.includes(',')) {
         // Split by both semicolon and comma
-        const sites = content.split(/[;,]/).map(s => s.trim()).filter(s => s);
-        return sites.map(site => `[${site}]`).join(' ');
+        const sites = content.split(/[;,]/).map((s: string) => s.trim()).filter((s: string) => s);
+        return sites.map((site: string) => `[${site}]`).join(' ');
       }
       return match;
     });

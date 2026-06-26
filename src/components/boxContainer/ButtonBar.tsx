@@ -53,7 +53,6 @@ interface ButtonBarProps {
 export default function ButtonBar({
   selectedMode,
   onModeSelect,
-  onModeClear,
   showAttachMenu,
   setShowAttachMenu,
   reverseImageRef,
@@ -64,7 +63,6 @@ export default function ButtonBar({
   attachMenuRef,
   onVoiceClick,
   isRecording,
-  isTranscribing,
 }: ButtonBarProps) {
   const { t } = useTranslation();
   const accentColor = useAccentColor();

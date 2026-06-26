@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, Sparkles, Brain, Lightbulb, Microscope, User } from 'lucide-react';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';

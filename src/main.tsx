@@ -30,10 +30,8 @@ const FastSearchResults = lazy(() => import('./services/search/pages/FastSearchR
 const AvatarSearchResults = lazy(() => import('./services/legacy-search/avatar/pages/AvatarSearchResults.tsx'));
 const ProSearchResults = lazy(() => import('./services/legacy-search/pro/pages/ProSearchResults.tsx'));
 const ProSearchTest = lazy(() => import('./services/legacy-search/pro/pages/ProSearchTest.tsx'));
-// Insights (Stories) — regular research workflow. Pro research was removed.
-const InsightsResults = lazy(() => import('./services/research/regular/pages/InsightsResults.tsx'));
-// const LabsResults = lazy(() => import('./services/lab/regular/pages/LabsResults.tsx')); // Replaced by Studio
-const StudioResults = lazy(() => import('./services/studio/pages/StudioResults.tsx'));
+// Stories — regular workflow. Pro research was removed.
+const StoriesResults = lazy(() => import('./services/stories/pages/StoriesResults.tsx'));
 const CinematicResults = lazy(() => import('./services/cinematic/pages/CinematicResults.tsx'));
 const MovieResults = lazy(() => import('./services/movie/pages/MovieResults.tsx'));
 const MovieSharePage = lazy(() => import('./services/movie/pages/MovieSharePage.tsx'));
@@ -81,17 +79,14 @@ const router = createBrowserRouter(
         { path: '/avatar-search', element: <LazyPageWrapper><AvatarSearchResults /></LazyPageWrapper> },
         { path: '/pro-search', element: <LazyPageWrapper><ProSearchResults /></LazyPageWrapper> },
         { path: '/pro-search-test', element: <LazyPageWrapper><ProSearchTest /></LazyPageWrapper> },
-        { path: '/insights-results', element: <LazyPageWrapper><InsightsResults /></LazyPageWrapper> },
+        { path: '/stories-results', element: <LazyPageWrapper><StoriesResults /></LazyPageWrapper> },
         // Pro research routes removed (legacy code deleted).
-        // Labs routes replaced by Studio
-        // { path: '/labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
-        // { path: '/pro-labs-results', element: <LazyPageWrapper><LabsResults /></LazyPageWrapper> },
+        // /labs-results routes now serve Cinematic
         { path: '/labs-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
         { path: '/pro-labs-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
         { path: '/cinematic-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
         { path: '/movie-results', element: <LazyPageWrapper><MovieResults /></LazyPageWrapper> },
         { path: '/movie/share/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> },
-        { path: '/studio/results', element: <LazyPageWrapper><StudioResults /></LazyPageWrapper> },
         { path: '/settings', element: <LazyPageWrapper><Settings /></LazyPageWrapper> },
         { path: '/policies', element: <LazyPageWrapper><Policies /></LazyPageWrapper> },
   { path: '/auth/callback', element: <LazyPageWrapper><AuthCallback /></LazyPageWrapper> },
@@ -285,93 +280,3 @@ root.render(
     </AuthProvider>
   </ErrorBoundary>
 );
-// 🧪 Exponer tests de diagnóstico en desarrollo
-if (import.meta.env.DEV) {
-  // Test granulares (recomendados)
-  // @ts-ignore
-  window.testLevel1 = async () => {
-    const { testLevel1_CanvasPuro } = await import('./services/studio/test/testGranular');
-    return testLevel1_CanvasPuro();
-  };
-  // @ts-ignore
-  window.testLevel2 = async () => {
-    const { testLevel2_ConDataURI } = await import('./services/studio/test/testGranular');
-    return testLevel2_ConDataURI();
-  };
-  // @ts-ignore
-  window.testLevel3 = async () => {
-    const { testLevel3_ImagenExterna } = await import('./services/studio/test/testGranular');
-    return testLevel3_ImagenExterna();
-  };
-  // @ts-ignore
-  window.testLevel4 = async () => {
-    const { testLevel4_FlujoRealConDataURI } = await import('./services/studio/test/testGranular');
-    return testLevel4_FlujoRealConDataURI();
-  };
-  // @ts-ignore
-  window.testLevel5 = async () => {
-    const { testLevel5_FlujoRealConBrave } = await import('./services/studio/test/testGranular');
-    return testLevel5_FlujoRealConBrave();
-  };
-  // @ts-ignore
-  window.testLevel6 = async () => {
-    const { testLevel6_VideoConAudio } = await import('./services/studio/test/testGranular');
-    return testLevel6_VideoConAudio();
-  };
-  // @ts-ignore
-  window.testAllLevels = async () => {
-    const { testAllLevels } = await import('./services/studio/test/testGranular');
-    return testAllLevels();
-  };
-  
-  // Test original
-  // @ts-ignore
-  window.testNoAudio = async () => {
-    const { testNoAudio } = await import('./services/studio/test/testNoAudio');
-    return testNoAudio();
-  };
-
-  // 🌍 Tests de Global Image Search (NUEVO)
-  // @ts-ignore
-  window.testGlobalSearch_Level1 = async () => {
-    const { testGlobalSearch_Level1 } = await import('./services/studio/test/testGlobalImageSearch');
-    return testGlobalSearch_Level1();
-  };
-  // @ts-ignore
-  window.testGlobalSearch_Level2 = async () => {
-    const { testGlobalSearch_Level2 } = await import('./services/studio/test/testGlobalImageSearch');
-    return testGlobalSearch_Level2();
-  };
-  // @ts-ignore
-  window.testGlobalSearch_Level3 = async () => {
-    const { testGlobalSearch_Level3 } = await import('./services/studio/test/testGlobalImageSearch');
-    return testGlobalSearch_Level3();
-  };
-  // @ts-ignore
-  window.testGlobalSearch_Level4 = async () => {
-    const { testGlobalSearch_Level4 } = await import('./services/studio/test/testGlobalImageSearch');
-    return testGlobalSearch_Level4();
-  };
-  // @ts-ignore
-  window.testAllGlobalSearch = async () => {
-    const { testAllGlobalSearch } = await import('./services/studio/test/testGlobalImageSearch');
-    return testAllGlobalSearch();
-  };
-  
-  console.log('🧪 Tests disponibles:');
-  console.log('   testLevel1()     - Canvas puro (sin imágenes)');
-  console.log('   testLevel2()     - Con imágenes Data URI');
-  console.log('   testLevel3()     - Con imagen externa');
-  console.log('   testLevel4()     - Flujo real + Data URI');
-  console.log('   testLevel5()     - Flujo real + Brave');
-  console.log('   testLevel6()     - Flujo real + Audio + Video ✨');
-  console.log('   testAllLevels()  - Ejecutar todos en secuencia');
-  console.log('   testNoAudio()    - Test original');
-  console.log('');
-  console.log('🌍 Tests de Global Image Search (NUEVO):');
-  console.log('   testGlobalSearch_Level1() - Búsqueda simple');
-  console.log('   testGlobalSearch_Level2() - Asignación a capítulos');
-  console.log('   testGlobalSearch_Level3() - Flujo completo (1 capítulo)');
-  console.log('   testGlobalSearch_Level4() - Flujo completo (3 capítulos)');
-  console.log('   testAllGlobalSearch()     - Ejecutar todos (Global Search)');
-}

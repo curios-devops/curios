@@ -14,7 +14,9 @@ Before implementing:
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
 - Frontend is in Netfily
-- Edge functions  
+- Edge functions run primarly on supabse and then netfily
+- Make deployment through GitHub not Netfily
+ 
 
 
 ## 2. Simplicity First

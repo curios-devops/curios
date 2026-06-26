@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../components/theme/ThemeContext.tsx';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
-import { useTranslation } from '../hooks/useTranslation.ts';
 
 interface NewsArticle {
   title: string;
@@ -15,16 +13,11 @@ interface NewsArticle {
 
 export default function Explore() {
   const navigate = useNavigate();
-  const { theme } = useTheme();
   const accentColors = useAccentColor();
-  const { t } = useTranslation();
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isDarkMode =
-    theme === 'dark' ||
-    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   // Format date as relative time or formatted date
   const formatPublishedDate = (dateString: string): string => {

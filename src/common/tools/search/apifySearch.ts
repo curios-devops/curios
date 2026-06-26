@@ -80,9 +80,8 @@ export class ApifySearchTool {
       return items.map((item) => ({
         title: item.title || '',
         url: item.url || '',
+        snippet: item.description || '',
         content: item.description || '',
-        source: 'apify',
-        score: item.rank ? 1 - (item.rank / 100) : 0.5, // Convert rank to score (0-1)
       }));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

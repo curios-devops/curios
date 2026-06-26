@@ -74,7 +74,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
       case 'fastsearch':
         return '/fast-search';
       case 'stories':
-        return '/insights-results';
+        return '/stories-results';
       case 'cinematic':
         return '/cinematic-results';
       case 'movie':

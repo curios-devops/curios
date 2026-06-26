@@ -5,7 +5,7 @@ import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
-export type TabType = 'search' | 'insights' | 'labs';
+export type TabType = 'search' | 'stories' | 'labs';
 
 interface Tab {
   id: TabType;
@@ -18,7 +18,7 @@ interface Tab {
 
 const tabs: Tab[] = [
   { id: 'search', label: 'search', description: 'Fast answers to everyday questions', icon: Search, tooltip: 'Get quick answers with web search and AI analysis' },
-  { id: 'insights', label: 'insights', description: 'Multi-agent research reports', icon: BookOpen, tooltip: 'Get in-depth, multi-agent research reports' },
+  { id: 'stories', label: 'stories', description: 'Multi-agent research reports', icon: BookOpen, tooltip: 'Get in-depth, multi-agent research reports' },
   { id: 'labs', label: 'labs', description: 'Generate cinematic multi-scene visual answers', icon: FlaskConical, tooltip: 'Create source-grounded cinematic videos with multiple Veo scenes' }
 ];
 

@@ -21,7 +21,6 @@ const LanguageItem: React.FC<LanguageItemProps> = ({ lang, setLanguage, setIsOpe
  );
 }
 
-type DropdownIconProps = { className?: string };
 
 export default function LanguageSelector(): JSX.Element {
   const DropdownIcon = ({ className }: { className?: string }) => (

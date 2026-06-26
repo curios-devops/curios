@@ -1,4 +1,4 @@
-import React, { InputHTMLAttributes } from 'react';
+import { InputHTMLAttributes } from 'react';
 
 interface CleanInputProps extends InputHTMLAttributes<HTMLInputElement> {
   className?: string;

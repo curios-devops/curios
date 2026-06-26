@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
 

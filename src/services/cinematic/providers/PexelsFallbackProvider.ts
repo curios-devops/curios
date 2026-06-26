@@ -4,7 +4,6 @@
  */
 
 import { logger } from '../../../utils/logger';
-import { env } from '../../../config/env';
 
 interface PexelsVideo {
   url: string;
@@ -29,37 +28,7 @@ interface PexelsSearchResponse {
 }
 
 export class PexelsFallbackProvider {
-  private apiKey: string;
-  private missingKeyWarningShown = false;
   private readonly MAX_VIDEO_DURATION = 10; // Cap at 10 seconds
-
-  constructor() {
-    this.apiKey = this.resolveApiKey();
-  }
-
-  private resolveApiKey(): string {
-    const candidates = [
-      env.pexels.apiKey,
-      import.meta.env.VITE_PEXELS_API_KEY,
-      import.meta.env.PEXELS_API_KEY,
-    ];
-
-    for (const candidate of candidates) {
-      if (typeof candidate !== 'string') continue;
-      const normalized = candidate.trim();
-      if (!normalized) continue;
-      if (normalized.toLowerCase() === 'undefined' || normalized.toLowerCase() === 'null') continue;
-      return normalized;
-    }
-
-    return '';
-  }
-
-  private warnMissingKeyOnce(): void {
-    if (this.missingKeyWarningShown) return;
-    this.missingKeyWarningShown = true;
-    logger.warn('[PexelsFallback] Missing API key (`VITE_PEXELS_API_KEY` or `PEXELS_API_KEY`) - Pexels fallback is disabled');
-  }
 
   /**
    * Search for a video on Pexels based on a query

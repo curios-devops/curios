@@ -4,7 +4,7 @@
 // are unreliable — and if that returns nothing, generate one with gpt-image-2 (low).
 
 import { searchSerpApiImages } from '../search/providers/engines/serpApiImages';
-import { generateArticleImage } from '../research/regular/agents/imageGenerationService';
+import { generateArticleImage } from '../stories/agents/imageGenerationService';
 import { logger } from '../../utils/logger';
 
 export async function resolveExploreHeroImage(title: string, summary?: string): Promise<string | null> {
