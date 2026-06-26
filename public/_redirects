@@ -7,5 +7,8 @@
 # buildSocialShareUrl.ts). Kept commented for reference.
 # /api/social-share https://gpfccicfqynahflehpqo.supabase.co/functions/v1/social-share 200
 
+# Dynamic sitemap of public Curiosity nodes (SEO/GEO discovery)
+/sitemap.xml /.netlify/functions/sitemap 200
+
 # SPA fallback - must be last
 /* /index.html 200

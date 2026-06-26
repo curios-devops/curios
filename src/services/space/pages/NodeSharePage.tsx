@@ -29,7 +29,19 @@ export default function NodeSharePage() {
       if (!active) return;
       setNode(record);
       setLoading(false);
-      if (record) incrementNodeView(record.id);
+      if (record) {
+        incrementNodeView(record.id);
+        // Set per-page title/description for JS-rendering crawlers (Googlebot) and tabs.
+        document.title = `${record.query} — CuriosAI`;
+        const desc = (record.short_summary || record.answer || '').replace(/[#*`>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+        let meta = document.querySelector('meta[name="description"]');
+        if (!meta) {
+          meta = document.createElement('meta');
+          meta.setAttribute('name', 'description');
+          document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', desc);
+      }
     })();
     return () => { active = false; };
   }, [slug]);
