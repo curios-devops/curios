@@ -46,6 +46,20 @@ export async function saveNode(snapshot: NodeSnapshot): Promise<SavedNodeRef | n
     return null;
   }
 
+  // Dedup: reuse an existing node for the same (user, query, mode) instead of
+  // piling up duplicates when the same article/search is re-opened or re-rendered.
+  const { data: existing } = await supabase
+    .from('curiosity_nodes')
+    .select('id, share_slug')
+    .eq('user_id', userId)
+    .eq('mode', snapshot.mode)
+    .eq('query', snapshot.query)
+    .limit(1)
+    .maybeSingle();
+  if (existing?.id) {
+    return { id: existing.id as string, shareSlug: existing.share_slug as string };
+  }
+
   const shareSlug = generateSlug();
 
   try {

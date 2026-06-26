@@ -5,6 +5,7 @@ import type { FeedItem } from './types';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // score = recency*0.5 + engagement*0.3 (clarity deferred). Both normalized 0..1.
+// Also dedups by normalized title so the same explanation never shows twice.
 export function rankFeed(items: FeedItem[]): FeedItem[] {
   if (items.length === 0) return items;
   const now = Date.now();
@@ -15,7 +16,14 @@ export function rankFeed(items: FeedItem[]): FeedItem[] {
     const recency = 1 / (1 + ageDays);
     return recency * 0.5 + (engagement(i) / maxEng) * 0.3;
   };
-  return [...items].sort((a, b) => score(b) - score(a));
+  const sorted = [...items].sort((a, b) => score(b) - score(a));
+  const seen = new Set<string>();
+  return sorted.filter((i) => {
+    const key = (i.title || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function feedItemHref(item: FeedItem): string {

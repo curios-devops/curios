@@ -54,10 +54,10 @@ export async function deriveTopics(query: string, answer: string): Promise<strin
     const raw = data.text || data.content || data.output_text || '';
     const parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || '{}');
     const topics = Array.isArray(parsed.topics) ? parsed.topics : [];
-    return topics
+    const cleaned = topics
       .map((t: unknown) => String(t).trim().toLowerCase())
-      .filter((t: string) => t.length > 1 && t.length < 40)
-      .slice(0, 4);
+      .filter((t: string) => t.length > 1 && t.length < 40);
+    return [...new Set(cleaned)].slice(0, 4); // dedup, case already normalized
   } catch (error) {
     logger.warn('[topicService] deriveTopics failed', { error: error instanceof Error ? error.message : String(error) });
     return [];
