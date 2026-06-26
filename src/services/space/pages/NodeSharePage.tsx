@@ -47,6 +47,50 @@ export default function NodeSharePage() {
     return () => { active = false; };
   }, [slug]);
 
+  // Inject schema.org JSON-LD (Article + QAPage) into the head for JS-rendering
+  // crawlers (Rich Results Test / Googlebot render). Mirrors the edge SSR markup.
+  useEffect(() => {
+    if (!node) return;
+    const shareUrl = `https://curiosai.com/s/${node.share_slug}`;
+    const plain = (node.short_summary || node.answer || '').replace(/[#*`>]/g, ' ').replace(/\s+/g, ' ').trim();
+    const image = node.cover_image || node.images[0]?.url || 'https://curiosai.com/curios-og-image-1200x627.png';
+    const jsonLd = {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'Article',
+          headline: node.query,
+          description: plain.slice(0, 250),
+          image: [image],
+          datePublished: node.created_at,
+          dateModified: node.updated_at || node.created_at,
+          author: { '@type': 'Organization', name: 'CuriosAI', url: 'https://curiosai.com' },
+          publisher: { '@type': 'Organization', name: 'CuriosAI', logo: { '@type': 'ImageObject', url: 'https://curiosai.com/curios-og-image-1200x627.png' } },
+          mainEntityOfPage: { '@type': 'WebPage', '@id': shareUrl },
+          ...(node.topics.length ? { keywords: node.topics.join(', ') } : {}),
+        },
+        {
+          '@type': 'QAPage',
+          mainEntity: {
+            '@type': 'Question',
+            name: node.query,
+            text: node.query,
+            answerCount: 1,
+            dateCreated: node.created_at,
+            author: { '@type': 'Organization', name: 'CuriosAI' },
+            acceptedAnswer: { '@type': 'Answer', text: plain.slice(0, 5000), url: shareUrl, author: { '@type': 'Organization', name: 'CuriosAI' } },
+          },
+        },
+      ],
+    };
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.setAttribute('data-node-ld', '');
+    script.textContent = JSON.stringify(jsonLd);
+    document.head.appendChild(script);
+    return () => { script.remove(); };
+  }, [node]);
+
   // Citations for inline markdown tooltips (same shape FastSearch builds).
   const citations = useMemo(() => {
     if (!node) return [];

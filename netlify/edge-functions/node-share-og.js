@@ -10,7 +10,7 @@
 //
 // Any failure falls back to serving the SPA — a broken render never breaks the page.
 
-const CRAWLER_REGEX = /bot|crawler|spider|facebookexternalhit|facebot|embedly|quora link preview|whatsapp|slackbot|telegram|pinterest|discord|vkshare|redditbot|linkedinbot|twitterbot|googlebot|google-extended|bingbot|applebot|duckduckbot|yandex|baiduspider|gptbot|oai-searchbot|chatgpt-user|perplexitybot|claudebot|claude-web|anthropic-ai|cohere-ai|ccbot|amazonbot|youbot/i;
+const CRAWLER_REGEX = /bot|crawler|spider|facebookexternalhit|facebot|embedly|quora link preview|whatsapp|slackbot|telegram|pinterest|discord|vkshare|redditbot|linkedinbot|twitterbot|googlebot|google-inspectiontool|google-extended|google-structured|bingbot|bingpreview|adidxbot|applebot|duckduckbot|yandex|baiduspider|gptbot|oai-searchbot|chatgpt-user|perplexitybot|claudebot|claude-web|anthropic-ai|cohere-ai|ccbot|amazonbot|youbot|validator|lighthouse/i;
 const SITE = 'https://curiosai.com';
 const FALLBACK_IMAGE = `${SITE}/curios-og-image-1200x627.png`;
 const LOGO = `${SITE}/curios-og-image-1200x627.png`;
