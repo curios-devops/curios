@@ -19,6 +19,7 @@ import { useAccentColor } from '../hooks/useAccentColor.ts';
 import { useTheme } from '../components/theme/ThemeContext.tsx';
 import type { ModeType } from '../components/boxContainerInput/ModeSelector.tsx';
 import ProCreditsBattery from '../components/ProCreditsBattery.tsx';
+import HomeDiscovery from '../services/space/components/HomeDiscovery.tsx';
 
 export default function Home() {
   const { session } = useSession();
@@ -214,6 +215,9 @@ export default function Home() {
           <InputContainer onModeChange={setCurrentMode} />
         </div>
       </div>
+
+      {/* Finite "Discover" strip under the search box (Curiosity Launcher pattern). */}
+      <HomeDiscovery />
 
       {/* Bottom right: Language and Help */}
       <div className="fixed bottom-2 right-4 flex items-center gap-2 z-[180]">

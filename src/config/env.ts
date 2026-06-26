@@ -29,6 +29,8 @@ const optionalEnvVars = {
   VITE_ANAM_AVATAR_FINN_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_FINN_ID : '') || '',
   VITE_ANAM_AVATAR_PABLO_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANAM_AVATAR_PABLO_ID : '') || '',
   VITE_ELEVENLABS_STT_MODEL_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ELEVENLABS_STT_MODEL_ID : '') || '',
+  // How many discovery cards show on the Home page (finite strip, anti-doomscroll).
+  VITE_HOME_FEED_COUNT: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_HOME_FEED_COUNT : '') || '',
 } as const;
 
 // Validate required environment variables
@@ -89,5 +91,9 @@ export const env = {
   },
   pixabay: {
     apiKey: optionalEnvVars.VITE_PIXABAY_API_KEY,
+  },
+  home: {
+    // Finite Home discovery strip size; tune via VITE_HOME_FEED_COUNT without code changes.
+    feedCount: Math.max(1, parseInt(optionalEnvVars.VITE_HOME_FEED_COUNT, 10) || 9),
   }
 } as const;
