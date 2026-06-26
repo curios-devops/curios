@@ -6,6 +6,7 @@ import QueryBoxContainer from '../components/boxContainer/QueryBoxContainer.tsx'
 import CustomMarkdown from '../components/CustomMarkdown.tsx';
 import DynamicShareRow from '../components/share/DynamicShareRow.tsx';
 import { generateArticleContentStreaming, type ArticleSource } from '../services/explore/articleService';
+import { resolveExploreHeroImage } from '../services/explore/heroImageService';
 
 interface ArticleData {
   title: string;
@@ -44,6 +45,8 @@ export default function ArticleDetail() {
   const [relatedArticles] = useState<ArticleData[]>(
     location.state?.relatedArticles || []
   );
+  // Resolved hero image for cold-loaded articles that arrive without a thumbnail.
+  const [heroImage, setHeroImage] = useState<string | null>(null);
 
 
   // CRITICAL FIX: Memoize citations separately to prevent re-creation on tooltip state changes
@@ -125,6 +128,17 @@ export default function ArticleDetail() {
     }
   }, [article?.title]); // FIXED: Use primitive value, not object reference
 
+  // Cold load (shared link, no thumbnail): resolve a hero image so the page isn't bare.
+  // Warm in-app navigation already carries the real news thumbnail, so we skip it there.
+  useEffect(() => {
+    if (!article || article.thumbnail) return;
+    let cancelled = false;
+    resolveExploreHeroImage(article.title, article.snippet).then((url) => {
+      if (!cancelled && url) setHeroImage(url);
+    });
+    return () => { cancelled = true; };
+  }, [article?.title]);
+
   const loadArticleContent = async () => {
     if (!article) return;
 
@@ -191,6 +205,9 @@ export default function ArticleDetail() {
       </div>
     );
   }
+
+  // Real news thumbnail when present; otherwise the cold-load resolved hero.
+  const hero = article.thumbnail || heroImage;
 
   return (
     <div
@@ -293,10 +310,10 @@ export default function ArticleDetail() {
           )}
 
           {/* Main Image */}
-          {article.thumbnail && (
+          {hero && (
             <div className="mb-8 rounded-xl overflow-hidden">
               <img
-                src={article.thumbnail}
+                src={hero}
                 alt={article.title}
                 className="w-full h-auto"
                 style={{ maxHeight: '500px', objectFit: 'cover' }}
@@ -315,7 +332,7 @@ export default function ArticleDetail() {
                 title: article.title,
                 description: article.snippet,
                 text: article.snippet,
-                imageUrls: article.thumbnail ? [article.thumbnail] : [],
+                imageUrls: hero ? [hero] : [],
                 deepLink: window.location.href,
               }}
             />
