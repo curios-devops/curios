@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Share2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
+import { useLanguage } from '../contexts/LanguageContext.tsx';
+import { formatNewsDate } from '../utils/formatNewsDate.ts';
 import QueryBoxContainer from '../components/boxContainer/QueryBoxContainer.tsx';
 import CustomMarkdown from '../components/CustomMarkdown.tsx';
 import DynamicShareRow from '../components/share/DynamicShareRow.tsx';
@@ -24,6 +26,7 @@ export default function ArticleDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const accentColors = useAccentColor();
+  const { currentLanguage } = useLanguage();
 
   // Article data normally arrives via in-app navigation state. For a cold load of a
   // shared link there's no state, so reconstruct a minimal article from the URL (the
@@ -191,25 +194,6 @@ export default function ArticleDetail() {
     }
   };
 
-  const handleShare = async () => {
-    const shareData = {
-      title: article?.title || 'Article from CuriosAI',
-      text: article?.snippet || '',
-      url: window.location.href,
-    };
-
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        alert('Link copied to clipboard!');
-      }
-    } catch (err) {
-      console.error('[ARTICLE DETAIL] Error sharing:', err);
-    }
-  };
-
   if (!article) {
     return (
       <div
@@ -251,27 +235,6 @@ export default function ArticleDetail() {
           >
             <ArrowLeft size={20} />
             <span style={{ fontSize: '15px', fontWeight: '500' }}>Back to Discover</span>
-          </button>
-
-          <button
-            onClick={handleShare}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
-            style={{
-              backgroundColor: 'var(--ui-bg-secondary)',
-              border: '1px solid var(--ui-border-default)',
-              color: 'var(--ui-text-secondary)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = accentColors.primary;
-              e.currentTarget.style.color = accentColors.primary;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--ui-border-default)';
-              e.currentTarget.style.color = 'var(--ui-text-secondary)';
-            }}
-          >
-            <Share2 size={18} />
-            <span style={{ fontSize: '14px', fontWeight: '500' }}>Share</span>
           </button>
         </div>
 
@@ -321,7 +284,7 @@ export default function ArticleDetail() {
               )}
               {article.date && (
                 <span style={{ color: 'var(--ui-text-tertiary)', fontSize: '13px' }}>
-                  {article.date}
+                  {formatNewsDate(article.date, currentLanguage.code)}
                 </span>
               )}
             </div>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccentColor } from '../hooks/useAccentColor.ts';
+import { useLanguage } from '../contexts/LanguageContext.tsx';
+import { formatNewsDate } from '../utils/formatNewsDate.ts';
 
 interface NewsArticle {
   title: string;
@@ -14,72 +16,14 @@ interface NewsArticle {
 export default function Explore() {
   const navigate = useNavigate();
   const accentColors = useAccentColor();
+  const { currentLanguage } = useLanguage();
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-
-  // Format date as relative time or formatted date
-  const formatPublishedDate = (dateString: string): string => {
-    try {
-      if (!dateString) return '';
-
-      // Parse various date formats from SerpAPI
-      // Examples: "2 hours ago", "1 day ago", "May 23, 2024"
-      const hoursAgoMatch = dateString.match(/(\d+)\s+hours?\s+ago/i);
-      const daysAgoMatch = dateString.match(/(\d+)\s+days?\s+ago/i);
-      const minutesAgoMatch = dateString.match(/(\d+)\s+minutes?\s+ago/i);
-
-      // If already in relative format (hours ago)
-      if (hoursAgoMatch) {
-        const hours = parseInt(hoursAgoMatch[1]);
-        return `${hours}h ago`;
-      }
-
-      // If minutes ago, convert to hours (round down, minimum 1 hour)
-      if (minutesAgoMatch) {
-        const minutes = parseInt(minutesAgoMatch[1]);
-        const hours = Math.max(1, Math.floor(minutes / 60));
-        return `${hours}h ago`;
-      }
-
-      // If days ago, calculate the actual date
-      if (daysAgoMatch) {
-        const daysAgo = parseInt(daysAgoMatch[1]);
-        const date = new Date();
-        date.setDate(date.getDate() - daysAgo);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      }
-
-      // Try to parse as a date string (handles ISO, UTC, and various formats)
-      const parsedDate = new Date(dateString);
-      if (!isNaN(parsedDate.getTime())) {
-        const now = new Date();
-        const diffMs = now.getTime() - parsedDate.getTime();
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-        // If less than 24 hours, show hours ago
-        if (diffHours < 24 && diffHours >= 0) {
-          return `${Math.max(1, diffHours)}h ago`;
-        }
-
-        // Otherwise, show formatted date (always in user's locale)
-        return parsedDate.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          timeZone: 'UTC' // Ensure consistent formatting
-        });
-      }
-
-      // Fallback: try to format as date anyway
-      console.warn('[EXPLORE] Could not parse date:', dateString);
-      return dateString;
-    } catch (err) {
-      console.error('[EXPLORE] Error parsing date:', dateString, err);
-      return dateString;
-    }
-  };
+  // Localized, human-friendly date (e.g. "26 de junio") instead of an ISO/intl string.
+  const formatPublishedDate = (dateString: string): string =>
+    formatNewsDate(dateString, currentLanguage.code);
 
   useEffect(() => {
     fetchNews();
