@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Compass, FolderKanban, Globe2, HomeIcon, Library, User } from "lucide-react";
 import * as ReactRouterDom from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation.ts";
@@ -176,11 +177,14 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
       </aside>
 
 
- <SignInModal
- isOpen={showSignInModal}
-        currentLanguage={currentLanguage}
- onClose={handleCloseSignInModal}
-      />
+ {createPortal(
+        <SignInModal
+          isOpen={showSignInModal}
+          currentLanguage={currentLanguage}
+          onClose={handleCloseSignInModal}
+        />,
+        document.body
+      )}
     </>
   );
 }
