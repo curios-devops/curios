@@ -114,6 +114,7 @@ async function handleCheckoutSession(session: Stripe.Checkout.Session) {
       stripe_subscription_id: subscription.id,
       stripe_price_id: subscription.items.data[0].price.id,
       subscription_status: subscription.status,
+      subscription_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
       subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
       remaining_searches: 500, // Set pro search limit
       searches_reset_at: new Date().toISOString(),
@@ -138,6 +139,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     .from('profiles')
     .update({
       subscription_status: subscription.status,
+      subscription_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
       subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
       stripe_price_id: subscription.items.data[0].price.id,
       remaining_searches: subscription.status === 'active' ? 500 : 5,

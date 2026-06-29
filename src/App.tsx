@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import { ThemeProvider } from './components/theme/ThemeContext.tsx';
 import { LanguageProvider } from './contexts/LanguageContext.tsx';
 import Sidebar from './components/Sidebar.tsx';
 import Logo from './components/sidebar/Logo.tsx';
-import { Menu } from 'lucide-react';
+import { Menu, Crown } from 'lucide-react';
 import ThemeToggle from './components/theme/ThemeToggle.tsx';
 import ProCreditsBattery from './components/ProCreditsBattery.tsx';
 import SignUpModal from './components/auth/SignUpModal.tsx';
@@ -13,14 +13,24 @@ import { useAccentColor } from './hooks/useAccentColor.ts';
 import { useTheme } from './components/theme/ThemeContext.tsx';
 import PromoBanner from './components/PromoBanner.tsx';
 import { ProCreditsProvider } from './providers/ProCreditsProvider.tsx';
+import { useSession } from './hooks/useSession.ts';
+import { useSubscription } from './hooks/useSubscription.ts';
+
+// Lazy load ProModal to avoid loading Stripe unnecessarily
+const ProModal = lazy(() => import('./components/subscription/ProModal.tsx'));
 
 // Main App Content Component that can access translation context
 function AppContent() {
   const { t } = useTranslation();
+  const { session } = useSession();
+  const { subscription } = useSubscription(session);
+  const isPro = !!session && !!subscription?.isActive;
+  const isStandard = !!session && !subscription?.isActive; // Logged in but not pro
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
 
   useEffect(() => {
     function checkMobilePortrait() {
@@ -105,6 +115,39 @@ function AppContent() {
         : '#1F2937'
       : accent.hover;
 
+    // Pro users already started — show a Pro badge instead of "Get started"
+    if (isPro) {
+      return (
+        <div
+          className="h-7 px-3 rounded-lg flex items-center justify-center gap-1.5 text-sm font-semibold shadow-md"
+          style={{ backgroundColor: accent.primary, color: 'var(--ui-text-on-accent)' }}
+          title={t('premiumActive') || 'Premium Subscription Active'}
+        >
+          <Crown size={14} />
+          {t('proBadge') || 'Pro'}
+        </div>
+      );
+    }
+
+    // Logged-in non-pro users already started — offer Upgrade instead of "Get started"
+    if (isStandard) {
+      return (
+        <button
+          className="h-7 px-3 rounded-lg flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
+          type="button"
+          onClick={() => setShowProModal(true)}
+          style={{ backgroundColor, color: textColor, border: '1px solid transparent' }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBackgroundColor }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = backgroundColor;
+            e.currentTarget.style.color = textColor;
+          }}
+        >
+          {t('upgrade') || 'Upgrade'}
+        </button>
+      );
+    }
+
     // Use the same visual style as the desktop "Get started" button (rounded-lg)
     return (
       <button
@@ -132,6 +175,12 @@ function AppContent() {
   return (
       <div className="flex flex-col min-h-screen transition-colors duration-200" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
         <PromoBanner />
+        {/* Pro upgrade modal triggered by mobile top-bar Upgrade button (lazy loaded) */}
+        {showProModal && (
+          <Suspense fallback={null}>
+            <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} />
+          </Suspense>
+        )}
         <div className="flex flex-1">
           {!isMobilePortrait && (
             <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />

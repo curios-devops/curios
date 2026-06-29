@@ -1,6 +1,6 @@
 import { useAccentColor } from '../hooks/useAccentColor';
 
-const MESSAGE = '⚽ World Cup Sale • Limited Time Only • 90% Discount • Rush Before Deal Ends! ⚽';
+const MESSAGE = '⚽ World Cup Sale • Limited Time Only • 50% Discount • Rush Before Deal Ends! ⚽';
 
 export default function PromoBanner() {
   const accentColor = useAccentColor();

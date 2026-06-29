@@ -88,7 +88,7 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
                 <h3 className={`text-xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>{t('premium')}</h3>
                 <div className="flex items-center justify-center gap-2">
                   <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedInterval === 'month' ? '$1' : '$10'}
+                    {selectedInterval === 'month' ? '$5' : '$50'}
                   </span>
                   <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                     {selectedInterval === 'month' ? t('perMonth') : t('perYear')}
@@ -106,7 +106,9 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
                 <Feature text={t('advancedSearchesPerMonth')} theme={theme} />
                 <Feature text={t('selectPreferredAiModel')} theme={theme} />
                 <Feature text={t('uploadUnlimitedFiles')} theme={theme} />
-                <Feature text={t('visualizeAnswersDalle')} theme={theme} />
+                <Feature text={t('betterImageQuality')} theme={theme} />
+                <Feature text={t('betterVideoQuality')} theme={theme} />
+                <Feature text={t('moreVideoGeneration')} theme={theme} />
               </ul>
             </div>
 

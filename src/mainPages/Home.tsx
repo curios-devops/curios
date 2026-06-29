@@ -1,6 +1,7 @@
 export type UserType = 'free' | 'premium' | 'guest';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { Crown } from 'lucide-react';
 import { useSession } from '../hooks/useSession.ts';
 import HelpButton from '../components/HelpButton.tsx';
 import InputContainer from '../components/boxContainer/InputContainer.tsx';
@@ -20,6 +21,9 @@ import { useTheme } from '../components/theme/ThemeContext.tsx';
 import type { ModeType } from '../components/boxContainerInput/ModeSelector.tsx';
 import ProCreditsBattery from '../components/ProCreditsBattery.tsx';
 import HomeDiscovery from '../services/space/components/HomeDiscovery.tsx';
+
+// Lazy load ProModal to avoid loading Stripe unnecessarily
+const ProModal = lazy(() => import('../components/subscription/ProModal.tsx'));
 
 export default function Home() {
   const { session } = useSession();
@@ -49,6 +53,7 @@ export default function Home() {
     : accentColors.hover;
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
   const [cookiesAccepted, setCookiesAccepted] = useState(() => !!localStorage.getItem('cookieConsent'));
@@ -57,6 +62,7 @@ export default function Home() {
 
   const isGuest = !session; // Guest = not logged in
   const isStandard = session && !subscription?.isActive; // Logged in but not pro
+  const isPro = !!session && !!subscription?.isActive; // Logged in with active subscription
 
   // Handle cleanup when returning from Stripe checkout (canceled or completed)
   useEffect(() => {
@@ -144,56 +150,102 @@ export default function Home() {
         <div className="w-7 h-7 flex items-center">
           <ThemeToggle />
         </div>
-        <button
-          className="h-10 px-6 flex items-center justify-center font-medium transition-all"
-          style={{
-            backgroundColor: 'transparent',
-            color: 'var(--ui-text-primary)',
-            border: '1.5px solid var(--ui-border-default)',
-            borderRadius: '12px',
-            fontSize: '15px',
-            fontWeight: '500',
-            transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
-            e.currentTarget.style.borderColor = accentColors.primary;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.borderColor = 'var(--ui-border-default)';
-          }}
-          type="button"
-          onClick={() => setShowSignInModal(true)}
-        >
-          {t('logIn') || 'Log in'}
-        </button>
-        <button
-          className="h-10 px-6 flex items-center justify-center font-medium transition-all"
-          style={{
-            backgroundColor: getStartedBackground,
-            color: getStartedText,
-            border: '1px solid transparent',
-            borderRadius: '12px',
-            fontSize: '15px',
-            fontWeight: '500',
-            boxShadow: '0 0 0 0 transparent',
-            transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = getStartedHover;
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = getStartedBackground;
-            e.currentTarget.style.color = getStartedText;
-            e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
-          }}
-          type="button"
-          onClick={handleShowSignUp}
-        >
-          {t('getStarted')}
-        </button>
+        {isPro ? (
+          <div
+            className="h-10 px-5 flex items-center justify-center gap-2 font-semibold"
+            style={{
+              backgroundColor: accentColors.primary,
+              color: 'var(--ui-text-on-accent)',
+              borderRadius: '12px',
+              fontSize: '15px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+            }}
+            title={t('premiumActive') || 'Premium Subscription Active'}
+          >
+            <Crown size={16} />
+            {t('proBadge') || 'Pro'}
+          </div>
+        ) : isStandard ? (
+          <button
+            className="h-10 px-6 flex items-center justify-center font-medium transition-all"
+            style={{
+              backgroundColor: getStartedBackground,
+              color: getStartedText,
+              border: '1px solid transparent',
+              borderRadius: '12px',
+              fontSize: '15px',
+              fontWeight: '500',
+              boxShadow: '0 0 0 0 transparent',
+              transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = getStartedHover;
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = getStartedBackground;
+              e.currentTarget.style.color = getStartedText;
+              e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
+            }}
+            type="button"
+            onClick={() => setShowProModal(true)}
+          >
+            {t('upgrade') || 'Upgrade'}
+          </button>
+        ) : (
+          <>
+            <button
+              className="h-10 px-6 flex items-center justify-center font-medium transition-all"
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--ui-text-primary)',
+                border: '1.5px solid var(--ui-border-default)',
+                borderRadius: '12px',
+                fontSize: '15px',
+                fontWeight: '500',
+                transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
+                e.currentTarget.style.borderColor = accentColors.primary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.borderColor = 'var(--ui-border-default)';
+              }}
+              type="button"
+              onClick={() => setShowSignInModal(true)}
+            >
+              {t('logIn') || 'Log in'}
+            </button>
+            <button
+              className="h-10 px-6 flex items-center justify-center font-medium transition-all"
+              style={{
+                backgroundColor: getStartedBackground,
+                color: getStartedText,
+                border: '1px solid transparent',
+                borderRadius: '12px',
+                fontSize: '15px',
+                fontWeight: '500',
+                boxShadow: '0 0 0 0 transparent',
+                transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = getStartedHover;
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = getStartedBackground;
+                e.currentTarget.style.color = getStartedText;
+                e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
+              }}
+              type="button"
+              onClick={handleShowSignUp}
+            >
+              {t('getStarted')}
+            </button>
+          </>
+        )}
       </div>
 
       <div className="max-w-[720px] mx-auto px-6 sm:px-8">
@@ -261,6 +313,13 @@ export default function Home() {
           onClose={() => setShowSignInModal(false)}
           currentLanguage={languages[0]} // English
         />
+      )}
+
+      {/* Pro upgrade modal triggered by top-bar Upgrade button (lazy loaded) */}
+      {showProModal && (
+        <Suspense fallback={null}>
+          <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} />
+        </Suspense>
       )}
     </div>
   );
