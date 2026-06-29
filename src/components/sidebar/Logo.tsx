@@ -21,7 +21,7 @@ export default function Logo({ isCollapsed }: { isCollapsed: boolean }) {
       {!isCollapsed && (
         <div className="flex items-center tracking-tight">
           <span className="font-helvetica font-semibold text-xl tracking-tight text-gray-900 dark:text-white">Curios</span>
-          <span className="font-helvetica font-semibold text-xl tracking-tight ml-0.5 text-gray-500 dark:text-gray-400">AI</span>
+          <span className="font-helvetica font-semibold text-xl tracking-tight ml-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">AI</span>
         </div>
       )}
     </div>
