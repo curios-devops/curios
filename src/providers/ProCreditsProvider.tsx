@@ -48,6 +48,12 @@ interface ProCreditsContextValue {
    * is returned. Never throws.
    */
   requestProAccess: () => Promise<boolean>;
+  /**
+   * Opens the tier-appropriate promo modal: guests are offered sign in, free
+   * users are offered the upgrade. No-op for pro users (nothing to promote).
+   * Used by the Pro Credits battery to turn the indicator into a soft prompt.
+   */
+  promptUpgrade: () => void;
 }
 
 const ProCreditsContext = createContext<ProCreditsContextValue | null>(null);
@@ -113,6 +119,12 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
     }
   }, [state.canUse, state.remaining, tier, session, openBlockedModal]);
 
+  const promptUpgrade = useCallback(() => {
+    if (tier === 'guest') setBlockedModal('register');
+    else if (tier === 'free') setBlockedModal('upgrade');
+    // pro: nothing to promote
+  }, [tier]);
+
   const value: ProCreditsContextValue = {
     tier,
     remaining: state.remaining,
@@ -123,6 +135,7 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
     canUseProFeature: state.canUse,
     refresh: () => void load(),
     requestProAccess,
+    promptUpgrade,
   };
 
   const closeModal = () => setBlockedModal(null);

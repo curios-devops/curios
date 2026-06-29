@@ -45,17 +45,27 @@ export function useSession() {
     getInitialSession();
 
     // 2. Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) {
-        setSession(session);
-        setIsLoading(false);
-        
-        // Non-blocking profile check on auth change
-        if (session?.user) {
-          ensureProfileExists(session.user).catch(err => 
-            console.warn('Profile check failed (non-critical):', err)
-          );
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (!mounted) return;
+
+      // TOKEN_REFRESHED fires when the tab regains focus (e.g. switching back from
+      // another app on mobile). It doesn't change who is logged in, but swapping the
+      // session object churns every consumer and re-triggers in-flight searches —
+      // which looks like a full reload. Ignore it; supabase-js refreshes the token
+      // internally. Mirrors the ThemeContext guard.
+      if (event === 'TOKEN_REFRESHED') return;
+
+      setIsLoading(false);
+
+      // Only swap the session object when the user actually changes, so refocus
+      // events that re-emit the same user don't cascade re-renders.
+      setSession(prev => (prev?.user?.id === newSession?.user?.id ? prev : newSession));
+
+      // Non-blocking profile check on auth change
+      if (newSession?.user) {
+        ensureProfileExists(newSession.user).catch(err =>
+          console.warn('Profile check failed (non-critical):', err)
+        );
       }
     });
 

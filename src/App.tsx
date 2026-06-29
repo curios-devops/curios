@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './components/theme/ThemeContext.tsx';
 import { LanguageProvider } from './contexts/LanguageContext.tsx';
 import Sidebar from './components/Sidebar.tsx';
@@ -26,6 +26,7 @@ function AppContent() {
   const { subscription } = useSubscription(session);
   const isPro = !!session && !!subscription?.isActive;
   const isStandard = !!session && !subscription?.isActive; // Logged in but not pro
+  const isHome = useLocation().pathname === '/'; // Promo banner only shows on home
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -119,12 +120,11 @@ function AppContent() {
     if (isPro) {
       return (
         <div
-          className="h-7 px-3 rounded-lg flex items-center justify-center gap-1.5 text-sm font-semibold shadow-md"
+          className="h-7 w-7 rounded-lg flex items-center justify-center shadow-md"
           style={{ backgroundColor: accent.primary, color: 'var(--ui-text-on-accent)' }}
           title={t('premiumActive') || 'Premium Subscription Active'}
         >
-          <Crown size={14} />
-          {t('proBadge') || 'Pro'}
+          <Crown size={15} />
         </div>
       );
     }
@@ -174,7 +174,7 @@ function AppContent() {
 
   return (
       <div className="flex flex-col min-h-screen transition-colors duration-200" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
-        <PromoBanner />
+        {isHome && <PromoBanner />}
         {/* Pro upgrade modal triggered by mobile top-bar Upgrade button (lazy loaded) */}
         {showProModal && (
           <Suspense fallback={null}>
@@ -187,7 +187,7 @@ function AppContent() {
           )}
           {isMobilePortrait && (
             <>
-              <header className="fixed top-0 left-0 w-full z-50 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-2 gap-3 shadow-sm" style={{ marginTop: '32px', backgroundColor: 'var(--background)' }}>
+              <header className="fixed top-0 left-0 w-full z-50 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-2 gap-3 shadow-sm" style={{ marginTop: isHome ? '32px' : '0', backgroundColor: 'var(--background)' }}>
                 <div className="flex items-center gap-3">
                   <button type="button" className="p-2" aria-label="Open menu" onClick={() => setMobileSidebarOpen(true)}>
                     <Menu size={28} className="text-gray-900 dark:text-white" />
@@ -220,7 +220,7 @@ function AppContent() {
             )}
             </>
           )}
-          <main className={`flex-1 min-w-0 transition-all duration-300 ${!isMobilePortrait && (isCollapsed ? 'ml-20' : 'ml-48')}`} style={isMobilePortrait ? { marginTop: 88 } : {}}>
+          <main className={`flex-1 min-w-0 transition-all duration-300 ${!isMobilePortrait && (isCollapsed ? 'ml-20' : 'ml-48')}`} style={isMobilePortrait ? { marginTop: isHome ? 88 : 56 } : {}}>
             <Outlet />
           </main>
         </div>

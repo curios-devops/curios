@@ -118,6 +118,11 @@ async function handleCheckoutSession(session: Stripe.Checkout.Session) {
       subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
       remaining_searches: 500, // Set pro search limit
       searches_reset_at: new Date().toISOString(),
+      // Reset the daily Pro Credits battery to the pro allotment so a new
+      // subscriber isn't left pinned at their earlier free count for the day.
+      // 25 = VITE_PRO_DAILY_PRO_CREDITS default (src/config/proCredits.ts).
+      remaining_pro_quota: 25,
+      pro_quota_reset_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('id', userId);
@@ -143,6 +148,10 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
       subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
       stripe_price_id: subscription.items.data[0].price.id,
       remaining_searches: subscription.status === 'active' ? 500 : 5,
+      // Top up the daily Pro Credits battery to the pro allotment while active.
+      ...(subscription.status === 'active'
+        ? { remaining_pro_quota: 25, pro_quota_reset_at: new Date().toISOString() }
+        : {}),
       updated_at: new Date().toISOString()
     })
     .eq('id', profile.id);

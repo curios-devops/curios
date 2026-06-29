@@ -152,18 +152,16 @@ export default function Home() {
         </div>
         {isPro ? (
           <div
-            className="h-10 px-5 flex items-center justify-center gap-2 font-semibold"
+            className="h-10 w-10 flex items-center justify-center"
             style={{
               backgroundColor: accentColors.primary,
               color: 'var(--ui-text-on-accent)',
               borderRadius: '12px',
-              fontSize: '15px',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
             }}
             title={t('premiumActive') || 'Premium Subscription Active'}
           >
-            <Crown size={16} />
-            {t('proBadge') || 'Pro'}
+            <Crown size={18} />
           </div>
         ) : isStandard ? (
           <button

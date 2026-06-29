@@ -1,8 +1,7 @@
 // ProCreditsBattery — minimal battery-style status indicator for remaining Pro
-// Credits, shown inline with the Login / Get Started actions. The battery holds
-// 5 bars that deplete as the quota is spent; the color follows a traffic-light
-// convention (green → yellow → red), with a dimmed gray for exhausted. The exact
-// count lives in the hover tooltip. Status only.
+// Credits, shown inline with the Login / Get Started actions. The battery shows
+// the remaining credit count inside its body; the color follows a traffic-light
+// convention (green → yellow → red), with a dimmed gray for exhausted. Status only.
 
 import { useProCredits } from '../providers/ProCreditsProvider.tsx';
 import type { BatteryLevel } from '../services/proCreditsService.ts';
@@ -14,40 +13,39 @@ const COLOR: Record<BatteryLevel, string> = {
   empty: '#9ca3af', // exhausted / disabled
 };
 
-const TOTAL_BARS = 5;
-
 export default function ProCreditsBattery() {
-  const { remaining, max, battery, loading } = useProCredits();
+  const { remaining, max, battery, loading, tier, promptUpgrade } = useProCredits();
 
   if (loading) return null;
 
   const color = COLOR[battery];
-  // Proportional fill; keep at least one bar lit while any credit remains.
-  const filledBars =
-    remaining <= 0 || max <= 0 ? 0 : Math.max(1, Math.round((remaining / max) * TOTAL_BARS));
+  // Guests and free users can tap the battery to be offered sign in / upgrade.
+  // Pro users have nothing to promote, so it's a plain indicator.
+  const clickable = tier !== 'pro';
+  const title = clickable
+    ? tier === 'guest'
+      ? 'Sign in for more Pro Credits'
+      : 'Upgrade for more Pro Credits'
+    : `Pro Credits: ${remaining}/${max}`;
 
   return (
-    <div className="inline-flex items-center self-center leading-none select-none" title={`Pro Credits: ${remaining}/${max}`}>
-      {/* Battery body with depleting bars */}
+    <button
+      type="button"
+      onClick={clickable ? promptUpgrade : undefined}
+      disabled={!clickable}
+      title={title}
+      className="inline-flex items-center self-center leading-none select-none bg-transparent border-0 p-0 m-0"
+      style={{ cursor: clickable ? 'pointer' : 'default' }}
+    >
+      {/* Battery body with remaining credit count */}
       <div
-        className="inline-flex items-center gap-[2px] rounded-[3px] border"
-        style={{ borderColor: color, height: '14px', padding: '0 2px' }}
+        className="inline-flex items-center justify-center rounded-[3px] border font-semibold"
+        style={{ borderColor: color, color, height: '16px', minWidth: '20px', padding: '0 3px', fontSize: '10px' }}
       >
-        {Array.from({ length: TOTAL_BARS }).map((_, i) => (
-          <span
-            key={i}
-            style={{
-              width: '3px',
-              height: '8px',
-              borderRadius: '1px',
-              backgroundColor: color,
-              opacity: i < filledBars ? 1 : 0.2,
-            }}
-          />
-        ))}
+        {remaining}
       </div>
       {/* Battery nub */}
-      <div style={{ width: '2px', height: '6px', backgroundColor: color, borderRadius: '0 1px 1px 0' }} />
-    </div>
+      <div style={{ width: '2px', height: '7px', backgroundColor: color, borderRadius: '0 1px 1px 0' }} />
+    </button>
   );
 }
