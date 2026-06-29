@@ -120,8 +120,6 @@ export function ensureProfileExists(user: User | null | undefined): Promise<void
               id: user.id,
               email: extractEmail(user),
               subscription_status: 'inactive',
-              remaining_searches: 5,
-              searches_reset_at: new Date().toISOString(),
               language: preferredLanguage || 'en',
               accent_color: 'gray',
             })
@@ -157,8 +155,6 @@ export function ensureProfileExists(user: User | null | undefined): Promise<void
             id: user.id,
             ...profileMetadata,
             subscription_status: 'inactive',
-            remaining_searches: 5,
-            searches_reset_at: new Date().toISOString(),
             language: preferredLanguage || 'en',
             accent_color: 'gray',
           })

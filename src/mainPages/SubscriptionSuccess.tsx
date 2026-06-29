@@ -20,13 +20,14 @@ export default function SubscriptionSuccess() {
           throw new Error('No authenticated user found');
         }
 
-        // Update user profile with new subscription status and search limits
+        // Update user profile with new subscription status and top up the daily
+        // Pro Credits battery to the pro allotment (25 = VITE_PRO_DAILY_PRO_CREDITS).
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
             subscription_status: 'active',
-            remaining_searches: 500, // Set to pro user limit
-            searches_reset_at: new Date().toISOString()
+            remaining_pro_quota: 25,
+            pro_quota_reset_at: new Date().toISOString()
           })
           .eq('id', session.user.id);
 
