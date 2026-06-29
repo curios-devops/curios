@@ -7,7 +7,7 @@ export default function PromoBanner() {
 
   return (
     <div
-      className="w-full py-2 overflow-hidden relative"
+      className="w-full py-2 overflow-hidden sticky top-0 z-[60]"
       style={{ backgroundColor: 'var(--ui-bg-elevated)' }}
     >
       {/* Two identical groups translated by -50% loop seamlessly: at -50% the
