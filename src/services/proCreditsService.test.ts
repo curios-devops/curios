@@ -156,21 +156,21 @@ describe('registered users (DB-backed)', () => {
     const res = await consumeCredit('pro', freeSession, 25);
     expect(res.ok).toBe(true);
     expect(res.state.remaining).toBe(24);
-    expect(updates).toContainEqual({ remaining_pro_quota: 24 });
+    expect(updates).toContainEqual({ remaining_credits: 24 });
   });
 
   it('lazily resets to the tier max when the stored reset day is in the past', async () => {
-    mockRow = { remaining_pro_quota: 0, pro_quota_reset_at: '2000-01-01T00:00:00Z' };
+    mockRow = { remaining_credits: 0, credits_reset_at: '2000-01-01T00:00:00Z' };
     const state = await getCreditState('free', freeSession);
     expect(state.remaining).toBe(3); // refilled to free max
     // A reset persists both the count and a fresh reset timestamp.
-    expect(updates[0]).toHaveProperty('remaining_pro_quota', 3);
-    expect(updates[0]).toHaveProperty('pro_quota_reset_at');
+    expect(updates[0]).toHaveProperty('remaining_credits', 3);
+    expect(updates[0]).toHaveProperty('credits_reset_at');
   });
 
   it('clamps a stale higher stored value down to the current tier max', async () => {
     // e.g. legacy default of 5 for a free user (max 3), same reset day → clamp.
-    mockRow = { remaining_pro_quota: 5, pro_quota_reset_at: new Date().toISOString() };
+    mockRow = { remaining_credits: 5, credits_reset_at: new Date().toISOString() };
     const state = await getCreditState('free', freeSession);
     expect(state.remaining).toBe(3);
   });

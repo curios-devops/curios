@@ -119,8 +119,8 @@ async function handleCheckoutSession(session: Stripe.Checkout.Session) {
       // Reset the daily Pro Credits battery to the pro allotment so a new
       // subscriber isn't left pinned at their earlier free count for the day.
       // 25 = VITE_PRO_DAILY_PRO_CREDITS default (src/config/proCredits.ts).
-      remaining_pro_quota: 25,
-      pro_quota_reset_at: new Date().toISOString(),
+      remaining_credits: 25,
+      credits_reset_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('id', userId);
@@ -147,7 +147,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
       stripe_price_id: subscription.items.data[0].price.id,
       // Top up the daily Pro Credits battery to the pro allotment while active.
       ...(subscription.status === 'active'
-        ? { remaining_pro_quota: 25, pro_quota_reset_at: new Date().toISOString() }
+        ? { remaining_credits: 25, credits_reset_at: new Date().toISOString() }
         : {}),
       updated_at: new Date().toISOString()
     })

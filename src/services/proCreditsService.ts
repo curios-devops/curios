@@ -6,7 +6,7 @@
 //
 // Storage (reusing existing infrastructure, no new tables/columns):
 //   guest      → localStorage (no DB row exists for anonymous visitors)
-//   free / pro → profiles.remaining_pro_quota + profiles.pro_quota_reset_at
+//   free / pro → profiles.remaining_credits + profiles.credits_reset_at
 //                (dormant columns from 20250707000000_add_pro_quota.sql)
 //
 // Daily reset is lazy: every read compares today > last reset date and refills.
@@ -159,23 +159,23 @@ export async function getCreditState(
     async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('remaining_pro_quota, pro_quota_reset_at')
+        .select('remaining_credits, credits_reset_at')
         .eq('id', session.user.id)
         .single();
       if (error) throw error;
       return data;
     },
-    { remaining_pro_quota: max, pro_quota_reset_at: new Date().toISOString() },
+    { remaining_credits: max, credits_reset_at: new Date().toISOString() },
   );
 
-  const lastResetDay = dayKeyOf((row as { pro_quota_reset_at?: string }).pro_quota_reset_at);
+  const lastResetDay = dayKeyOf((row as { credits_reset_at?: string }).credits_reset_at);
   if (!lastResetDay || needsReset(lastResetDay)) {
     await writeRemaining(session, max);
     return toState(tier, max);
   }
 
-  const remaining = typeof (row as { remaining_pro_quota?: number }).remaining_pro_quota === 'number'
-    ? (row as { remaining_pro_quota: number }).remaining_pro_quota
+  const remaining = typeof (row as { remaining_credits?: number }).remaining_credits === 'number'
+    ? (row as { remaining_credits: number }).remaining_credits
     : max;
   return toState(tier, remaining);
 }
@@ -186,8 +186,8 @@ async function writeRemaining(session: Session, remaining: number): Promise<void
       const { error } = await supabase
         .from('profiles')
         .update({
-          remaining_pro_quota: remaining,
-          pro_quota_reset_at: new Date().toISOString(),
+          remaining_credits: remaining,
+          credits_reset_at: new Date().toISOString(),
         })
         .eq('id', session.user.id);
       if (error) throw error;
@@ -221,7 +221,7 @@ export async function consumeCredit(
     async () => {
       const { error } = await supabase
         .from('profiles')
-        .update({ remaining_pro_quota: Math.max(0, next) })
+        .update({ remaining_credits: Math.max(0, next) })
         .eq('id', session.user.id);
       if (error) throw error;
     },

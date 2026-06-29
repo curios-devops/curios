@@ -26,8 +26,8 @@ export default function SubscriptionSuccess() {
           .from('profiles')
           .update({
             subscription_status: 'active',
-            remaining_pro_quota: 25,
-            pro_quota_reset_at: new Date().toISOString()
+            remaining_credits: 25,
+            credits_reset_at: new Date().toISOString()
           })
           .eq('id', session.user.id);
 
