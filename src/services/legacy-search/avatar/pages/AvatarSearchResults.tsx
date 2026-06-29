@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import TopBar from '../../../../components/results/TopBar.tsx';
 import AnamLiveAvatarDisplay from '../components/AnamLiveAvatarDisplay.tsx';
 import NarrativeText from '../components/NarrativeText.tsx';
@@ -13,6 +13,7 @@ import { env } from '../../../../config/env.ts';
 
 export default function AvatarSearchResults() {
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
 
@@ -61,7 +62,10 @@ export default function AvatarSearchResults() {
     if (isRateLimited) {
       setRateLimitRetryAt(Date.now() + RATE_LIMIT_COOLDOWN_MS);
     }
-    setError(`Live response failed: ${message}`);
+    // Keep the technical detail in the console for debugging, but show users a
+    // friendly message instead of the raw SDK error.
+    logger.error('Live response failed', { detail: message });
+    setError("We're getting a lot of traffic right now. Please try again in a moment.");
   }, []);
 
   const handleRetryLiveResponse = () => {
@@ -153,8 +157,8 @@ export default function AvatarSearchResults() {
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 p-8">
             <p className="text-red-600 dark:text-red-400">{error}</p>
-            {narrativeText && (
-              <div className="mt-4">
+            <div className="mt-4 flex flex-wrap gap-3">
+              {narrativeText && (
                 <button
                   type="button"
                   onClick={handleRetryLiveResponse}
@@ -164,8 +168,15 @@ export default function AvatarSearchResults() {
                 >
                   {canRetryNow ? 'Try again' : `Try again in ${retrySecondsRemaining}s`}
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200"
+              >
+                Back to home
+              </button>
+            </div>
           </div>
         )}
 
