@@ -37,6 +37,11 @@ export default function AnamLiveAvatarDisplay({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isStreamReady, setIsStreamReady] = useState(false);
+  // The SDK's streamToVideoElement resolves before the WebRTC peer connection
+  // exists. We must wait for a real connection-ready event before calling talk(),
+  // otherwise the SDK throws "sendTalkCommand: peer connection is null" (common on
+  // mobile, where the WebRTC handshake is slower).
+  const [isConnectionReady, setIsConnectionReady] = useState(false);
   const lastSpokenScriptRef = useRef('');
   const currentSentenceRef = useRef('');
   const onSubtitleUpdateRef = useRef(onSubtitleUpdate);
@@ -175,9 +180,18 @@ export default function AnamLiveAvatarDisplay({
       onStatusChangeRef.current?.('Response ready');
     };
 
+    const handleConnectionEstablished = () => {
+      if (!isMounted) return;
+      logger.info('🔗 [AvatarResults] WebRTC connection established');
+      // Peer connection now exists — safe to send talk commands.
+      setIsConnectionReady(true);
+    };
+
     const handleVideoPlayStarted = () => {
       if (!isMounted) return;
       logger.info('🎥 [AvatarResults] Video playback started');
+      // Fallback ready signal in case CONNECTION_ESTABLISHED was missed.
+      setIsConnectionReady(true);
       onStatusChangeRef.current?.('Showing your response');
     };
 
@@ -249,6 +263,7 @@ export default function AnamLiveAvatarDisplay({
 
     const removeListeners = () => {
       anamAvatarService.removeListener(AnamEvent.SESSION_READY, handleSessionReady);
+      anamAvatarService.removeListener(AnamEvent.CONNECTION_ESTABLISHED, handleConnectionEstablished);
       anamAvatarService.removeListener(AnamEvent.VIDEO_PLAY_STARTED, handleVideoPlayStarted);
       anamAvatarService.removeListener(AnamEvent.MESSAGE_STREAM_EVENT_RECEIVED, handleStreamEvent as never);
       anamAvatarService.removeListener(AnamEvent.MESSAGE_HISTORY_UPDATED, handleMessageHistoryUpdated as never);
@@ -260,6 +275,7 @@ export default function AnamLiveAvatarDisplay({
       try {
         setIsConnecting(true);
         setIsStreamReady(false);
+        setIsConnectionReady(false);
         setConnectionError(null);
         setIsSpeaking(false);
         lastSpokenScriptRef.current = '';
@@ -295,6 +311,7 @@ export default function AnamLiveAvatarDisplay({
         }
 
         anamAvatarService.addListener(AnamEvent.SESSION_READY, handleSessionReady);
+        anamAvatarService.addListener(AnamEvent.CONNECTION_ESTABLISHED, handleConnectionEstablished);
         anamAvatarService.addListener(AnamEvent.VIDEO_PLAY_STARTED, handleVideoPlayStarted);
         anamAvatarService.addListener(AnamEvent.MESSAGE_STREAM_EVENT_RECEIVED, handleStreamEvent as never);
         anamAvatarService.addListener(AnamEvent.MESSAGE_HISTORY_UPDATED, handleMessageHistoryUpdated as never);
@@ -348,7 +365,9 @@ export default function AnamLiveAvatarDisplay({
   }, []);
 
   useEffect(() => {
-    if (!isStreamReady || !scriptText.trim() || connectionError) {
+    // Wait for the peer connection to actually exist (isConnectionReady) before
+    // calling talk(); otherwise the SDK throws "peer connection is null".
+    if (!isStreamReady || !isConnectionReady || !scriptText.trim() || connectionError) {
       return;
     }
 
@@ -403,7 +422,7 @@ export default function AnamLiveAvatarDisplay({
         maxTimeoutRef.current = null;
       }
     });
-  }, [connectionError, isStreamReady, scriptText]);
+  }, [connectionError, isStreamReady, isConnectionReady, scriptText]);
 
   const subtitleSizeClass = {
     s: 'text-sm',
