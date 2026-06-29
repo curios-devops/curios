@@ -29,13 +29,13 @@ export default {
             transform: 'translateX(0)'
           },
           '100%': {
-            transform: 'translateX(-33.333%)'
+            transform: 'translateX(-50%)'
           }
         }
       },
       animation: {
         'fade-in-up': 'fade-in-up 0.5s ease-in-out forwards',
-        'slide-infinite': 'slide-infinite 20s linear infinite'
+        'slide-infinite': 'slide-infinite 80s linear infinite'
       }
     },
   },
