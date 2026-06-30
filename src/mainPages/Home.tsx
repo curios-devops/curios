@@ -21,6 +21,8 @@ import { useTheme } from '../components/theme/ThemeContext.tsx';
 import type { ModeType } from '../components/boxContainerInput/ModeSelector.tsx';
 import ProCreditsBattery from '../components/ProCreditsBattery.tsx';
 import HomeDiscovery from '../services/space/components/HomeDiscovery.tsx';
+import AnimatedHomeTitle from '../components/AnimatedHomeTitle.tsx';
+import { getUserFirstName } from '../utils/userName.ts';
 
 // Lazy load ProModal to avoid loading Stripe unnecessarily
 const ProModal = lazy(() => import('../components/subscription/ProModal.tsx'));
@@ -248,7 +250,8 @@ export default function Home() {
 
       <div className="max-w-[720px] mx-auto px-6 sm:px-8">
         <div className="flex flex-col items-center justify-center mb-12 home-rise">
-          <h1
+          <AnimatedHomeTitle
+            name={getUserFirstName(session?.user)}
             className="text-center leading-tight transition-opacity duration-300"
             style={{
               color: 'var(--ui-text-primary)',
@@ -257,9 +260,7 @@ export default function Home() {
               letterSpacing: '-0.02em',
               fontSize: 'clamp(24px, 4vw, 42px)',
             }}
-          >
-            {t('mainTitle')}
-          </h1>
+          />
         </div>
         <div className="home-rise home-rise-delay">
           <InputContainer onModeChange={setCurrentMode} />

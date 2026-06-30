@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import ToggleSwitch from './ToggleSwitch';
 import LanguageSelector from './LanguageSelector';
@@ -31,21 +31,28 @@ export default function GeneralSection() {
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 
+  const secondaryButtonStyle = { backgroundColor: 'var(--ui-bg-secondary)', color: 'var(--ui-text-primary)', borderColor: 'var(--ui-border-default)' } as const;
+  const onButtonEnter = (e: MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.backgroundColor = 'var(--ui-border-subtle)'; };
+  const onButtonLeave = (e: MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)'; };
+
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-medium text-white">General</h2>
-      <div className="bg-[#111111] rounded-xl border border-gray-800">
-        <div className="divide-y divide-gray-800/50 mx-6">
+      <h2 className="text-xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>General</h2>
+      <div className="rounded-xl border" style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}>
+        <div className="divide-y mx-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
           {/* Appearance */}
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Appearance</h3>
-                <p className="text-gray-400 text-sm mt-1">How CuriosAI looks on your device</p>
+                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Appearance</h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>How CuriosAI looks on your device</p>
               </div>
-              <button 
+              <button
                 onClick={handleThemeChange}
-                className="bg-[#222222] text-white px-4 py-2 rounded-lg hover:bg-[#2a2a2a] transition-colors flex items-center gap-2"
+                className="px-4 py-2 rounded-lg border transition-colors flex items-center gap-2"
+                style={secondaryButtonStyle}
+                onMouseEnter={onButtonEnter}
+                onMouseLeave={onButtonLeave}
               >
                 {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
                 {theme === 'dark' ? 'Light' : 'Dark'}
@@ -57,8 +64,8 @@ export default function GeneralSection() {
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Language</h3>
-                <p className="text-gray-400 text-sm mt-1">Interface language: {currentLanguage.name}</p>
+                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Language</h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Interface language: {currentLanguage.name}</p>
               </div>
               <LanguageSelector />
             </div>
@@ -68,10 +75,15 @@ export default function GeneralSection() {
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Cookies</h3>
-                <p className="text-gray-400 text-sm mt-1">Manage cookie preferences</p>
+                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Cookies</h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Manage cookie preferences</p>
               </div>
-              <button className="bg-[#222222] text-white px-4 py-2 rounded-lg hover:bg-[#2a2a2a] transition-colors">
+              <button
+                className="px-4 py-2 rounded-lg border transition-colors"
+                style={secondaryButtonStyle}
+                onMouseEnter={onButtonEnter}
+                onMouseLeave={onButtonLeave}
+              >
                 All
               </button>
             </div>
@@ -81,8 +93,8 @@ export default function GeneralSection() {
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Auto-suggest</h3>
-                <p className="text-gray-400 text-sm mt-1">Enable dropdown and tab-complete suggestions while typing a query</p>
+                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Auto-suggest</h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Enable dropdown and tab-complete suggestions while typing a query</p>
               </div>
               <ToggleSwitch checked={true} onChange={() => {}} />
             </div>

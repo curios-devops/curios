@@ -9,15 +9,15 @@ interface AccountSectionProps {
 export default function AccountSection({ username, email, onSignOut }: AccountSectionProps) {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-medium text-white">Account</h2>
-      <div className="bg-[#111111] rounded-xl border border-gray-800">
-        <div className="divide-y divide-gray-800/50 mx-6">
+      <h2 className="text-xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>Account</h2>
+      <div className="rounded-xl border" style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}>
+        <div className="divide-y mx-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
           {/* Username */}
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Username</h3>
-                <p className="text-gray-400 text-sm mt-1">{username}</p>
+                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Username</h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>{username}</p>
               </div>
               <button
                 className="transition-colors text-sm"
@@ -38,8 +38,8 @@ export default function AccountSection({ username, email, onSignOut }: AccountSe
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Email</h3>
-                <p className="text-gray-400 text-sm mt-1">{email}</p>
+                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Email</h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>{email}</p>
               </div>
               <button
                 className="transition-colors text-sm"
@@ -60,8 +60,8 @@ export default function AccountSection({ username, email, onSignOut }: AccountSe
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">AI Data Retention</h3>
-                <p className="text-gray-400 text-sm mt-1">AI Data Retention allows CuriosAI to use your searches to improve AI models</p>
+                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>AI Data Retention</h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>AI Data Retention allows CuriosAI to use your searches to improve AI models</p>
               </div>
               <ToggleSwitch checked={true} onChange={() => {}} />
             </div>
@@ -71,8 +71,8 @@ export default function AccountSection({ username, email, onSignOut }: AccountSe
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Sign out</h3>
-                <p className="text-gray-400 text-sm mt-1">Sign out of your account</p>
+                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Sign out</h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Sign out of your account</p>
               </div>
               <button 
                 onClick={onSignOut}
