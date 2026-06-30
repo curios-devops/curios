@@ -4,7 +4,7 @@ import { signOut } from '../lib/auth';
 import GeneralSection from '../components/settings/GeneralSection';
 import AccountSection from '../components/settings/AccountSection';
 import { getUserDisplayName } from '../utils/userName';
-import { X } from 'lucide-react';
+import { X, Crown } from 'lucide-react';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -54,12 +54,7 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>CuriosAI</h2>
-              <span
-                className="text-xs px-2 py-0.5 rounded"
-                style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
-              >
-                Pro
-              </span>
+              <Crown size={20} style={{ color: 'var(--accent-primary)' }} aria-label="Pro" />
             </div>
             <div
               className="rounded-xl border"
@@ -87,7 +82,7 @@ export default function Settings() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>AI Model</h3>
-                      <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>gpt-4o-mini</p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>gpt-5o-mini</p>
                     </div>
                     <button
                       type="button"
@@ -104,7 +99,7 @@ export default function Settings() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Image Generation Model</h3>
-                      <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Dall-e</p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>GPT Image 2 (gpt-image-2)</p>
                     </div>
                     <button
                       type="button"

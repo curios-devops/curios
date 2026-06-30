@@ -1,39 +1,77 @@
-import { useEffect, useState, type MouseEvent } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { useState } from 'react';
+import { Moon, Sun, Monitor, type LucideIcon } from 'lucide-react';
 import ToggleSwitch from './ToggleSwitch';
 import LanguageSelector from './LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useTheme } from '../theme/ThemeContext';
+
+type CookieOption = 'all' | 'necessary' | 'none';
+
+interface SegmentedOption<T extends string> {
+  key: T;
+  label: string;
+  icon?: LucideIcon;
+}
+
+function Segmented<T extends string>({ options, value, onChange }: {
+  options: SegmentedOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div
+      className="flex items-center gap-1 rounded-lg p-1 border"
+      style={{ backgroundColor: 'var(--ui-bg-secondary)', borderColor: 'var(--ui-border-default)' }}
+    >
+      {options.map((opt) => {
+        const selected = value === opt.key;
+        const Icon = opt.icon;
+        return (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => onChange(opt.key)}
+            className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5"
+            style={
+              selected
+                ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }
+                : { backgroundColor: 'transparent', color: 'var(--ui-text-secondary)' }
+            }
+          >
+            {Icon && <Icon size={15} />}
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function GeneralSection() {
-  const [theme, setTheme] = useState(() => {
-    if (typeof window === 'undefined') return 'light';
-    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-  });
-
+  const { theme, setTheme } = useTheme();
   const { currentLanguage } = useLanguage();
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (!document.documentElement.classList.contains('dark') && !document.documentElement.classList.contains('light')) {
-        setTheme(e.matches ? 'dark' : 'light');
-        document.documentElement.classList.toggle('dark', e.matches);
-      }
-    };
+  const [cookieChoice, setCookieChoice] = useState<CookieOption>(() => {
+    const stored = localStorage.getItem('cookieConsent');
+    return stored === 'necessary' || stored === 'none' ? stored : 'all';
+  });
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  const handleThemeChange = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  const handleCookieChange = (choice: CookieOption) => {
+    setCookieChoice(choice);
+    localStorage.setItem('cookieConsent', choice);
   };
 
-  const secondaryButtonStyle = { backgroundColor: 'var(--ui-bg-secondary)', color: 'var(--ui-text-primary)', borderColor: 'var(--ui-border-default)' } as const;
-  const onButtonEnter = (e: MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.backgroundColor = 'var(--ui-border-subtle)'; };
-  const onButtonLeave = (e: MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)'; };
+  const themeOptions: SegmentedOption<'light' | 'dark' | 'system'>[] = [
+    { key: 'light', label: 'Light', icon: Sun },
+    { key: 'dark', label: 'Dark', icon: Moon },
+    { key: 'system', label: 'System', icon: Monitor },
+  ];
+
+  const cookieOptions: SegmentedOption<CookieOption>[] = [
+    { key: 'all', label: 'All' },
+    { key: 'necessary', label: 'Necessary' },
+    { key: 'none', label: 'None' },
+  ];
 
   return (
     <div className="space-y-4">
@@ -42,21 +80,12 @@ export default function GeneralSection() {
         <div className="divide-y mx-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
           {/* Appearance */}
           <div className="py-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Appearance</h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>How CuriosAI looks on your device</p>
               </div>
-              <button
-                onClick={handleThemeChange}
-                className="px-4 py-2 rounded-lg border transition-colors flex items-center gap-2"
-                style={secondaryButtonStyle}
-                onMouseEnter={onButtonEnter}
-                onMouseLeave={onButtonLeave}
-              >
-                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-                {theme === 'dark' ? 'Light' : 'Dark'}
-              </button>
+              <Segmented options={themeOptions} value={theme} onChange={setTheme} />
             </div>
           </div>
 
@@ -73,19 +102,12 @@ export default function GeneralSection() {
 
           {/* Cookies */}
           <div className="py-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Cookies</h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Manage cookie preferences</p>
               </div>
-              <button
-                className="px-4 py-2 rounded-lg border transition-colors"
-                style={secondaryButtonStyle}
-                onMouseEnter={onButtonEnter}
-                onMouseLeave={onButtonLeave}
-              >
-                All
-              </button>
+              <Segmented options={cookieOptions} value={cookieChoice} onChange={handleCookieChange} />
             </div>
           </div>
 
@@ -96,7 +118,8 @@ export default function GeneralSection() {
                 <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Auto-suggest</h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Enable dropdown and tab-complete suggestions while typing a query</p>
               </div>
-              <ToggleSwitch checked={true} onChange={() => {}} />
+              {/* Disabled for now — feature is off */}
+              <ToggleSwitch checked={false} onChange={() => {}} disabled />
             </div>
           </div>
         </div>
