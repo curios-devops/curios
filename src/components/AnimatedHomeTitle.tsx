@@ -7,6 +7,8 @@ interface AnimatedHomeTitleProps {
   style?: CSSProperties;
 }
 
+const QUESTION = 'What are you curious about?';
+
 /** Local time of day → salutation word. */
 function getTimeWord(date = new Date()): string {
   const hour = date.getHours();
@@ -16,17 +18,12 @@ function getTimeWord(date = new Date()): string {
   return 'night';
 }
 
-/**
- * Builds an alternating sequence of greetings and "what are you curious"
- * questions. Greetings adapt to the local time of day and the user's name
- * (when there is no name, the name is simply omitted).
- */
-function buildMessages(name: string | null): string[] {
+/** Time-of-day greetings; the name is omitted when there is none. */
+function buildSalutations(name: string | null): string[] {
   const tw = getTimeWord();
   const cap = tw.charAt(0).toUpperCase() + tw.slice(1);
   const withName = name ? `, ${name}` : '';
-
-  const greetings = [
+  return [
     `Good ${tw}${withName}`,
     `Hello${name ? `, ${name}` : ' there'}`,
     `Hey${name ? ` ${name}` : ' there'}`,
@@ -35,31 +32,27 @@ function buildMessages(name: string | null): string[] {
     `Nice to see you${withName}`,
     `${cap} curiosity${withName}`,
   ];
-
-  const questions = [
-    'What are you curious about?',
-    name ? `What are you curious, ${name}?` : 'What are you curious about today?',
-    `What are you curious about this ${tw}?`,
-    'What are you curious about today?',
-  ];
-
-  // Alternate greeting → question so the headline keeps changing tone.
-  const sequence: string[] = [];
-  for (let i = 0; i < greetings.length; i++) {
-    sequence.push(greetings[i]);
-    sequence.push(questions[i % questions.length]);
-  }
-  return sequence;
 }
 
+type Phase = 'sal-typing' | 'sal-pausing' | 'sal-deleting' | 'q-typing' | 'done';
+
+/**
+ * Two-beat headline: types a random time-based greeting, deletes it, then types
+ * "What are you curious about?" with a blinking accent dot on the left and stops
+ * there (the left dot keeps blinking).
+ */
 export default function AnimatedHomeTitle({ name, className, style }: AnimatedHomeTitleProps) {
   const accent = useAccentColor();
-  const messages = useMemo(() => buildMessages(name), [name]);
-  const [display, setDisplay] = useState('');
+  const salutation = useMemo(() => {
+    const all = buildSalutations(name);
+    return all[Math.floor(Math.random() * all.length)];
+  }, [name]);
 
-  const idxRef = useRef(0);
+  const [display, setDisplay] = useState('');
+  const [dotLeft, setDotLeft] = useState(false);
+
   const charRef = useRef(0);
-  const phaseRef = useRef<'typing' | 'pausing' | 'deleting'>('typing');
+  const phaseRef = useRef<Phase>('sal-typing');
 
   const prefersReduced =
     typeof window !== 'undefined' &&
@@ -67,53 +60,81 @@ export default function AnimatedHomeTitle({ name, className, style }: AnimatedHo
 
   useEffect(() => {
     if (prefersReduced) {
-      setDisplay('What are you curious about?');
+      setDotLeft(true);
+      setDisplay(QUESTION);
       return;
     }
 
-    // Reset when the message set changes (e.g. name loads in).
-    idxRef.current = 0;
     charRef.current = 0;
-    phaseRef.current = 'typing';
+    phaseRef.current = 'sal-typing';
+    setDotLeft(false);
+    setDisplay('');
 
     let timer: ReturnType<typeof setTimeout>;
 
     const tick = () => {
-      const current = messages[idxRef.current % messages.length];
-
-      if (phaseRef.current === 'typing') {
-        charRef.current += 1;
-        setDisplay(current.slice(0, charRef.current));
-        if (charRef.current >= current.length) {
-          phaseRef.current = 'pausing';
-          timer = setTimeout(tick, 1700); // read pause
-        } else {
-          timer = setTimeout(tick, 55 + Math.random() * 45);
+      switch (phaseRef.current) {
+        case 'sal-typing': {
+          charRef.current += 1;
+          setDisplay(salutation.slice(0, charRef.current));
+          if (charRef.current >= salutation.length) {
+            phaseRef.current = 'sal-pausing';
+            timer = setTimeout(tick, 1700);
+          } else {
+            timer = setTimeout(tick, 55 + Math.random() * 45);
+          }
+          break;
         }
-      } else if (phaseRef.current === 'pausing') {
-        phaseRef.current = 'deleting';
-        timer = setTimeout(tick, 300);
-      } else {
-        charRef.current -= 1;
-        setDisplay(current.slice(0, Math.max(0, charRef.current)));
-        if (charRef.current <= 0) {
-          phaseRef.current = 'typing';
-          idxRef.current = (idxRef.current + 1) % messages.length;
-          timer = setTimeout(tick, 450); // blinking-dot beat before the next line
-        } else {
-          timer = setTimeout(tick, 28);
+        case 'sal-pausing': {
+          phaseRef.current = 'sal-deleting';
+          timer = setTimeout(tick, 300);
+          break;
         }
+        case 'sal-deleting': {
+          charRef.current -= 1;
+          setDisplay(salutation.slice(0, Math.max(0, charRef.current)));
+          if (charRef.current <= 0) {
+            phaseRef.current = 'q-typing';
+            charRef.current = 0;
+            setDotLeft(true); // dot moves to the left for the question
+            timer = setTimeout(tick, 450);
+          } else {
+            timer = setTimeout(tick, 28);
+          }
+          break;
+        }
+        case 'q-typing': {
+          charRef.current += 1;
+          setDisplay(QUESTION.slice(0, charRef.current));
+          if (charRef.current >= QUESTION.length) {
+            phaseRef.current = 'done'; // stop; left dot keeps blinking
+          } else {
+            timer = setTimeout(tick, 55 + Math.random() * 45);
+          }
+          break;
+        }
+        default:
+          break;
       }
     };
 
     timer = setTimeout(tick, 450);
     return () => clearTimeout(timer);
-  }, [messages, prefersReduced]);
+  }, [salutation, prefersReduced]);
+
+  const dot = (
+    <span
+      className={`home-caret-dot ${dotLeft ? 'home-caret-dot--left' : ''}`}
+      style={{ backgroundColor: accent.primary }}
+      aria-hidden="true"
+    />
+  );
 
   return (
-    <h1 className={className} style={{ minHeight: '1.4em', ...style }} aria-label="What are you curious about?">
+    <h1 className={className} style={{ minHeight: '1.4em', ...style }} aria-label={QUESTION}>
+      {dotLeft && dot}
       <span>{display}</span>
-      <span className="home-caret-dot" style={{ backgroundColor: accent.primary }} aria-hidden="true" />
+      {!dotLeft && dot}
       <style>{`
         .home-caret-dot {
           display: inline-block;
@@ -123,6 +144,10 @@ export default function AnimatedHomeTitle({ name, className, style }: AnimatedHo
           margin-left: 0.14em;
           vertical-align: middle;
           animation: homeCaretBlink 1s steps(1, end) infinite;
+        }
+        .home-caret-dot--left {
+          margin-left: 0;
+          margin-right: 0.3em;
         }
         @keyframes homeCaretBlink {
           0%, 50% { opacity: 1; }

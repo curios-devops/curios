@@ -17,8 +17,9 @@ const LanguageItem: React.FC<LanguageItemProps> = ({ lang, setLanguage, setIsOpe
       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
     >
- <div className="flex items-center gap-2">        <span className="text-xl flex items-center justify-center">{lang.flag}</span>
-        <span className="text-xl flex items-center justify-center" style={{ position: 'relative', top: '-1px', left: '-1px' }}>{lang.flag}</span>        <span className="text-sm">{lang.name}</span>
+ <div className="flex items-center gap-2">
+        <span className="text-xl flex items-center justify-center">{lang.flag}</span>
+        <span className="text-sm">{lang.name}</span>
  </div>
     </button>
  );

@@ -2,15 +2,17 @@
 interface ToggleSwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
+  disabled?: boolean;
 }
 
-export default function ToggleSwitch({ checked, onChange }: ToggleSwitchProps) {
+export default function ToggleSwitch({ checked, onChange, disabled = false }: ToggleSwitchProps) {
   return (
-    <div className="relative inline-block w-11 h-6">
+    <div className={`relative inline-block w-11 h-6 ${disabled ? 'opacity-50' : ''}`}>
       <input
         type="checkbox"
         className="sr-only peer"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
       <div className={`
@@ -29,7 +31,7 @@ export default function ToggleSwitch({ checked, onChange }: ToggleSwitchProps) {
         after:h-5 
         after:w-5 
         after:transition-all
-        cursor-pointer
+        ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
       `} />
     </div>
   );
