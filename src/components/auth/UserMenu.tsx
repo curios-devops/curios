@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useSession } from '../../hooks/useSession';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
+import { getUserDisplayName } from '../../utils/userName.ts';
 
 interface UserMenuProps {
   email: string;
@@ -19,7 +20,9 @@ export default function UserMenu({ email, isCollapsed }: UserMenuProps) {
   const avatarBackgroundColor = isGrayAccent ? accentColors.dark : accentColors.primary;
   const avatarTextColor = isGrayAccent ? accentColors.light : 'var(--ui-text-on-accent)';
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const initial = email[0].toUpperCase();
+  // Prefer the user's real name (e.g. from Google); fall back to email.
+  const displayName = getUserDisplayName(session?.user) ?? email;
+  const initial = displayName[0]?.toUpperCase() ?? email[0].toUpperCase();
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -70,7 +73,7 @@ export default function UserMenu({ email, isCollapsed }: UserMenuProps) {
       </div>
       {!isCollapsed && (
         <span className="text-gray-300 text-sm truncate">
-          {email.length > 20 ? `${email.slice(0, 20)}...` : email}
+          {displayName.length > 20 ? `${displayName.slice(0, 20)}...` : displayName}
         </span>
       )}
     </button>

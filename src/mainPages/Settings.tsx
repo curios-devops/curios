@@ -3,13 +3,14 @@ import { useSession } from '../hooks/useSession';
 import { signOut } from '../lib/auth';
 import GeneralSection from '../components/settings/GeneralSection';
 import AccountSection from '../components/settings/AccountSection';
+import { getUserDisplayName } from '../utils/userName';
 import { X } from 'lucide-react';
 
 export default function Settings() {
   const navigate = useNavigate();
   const { session } = useSession();
   const email = session?.user?.email || '';
-  const username = email.split('@')[0];
+  const username = getUserDisplayName(session?.user) ?? email.split('@')[0];
 
   const handleSignOut = async () => {
     await signOut();
@@ -17,14 +18,26 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
-      <header className="bg-[#111111] border-b border-gray-800 px-6 py-4">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)' }}>
+      <header
+        className="border-b px-6 py-4"
+        style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
+      >
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-medium text-white">Settings</h1>
+          <h1 className="text-2xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>Settings</h1>
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-[#222222]"
+            className="transition-colors p-2 rounded-lg"
+            style={{ color: 'var(--ui-text-muted)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--ui-text-primary)';
+              e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--ui-text-muted)';
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
             aria-label="Close settings"
           >
             <X size={20} />
@@ -40,18 +53,32 @@ export default function Settings() {
           {/* Pro Features Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-medium text-white">CuriosAI</h2>
-              <span className="bg-[#007BFF] text-xs text-white px-2 py-0.5 rounded">Pro</span>
+              <h2 className="text-xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>CuriosAI</h2>
+              <span
+                className="text-xs px-2 py-0.5 rounded"
+                style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+              >
+                Pro
+              </span>
             </div>
-            <div className="bg-[#111111] rounded-xl border border-gray-800">
-              <div className="divide-y divide-gray-800/50 mx-6">
+            <div
+              className="rounded-xl border"
+              style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
+            >
+              <div className="divide-y mx-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
                 <div className="py-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-white font-medium">Subscription</h3>
+                      <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Subscription</h3>
                       <p className="text-green-500 text-sm mt-1">Active</p>
                     </div>
-                    <button type="button" className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
+                    <button
+                      type="button"
+                      className="transition-colors text-sm"
+                      style={{ color: 'var(--accent-primary)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-hover)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--accent-primary)'; }}
+                    >
                       Manage
                     </button>
                   </div>
@@ -59,10 +86,16 @@ export default function Settings() {
                 <div className="py-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-white font-medium">AI Model</h3>
-                      <p className="text-gray-400 text-sm mt-1">gpt-4o-mini</p>
+                      <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>AI Model</h3>
+                      <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>gpt-4o-mini</p>
                     </div>
-                    <button type="button" className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
+                    <button
+                      type="button"
+                      className="transition-colors text-sm"
+                      style={{ color: 'var(--accent-primary)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-hover)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--accent-primary)'; }}
+                    >
                       Change
                     </button>
                   </div>
@@ -70,10 +103,16 @@ export default function Settings() {
                 <div className="py-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-white font-medium">Image Generation Model</h3>
-                      <p className="text-gray-400 text-sm mt-1">Dall-e</p>
+                      <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Image Generation Model</h3>
+                      <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Dall-e</p>
                     </div>
-                    <button type="button" className="text-[#007BFF] hover:text-[#0056b3] transition-colors text-sm">
+                    <button
+                      type="button"
+                      className="transition-colors text-sm"
+                      style={{ color: 'var(--accent-primary)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-hover)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--accent-primary)'; }}
+                    >
                       Change
                     </button>
                   </div>
@@ -83,7 +122,7 @@ export default function Settings() {
           </div>
 
           {/* Account Section */}
-          <AccountSection 
+          <AccountSection
             username={username}
             email={email}
             onSignOut={handleSignOut}

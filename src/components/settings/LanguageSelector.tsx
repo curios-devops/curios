@@ -12,7 +12,10 @@ const LanguageItem: React.FC<LanguageItemProps> = ({ lang, setLanguage, setIsOpe
       onClick={() => {
  setLanguage(lang);
  setIsOpen(false);
-      }}      className="px-2 py-1 hover:bg-[#333333] transition-colors w-full text-white"
+      }}      className="px-2 py-1 rounded-md transition-colors w-full"
+      style={{ color: 'var(--ui-text-primary)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
     >
  <div className="flex items-center gap-2">        <span className="text-xl flex items-center justify-center">{lang.flag}</span>
         <span className="text-xl flex items-center justify-center" style={{ position: 'relative', top: '-1px', left: '-1px' }}>{lang.flag}</span>        <span className="text-sm">{lang.name}</span>
@@ -46,13 +49,25 @@ export default function LanguageSelector(): JSX.Element {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button type="button" onClick={() => setIsOpen(!isOpen)} className={`bg-[#222222] w-[40px] h-[40px] flex items-center justify-between hover:bg-[#2a2a2a] transition-colors rounded-md ${isOpen ? 'text-white' : 'text-gray-400'} transition-all`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-[40px] h-[40px] flex items-center justify-between transition-colors rounded-md border"
+        style={{
+          backgroundColor: 'var(--ui-bg-secondary)',
+          borderColor: 'var(--ui-border-default)',
+          color: isOpen ? 'var(--ui-text-primary)' : 'var(--ui-text-muted)',
+        }}
+      >
         <div className='flex items-center gap-2 px-2'>
  <span className="text-xl flex items-center justify-center" style={{ position: 'relative', top: '-1px', left: '-1px' }}>{currentLanguage.flag}</span>        </div>
-        <DropdownIcon className={`w-[10px] h-[10px] ${isOpen ? 'text-white' : 'text-gray-400'} transition-all mr-2`} />
+        <DropdownIcon className="w-[10px] h-[10px] transition-all mr-2" />
       </button>
       {isOpen && (
-        <div className="absolute right-0 mt-2 p-2 bg-[#222222] border border-gray-800 shadow-lg z-50 w-max min-w-[200px] flex flex-col">
+        <div
+          className="absolute right-0 mt-2 p-2 border shadow-lg z-50 w-max min-w-[200px] flex flex-col rounded-lg"
+          style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
+        >
           {languages.map((lang: Language) => (
             <LanguageItem
               key={lang.code}
