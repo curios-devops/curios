@@ -16,7 +16,7 @@
 VEO_API_KEY=sk-a1ca279824f14e9b9536a0b4a33fcef0  # NO es una key de Google
 
 # DESPUÉS (✅ correcta)
-VITE_GOOGLE_AI_API_KEY=AIzaSyCTCY0RvStr22nNuz8iBGbIQTtfvbahs9g  # Gemini API key
+VITE_GOOGLE_AI_API_KEY=REDACTED_ROTATED_KEY  # Gemini API key
 ```
 
 **Nota:** Estamos usando tu `GEMINI_API_KEY` existente porque **Veo y Gemini comparten la misma API**.

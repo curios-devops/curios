@@ -20,7 +20,7 @@
 ### Configuración
 - **Endpoint:** `generativelanguage.googleapis.com/v1beta`
 - **Modelo probado:** `veo-3.1-generate-preview`
-- **Autenticación:** API Key (`AIzaSyCTCY0RvStr22nNuz8iBGbIQTtfvbahs9g`)
+- **Autenticación:** API Key (`REDACTED_ROTATED_KEY`)
 - **Método:** `:generateVideos`
 
 ### Resultado

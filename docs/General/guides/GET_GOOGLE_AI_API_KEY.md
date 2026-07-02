@@ -36,7 +36,7 @@ VITE_GOOGLE_AI_API_KEY=AIzaSy... # Tu key real aquí
 
 **NOTA:** Ya tienes una key de Gemini en tu `.env`:
 ```
-GEMINI_API_KEY=AIzaSyCTCY0RvStr22nNuz8iBGbIQTtfvbahs9g
+GEMINI_API_KEY=REDACTED_ROTATED_KEY
 ```
 
 **¡PUEDES USAR LA MISMA KEY!** La Gemini API y Veo 3.1 comparten la misma autenticación.
@@ -46,8 +46,8 @@ GEMINI_API_KEY=AIzaSyCTCY0RvStr22nNuz8iBGbIQTtfvbahs9g
 Actualiza tu `.env` así:
 ```bash
 # Usar la misma key para Gemini y Veo (es la misma API)
-GEMINI_API_KEY=AIzaSyCTCY0RvStr22nNuz8iBGbIQTtfvbahs9g
-VITE_GOOGLE_AI_API_KEY=AIzaSyCTCY0RvStr22nNuz8iBGbIQTtfvbahs9g
+GEMINI_API_KEY=REDACTED_ROTATED_KEY
+VITE_GOOGLE_AI_API_KEY=REDACTED_ROTATED_KEY
 ```
 
 ## Verificar que Veo está Habilitado en tu Proyecto

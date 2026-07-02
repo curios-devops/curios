@@ -11,7 +11,7 @@ import { ArrowLeft, Popcorn, Loader2, Sparkles, Play } from 'lucide-react';
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { logger } from '../../../utils/logger.ts';
-import { generateMovie, renderSwipeVideo } from '../movieService.ts';
+import { generateMovie, renderSwipeVideo, enhanceSwipeImage } from '../movieService.ts';
 import { MoviePersistenceService } from '../video/MoviePersistenceService.ts';
 import type { MovieExperience, MovieSwipe, MovieProgress } from '../types.ts';
 import SocialShareRow from '../components/SocialShareRow.tsx';
@@ -29,6 +29,7 @@ export default function MovieResults() {
   const [progress, setProgress] = useState<MovieProgress>({ stage: 'enhancing', message: 'Starting...', progress: 0 });
   const [selectedSwipeId, setSelectedSwipeId] = useState<string | null>(null);
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
+  const [enhancingIds, setEnhancingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   const hasStartedRef = useRef(false);
@@ -112,6 +113,32 @@ export default function MovieResults() {
     void requestRenderSwipe(swipe);
   };
 
+  // Enhance (off by default): regenerate this swipe's frame with the premium gpt-image-2
+  // model, then re-render its video from the sharper frame. Premium quality → gated as Pro.
+  const requestEnhance = async (swipe: MovieSwipe) => {
+    if (!swipe.imageUrl || enhancingIds.has(swipe.id)) return;
+    const allowed = await requestProAccess();
+    if (!allowed) return; // modal shown by the provider
+
+    setEnhancingIds((prev) => new Set(prev).add(swipe.id));
+    upsertSwipe({ ...swipe, status: 'rendering' });
+
+    const exp = experienceRef.current;
+    const projectId = exp?.id && !exp.id.startsWith('local-') ? exp.id : undefined;
+    const updated = await enhanceSwipeImage({ ...swipe }, {
+      userId: session?.user?.id,
+      projectId,
+      styleSeed: exp?.styleSeed,
+    });
+
+    upsertSwipe(updated);
+    setEnhancingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(swipe.id);
+      return next;
+    });
+  };
+
   const shareUrl = experience?.id && !experience.id.startsWith('local-')
     ? `${window.location.origin}/movie/share/${experience.id}`
     : window.location.href;
@@ -123,7 +150,8 @@ export default function MovieResults() {
   };
 
   const roleLabel = (s: MovieSwipe) => (s.isCore ? 'Core' : s.role.charAt(0).toUpperCase() + s.role.slice(1));
-  const isGenerating = selectedSwipe ? generatingIds.has(selectedSwipe.id) || selectedSwipe.status === 'rendering' : false;
+  const isEnhancing = selectedSwipe ? enhancingIds.has(selectedSwipe.id) : false;
+  const isGenerating = selectedSwipe ? generatingIds.has(selectedSwipe.id) || (!isEnhancing && selectedSwipe.status === 'rendering') : false;
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -235,6 +263,18 @@ export default function MovieResults() {
                     {roleLabel(selectedSwipe)}
                   </span>
                   <h2 className="text-sm font-medium">{selectedSwipe.title}</h2>
+                  {selectedSwipe.imageUrl && (
+                    <button
+                      onClick={() => selectedSwipe && requestEnhance(selectedSwipe)}
+                      disabled={isEnhancing}
+                      title="Regenerate this swipe at higher quality (Pro)"
+                      className="ml-auto flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-60"
+                      style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--accent-primary)' }}
+                    >
+                      {isEnhancing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                      {isEnhancing ? 'Enhancing…' : 'Enhance'}
+                    </button>
+                  )}
                 </div>
                 {selectedSwipe.narration && (
                   <p className="text-sm mt-1" style={{ color: 'var(--ui-text-muted)' }}>{selectedSwipe.narration}</p>
