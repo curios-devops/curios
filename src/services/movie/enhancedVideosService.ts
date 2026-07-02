@@ -21,6 +21,8 @@ export interface CreateEnhanceJobParams {
   userId: string;
   projectId?: string;
   swipeOrder: number;
+  /** The user's question — used to source-ground the enhanced frame via image search. */
+  question: string;
   title: string;
   imagePrompt: string;
   videoPrompt: string;

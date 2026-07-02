@@ -5,12 +5,13 @@
 // video on demand (then caches it) — no video is rendered until the user activates it.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Popcorn, Loader2, Sparkles, Play } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Loader2, Sparkles, Play } from 'lucide-react';
 
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { logger } from '../../../utils/logger.ts';
+import TopBar from '../../../components/results/TopBar.tsx';
 import { generateMovie, renderSwipeVideo } from '../movieService.ts';
 import { createEnhanceJob } from '../enhancedVideosService.ts';
 import { MoviePersistenceService } from '../video/MoviePersistenceService.ts';
@@ -19,7 +20,6 @@ import SocialShareRow from '../components/SocialShareRow.tsx';
 
 export default function MovieResults() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { session } = useSession();
   const { requestProAccess, canUseProFeature } = useProCredits();
 
@@ -137,6 +137,7 @@ export default function MovieResults() {
         userId: session.user.id,
         projectId,
         swipeOrder: swipe.order,
+        question: query,
         title: swipe.title,
         imagePrompt: swipe.imagePrompt,
         videoPrompt: swipe.videoPrompt,
@@ -172,21 +173,26 @@ export default function MovieResults() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
-      {/* Header */}
-      <div className="border-b" style={{ borderColor: 'var(--ui-border-subtle)' }}>
-        <div className="max-w-7xl mx-auto flex items-center gap-3 px-4 py-3">
+      {/* Top bar: the user's question (multiline, scrollable) with an Enhance action on the
+          right (same structure as Search's "Ask Deeper"). Enhance renders the selected swipe
+          at premium, source-grounded quality in the background → costs 1 Pro Credit. */}
+      <TopBar
+        query={query}
+        timeAgo=""
+        rightSlot={
           <button
-            onClick={() => navigate('/')}
-            aria-label="Back"
-            className="p-1 rounded-lg transition-colors"
-            style={{ color: 'var(--ui-text-secondary)' }}
+            type="button"
+            onClick={() => selectedSwipe && requestEnhance(selectedSwipe)}
+            disabled={!selectedSwipe || isEnhancing}
+            title="Enhance this swipe with a source-grounded, premium video (1 Pro Credit)"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-all cursor-pointer hover:opacity-90 disabled:opacity-60"
+            style={{ backgroundColor: 'var(--accent-primary)' }}
           >
-            <ArrowLeft size={20} />
+            {isEnhancing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            <span>{isEnhancing ? 'Enhancing…' : 'Enhance'}</span>
           </button>
-          <Popcorn size={20} style={{ color: 'var(--accent-primary)' }} />
-          <h1 className="text-base font-medium truncate">{experience?.title || query || 'Movie'}</h1>
-        </div>
-      </div>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {error && (
@@ -286,18 +292,6 @@ export default function MovieResults() {
                     {roleLabel(selectedSwipe)}
                   </span>
                   <h2 className="text-sm font-medium">{selectedSwipe.title}</h2>
-                  {selectedSwipe.imageUrl && (
-                    <button
-                      onClick={() => selectedSwipe && requestEnhance(selectedSwipe)}
-                      disabled={isEnhancing}
-                      title="Regenerate this swipe at higher quality (Pro)"
-                      className="ml-auto flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-60"
-                      style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--accent-primary)' }}
-                    >
-                      {isEnhancing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                      {isEnhancing ? 'Enhancing…' : 'Enhance'}
-                    </button>
-                  )}
                 </div>
                 {selectedSwipe.narration && (
                   <p className="text-sm mt-1" style={{ color: 'var(--ui-text-muted)' }}>{selectedSwipe.narration}</p>
