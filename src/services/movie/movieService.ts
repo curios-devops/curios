@@ -5,7 +5,8 @@
 //
 // Speed rule: the core video only needs the core frame, so we never wait on the secondary
 // frames to start it. Secondary swipes stay as image previews and lazy-generate their video
-// on demand via renderSwipeVideo(). gpt-image-2 is reserved for Enhance (enhanceSwipeImage).
+// on demand via renderSwipeVideo(). Premium "Enhance" (gpt-image-2 + Omni) is a separate
+// server-owned background job — see the enhance-swipe edge function + enhancedVideosService.
 // No final stitch — each swipe is a standalone shareable unit.
 //
 // Reuses cinematic infrastructure: search tools, streamNarrative, NarrationService.
@@ -19,10 +20,8 @@ import { logger } from '../../utils/logger.ts';
 import { enhanceQuestion } from './agents/QuestionEnhancementAgent.ts';
 import { buildSwipeSet } from './agents/StoryboardAgent.ts';
 import { packageForVirality } from './agents/ViralDirectorAgent.ts';
-import { GptImageProvider } from './providers/GptImageProvider.ts';
 import { NanoBananaProvider } from './providers/NanoBananaProvider.ts';
 import { RunPodLTXProvider } from './providers/RunPodLTXProvider.ts';
-import { GeminiOmniVideoProvider } from './providers/GeminiOmniVideoProvider.ts';
 import { MoviePersistenceService } from './video/MoviePersistenceService.ts';
 import type {
   GenerateMovieOptions,
@@ -108,7 +107,7 @@ export async function generateMovie(
   const styleSeed = Math.floor(Math.random() * 1_000_000); // shared seed → style consistency
 
   // Cheap/fast default image model (Nano Banana 2 Lite). gpt-image-2 is reserved for the
-  // on-demand Enhance path (enhanceSwipeImage), not the default generation.
+  // premium Enhance job (enhance-swipe edge function), not the default generation.
   const imageProvider = new NanoBananaProvider();
   const coreSwipe = swipes.find((s) => s.isCore) || swipes[0];
   const secondarySwipes = swipes.filter((s) => s.id !== coreSwipe?.id);
@@ -279,46 +278,6 @@ export async function renderSwipeVideo(
     if (options.projectId) {
       new MoviePersistenceService()
         .updateSwipeVideo(options.projectId, swipe.order, videoUrl)
-        .catch(() => undefined);
-    }
-  } catch (error) {
-    swipe.status = 'error';
-    swipe.error = error instanceof Error ? error.message : String(error);
-  }
-  return swipe;
-}
-
-/**
- * Enhance a single swipe for a higher-quality result. Off by default — only runs when the
- * user explicitly asks for it (and after a Pro Credit is consumed). Regenerates the frame
- * with the premium gpt-image-2 model, then re-renders the video with Gemini Omni Flash from
- * that sharper frame. Mutates and returns the swipe; best-effort persists the new image+video.
- */
-export async function enhanceSwipeImage(
-  swipe: MovieSwipe,
-  options: RenderSwipeVideoOptions = {},
-): Promise<MovieSwipe> {
-  swipe.status = 'rendering';
-  try {
-    // Premium frame (gpt-image-2) replaces the cheap Nano Banana one.
-    const imageUrl = await new GptImageProvider().generate(swipe.imagePrompt, { userId: options.userId });
-    swipe.imageUrl = imageUrl;
-
-    // Premium video (Gemini Omni Flash) — replaces LTX for the enhanced render.
-    const { videoUrl } = await new GeminiOmniVideoProvider().generate({
-      imageUrl,
-      prompt: buildLtxPrompt(swipe),
-      duration: swipe.durationSeconds,
-      userId: options.userId,
-      projectId: options.projectId,
-      sceneId: swipe.id,
-    });
-    swipe.videoUrl = videoUrl;
-    swipe.status = 'ready';
-
-    if (options.projectId) {
-      new MoviePersistenceService()
-        .updateSwipeMedia(options.projectId, swipe.order, { imageUrl, videoUrl })
         .catch(() => undefined);
     }
   } catch (error) {

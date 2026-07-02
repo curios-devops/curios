@@ -1,6 +1,5 @@
 // Default swipe-frame image provider — Gemini "Nano Banana 2 Lite" (gemini-3.1-flash-lite-image).
-// Cheap + fast, so it's the default for BOTH the core and secondary swipe frames. Same
-// generate() shape as GptImageProvider, so the two are interchangeable on the pipeline.
+// Cheap + fast, so it's the default for BOTH the core and secondary swipe frames.
 // Calls the gemini-image edge function (Vertex AI service-account auth, uploads to movie-assets).
 
 import { supabase } from '../../../lib/supabase';

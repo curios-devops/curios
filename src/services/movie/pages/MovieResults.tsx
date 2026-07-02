@@ -11,7 +11,8 @@ import { ArrowLeft, Popcorn, Loader2, Sparkles, Play } from 'lucide-react';
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { logger } from '../../../utils/logger.ts';
-import { generateMovie, renderSwipeVideo, enhanceSwipeImage } from '../movieService.ts';
+import { generateMovie, renderSwipeVideo } from '../movieService.ts';
+import { createEnhanceJob } from '../enhancedVideosService.ts';
 import { MoviePersistenceService } from '../video/MoviePersistenceService.ts';
 import type { MovieExperience, MovieSwipe, MovieProgress } from '../types.ts';
 import SocialShareRow from '../components/SocialShareRow.tsx';
@@ -30,6 +31,7 @@ export default function MovieResults() {
   const [selectedSwipeId, setSelectedSwipeId] = useState<string | null>(null);
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
   const [enhancingIds, setEnhancingIds] = useState<Set<string>>(new Set());
+  const [enhanceNotice, setEnhanceNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const hasStartedRef = useRef(false);
@@ -113,30 +115,44 @@ export default function MovieResults() {
     void requestRenderSwipe(swipe);
   };
 
-  // Enhance (off by default): regenerate this swipe's frame with the premium gpt-image-2
-  // model, then re-render its video from the sharper frame. Premium quality → gated as Pro.
+  // Enhance (off by default, Pro): kick a SERVER-owned background job that regenerates this
+  // swipe's frame with premium gpt-image-2 and renders its video with Gemini Omni Flash. It
+  // finishes even if the user leaves/reloads, and the result surfaces on the Home page (unseen
+  // carousel) when ready. Needs a persisted movie (real project id).
   const requestEnhance = async (swipe: MovieSwipe) => {
-    if (!swipe.imageUrl || enhancingIds.has(swipe.id)) return;
+    if (enhancingIds.has(swipe.id)) return;
+    const exp = experienceRef.current;
+    const projectId = exp?.id && !exp.id.startsWith('local-') ? exp.id : undefined;
+    if (!projectId || !session?.user?.id) {
+      setEnhanceNotice('Sign in and let the movie finish saving before enhancing.');
+      return;
+    }
+
     const allowed = await requestProAccess();
     if (!allowed) return; // modal shown by the provider
 
     setEnhancingIds((prev) => new Set(prev).add(swipe.id));
-    upsertSwipe({ ...swipe, status: 'rendering' });
-
-    const exp = experienceRef.current;
-    const projectId = exp?.id && !exp.id.startsWith('local-') ? exp.id : undefined;
-    const updated = await enhanceSwipeImage({ ...swipe }, {
-      userId: session?.user?.id,
-      projectId,
-      styleSeed: exp?.styleSeed,
-    });
-
-    upsertSwipe(updated);
-    setEnhancingIds((prev) => {
-      const next = new Set(prev);
-      next.delete(swipe.id);
-      return next;
-    });
+    try {
+      await createEnhanceJob({
+        userId: session.user.id,
+        projectId,
+        swipeOrder: swipe.order,
+        title: swipe.title,
+        imagePrompt: swipe.imagePrompt,
+        videoPrompt: swipe.videoPrompt,
+        aspectRatio: '16:9',
+      });
+      setEnhanceNotice('Enhancing in the background — your video will appear on your Home page when ready.');
+    } catch (err) {
+      setEnhanceNotice(null);
+      setError(err instanceof Error ? err.message : 'Could not start enhance');
+    } finally {
+      setEnhancingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(swipe.id);
+        return next;
+      });
+    }
   };
 
   const shareUrl = experience?.id && !experience.id.startsWith('local-')
@@ -176,6 +192,13 @@ export default function MovieResults() {
         {error && (
           <div className="mb-4 rounded-lg p-4 text-sm" style={{ backgroundColor: 'var(--ui-bg-elevated)', color: '#ef4444' }}>
             {error}
+          </div>
+        )}
+
+        {enhanceNotice && (
+          <div className="mb-4 rounded-lg p-4 text-sm flex items-start gap-2" style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--accent-primary)' }}>
+            <Sparkles size={16} className="mt-0.5 flex-shrink-0" />
+            <span>{enhanceNotice}</span>
           </div>
         )}
 

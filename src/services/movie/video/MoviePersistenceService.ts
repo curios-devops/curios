@@ -127,27 +127,6 @@ export class MoviePersistenceService {
     if (error) logger.warn('[MoviePersistence] updateSwipeVideo failed', { error: error.message });
   }
 
-  /**
-   * Persist an enhanced swipe's new image and/or video back to its row (best-effort).
-   * Used by the Enhance path, which replaces the cheap frame with a gpt-image-2 one.
-   */
-  async updateSwipeMedia(
-    projectId: string,
-    swipeOrder: number,
-    media: { imageUrl?: string; videoUrl?: string },
-  ): Promise<void> {
-    if (!this.isValidUuid(projectId)) return;
-    const patch: Record<string, string> = { status: 'ready' };
-    if (media.imageUrl) patch.image_url = media.imageUrl;
-    if (media.videoUrl) patch.video_url = media.videoUrl;
-    const { error } = await supabase
-      .from('movie_scenes')
-      .update(patch)
-      .eq('project_id', projectId)
-      .eq('scene_order', swipeOrder);
-    if (error) logger.warn('[MoviePersistence] updateSwipeMedia failed', { error: error.message });
-  }
-
   async incrementShareCount(projectId: string): Promise<void> {
     if (!this.isValidUuid(projectId)) return;
     const { error } = await supabase.rpc('increment_movie_share_count', { project_uuid: projectId });
