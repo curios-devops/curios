@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Loader2, Sparkles, Play } from 'lucide-react';
+import { Loader2, Sparkles, Play, Crown } from 'lucide-react';
 
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -188,7 +188,7 @@ export default function MovieResults() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-all cursor-pointer hover:opacity-90 disabled:opacity-60"
             style={{ backgroundColor: 'var(--accent-primary)' }}
           >
-            {isEnhancing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            {isEnhancing ? <Loader2 size={16} className="animate-spin" /> : <Crown size={16} />}
             <span>{isEnhancing ? 'Enhancing…' : 'Enhance'}</span>
           </button>
         }

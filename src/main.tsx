@@ -4,6 +4,21 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './components/auth/AuthContext.tsx';
 import App from './App.tsx';
 import Home from './mainPages/Home.tsx'; // Keep Home page eager loaded as it's the landing page
+import OfflineError from './components/OfflineError.tsx'; // eager: must render when chunks fail
+
+// Resilient lazy(): a dynamic import can fail on flaky/lost connectivity ("Importing a module
+// script failed"). Retry once after a short delay before letting the router's errorElement
+// (OfflineError) take over — recovers transient blips without bothering the user.
+function lazyRetry(importer: Parameters<typeof lazy>[0]) {
+  return lazy(async () => {
+    try {
+      return await importer();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return importer();
+    }
+  });
+}
 import { logger } from './utils/logger.ts';
 import './index.css';
 import { applyThemeColors, type AccentColor } from './config/themeColors';
@@ -24,35 +39,35 @@ import { applyThemeColors, type AccentColor } from './config/themeColors';
 
 // Lazy load page components from their respective service directories
 // Legacy search (hidden from the dropdown, slated for removal) now lives under services/legacy-search.
-const SearchResults = lazy(() => import('./services/legacy-search/regular/pages/SearchResults.tsx'));
+const SearchResults = lazyRetry(() => import('./services/legacy-search/regular/pages/SearchResults.tsx'));
 // Fast Search is now the primary "Search" and lives under services/search.
-const FastSearchResults = lazy(() => import('./services/search/pages/FastSearchResults.tsx'));
-const AvatarSearchResults = lazy(() => import('./services/legacy-search/avatar/pages/AvatarSearchResults.tsx'));
-const ProSearchResults = lazy(() => import('./services/legacy-search/pro/pages/ProSearchResults.tsx'));
-const ProSearchTest = lazy(() => import('./services/legacy-search/pro/pages/ProSearchTest.tsx'));
+const FastSearchResults = lazyRetry(() => import('./services/search/pages/FastSearchResults.tsx'));
+const AvatarSearchResults = lazyRetry(() => import('./services/legacy-search/avatar/pages/AvatarSearchResults.tsx'));
+const ProSearchResults = lazyRetry(() => import('./services/legacy-search/pro/pages/ProSearchResults.tsx'));
+const ProSearchTest = lazyRetry(() => import('./services/legacy-search/pro/pages/ProSearchTest.tsx'));
 // Stories — regular workflow. Pro research was removed.
-const StoriesResults = lazy(() => import('./services/stories/pages/StoriesResults.tsx'));
-const CinematicResults = lazy(() => import('./services/cinematic/pages/CinematicResults.tsx'));
-const MovieResults = lazy(() => import('./services/movie/pages/MovieResults.tsx'));
-const MovieSharePage = lazy(() => import('./services/movie/pages/MovieSharePage.tsx'));
-const Explore = lazy(() => import('./mainPages/Explore.tsx'));
-const ArticleDetail = lazy(() => import('./mainPages/ArticleDetail.tsx'));
+const StoriesResults = lazyRetry(() => import('./services/stories/pages/StoriesResults.tsx'));
+const CinematicResults = lazyRetry(() => import('./services/cinematic/pages/CinematicResults.tsx'));
+const MovieResults = lazyRetry(() => import('./services/movie/pages/MovieResults.tsx'));
+const MovieSharePage = lazyRetry(() => import('./services/movie/pages/MovieSharePage.tsx'));
+const Explore = lazyRetry(() => import('./mainPages/Explore.tsx'));
+const ArticleDetail = lazyRetry(() => import('./mainPages/ArticleDetail.tsx'));
 // Curiosity Engine — Space + Share + Feed
-const NodeSharePage = lazy(() => import('./services/space/pages/NodeSharePage.tsx'));
-const SpacePage = lazy(() => import('./services/space/pages/SpacePage.tsx'));
-const FeedPage = lazy(() => import('./services/space/pages/FeedPage.tsx'));
-const TopicPage = lazy(() => import('./services/space/pages/TopicPage.tsx'));
-const Library = lazy(() => import('./mainPages/Library.tsx'));
-const Settings = lazy(() => import('./mainPages/Settings.tsx'));
-const TestPage = lazy(() => import('./pages/test.tsx'));
-const ImageTest = lazy(() => import('./pages/ImageTest.tsx'));
-const SerpApiTest = lazy(() => import('./pages/SerpApiTest'));
-const ReverseImageVsTest = lazy(() => import('./pages/ReverseImageVsTest'));
-const AnamAvatarTest = lazy(() => import('./services/legacy-search/avatar/components/AnamAvatarTest.tsx'));
+const NodeSharePage = lazyRetry(() => import('./services/space/pages/NodeSharePage.tsx'));
+const SpacePage = lazyRetry(() => import('./services/space/pages/SpacePage.tsx'));
+const FeedPage = lazyRetry(() => import('./services/space/pages/FeedPage.tsx'));
+const TopicPage = lazyRetry(() => import('./services/space/pages/TopicPage.tsx'));
+const Library = lazyRetry(() => import('./mainPages/Library.tsx'));
+const Settings = lazyRetry(() => import('./mainPages/Settings.tsx'));
+const TestPage = lazyRetry(() => import('./pages/test.tsx'));
+const ImageTest = lazyRetry(() => import('./pages/ImageTest.tsx'));
+const SerpApiTest = lazyRetry(() => import('./pages/SerpApiTest'));
+const ReverseImageVsTest = lazyRetry(() => import('./pages/ReverseImageVsTest'));
+const AnamAvatarTest = lazyRetry(() => import('./services/legacy-search/avatar/components/AnamAvatarTest.tsx'));
 // Phase6TestPage removed - obsolete chunk rendering test
-const Policies = lazy(() => import('./mainPages/Policies.tsx'));
-const AuthCallback = lazy(() => import('./components/auth/AuthCallback.tsx'));
-const SubscriptionSuccess = lazy(() => import('./mainPages/SubscriptionSuccess.tsx'));
+const Policies = lazyRetry(() => import('./mainPages/Policies.tsx'));
+const AuthCallback = lazyRetry(() => import('./components/auth/AuthCallback.tsx'));
+const SubscriptionSuccess = lazyRetry(() => import('./mainPages/SubscriptionSuccess.tsx'));
 
 // Loading component for lazy loaded routes
 const PageLoader = () => (
@@ -76,6 +91,7 @@ const router = createBrowserRouter(
   [
     {
       element: <App />,
+      errorElement: <OfflineError />,
       children: [
         { path: '/', element: <Home /> },
         { path: '/explore', element: <LazyPageWrapper><Explore /></LazyPageWrapper> },
