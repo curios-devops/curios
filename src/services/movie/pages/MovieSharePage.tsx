@@ -4,8 +4,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Popcorn, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
+import TopBar from '../../../components/results/TopBar.tsx';
 import { MoviePersistenceService } from '../video/MoviePersistenceService.ts';
 import type { ViralPackage } from '../types.ts';
 import SocialShareRow from '../components/SocialShareRow.tsx';
@@ -52,12 +53,10 @@ export default function MovieSharePage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
-      <div className="max-w-3xl mx-auto px-4 py-10">
-        <div className="flex items-center gap-2 mb-4" style={{ color: 'var(--accent-primary)' }}>
-          <Popcorn size={20} />
-          <span className="text-sm font-medium">Curios Movie</span>
-        </div>
+      {/* Consistent movie header: title shown full (multiline + scrollable) with a back arrow. */}
+      <TopBar query={viral?.title || movie.title} timeAgo="" rightSlot={<span />} />
 
+      <div className="max-w-3xl mx-auto px-4 py-10">
         <div className="rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
           {movie.full_video_url ? (
             <video src={movie.full_video_url} controls autoPlay className="w-full h-full object-contain" />
@@ -68,8 +67,7 @@ export default function MovieSharePage() {
           )}
         </div>
 
-        <h1 className="text-2xl font-semibold mt-5">{viral?.title || movie.title}</h1>
-        {viral?.caption && <p className="mt-2" style={{ color: 'var(--ui-text-muted)' }}>{viral.caption}</p>}
+        {viral?.caption && <p className="mt-5 text-lg" style={{ color: 'var(--ui-text-secondary)' }}>{viral.caption}</p>}
 
         {viral?.hashtags && viral.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
