@@ -17,6 +17,7 @@ import { createEnhanceJob } from '../enhancedVideosService.ts';
 import { MoviePersistenceService } from '../video/MoviePersistenceService.ts';
 import type { MovieExperience, MovieSwipe, MovieProgress } from '../types.ts';
 import SocialShareRow from '../components/SocialShareRow.tsx';
+import SignUpModal from '../../../components/auth/SignUpModal.tsx';
 
 export default function MovieResults() {
   const location = useLocation();
@@ -32,6 +33,7 @@ export default function MovieResults() {
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
   const [enhancingIds, setEnhancingIds] = useState<Set<string>>(new Set());
   const [enhanceNotice, setEnhanceNotice] = useState<string | null>(null);
+  const [showSignUp, setShowSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hasStartedRef = useRef(false);
@@ -121,10 +123,18 @@ export default function MovieResults() {
   // carousel) when ready. Needs a persisted movie (real project id).
   const requestEnhance = async (swipe: MovieSwipe) => {
     if (enhancingIds.has(swipe.id)) return;
+    // Guests must sign in to keep the enhanced video (it surfaces on their Home).
+    // Show the sign-up modal instead of a warning notice.
+    if (!session?.user?.id) {
+      setShowSignUp(true);
+      return;
+    }
+    // Signed in, but the movie hasn't persisted yet (still under a `local-` id):
+    // Enhance needs a real project id. This is not a sign-in problem.
     const exp = experienceRef.current;
     const projectId = exp?.id && !exp.id.startsWith('local-') ? exp.id : undefined;
-    if (!projectId || !session?.user?.id) {
-      setEnhanceNotice('Sign in and let the movie finish saving before enhancing.');
+    if (!projectId) {
+      setEnhanceNotice('Your movie is still saving — try Enhance again in a moment.');
       return;
     }
 
@@ -394,6 +404,13 @@ export default function MovieResults() {
           </aside>
         </div>
       </div>
+
+      <SignUpModal
+        isOpen={showSignUp}
+        onClose={() => setShowSignUp(false)}
+        context="pro"
+        subtitle="You need to be signed in to view your saved video."
+      />
     </div>
   );
 }

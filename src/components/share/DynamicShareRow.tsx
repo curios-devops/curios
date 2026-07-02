@@ -126,7 +126,7 @@ export default function DynamicShareRow({ serviceType, payload, trailing, onShar
             aria-label={NETWORK_LABEL[network]}
             title={NETWORK_LABEL[network]}
             onClick={() => handleClick(network)}
-            className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-gray-100 dark:bg-[#222222] hover:bg-gray-200 dark:hover:bg-[#2a2a2a] text-gray-900 dark:text-white transition-colors"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-gray-100 dark:bg-[#2a2a2a] hover:bg-gray-200 dark:hover:bg-[#353535] text-gray-900 dark:text-white transition-colors"
           >
             <NetworkIcon network={network} copied={copied} />
           </button>

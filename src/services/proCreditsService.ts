@@ -154,30 +154,38 @@ export async function getCreditState(
     return toState('guest', record.remaining);
   }
 
-  // free / pro → DB
+  // free / pro → DB. Trust the DB `is_pro` generated column (subscription_status
+  // = 'active') as the authoritative tier for provisioning. The client-side
+  // subscription fetch can momentarily resolve an active Pro user as 'free'
+  // (fetch timeout / race); a daily reset firing in that window would otherwise
+  // persist the free allowance and pin the Pro user to it until the next reset.
+  // A generated column can't flap, so it's the safe source of truth here.
   const row = await handleSupabaseOperation(
     async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('remaining_credits, credits_reset_at')
+        .select('remaining_credits, credits_reset_at, is_pro')
         .eq('id', session.user.id)
         .single();
       if (error) throw error;
       return data;
     },
-    { remaining_credits: max, credits_reset_at: new Date().toISOString() },
+    { remaining_credits: max, credits_reset_at: new Date().toISOString(), is_pro: tier === 'pro' },
   );
+
+  const effectiveTier: ProTier = (row as { is_pro?: boolean }).is_pro ? 'pro' : tier;
+  const effMax = maxCreditsFor(effectiveTier);
 
   const lastResetDay = dayKeyOf((row as { credits_reset_at?: string }).credits_reset_at);
   if (!lastResetDay || needsReset(lastResetDay)) {
-    await writeRemaining(session, max);
-    return toState(tier, max);
+    await writeRemaining(session, effMax);
+    return toState(effectiveTier, effMax);
   }
 
   const remaining = typeof (row as { remaining_credits?: number }).remaining_credits === 'number'
     ? (row as { remaining_credits: number }).remaining_credits
-    : max;
-  return toState(tier, remaining);
+    : effMax;
+  return toState(effectiveTier, remaining);
 }
 
 async function writeRemaining(session: Session, remaining: number): Promise<void> {

@@ -173,7 +173,7 @@ export default function StoriesResults() {
     switch (phase) {
       case 'analyzing': return <Brain className="text-blue-500" size={14} />;
       case 'searching': return <Search className="text-green-500" size={14} />;
-      case 'synthesizing': return <Sparkles className="text-purple-500" size={14} />;
+      case 'synthesizing': return <Sparkles style={{ color: accent.primary }} size={14} />;
       case 'finalizing': return <CheckCircle2 className="text-green-500" size={14} />;
       default: return <Brain className="text-blue-500" size={14} />;
     }

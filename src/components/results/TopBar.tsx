@@ -39,7 +39,7 @@ export default function TopBar({
   ];
 
   return (
-    <div className="sticky top-0 bg-white/80 dark:bg-[#111111]/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 z-10 transition-colors duration-200">
+    <div className="sticky top-0 bg-white/80 dark:bg-[#111111] backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 z-10 transition-colors duration-200">
       {/* Top row with back arrow, query title and time */}
       <div className="px-4 sm:px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

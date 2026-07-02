@@ -56,10 +56,13 @@ export default function SocialShareRow({ shareUrl, title, caption, videoUrl, onS
 
   const btn =
     'h-10 w-10 inline-flex items-center justify-center rounded-full border transition-colors';
+  // Subtle elevated fill so the icon chip reads a touch LIGHTER than the page
+  // background (movie page is near-black #040A14); transparent made them look
+  // like black squares in dark mode.
   const btnStyle = {
     borderColor: 'var(--ui-border-default)',
     color: 'var(--ui-text-primary)',
-    backgroundColor: 'transparent',
+    backgroundColor: 'var(--ui-bg-elevated)',
   } as const;
 
   return (
