@@ -13,7 +13,7 @@ import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { logger } from '../../../utils/logger.ts';
 import TopBar from '../../../components/results/TopBar.tsx';
 import { generateMovie, renderSwipeVideo } from '../movieService.ts';
-import { createEnhanceJob } from '../enhancedVideosService.ts';
+import { createEnhanceJob, getEnhancedVideo, attachEnhancedToProject, markEnhancedSeen } from '../enhancedVideosService.ts';
 import { MoviePersistenceService } from '../video/MoviePersistenceService.ts';
 import type { MovieExperience, MovieSwipe, MovieProgress } from '../types.ts';
 import SocialShareRow from '../components/SocialShareRow.tsx';
@@ -25,6 +25,8 @@ export default function MovieResults() {
   const { requestProAccess, canUseProFeature } = useProCredits();
 
   const query = useMemo(() => new URLSearchParams(location.search).get('q') || '', [location.search]);
+  // Reopen a saved movie (Home "latest enhanced" card) — loads from Supabase, no regeneration.
+  const projectIdParam = useMemo(() => new URLSearchParams(location.search).get('projectId') || '', [location.search]);
 
   const [swipes, setSwipes] = useState<MovieSwipe[]>([]);
   const [experience, setExperience] = useState<MovieExperience | null>(null);
@@ -39,6 +41,12 @@ export default function MovieResults() {
   const hasStartedRef = useRef(false);
   const experienceRef = useRef<MovieExperience | null>(null);
   experienceRef.current = experience;
+  const swipesRef = useRef<MovieSwipe[]>([]);
+  swipesRef.current = swipes;
+  // Swipes with a queued Enhance: the default image/video pipeline skips them.
+  const enhanceRequestedRef = useRef<Set<string>>(new Set());
+  // Enhance jobs created before the movie persisted — attached to the project on save.
+  const pendingEnhanceJobsRef = useRef<Set<string>>(new Set());
 
   const upsertSwipe = (swipe: MovieSwipe) =>
     setSwipes((prev) =>
@@ -47,9 +55,33 @@ export default function MovieResults() {
         : [...prev, { ...swipe }].sort((a, b) => a.order - b.order),
     );
 
-  // ── Kick off generation once per query ──────────────────────────────────────
+  // ── Kick off generation once per query (or load a saved movie by project id) ─
   useEffect(() => {
-    if (!query.trim() || hasStartedRef.current) return;
+    if (hasStartedRef.current) return;
+
+    if (projectIdParam) {
+      hasStartedRef.current = true;
+      new MoviePersistenceService()
+        .loadMovieExperience(projectIdParam)
+        .then((exp) => {
+          if (!exp) {
+            setError('Movie not found');
+            return;
+          }
+          setSwipes(exp.swipes);
+          setExperience(exp);
+          setProgress({ stage: 'complete', message: 'Loaded from your library', progress: 100 });
+          const core = exp.swipes.find((s) => s.isCore) || exp.swipes[0];
+          if (core) setSelectedSwipeId(core.id);
+        })
+        .catch((err) => {
+          logger.error('[MovieResults] Load failed', { error: err instanceof Error ? err.message : String(err) });
+          setError('Could not load this movie');
+        });
+      return;
+    }
+
+    if (!query.trim()) return;
     hasStartedRef.current = true;
 
     generateMovie(query, {
@@ -57,6 +89,9 @@ export default function MovieResults() {
       // LTX generates each swipe's audio (generate_audio); a separate ElevenLabs
       // narration track would be unused and is redundant cost, so it's disabled.
       enableNarration: false,
+      // A swipe with a queued Enhance skips its default image/video render — the
+      // premium result will replace it instead.
+      isEnhanceRequested: (swipe) => enhanceRequestedRef.current.has(swipe.id),
       onProgress: (p) => {
         setProgress(p);
         if (p.swipes) setSwipes([...p.swipes].sort((a, b) => a.order - b.order));
@@ -67,20 +102,30 @@ export default function MovieResults() {
         setSelectedSwipeId((cur) => cur ?? (swipe.isCore && swipe.imageUrl ? swipe.id : cur));
       },
     })
-      .then((exp) => setExperience(exp))
+      .then((exp) => {
+        setExperience(exp);
+        // Movie persisted after Enhance was pressed → attach the jobs to the project
+        // so the server also replaces the saved movie_scenes rows.
+        if (exp.id && !exp.id.startsWith('local-') && pendingEnhanceJobsRef.current.size > 0) {
+          void attachEnhancedToProject([...pendingEnhanceJobsRef.current], exp.id);
+          pendingEnhanceJobsRef.current.clear();
+        }
+      })
       .catch((err) => {
         logger.error('[MovieResults] Generation failed', { error: err instanceof Error ? err.message : String(err) });
         setError(err instanceof Error ? err.message : 'Movie generation failed');
       });
-  }, [query, session?.user?.id]);
+  }, [query, projectIdParam, session?.user?.id]);
 
   const isComplete = progress.stage === 'complete';
   const selectedSwipe = swipes.find((s) => s.id === selectedSwipeId) || swipes.find((s) => s.isCore) || swipes[0];
   const frameIndex = selectedSwipe ? swipes.findIndex((s) => s.id === selectedSwipe.id) + 1 : 0;
 
   // Lazy on-demand video generation when a user activates a swipe that has only an image.
+  // (renderSwipeVideo also creates the image first if it's missing — the enhance-failed
+  // fallback path can arrive here with neither asset.)
   const triggerLazyVideo = async (swipe: MovieSwipe) => {
-    if (swipe.videoUrl || generatingIds.has(swipe.id) || !swipe.imageUrl) return;
+    if (swipe.videoUrl || generatingIds.has(swipe.id)) return;
     setGeneratingIds((prev) => new Set(prev).add(swipe.id));
     upsertSwipe({ ...swipe, status: 'rendering' });
 
@@ -89,7 +134,7 @@ export default function MovieResults() {
     const updated = await renderSwipeVideo({ ...swipe }, {
       userId: session?.user?.id,
       projectId,
-      styleSeed: exp?.styleSeed,
+      styleSeed: exp?.styleSeed || undefined,
     });
 
     upsertSwipe(updated);
@@ -104,6 +149,7 @@ export default function MovieResults() {
   // free; any non-core ("premium") swipe consumes 1 Pro Credit via the central
   // ProCreditsProvider, which opens the tier-appropriate modal when blocked.
   const requestRenderSwipe = async (swipe: MovieSwipe) => {
+    if (enhanceRequestedRef.current.has(swipe.id)) return; // enhanced version is on its way
     if (swipe.videoUrl || generatingIds.has(swipe.id) || swipe.status === 'rendering' || !swipe.imageUrl) return;
     if (!swipe.isCore) {
       const allowed = await requestProAccess();
@@ -117,52 +163,97 @@ export default function MovieResults() {
     void requestRenderSwipe(swipe);
   };
 
-  // Enhance (off by default, Pro): kick a SERVER-owned background job that regenerates this
-  // swipe's frame with premium gpt-image-2 and renders its video with Gemini Omni Flash. It
-  // finishes even if the user leaves/reloads, and the result surfaces on the Home page (unseen
-  // carousel) when ready. Needs a persisted movie (real project id).
-  const requestEnhance = async (swipe: MovieSwipe) => {
-    if (enhancingIds.has(swipe.id)) return;
-    // Guests must sign in to keep the enhanced video (it surfaces on their Home).
-    // Show the sign-up modal instead of a warning notice.
-    if (!session?.user?.id) {
-      setShowSignUp(true);
+  const clearEnhancing = (swipeId: string) => {
+    setEnhancingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(swipeId);
+      return next;
+    });
+  };
+
+  // Watch a running enhance job. When ready, the enhanced image/video REPLACE the swipe's
+  // regular ones in place (and it's marked seen — the user watched it here, so it won't
+  // resurface on Home). On failure, fall back to the regular render if the swipe has no video.
+  const watchEnhanceJob = async (jobId: string, swipeId: string) => {
+    const deadline = Date.now() + 12 * 60_000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 6000));
+      const row = await getEnhancedVideo(jobId);
+      if (!row) continue;
+      if (row.status === 'processing') {
+        // The enhanced frame lands before the video — replace the image right away.
+        if (row.image_url) {
+          setSwipes((prev) => prev.map((s) => (s.id === swipeId && s.imageUrl !== row.image_url
+            ? { ...s, imageUrl: row.image_url!, enhanced: true }
+            : s)));
+        }
+        continue;
+      }
+
+      enhanceRequestedRef.current.delete(swipeId);
+      pendingEnhanceJobsRef.current.delete(jobId);
+      clearEnhancing(swipeId);
+
+      if (row.status === 'ready' && row.video_url) {
+        setSwipes((prev) => prev.map((s) => (s.id === swipeId
+          ? { ...s, imageUrl: row.image_url ?? s.imageUrl, videoUrl: row.video_url!, status: 'ready', enhanced: true, error: undefined }
+          : s)));
+        setEnhanceNotice(null);
+        void markEnhancedSeen(jobId);
+      } else {
+        setEnhanceNotice('Enhance failed — generating the standard video instead.');
+        const target = swipesRef.current.find((s) => s.id === swipeId);
+        if (target && !target.videoUrl) void triggerLazyVideo(target);
+      }
       return;
     }
-    // Signed in, but the movie hasn't persisted yet (still under a `local-` id):
-    // Enhance needs a real project id. This is not a sign-in problem.
-    const exp = experienceRef.current;
-    const projectId = exp?.id && !exp.id.startsWith('local-') ? exp.id : undefined;
-    if (!projectId) {
-      setEnhanceNotice('Your movie is still saving — try Enhance again in a moment.');
+    // Taking unusually long — the server job keeps going; it will land on Home when ready.
+    enhanceRequestedRef.current.delete(swipeId);
+    clearEnhancing(swipeId);
+    setEnhanceNotice('Still enhancing in the background — your video will appear on your Home page when ready.');
+  };
+
+  // Enhance (off by default, Pro): kick a SERVER-owned background job that regenerates this
+  // swipe's frame with premium gpt-image-2 and renders its video with Gemini Omni Flash, then
+  // replaces the swipe in place. Runs immediately — no need to wait for the movie to persist;
+  // the job is attached to the project when the save completes. If the user leaves, the result
+  // surfaces on the Home page ("latest enhanced" card) instead.
+  const requestEnhance = async (swipe: MovieSwipe) => {
+    if (enhancingIds.has(swipe.id) || swipe.enhanced) return;
+    // Guests must sign in to keep the enhanced video (it surfaces on their Home).
+    if (!session?.user?.id) {
+      setShowSignUp(true);
       return;
     }
 
     const allowed = await requestProAccess();
     if (!allowed) return; // modal shown by the provider
 
+    const exp = experienceRef.current;
+    const projectId = exp?.id && !exp.id.startsWith('local-') ? exp.id : undefined;
+
+    // From here the default pipeline skips this swipe — the enhanced render replaces it.
+    enhanceRequestedRef.current.add(swipe.id);
     setEnhancingIds((prev) => new Set(prev).add(swipe.id));
+    setEnhanceNotice('Enhancing — the premium version will replace this swipe here when ready. You can leave; it will also appear on your Home page.');
     try {
-      await createEnhanceJob({
+      const jobId = await createEnhanceJob({
         userId: session.user.id,
         projectId,
         swipeOrder: swipe.order,
-        question: query,
+        question: exp?.question || query,
         title: swipe.title,
         imagePrompt: swipe.imagePrompt,
         videoPrompt: swipe.videoPrompt,
         aspectRatio: '16:9',
       });
-      setEnhanceNotice('Enhancing in the background — your video will appear on your Home page when ready.');
+      if (!projectId) pendingEnhanceJobsRef.current.add(jobId);
+      void watchEnhanceJob(jobId, swipe.id);
     } catch (err) {
+      enhanceRequestedRef.current.delete(swipe.id);
+      clearEnhancing(swipe.id);
       setEnhanceNotice(null);
       setError(err instanceof Error ? err.message : 'Could not start enhance');
-    } finally {
-      setEnhancingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(swipe.id);
-        return next;
-      });
     }
   };
 
@@ -178,7 +269,9 @@ export default function MovieResults() {
 
   const roleLabel = (s: MovieSwipe) => (s.isCore ? 'Core' : s.role.charAt(0).toUpperCase() + s.role.slice(1));
   const isEnhancing = selectedSwipe ? enhancingIds.has(selectedSwipe.id) : false;
+  const isEnhanced = Boolean(selectedSwipe?.enhanced);
   const isGenerating = selectedSwipe ? generatingIds.has(selectedSwipe.id) || (!isEnhancing && selectedSwipe.status === 'rendering') : false;
+  const displayQuery = query || experience?.question || '';
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -187,19 +280,19 @@ export default function MovieResults() {
           right (same structure as Search's "Ask Deeper"). Enhance renders the selected swipe
           at premium, source-grounded quality in the background → costs 1 Pro Credit. */}
       <TopBar
-        query={query}
+        query={displayQuery}
         timeAgo=""
         rightSlot={
           <button
             type="button"
             onClick={() => selectedSwipe && requestEnhance(selectedSwipe)}
-            disabled={!selectedSwipe || isEnhancing}
+            disabled={!selectedSwipe || isEnhancing || isEnhanced}
             title="Enhance this swipe with a source-grounded, premium video (1 Pro Credit)"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-all cursor-pointer hover:opacity-90 disabled:opacity-60"
             style={{ backgroundColor: 'var(--accent-primary)' }}
           >
             {isEnhancing ? <Loader2 size={16} className="animate-spin" /> : <Crown size={16} />}
-            <span>{isEnhancing ? 'Enhancing…' : 'Enhance'}</span>
+            <span>{isEnhancing ? 'Enhancing…' : isEnhanced ? 'Enhanced' : 'Enhance'}</span>
           </button>
         }
       />
@@ -244,14 +337,19 @@ export default function MovieResults() {
               ) : selectedSwipe?.imageUrl ? (
                 <>
                   <img src={selectedSwipe.imageUrl} alt={selectedSwipe.title} className="w-full h-full object-contain" />
-                  {/* Image-only swipe → offer/await on-demand video */}
+                  {/* Image-only swipe → offer/await on-demand video (or await the enhance job) */}
                   <button
                     onClick={() => selectedSwipe && requestRenderSwipe(selectedSwipe)}
-                    disabled={isGenerating}
+                    disabled={isGenerating || isEnhancing}
                     className="absolute inset-0 flex flex-col items-center justify-center gap-2 transition-colors"
                     style={{ backgroundColor: 'rgba(0,0,0,0.35)', color: '#fff' }}
                   >
-                    {isGenerating ? (
+                    {isEnhancing ? (
+                      <>
+                        <Loader2 size={30} className="animate-spin" />
+                        <span className="text-sm">Enhancing this swipe…</span>
+                      </>
+                    ) : isGenerating ? (
                       <>
                         <Loader2 size={30} className="animate-spin" />
                         <span className="text-sm">Generating video…</span>
@@ -269,7 +367,7 @@ export default function MovieResults() {
               ) : (
                 <div className="flex flex-col items-center gap-3 text-white/70">
                   <Loader2 size={28} className="animate-spin" />
-                  <span className="text-sm">Creating your swipes…</span>
+                  <span className="text-sm">{isEnhancing ? 'Enhancing this swipe…' : 'Creating your swipes…'}</span>
                 </div>
               )}
             </div>
@@ -301,6 +399,11 @@ export default function MovieResults() {
                   <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--accent-primary)' }}>
                     {roleLabel(selectedSwipe)}
                   </span>
+                  {selectedSwipe.enhanced && (
+                    <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>
+                      <Crown size={10} /> Enhanced
+                    </span>
+                  )}
                   <h2 className="text-sm font-medium">{selectedSwipe.title}</h2>
                 </div>
                 {selectedSwipe.narration && (
@@ -386,9 +489,17 @@ export default function MovieResults() {
                     <span className="absolute top-1 right-1 text-[10px] px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: swipe.isCore ? 'var(--accent-primary)' : 'rgba(0,0,0,0.6)' }}>
                       {roleLabel(swipe)}
                     </span>
-                    {rendering ? (
+                    {enhancingIds.has(swipe.id) ? (
+                      <span className="absolute bottom-1 right-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white flex items-center gap-1">
+                        <Loader2 size={10} className="animate-spin" /> enhance
+                      </span>
+                    ) : rendering ? (
                       <span className="absolute bottom-1 right-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white flex items-center gap-1">
                         <Loader2 size={10} className="animate-spin" /> render
+                      </span>
+                    ) : swipe.enhanced ? (
+                      <span className="absolute bottom-1 right-1 text-[10px] px-1.5 py-0.5 rounded text-white flex items-center gap-1" style={{ backgroundColor: 'var(--accent-primary)' }}>
+                        <Crown size={10} /> ▶
                       </span>
                     ) : swipe.videoUrl ? (
                       <span className="absolute bottom-1 right-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-600/80 text-white">▶</span>

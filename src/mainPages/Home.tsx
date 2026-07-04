@@ -21,7 +21,7 @@ import { useTheme } from '../components/theme/ThemeContext.tsx';
 import type { ModeType } from '../components/boxContainerInput/ModeSelector.tsx';
 import ProCreditsBattery from '../components/ProCreditsBattery.tsx';
 import HomeDiscovery from '../services/space/components/HomeDiscovery.tsx';
-import EnhancedVideosCarousel from '../services/movie/components/EnhancedVideosCarousel.tsx';
+import EnhancedVideoCard from '../services/movie/components/EnhancedVideoCard.tsx';
 import AnimatedHomeTitle from '../components/AnimatedHomeTitle.tsx';
 import { getUserFirstName } from '../utils/userName.ts';
 
@@ -249,9 +249,10 @@ export default function Home() {
         )}
       </div>
 
-      {/* Freshly finished enhanced videos surface here, ABOVE the title + input box.
-          Once viewed they drop into the Discover feed below. */}
-      <EnhancedVideosCarousel />
+      {/* The latest freshly finished enhanced video surfaces here, ABOVE the title + input
+          box. Clicking it reopens the saved movie page; once viewed it drops into the
+          Discover feed below. */}
+      <EnhancedVideoCard />
 
       <div className="max-w-[720px] mx-auto px-6 sm:px-8">
         <div className="flex flex-col items-center justify-center mb-12 home-rise">

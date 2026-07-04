@@ -38,6 +38,9 @@ export interface MovieSwipe {
   videoUrl?: string;
   narrationAudioUrl?: string;
 
+  /** True once the premium Enhance render replaced this swipe's image/video. */
+  enhanced?: boolean;
+
   // pending → image_ready (preview, no video) → rendering → ready → error
   status: 'pending' | 'image_ready' | 'rendering' | 'ready' | 'error';
   error?: string;
@@ -93,6 +96,12 @@ export interface GenerateMovieOptions {
   enableNarration?: boolean;
   /** When false, skip even the core video and stop at images (storyboard preview). */
   renderCoreVideo?: boolean;
+  /**
+   * Checked before each swipe's default image/video API call. Returns true when the
+   * user already queued the premium Enhance for that swipe — the default render is
+   * skipped and the enhanced result will fill the swipe instead.
+   */
+  isEnhanceRequested?: (swipe: MovieSwipe) => boolean;
   onProgress?: (progress: MovieProgress) => void;
   onSwipeReady?: (swipe: MovieSwipe) => void;
 }

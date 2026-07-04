@@ -336,6 +336,10 @@ async function runJob(jobId: string, p: JobParams) {
     });
     const imageUrl = db.storage.from("movie-assets").getPublicUrl(imagePath).data.publicUrl;
 
+    // Publish the enhanced frame right away (status stays 'processing') so the movie page
+    // can replace the swipe's image while the video still renders.
+    await db.from("enhanced_videos").update({ image_url: imageUrl, updated_at: new Date().toISOString() }).eq("id", jobId);
+
     // STEP 5 — video.
     const videoB64 = await generateVideo(imageB64, p.videoPrompt, p.aspectRatio, token);
     const videoPath = `${p.userId}/enhanced/${jobId}.mp4`;
@@ -352,9 +356,21 @@ async function runJob(jobId: string, p: JobParams) {
       updated_at: new Date().toISOString(),
     }).eq("id", jobId);
 
-    if (p.projectId) {
-      await db.from("movie_scenes").update({ image_url: imageUrl, video_url: videoUrl, status: "ready" })
-        .eq("project_id", p.projectId).eq("scene_order", p.swipeOrder);
+    // Enhance can be kicked before the movie has persisted; the client attaches the
+    // project id to our row once it saves. Re-read it so the scene still gets replaced.
+    const { data: rowNow } = await db.from("enhanced_videos").select("project_id").eq("id", jobId).single();
+    const projectId = (rowNow?.project_id as string | null) ?? p.projectId;
+    if (projectId) {
+      await db.from("movie_scenes").update({ image_url: imageUrl, video_url: videoUrl, status: "ready", enhanced: true })
+        .eq("project_id", projectId).eq("scene_order", p.swipeOrder);
+      // If the enhanced swipe is the CORE one, the project's primary video (share page /
+      // Discover feed) must follow the replacement too.
+      const { data: scene } = await db.from("movie_scenes").select("is_core")
+        .eq("project_id", projectId).eq("scene_order", p.swipeOrder).maybeSingle();
+      if (scene?.is_core) {
+        await db.from("movie_projects").update({ full_video_url: videoUrl, thumbnail_url: imageUrl })
+          .eq("id", projectId);
+      }
     }
   } catch (err) {
     console.error("enhance-swipe job failed:", err);

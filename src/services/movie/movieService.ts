@@ -116,12 +116,17 @@ export async function generateMovie(
   // so we get it before anything else and don't wait on the secondary frames.
   emit?.({ stage: 'images', message: 'Creating your core frame...', progress: 50, swipes });
   if (coreSwipe) {
-    try {
-      coreSwipe.imageUrl = await imageProvider.generate(coreSwipe.imagePrompt, { userId });
-      coreSwipe.status = 'image_ready';
-    } catch (error) {
-      coreSwipe.status = 'error';
-      coreSwipe.error = error instanceof Error ? error.message : String(error);
+    if (options.isEnhanceRequested?.(coreSwipe)) {
+      // User already queued the premium Enhance for this swipe — don't spend the default render.
+      logger.info('[MovieService] Core frame skipped: Enhance queued', { swipeId: coreSwipe.id });
+    } else {
+      try {
+        coreSwipe.imageUrl = await imageProvider.generate(coreSwipe.imagePrompt, { userId });
+        coreSwipe.status = 'image_ready';
+      } catch (error) {
+        coreSwipe.status = 'error';
+        coreSwipe.error = error instanceof Error ? error.message : String(error);
+      }
     }
     options.onSwipeReady?.(coreSwipe);
   }
@@ -130,7 +135,7 @@ export async function generateMovie(
   // block the video the user is waiting on; both run concurrently below.
   const ltx = new RunPodLTXProvider();
   const coreVideoPromise: Promise<void> =
-    renderCoreVideo && coreSwipe?.imageUrl && coreSwipe.status !== 'error'
+    renderCoreVideo && coreSwipe?.imageUrl && coreSwipe.status !== 'error' && !options.isEnhanceRequested?.(coreSwipe)
       ? (async () => {
           emit?.({ stage: 'rendering', message: 'Rendering your core swipe...', progress: 64, swipes });
           coreSwipe.status = 'rendering';
@@ -160,6 +165,10 @@ export async function generateMovie(
   const secondaryImagesPromise = Promise.all(
     secondarySwipes.map(async (swipe, index) => {
       await delay(index * SECONDARY_IMAGE_STAGGER_MS);
+      if (options.isEnhanceRequested?.(swipe)) {
+        options.onSwipeReady?.(swipe);
+        return;
+      }
       try {
         swipe.imageUrl = await imageProvider.generate(swipe.imagePrompt, { userId });
         swipe.status = 'image_ready';
@@ -253,12 +262,20 @@ export async function renderSwipeVideo(
   swipe: MovieSwipe,
   options: RenderSwipeVideoOptions = {},
 ): Promise<MovieSwipe> {
-  if (!swipe.imageUrl) {
-    swipe.status = 'error';
-    swipe.error = 'No image to animate';
-    return swipe;
-  }
   if (swipe.videoUrl) return swipe; // already cached
+
+  // A swipe whose default frame was skipped (Enhance queued, then failed) has no
+  // image yet — generate it now so the fallback render can proceed.
+  if (!swipe.imageUrl) {
+    try {
+      swipe.imageUrl = await new NanoBananaProvider().generate(swipe.imagePrompt, { userId: options.userId });
+      swipe.status = 'image_ready';
+    } catch (error) {
+      swipe.status = 'error';
+      swipe.error = error instanceof Error ? error.message : String(error);
+      return swipe;
+    }
+  }
 
   const ltx = new RunPodLTXProvider();
   swipe.status = 'rendering';
