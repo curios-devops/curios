@@ -6,6 +6,7 @@
 import type { FC } from 'react';
 import { useState } from 'react';
 import { Share2, Bookmark, Heart, MessageSquare, Check, ExternalLink, Download } from 'lucide-react';
+import { shareOrDownloadVideo } from '../../utils/videoShare';
 
 interface EngagementBarProps {
   videoId: string;
@@ -81,13 +82,10 @@ export const EngagementBar: FC<EngagementBarProps> = ({
   };
 
   const handleDownload = () => {
+    // Videos are cross-origin (Supabase Storage), where `<a download>` is ignored — fetch the
+    // blob first so the file actually saves on desktop and mobile. See shareOrDownloadVideo.
     if (videoUrl) {
-      const a = document.createElement('a');
-      a.href = videoUrl;
-      a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      void shareOrDownloadVideo(videoUrl, title);
     } else if (onDownload) {
       onDownload();
     }

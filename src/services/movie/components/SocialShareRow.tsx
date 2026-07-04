@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Linkedin, Facebook, MessageCircle, Music2, Link2, Check } from 'lucide-react';
+import { shareOrDownloadVideo } from '../../../utils/videoShare.ts';
 
 interface SocialShareRowProps {
   shareUrl: string;
@@ -45,13 +46,17 @@ export default function SocialShareRow({ shareUrl, title, caption, videoUrl, onS
 
   const handleTikTok = () => {
     onShared?.();
-    // TikTok has no web share intent; download the video so the user can upload it.
-    const a = document.createElement('a');
-    a.href = videoUrl || shareUrl;
-    a.download = `${title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.mp4`;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    a.click();
+    // TikTok has no web share intent. On mobile the native share sheet lets the user push the
+    // mp4 straight into TikTok; elsewhere it downloads the file to upload manually. The plain
+    // `<a download>` trick fails for our cross-origin Supabase URLs — see shareOrDownloadVideo.
+    if (!videoUrl) {
+      window.open(shareUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    void shareOrDownloadVideo(videoUrl, title, {
+      preferShare: true,
+      text: caption ? `${title} — ${caption}` : title,
+    });
   };
 
   const btn =
