@@ -39,6 +39,11 @@ const BUCKET = "movie-assets";
 const WAVESPEED_ENDPOINT =
   "https://api.wavespeed.ai/api/v3/lightricks/ltx-2-fast/image-to-video";
 
+// Users see this instead of raw upstream errors (e.g. "Insufficient credits") —
+// provider/billing details are an internal matter; full details go to the function logs.
+const FRIENDLY_ERROR =
+  "Video generation is temporarily unavailable — please try again in a few minutes.";
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Pull a video URL out of the various shapes Wavespeed returns (submit + poll result).
@@ -138,10 +143,12 @@ serve(async (req) => {
       submitBody = text;
     }
     if (!upstream.ok) {
-      return json({ error: `Wavespeed error ${upstream.status}`, details: submitBody }, 502);
+      console.error("Wavespeed submit failed", upstream.status, JSON.stringify(submitBody).slice(0, 500));
+      return json({ error: FRIENDLY_ERROR }, 502);
     }
   } catch (err) {
-    return json({ error: `Wavespeed request failed: ${String(err)}` }, 502);
+    console.error("Wavespeed request failed", String(err));
+    return json({ error: FRIENDLY_ERROR }, 502);
   }
 
   // 2) Resolve the video URL — either present immediately or via polling the result URL.
@@ -149,7 +156,8 @@ serve(async (req) => {
   if (!videoUrl) {
     const { pollUrl } = getStatusAndPollUrl(submitBody);
     if (!pollUrl) {
-      return json({ error: "Wavespeed returned no result URL", details: submitBody }, 502);
+      console.error("Wavespeed returned no result URL", JSON.stringify(submitBody).slice(0, 500));
+      return json({ error: FRIENDLY_ERROR }, 502);
     }
     // LTX-2-fast typically finishes in seconds; budget ~120s of polling to be safe.
     for (let i = 0; i < 60 && !videoUrl; i++) {
@@ -160,14 +168,16 @@ serve(async (req) => {
         const { status } = getStatusAndPollUrl(pollBody);
         videoUrl = extractVideoUrl(pollBody);
         if (status === "failed") {
-          return json({ error: "Wavespeed generation failed", details: pollBody }, 502);
+          console.error("Wavespeed generation failed", JSON.stringify(pollBody).slice(0, 500));
+          return json({ error: FRIENDLY_ERROR }, 502);
         }
       } catch {
         // transient poll error — keep trying within the budget
       }
     }
     if (!videoUrl) {
-      return json({ error: "Wavespeed generation timed out" }, 504);
+      console.error("Wavespeed generation timed out");
+      return json({ error: FRIENDLY_ERROR }, 504);
     }
   }
 
