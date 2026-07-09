@@ -75,14 +75,20 @@ supabase functions deploy generate-movie-video
 
 Without these secrets the edge function simply keeps using Wavespeed — safe to deploy first.
 
-## Request flow
+## Request flow (async — a render takes ~4 min, beyond any sync response window)
 
 ```
 Movie mode selected → warmup ping → worker loads pipeline (cold ~1-2 min)
-Core video request → edge fn → RunPod /run → poll /status (budget RUNPOD_WAIT_MS, default 120s)
-  COMPLETED → { video_base64 } → upload to Supabase Storage → { videoUrl, backend: "runpod" }
-  FAILED / over budget → cancel job → Wavespeed ltx-2-fast → { videoUrl, backend: "wavespeed" }
+Core video request → edge fn creates video_jobs row → RunPod /run (webhook back to the fn,
+  executionTimeout RUNPOD_JOB_TIMEOUT_MS=10min) → responds { jobId, async: true } instantly
+RunPod finishes → webhook → fn re-fetches result via /status → uploads mp4 → row 'ready'
+Client (RunPodLTXProvider) polls the video_jobs row (5s, up to 12 min) → videoUrl
+Job error/timeout → client retries once with forceBackend:"wavespeed" (sync fallback)
 ```
+
+Note: the function is deployed with `--no-verify-jwt` so the webhook can reach it; client
+branches enforce the Authorization header manually, and the webhook authenticates by row id
++ RunPod job id match + re-fetching the result with our own API key.
 
 ## Smoke test
 

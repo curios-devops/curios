@@ -1,17 +1,23 @@
 // Movie Mode — LTX image-to-video edge function.
 //
-// PRIMARY: self-hosted LTX-2 19B distilled (audio+video) on RunPod Serverless — enabled
-// when RUNPOD_API_KEY + RUNPOD_ENDPOINT_ID secrets are set (see runpod/ltx-worker/README).
-// FALLBACK: Wavespeed hosted ltx-2-fast — used when RunPod is not configured, errors, or
-// exceeds its time budget (job gets cancelled so we don't pay for an unused render).
+// PRIMARY: self-hosted LTX-2 19B distilled (audio+video) on RunPod Serverless — ASYNC.
+// A warm render takes ~4 min, far beyond the synchronous response window, so this function
+// creates a `video_jobs` row, submits the RunPod job with a webhook back to itself, and
+// returns { jobId, async: true } immediately. When RunPod finishes it calls the webhook;
+// we re-fetch the result from RunPod (never trusting the webhook payload), upload the mp4
+// to Storage, and mark the row ready. The client polls the row (see RunPodLTXProvider).
+//
+// FALLBACK: Wavespeed hosted ltx-2-fast — synchronous (it answers in ~1-2 min). Used when
+// RunPod isn't configured, or when the client retries with forceBackend:"wavespeed" after
+// a failed/timed-out RunPod job.
 //
 // Also accepts { warmup: true } — the app pings this when a user opens Movie mode so the
-// RunPod worker cold-starts (loads weights) while the storyboard is still being written.
-// The worker then sleeps via the endpoint's idle timeout (5 min) → zero idle GPU cost.
+// RunPod worker cold-starts while the storyboard is being written; the endpoint's idle
+// timeout (5 min) puts it back to sleep → zero idle GPU cost.
 //
-// The resulting mp4 is uploaded to Supabase Storage `movie-assets` and a public URL is
-// returned. The `executeModelCall` safety gate mirrors generate-cinematic so no generation
-// spend happens unless the caller explicitly opts in.
+// Deployed with --no-verify-jwt so RunPod's webhook can reach us; client branches manually
+// require an Authorization header instead, and the webhook branch authenticates by row id +
+// matching RunPod job id + re-fetching the result with our own API key.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
@@ -38,6 +44,8 @@ type Body = {
   projectId?: string;
   sceneId?: string;
   executeModelCall?: boolean;
+  /** "wavespeed" forces the sync fallback (client retry after a RunPod job failure). */
+  forceBackend?: string;
 };
 
 const BUCKET = "movie-assets";
@@ -48,12 +56,8 @@ const RUNPOD_API_KEY = Deno.env.get("RUNPOD_API_KEY");
 const RUNPOD_ENDPOINT_ID = Deno.env.get("RUNPOD_ENDPOINT_ID");
 const runpodConfigured = Boolean(RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID);
 const RUNPOD_BASE = `https://api.runpod.ai/v2/${RUNPOD_ENDPOINT_ID}`;
-// Two-tier budget (measured on L40S: a warm 6s render ≈ 4 min; a cold start adds minutes):
-// - IN_QUEUE longer than RUNPOD_QUEUE_MS → no warm worker; bail fast so the Wavespeed
-//   fallback still fits inside the edge function's wall clock.
-// - Once IN_PROGRESS, allow up to RUNPOD_EXEC_MS total before cancelling.
-const RUNPOD_QUEUE_MS = Number(Deno.env.get("RUNPOD_QUEUE_MS") || 60000);
-const RUNPOD_EXEC_MS = Number(Deno.env.get("RUNPOD_EXEC_MS") || 300000);
+// Hard cap on a single RunPod job so an abandoned/stuck render can't bill forever.
+const RUNPOD_JOB_TIMEOUT_MS = Number(Deno.env.get("RUNPOD_JOB_TIMEOUT_MS") || 600000);
 
 // Users see this instead of raw upstream errors (e.g. "Insufficient credits") —
 // provider/billing details are an internal matter; full details go to the function logs.
@@ -67,6 +71,13 @@ const runpodHeaders = {
   Authorization: `Bearer ${RUNPOD_API_KEY}`,
 };
 
+function admin() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  );
+}
+
 function base64ToBytes(b64: string): Uint8Array {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
@@ -74,10 +85,42 @@ function base64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
-// ── RunPod (primary) ────────────────────────────────────────────────────────────
-// Returns the mp4 bytes, or null on any failure/timeout (caller falls back to Wavespeed).
-async function tryRunPod(body: Body): Promise<Uint8Array | null> {
-  let jobId: string | undefined;
+async function uploadVideo(
+  bytes: Uint8Array,
+  userId?: string | null,
+  projectId?: string | null,
+  sceneId?: string | null,
+): Promise<string> {
+  const db = admin();
+  const storagePath = `${userId || "guest"}/${projectId || "adhoc"}/${sceneId || crypto.randomUUID()}.mp4`;
+  const { error } = await db.storage
+    .from(BUCKET)
+    .upload(storagePath, bytes, { contentType: "video/mp4", upsert: true });
+  if (error) throw new Error(`upload failed: ${error.message}`);
+  return db.storage.from(BUCKET).getPublicUrl(storagePath).data.publicUrl;
+}
+
+// ── RunPod async path ───────────────────────────────────────────────────────────
+// Create a job row + submit to RunPod with a webhook; respond immediately.
+async function startRunPodJob(body: Body): Promise<Response> {
+  const db = admin();
+  const { data: row, error } = await db
+    .from("video_jobs")
+    .insert({
+      user_id: body.userId ?? null,
+      project_id: body.projectId ?? null,
+      scene_id: body.sceneId ?? null,
+      status: "processing",
+    })
+    .select("id")
+    .single();
+  if (error || !row) {
+    console.error("video_jobs insert failed", error?.message);
+    return json({ error: FRIENDLY_ERROR }, 500);
+  }
+  const rowId = row.id as string;
+
+  const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-movie-video?job=${rowId}`;
   try {
     const submit = await fetch(`${RUNPOD_BASE}/run`, {
       method: "POST",
@@ -89,58 +132,62 @@ async function tryRunPod(body: Body): Promise<Uint8Array | null> {
           duration: body.duration,
           ...(typeof body.seed === "number" ? { seed: body.seed } : {}),
         },
+        webhook: webhookUrl,
+        policy: { executionTimeout: RUNPOD_JOB_TIMEOUT_MS },
       }),
     });
     const submitBody = await submit.json().catch(() => null);
     if (!submit.ok || !submitBody?.id) {
       console.error("RunPod submit failed", submit.status, JSON.stringify(submitBody).slice(0, 300));
-      return null;
+      await db.from("video_jobs").update({ status: "error", error: "runpod submit failed", updated_at: new Date().toISOString() }).eq("id", rowId);
+      return json({ error: FRIENDLY_ERROR, jobId: rowId }, 502);
     }
-    jobId = submitBody.id as string;
-
-    const startedAt = Date.now();
-    let sawProgress = false;
-    while (true) {
-      const elapsed = Date.now() - startedAt;
-      // Still queued past the queue budget → cold endpoint; fall back while there is
-      // still time for Wavespeed. Executing past the exec budget → cancel and fall back.
-      if (!sawProgress && elapsed > RUNPOD_QUEUE_MS) break;
-      if (elapsed > RUNPOD_EXEC_MS) break;
-
-      await sleep(3000);
-      const res = await fetch(`${RUNPOD_BASE}/status/${jobId}`, { headers: runpodHeaders });
-      const status = await res.json().catch(() => null);
-      const state = status?.status as string | undefined;
-      if (state === "IN_PROGRESS") sawProgress = true;
-
-      if (state === "COMPLETED") {
-        const b64 = status?.output?.video_base64;
-        if (typeof b64 === "string" && b64.length > 0) return base64ToBytes(b64);
-        console.error("RunPod completed without video", JSON.stringify(status?.output ?? {}).slice(0, 300));
-        return null;
-      }
-      if (state === "FAILED" || state === "CANCELLED" || state === "TIMED_OUT") {
-        console.error("RunPod job did not complete", state, JSON.stringify(status?.output ?? {}).slice(0, 300));
-        return null;
-      }
-      // IN_QUEUE / IN_PROGRESS → keep polling within the budget.
-    }
-
-    // Over budget — cancel so the abandoned job stops billing, then fall back.
-    console.error("RunPod over time budget — cancelling and falling back to Wavespeed", { jobId });
-    fetch(`${RUNPOD_BASE}/cancel/${jobId}`, { method: "POST", headers: runpodHeaders }).catch(() => undefined);
-    return null;
+    await db.from("video_jobs").update({ runpod_job_id: submitBody.id, updated_at: new Date().toISOString() }).eq("id", rowId);
+    return json({ jobId: rowId, async: true, backend: "runpod" }, 202);
   } catch (err) {
-    console.error("RunPod request failed", String(err));
-    if (jobId) {
-      fetch(`${RUNPOD_BASE}/cancel/${jobId}`, { method: "POST", headers: runpodHeaders }).catch(() => undefined);
-    }
-    return null;
+    console.error("RunPod submit threw", String(err));
+    await db.from("video_jobs").update({ status: "error", error: "runpod submit failed", updated_at: new Date().toISOString() }).eq("id", rowId);
+    return json({ error: FRIENDLY_ERROR, jobId: rowId }, 502);
   }
 }
 
-// ── Wavespeed (fallback) helpers ───────────────────────────────────────────────
-// Pull a video URL out of the various shapes Wavespeed returns (submit + poll result).
+// Webhook from RunPod when the job finishes. Auth: unguessable row id in the URL, the
+// payload's job id must match the row, and we re-fetch the result with our own API key.
+async function handleWebhook(rowId: string, req: Request): Promise<Response> {
+  const payload = await req.json().catch(() => null);
+  const runpodJobId = payload?.id as string | undefined;
+
+  const db = admin();
+  const { data: row } = await db.from("video_jobs").select("*").eq("id", rowId).maybeSingle();
+  if (!row) return json({ error: "unknown job" }, 404);
+  if (row.status !== "processing") return json({ ok: true }); // duplicate webhook — idempotent
+  if (!runpodJobId || runpodJobId !== row.runpod_job_id) {
+    console.error("webhook job mismatch", { rowId, runpodJobId });
+    return json({ error: "job mismatch" }, 403);
+  }
+
+  const fail = async (msg: string) => {
+    console.error("runpod job failed", { rowId, msg: msg.slice(0, 300) });
+    await db.from("video_jobs").update({ status: "error", error: msg.slice(0, 500), updated_at: new Date().toISOString() }).eq("id", rowId);
+    return json({ ok: true });
+  };
+
+  try {
+    const res = await fetch(`${RUNPOD_BASE}/status/${runpodJobId}`, { headers: runpodHeaders });
+    const status = await res.json().catch(() => null);
+    if (status?.status !== "COMPLETED") return await fail(`runpod status ${status?.status}`);
+    const b64 = status?.output?.video_base64;
+    if (typeof b64 !== "string" || !b64) return await fail(status?.output?.error || "no video in output");
+
+    const videoUrl = await uploadVideo(base64ToBytes(b64), row.user_id, row.project_id, row.scene_id);
+    await db.from("video_jobs").update({ status: "ready", video_url: videoUrl, updated_at: new Date().toISOString() }).eq("id", rowId);
+    return json({ ok: true, videoUrl });
+  } catch (err) {
+    return await fail(String(err));
+  }
+}
+
+// ── Wavespeed (sync fallback) ───────────────────────────────────────────────────
 function extractVideoUrl(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
   const record = payload as Record<string, unknown>;
@@ -173,8 +220,7 @@ function getStatusAndPollUrl(payload: unknown): { status?: string; pollUrl?: str
   return { status, pollUrl };
 }
 
-// Returns mp4 bytes or a Response (error to bubble straight to the client).
-async function tryWavespeed(body: Body, duration: number): Promise<Uint8Array | Response> {
+async function runWavespeed(body: Body, duration: number): Promise<Response> {
   const apiKey = Deno.env.get("WAVESPEED_API_KEY");
   if (!apiKey) {
     return json({ error: "WAVESPEED_API_KEY is required when executeModelCall=true" }, 500);
@@ -190,7 +236,6 @@ async function tryWavespeed(body: Body, duration: number): Promise<Uint8Array | 
     ...(typeof body.seed === "number" ? { seed: body.seed } : {}),
   };
 
-  // 1) Submit the image-to-video job.
   let submitBody: unknown;
   try {
     const upstream = await fetch(WAVESPEED_ENDPOINT, {
@@ -213,7 +258,6 @@ async function tryWavespeed(body: Body, duration: number): Promise<Uint8Array | 
     return json({ error: FRIENDLY_ERROR }, 502);
   }
 
-  // 2) Resolve the video URL — either present immediately or via polling the result URL.
   let videoUrl = extractVideoUrl(submitBody);
   if (!videoUrl) {
     const { pollUrl } = getStatusAndPollUrl(submitBody);
@@ -243,16 +287,17 @@ async function tryWavespeed(body: Body, duration: number): Promise<Uint8Array | 
     }
   }
 
-  // 3) Download the mp4.
   try {
     const fileRes = await fetch(videoUrl);
     if (!fileRes.ok) {
       console.error("Failed to fetch generated video", fileRes.status);
       return json({ error: FRIENDLY_ERROR }, 502);
     }
-    return new Uint8Array(await fileRes.arrayBuffer());
+    const bytes = new Uint8Array(await fileRes.arrayBuffer());
+    const publicUrl = await uploadVideo(bytes, body.userId, body.projectId, body.sceneId);
+    return json({ videoUrl: publicUrl, duration, backend: "wavespeed" });
   } catch (err) {
-    console.error("Failed to download generated video", String(err));
+    console.error("Failed to store generated video", String(err));
     return json({ error: FRIENDLY_ERROR }, 502);
   }
 }
@@ -262,6 +307,9 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  const url = new URL(req.url);
+  const webhookJobId = url.searchParams.get("job");
+
   if (req.method === "GET") {
     const warnings: string[] = [];
     if (!Deno.env.get("WAVESPEED_API_KEY")) warnings.push("WAVESPEED_API_KEY not configured");
@@ -269,7 +317,7 @@ serve(async (req) => {
     return json({
       ok: true,
       backend: runpodConfigured
-        ? "runpod:ltx-2-distilled (fallback wavespeed:ltx-2-fast)"
+        ? "runpod:ltx-2-distilled async (fallback wavespeed:ltx-2-fast)"
         : "wavespeed:ltx-2-fast/image-to-video",
       warnings,
     });
@@ -279,11 +327,24 @@ serve(async (req) => {
     return json({ error: "Not found" }, 404);
   }
 
+  // RunPod webhook — no Supabase JWT (deployed with --no-verify-jwt); authenticated by
+  // row id + runpod job id match + re-fetching the result with our own API key.
+  if (webhookJobId) {
+    return await handleWebhook(webhookJobId, req);
+  }
+
+  // Every other branch is client-facing: require an Authorization header (supabase-js
+  // always sends one), since JWT verification is disabled at the platform level.
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return json({ error: "Missing authorization" }, 401);
+  }
+
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body) return json({ error: "POST body must be valid JSON" }, 400);
 
-  // Warm-up ping — fire the RunPod worker so weights load while the user's movie is still
-  // in the research/storyboard phase. Fire-and-forget: we submit and return immediately.
+  // Warm-up ping — start a RunPod worker so weights load while the user's movie is still
+  // in the research/storyboard phase.
   if (body.warmup === true) {
     if (!runpodConfigured) return json({ ok: true, warmed: false, reason: "runpod not configured" });
     try {
@@ -317,47 +378,8 @@ serve(async (req) => {
     });
   }
 
-  // ── Generate: RunPod primary → Wavespeed fallback ────────────────────────────
-  let backend = "wavespeed";
-  let videoBytes: Uint8Array | null = null;
-
-  if (runpodConfigured) {
-    videoBytes = await tryRunPod(body);
-    if (videoBytes) backend = "runpod";
+  if (runpodConfigured && body.forceBackend !== "wavespeed") {
+    return await startRunPodJob(body);
   }
-
-  if (!videoBytes) {
-    const result = await tryWavespeed(body, duration);
-    if (result instanceof Response) return result;
-    videoBytes = result;
-  }
-
-  // ── Upload to Supabase Storage for a stable public URL ───────────────────────
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-  );
-
-  const folder = body.userId || "guest";
-  const project = body.projectId || "adhoc";
-  const scene = body.sceneId || crypto.randomUUID();
-  const storagePath = `${folder}/${project}/${scene}.mp4`;
-
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET)
-    .upload(storagePath, videoBytes, { contentType: "video/mp4", upsert: true });
-
-  if (uploadError) {
-    console.error("Failed to upload scene video", uploadError.message);
-    return json({ error: FRIENDLY_ERROR }, 500);
-  }
-
-  const { data: publicUrlData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
-
-  return json({
-    videoUrl: publicUrlData.publicUrl,
-    storagePath,
-    duration,
-    backend,
-  });
+  return await runWavespeed(body, duration);
 });
