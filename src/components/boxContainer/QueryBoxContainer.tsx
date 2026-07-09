@@ -14,6 +14,7 @@ import { logger } from '../../utils/logger.ts';
 import { useVoiceRecording } from '../../hooks/useVoiceRecording.ts';
 import { transcribeAudioWithFallback } from '../../services/stt/transcriptionService.ts';
 import { classifyIntent } from '../../services/auto/intentRouter.ts';
+import { warmMovieGpu } from '../../services/movie/warmupService.ts';
 
 interface QueryBoxContainerProps {
   onModeChange?: (mode: ModeType) => void;
@@ -88,6 +89,8 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
 
   const handleModeSelect = (mode: ModeType) => {
     setSelectedMode(mode);
+    // Wake the self-hosted video GPU early — weights load while the user types the question.
+    if (mode === 'movie') warmMovieGpu();
   };
 
   const handleModeClear = () => {
@@ -135,6 +138,8 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
           : intent === 'stories' ? 'stories'
           : 'fastsearch';
         setIsRouting(false);
+        // Auto picked Movie → wake the video GPU now, before navigation.
+        if (resolvedMode === 'movie') warmMovieGpu();
       }
     }
 

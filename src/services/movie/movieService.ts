@@ -18,6 +18,7 @@ import { NarrationService } from '../cinematic/audio/NarrationService.ts';
 import { logger } from '../../utils/logger.ts';
 
 import { enhanceQuestion } from './agents/QuestionEnhancementAgent.ts';
+import { warmMovieGpu } from './warmupService.ts';
 import { buildSwipeSet } from './agents/StoryboardAgent.ts';
 import { packageForVirality } from './agents/ViralDirectorAgent.ts';
 import { NanoBananaProvider } from './providers/NanoBananaProvider.ts';
@@ -82,6 +83,10 @@ export async function generateMovie(
   const aspectRatio = options.aspectRatio || '16:9';
   const renderCoreVideo = options.renderCoreVideo !== false; // default true
   const emit = options.onProgress;
+
+  // Wake the self-hosted video GPU (no-op if already warm or RunPod isn't configured) —
+  // the weights load while steps 1-5 run, so the core video render hits a warm worker.
+  warmMovieGpu();
 
   // Step 1 — enhance the question
   emit?.({ stage: 'enhancing', message: 'Understanding your question...', progress: 6 });
