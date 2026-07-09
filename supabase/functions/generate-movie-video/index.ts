@@ -48,10 +48,12 @@ const RUNPOD_API_KEY = Deno.env.get("RUNPOD_API_KEY");
 const RUNPOD_ENDPOINT_ID = Deno.env.get("RUNPOD_ENDPOINT_ID");
 const runpodConfigured = Boolean(RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID);
 const RUNPOD_BASE = `https://api.runpod.ai/v2/${RUNPOD_ENDPOINT_ID}`;
-// Total time (submit + queue + generate) the self-hosted worker gets before we cancel the
-// job and fall back to Wavespeed. Warm worker renders well inside this; a cold start may not
-// — that's what the warmup ping is for.
-const RUNPOD_WAIT_MS = Number(Deno.env.get("RUNPOD_WAIT_MS") || 120000);
+// Two-tier budget (measured on L40S: a warm 6s render ≈ 4 min; a cold start adds minutes):
+// - IN_QUEUE longer than RUNPOD_QUEUE_MS → no warm worker; bail fast so the Wavespeed
+//   fallback still fits inside the edge function's wall clock.
+// - Once IN_PROGRESS, allow up to RUNPOD_EXEC_MS total before cancelling.
+const RUNPOD_QUEUE_MS = Number(Deno.env.get("RUNPOD_QUEUE_MS") || 60000);
+const RUNPOD_EXEC_MS = Number(Deno.env.get("RUNPOD_EXEC_MS") || 300000);
 
 // Users see this instead of raw upstream errors (e.g. "Insufficient credits") —
 // provider/billing details are an internal matter; full details go to the function logs.
@@ -96,12 +98,20 @@ async function tryRunPod(body: Body): Promise<Uint8Array | null> {
     }
     jobId = submitBody.id as string;
 
-    const deadline = Date.now() + RUNPOD_WAIT_MS;
-    while (Date.now() < deadline) {
+    const startedAt = Date.now();
+    let sawProgress = false;
+    while (true) {
+      const elapsed = Date.now() - startedAt;
+      // Still queued past the queue budget → cold endpoint; fall back while there is
+      // still time for Wavespeed. Executing past the exec budget → cancel and fall back.
+      if (!sawProgress && elapsed > RUNPOD_QUEUE_MS) break;
+      if (elapsed > RUNPOD_EXEC_MS) break;
+
       await sleep(3000);
       const res = await fetch(`${RUNPOD_BASE}/status/${jobId}`, { headers: runpodHeaders });
       const status = await res.json().catch(() => null);
       const state = status?.status as string | undefined;
+      if (state === "IN_PROGRESS") sawProgress = true;
 
       if (state === "COMPLETED") {
         const b64 = status?.output?.video_base64;

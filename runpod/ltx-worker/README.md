@@ -8,13 +8,17 @@ function falls back, the user never notices).
 
 | Item | Cost | Notes |
 |---|---|---|
-| Network Volume ~60 GB | ~$3/month | The ONLY idle cost. Weights parked once, never re-downloaded. |
-| GPU while generating | ~$0.05–0.08/video | 48GB-class flex worker (L40S/A6000), per-second billing. |
+| Network Volume 80 GB (US-IL-1) | ~$4/month | The ONLY idle cost. Weights parked once (~65 GB), never re-downloaded. |
+| GPU while generating | ~$0.05–0.08/video | 48GB-class flex worker (L40S), per-second billing. |
 | Warm window after a job | ~$0.16/session | Idle timeout 300s — worker sleeps 5 min after the last job. |
 | No traffic | $0 GPU | Min workers = 0. Nothing runs, nothing bills. |
 
 ⚠️ **Do NOT download `Lightricks/LTX-Video` or the single-file checkpoints** — that repo is
-~314 GB of every variant (the $50 mistake). We need ONE diffusers-format snapshot (~55 GB).
+~314 GB of every variant (the $50 mistake). And don't download the diffusers snapshot raw
+either: it's **93 GB** because the Gemma-12B text encoder ships in fp32 (48.7 GB).
+`download_and_convert.py` (this folder) downloads the snapshot and rewrites the text encoder
+to bf16 shard-by-shard → **~65 GB** on disk, faster cold starts, identical runtime behavior
+(the worker loads everything as bf16 anyway).
 
 ## Warm-up / sleep lifecycle
 
@@ -27,39 +31,41 @@ function falls back, the user never notices).
 ## One-time setup
 
 ### 1. Network Volume
-RunPod Console → Storage → New Network Volume: **60 GB**, in a region that has
-**L40S / RTX A6000** serverless availability. (~$0.05/GB/mo ≈ $3/mo.)
+RunPod Console → Storage → New Network Volume: **80 GB**, in a datacenter that has BOTH
+storage clusters AND **48 GB GPU** serverless availability (checked 2026-07-09: US-IL-1
+with L40S; note US-TX-1 has A6000s but no volume storage). (~$0.05/GB/mo ≈ $4/mo.)
 
-### 2. Download the weights onto the volume (CPU pod — do NOT rent a GPU for this)
-Deploy the cheapest **CPU pod** with the volume attached at `/runpod-volume`, then:
+Current volume: `ltx2-weights-us` (id `5iriwbqcre`, US-IL-1, 80 GB).
 
-```bash
-pip install "huggingface_hub[cli]"
-huggingface-cli download rootonchair/LTX-2-19b-distilled \
-  --local-dir /runpod-volume/ltx2
-du -sh /runpod-volume/ltx2   # expect roughly 50-60 GB
-```
-
-If loading later complains about a missing component (e.g. `text_encoder`, `vocoder`),
-pull just that subfolder from the base repo into the same dir:
+### 2. Download + convert the weights (CPU pod — do NOT rent a GPU for this)
+Deploy a **CPU pod** (4 vCPU / 16 GB RAM ≈ $0.16/hr — the bf16 conversion needs ~8 GB RAM)
+with the volume attached at `/runpod-volume`, then:
 
 ```bash
-huggingface-cli download Lightricks/LTX-2 --include "text_encoder/*" "vocoder/*" \
-  --local-dir /runpod-volume/ltx2
+pip install huggingface_hub safetensors numpy
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+export HF_HUB_DISABLE_XET=1   # Xet transfer stalls on small CPU pods; plain HTTP is reliable
+python3 download_and_convert.py   # ~45 min: snapshot minus text_encoder, then fp32→bf16 per shard
+du -sh /runpod-volume/ltx2        # expect ~65 GB
 ```
 
 **Terminate the pod when done.** The weights persist on the volume.
 
-### 3. Serverless endpoint (RunPod builds the image from GitHub — no local Docker)
-RunPod Console → Serverless → New Endpoint → **Import from GitHub**:
-- Repo: this repository, Dockerfile path `runpod/ltx-worker/Dockerfile`, context `runpod/ltx-worker`
-- GPU: **48 GB** (L40S / RTX A6000 / A40)
+### 3. Build & push the worker image, then create the endpoint
+The image lives on Docker Hub as **`devopsavatar/ltx-worker:latest`**. To update it:
+
+```bash
+docker buildx build --platform linux/amd64 -t devopsavatar/ltx-worker:latest --push runpod/ltx-worker
+```
+
+Endpoint (created 2026-07-09 via the RunPod API — id `htce0j29igux93`, template `ltx2-worker`):
+- GPU: **48 GB** classes (`ADA_48_PRO,AMPERE_48` = L40S / RTX 6000 Ada / A6000 / A40)
 - Workers: min **0**, max **1** (hard spend cap)
 - **Idle timeout: 300 s** (the 5-min warm window)
-- FlashBoot: enabled
-- Attach the Network Volume (mount path `/runpod-volume`)
+- Network Volume `ltx2-weights` (120 GB, EU-RO-1) mounted at `/runpod-volume`
 
-Note the **Endpoint ID**.
+Workers pull the new image on their next cold start after a push (or bump the
+template's image tag to force it).
 
 ### 4. Supabase secrets + deploy
 ```bash
