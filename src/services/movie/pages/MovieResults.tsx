@@ -21,7 +21,7 @@ import SignUpModal from '../../../components/auth/SignUpModal.tsx';
 
 export default function MovieResults() {
   const location = useLocation();
-  const { session } = useSession();
+  const { session, isLoading: sessionLoading } = useSession();
   const { requestProAccess, canUseProFeature } = useProCredits();
 
   const query = useMemo(() => new URLSearchParams(location.search).get('q') || '', [location.search]);
@@ -55,25 +55,28 @@ export default function MovieResults() {
         : [...prev, { ...swipe }].sort((a, b) => a.order - b.order),
     );
 
-  // ── Kick off generation once per query (or load a saved movie by project id) ─
+  // ── Kick off ONCE: load a saved movie (?projectId=), reuse a stored movie for the
+  // same question, or — only when nothing is stored — generate (the expensive path).
+  // Waits for the auth session: starting before it resolves made userId fall back to
+  // 'curios-guest', which silently skipped persistence (and forced regenerations).
   useEffect(() => {
-    if (hasStartedRef.current) return;
+    if (hasStartedRef.current || sessionLoading) return;
+
+    const loadSaved = async (projectId: string): Promise<boolean> => {
+      const exp = await new MoviePersistenceService().loadMovieExperience(projectId);
+      if (!exp) return false;
+      setSwipes(exp.swipes);
+      setExperience(exp);
+      setProgress({ stage: 'complete', message: 'Loaded from your library', progress: 100 });
+      const core = exp.swipes.find((s) => s.isCore) || exp.swipes[0];
+      if (core) setSelectedSwipeId(core.id);
+      return true;
+    };
 
     if (projectIdParam) {
       hasStartedRef.current = true;
-      new MoviePersistenceService()
-        .loadMovieExperience(projectIdParam)
-        .then((exp) => {
-          if (!exp) {
-            setError('Movie not found');
-            return;
-          }
-          setSwipes(exp.swipes);
-          setExperience(exp);
-          setProgress({ stage: 'complete', message: 'Loaded from your library', progress: 100 });
-          const core = exp.swipes.find((s) => s.isCore) || exp.swipes[0];
-          if (core) setSelectedSwipeId(core.id);
-        })
+      loadSaved(projectIdParam)
+        .then((ok) => { if (!ok) setError('Movie not found'); })
         .catch((err) => {
           logger.error('[MovieResults] Load failed', { error: err instanceof Error ? err.message : String(err) });
           setError('Could not load this movie');
@@ -84,38 +87,56 @@ export default function MovieResults() {
     if (!query.trim()) return;
     hasStartedRef.current = true;
 
-    generateMovie(query, {
-      userId: session?.user?.id || 'curios-guest',
-      // LTX generates each swipe's audio (generate_audio); a separate ElevenLabs
-      // narration track would be unused and is redundant cost, so it's disabled.
-      enableNarration: false,
-      // A swipe with a queued Enhance skips its default image/video render — the
-      // premium result will replace it instead.
-      isEnhanceRequested: (swipe) => enhanceRequestedRef.current.has(swipe.id),
-      onProgress: (p) => {
-        setProgress(p);
-        if (p.swipes) setSwipes([...p.swipes].sort((a, b) => a.order - b.order));
-      },
-      onSwipeReady: (swipe) => {
-        upsertSwipe(swipe);
-        // Auto-select the core swipe as soon as it has an image.
-        setSelectedSwipeId((cur) => cur ?? (swipe.isCore && swipe.imageUrl ? swipe.id : cur));
-      },
-    })
-      .then((exp) => {
-        setExperience(exp);
-        // Movie persisted after Enhance was pressed → attach the jobs to the project
-        // so the server also replaces the saved movie_scenes rows.
-        if (exp.id && !exp.id.startsWith('local-') && pendingEnhanceJobsRef.current.size > 0) {
-          void attachEnhancedToProject([...pendingEnhanceJobsRef.current], exp.id);
-          pendingEnhanceJobsRef.current.clear();
+    void (async () => {
+      // Reload/back-navigation with the same question → serve the stored movie
+      // (text, frames, videos) instead of paying for a new generation.
+      if (session?.user?.id) {
+        const existingId = await new MoviePersistenceService()
+          .findLatestByQuestion(session.user.id, query)
+          .catch(() => null);
+        if (existingId && (await loadSaved(existingId).catch(() => false))) {
+          window.history.replaceState(null, '', `/movie-results?projectId=${existingId}`);
+          return;
         }
+      }
+
+      generateMovie(query, {
+        userId: session?.user?.id || 'curios-guest',
+        // LTX generates each swipe's audio (generate_audio); a separate ElevenLabs
+        // narration track would be unused and is redundant cost, so it's disabled.
+        enableNarration: false,
+        // A swipe with a queued Enhance skips its default image/video render — the
+        // premium result will replace it instead.
+        isEnhanceRequested: (swipe) => enhanceRequestedRef.current.has(swipe.id),
+        onProgress: (p) => {
+          setProgress(p);
+          if (p.swipes) setSwipes([...p.swipes].sort((a, b) => a.order - b.order));
+        },
+        onSwipeReady: (swipe) => {
+          upsertSwipe(swipe);
+          // Auto-select the core swipe as soon as it has an image.
+          setSelectedSwipeId((cur) => cur ?? (swipe.isCore && swipe.imageUrl ? swipe.id : cur));
+        },
       })
-      .catch((err) => {
-        logger.error('[MovieResults] Generation failed', { error: err instanceof Error ? err.message : String(err) });
-        setError(err instanceof Error ? err.message : 'Movie generation failed');
-      });
-  }, [query, projectIdParam, session?.user?.id]);
+        .then((exp) => {
+          setExperience(exp);
+          if (exp.id && !exp.id.startsWith('local-')) {
+            // Future reloads must hit the stored movie, never a regeneration.
+            window.history.replaceState(null, '', `/movie-results?projectId=${exp.id}`);
+            // Movie persisted after Enhance was pressed → attach the jobs to the project
+            // so the server also replaces the saved movie_scenes rows.
+            if (pendingEnhanceJobsRef.current.size > 0) {
+              void attachEnhancedToProject([...pendingEnhanceJobsRef.current], exp.id);
+              pendingEnhanceJobsRef.current.clear();
+            }
+          }
+        })
+        .catch((err) => {
+          logger.error('[MovieResults] Generation failed', { error: err instanceof Error ? err.message : String(err) });
+          setError(err instanceof Error ? err.message : 'Movie generation failed');
+        });
+    })();
+  }, [query, projectIdParam, session?.user?.id, sessionLoading]);
 
   const isComplete = progress.stage === 'complete';
   const selectedSwipe = swipes.find((s) => s.id === selectedSwipeId) || swipes.find((s) => s.isCore) || swipes[0];

@@ -119,6 +119,28 @@ export class MoviePersistenceService {
   }
 
   /**
+   * The user's most recent completed movie for this exact question — lets the results
+   * page reuse stored assets on reload/return instead of paying for a regeneration.
+   */
+  async findLatestByQuestion(userId: string, question: string): Promise<string | null> {
+    if (!this.isValidUuid(userId)) return null;
+    const { data, error } = await supabase
+      .from('movie_projects')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('question', question)
+      .eq('status', 'complete')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      logger.warn('[MoviePersistence] findLatestByQuestion failed', { error: error.message });
+      return null;
+    }
+    return (data?.id as string) ?? null;
+  }
+
+  /**
    * Rebuild a full MovieExperience from a saved project — used to reopen a movie page
    * from the Home "latest enhanced" card without regenerating anything.
    */
