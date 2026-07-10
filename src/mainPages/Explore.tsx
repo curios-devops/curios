@@ -98,8 +98,10 @@ export default function Explore() {
         throw fetchError;
       }
     } catch (err) {
+      // Full detail goes to the console; users get one friendly message regardless
+      // of the cause (provider quota, function missing, timeout, network).
       console.error('[EXPLORE] Error fetching news:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load news');
+      setError('The service is not available right now — please try again later.');
     } finally {
       setLoading(false);
     }
@@ -185,7 +187,7 @@ export default function Explore() {
               {error}
             </p>
             <button
-              onClick={fetchNews}
+              onClick={() => navigate('/')}
               className="mt-4 px-4 py-2 rounded-lg transition-all"
               style={{
                 backgroundColor: accentColors.primary,
@@ -200,7 +202,7 @@ export default function Explore() {
                 e.currentTarget.style.backgroundColor = accentColors.primary;
               }}
             >
-              Retry
+              OK
             </button>
           </div>
         )}

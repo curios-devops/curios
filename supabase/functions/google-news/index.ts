@@ -48,14 +48,16 @@ Deno.serve(async (req: Request) => {
   try {
     console.log('📰 [GOOGLE NEWS] Edge Function called')
 
-    // Get SERP API key from environment
-    const serpApiKey = Deno.env.get('SERPAPI_API_KEY')
+    // Get SERP API key from environment. News has its own key/account
+    // (SERPAPI_NEWS_API_KEY) so Explore doesn't burn the main key's quota;
+    // the old shared key stays as fallback.
+    const serpApiKey = Deno.env.get('SERPAPI_NEWS_API_KEY') || Deno.env.get('SERPAPI_API_KEY')
     if (!serpApiKey) {
-      console.error('❌ [GOOGLE NEWS] SERPAPI_API_KEY is not set')
+      console.error('❌ [GOOGLE NEWS] No SerpAPI key is set')
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'SERPAPI_API_KEY is not configured'
+          error: 'News service is not configured'
         }),
         {
           status: 500,
@@ -103,14 +105,14 @@ Deno.serve(async (req: Request) => {
       const errorText = await response.text()
       console.error(`❌ [GOOGLE NEWS] Error body:`, errorText)
 
+      // Users never see provider/quota details — those live in the function logs.
       return new Response(
         JSON.stringify({
           success: false,
-          error: `SERP API error: ${response.status} ${response.statusText}`,
-          details: errorText
+          error: 'The news service is not available right now — please try again later.'
         }),
         {
-          status: response.status,
+          status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
