@@ -34,6 +34,7 @@ import os
 import tempfile
 import time
 
+import numpy as np
 import runpod
 import torch
 from diffusers import LTX2ImageToVideoPipeline
@@ -51,10 +52,16 @@ NUM_INFERENCE_STEPS = 8  # distilled checkpoint: 8 steps, guidance 1.0
 NEGATIVE_PROMPT = "worst quality, inconsistent motion, blurry, jittery, distorted, watermark, text"
 
 QUANT = os.environ.get("LTX_QUANT", "fp8")
-COMPILE = os.environ.get("LTX_COMPILE", "1") == "1"
+# Default OFF: measured on L40S, torch.compile produced NaN frames (black video) with the
+# fp8-quantized transformer AND only ~10% speed over fp8 eager (17.4s vs 19.5s per 4s clip)
+# while costing an ~18min first compile per worker. fp8 eager is the production path.
+COMPILE = os.environ.get("LTX_COMPILE", "0") == "1"
 
 # ── Load the pipeline once per cold start ─────────────────────────────────────
 _pipe = None
+# Diagnostics returned in the warmup response (and `path` on every render) so a
+# silent fallback is visible from the API — worker logs aren't reachable remotely.
+_init_report: dict = {"path": "uninitialized"}
 
 
 def _quantize(pipe) -> None:
@@ -68,13 +75,15 @@ def _quantize(pipe) -> None:
     t0 = time.time()
     # Text encoder on CPU first (24GB bf16 -> ~12.5GB int8), avoids a VRAM spike.
     quantize_(pipe.text_encoder, int8_weight_only())
-    print(f"[ltx] text_encoder int8 in {time.time()-t0:.0f}s", flush=True)
+    _init_report["te_int8_s"] = round(time.time() - t0)
+    print(f"[ltx] text_encoder int8 in {_init_report['te_int8_s']}s", flush=True)
 
     t0 = time.time()
     # Transformer alone fits 48GB in bf16; quantize on-GPU (fast), 38GB -> ~19GB.
     pipe.transformer.to("cuda")
     quantize_(pipe.transformer, float8_dynamic_activation_float8_weight())
-    print(f"[ltx] transformer fp8 in {time.time()-t0:.0f}s", flush=True)
+    _init_report["tf_fp8_s"] = round(time.time() - t0)
+    print(f"[ltx] transformer fp8 in {_init_report['tf_fp8_s']}s", flush=True)
 
     # Everything resident: no per-job device moves -> compiled graphs stay valid.
     pipe.to("cuda")
@@ -104,7 +113,8 @@ def _get_pipeline() -> "LTX2ImageToVideoPipeline":
     if _pipe is None:
         t0 = time.time()
         pipe = LTX2ImageToVideoPipeline.from_pretrained(MODEL_DIR, torch_dtype=torch.bfloat16)
-        print(f"[ltx] weights loaded in {time.time()-t0:.0f}s", flush=True)
+        _init_report["load_s"] = round(time.time() - t0)
+        print(f"[ltx] weights loaded in {_init_report['load_s']}s", flush=True)
 
         resident = False
         if QUANT == "fp8":
@@ -112,6 +122,7 @@ def _get_pipeline() -> "LTX2ImageToVideoPipeline":
                 _quantize(pipe)
                 resident = True
             except Exception as e:  # noqa: BLE001 — any quant failure falls back to bf16
+                _init_report["quant_error"] = str(e)[:300]
                 print(f"[ltx] quantization failed, bf16 fallback: {e}", flush=True)
 
         if not resident:
@@ -123,20 +134,30 @@ def _get_pipeline() -> "LTX2ImageToVideoPipeline":
 
         # Compile only when GPU-resident: under CPU offload the per-job device moves
         # would invalidate the graphs and re-compile (minutes) on every render.
+        compiled = False
         if COMPILE and resident:
             try:
+                # If compilation fails at runtime (missing toolchain, unsupported op),
+                # fall back to eager per-graph instead of raising on every forward.
+                torch._dynamo.config.suppress_errors = True  # noqa: SLF001
                 # dynamic=True: num_frames changes per requested duration; static graphs
                 # would recompile (minutes) on every new shape.
                 pipe.transformer = torch.compile(pipe.transformer, dynamic=True)
+                compiled = True
                 print("[ltx] transformer compiled (dynamic)", flush=True)
             except Exception as e:  # noqa: BLE001
+                _init_report["compile_error"] = str(e)[:300]
                 print(f"[ltx] torch.compile failed, running eager: {e}", flush=True)
 
         try:
+            t0 = time.time()
             _micro_generate(pipe)
+            _init_report["microgen_s"] = round(time.time() - t0)
         except Exception as e:  # noqa: BLE001 — warmup gen is best-effort
+            _init_report["microgen_error"] = str(e)[:300]
             print(f"[ltx] micro warmup failed (non-fatal): {e}", flush=True)
 
+        _init_report["path"] = ("fp8-resident" if resident else "bf16-offload") + ("+compile" if compiled else "")
         _pipe = pipe
     return _pipe
 
@@ -171,7 +192,7 @@ def handler(job):
 
     if job_input.get("warmup"):
         _get_pipeline()
-        return {"warm": True}
+        return {"warm": True, **_init_report}
 
     image_url = job_input.get("image_url")
     prompt = job_input.get("prompt")
@@ -206,9 +227,15 @@ def handler(job):
         )
         print(f"[ltx] {duration}s render in {time.time()-t0:.0f}s", flush=True)
 
+        # diffusers' np output is float32 in [0,1] on some versions, uint8 on others;
+        # encode_video requires uint8 — normalize explicitly so version drift can't break us.
+        frames = video[0]
+        if getattr(frames, "dtype", None) != np.uint8:
+            frames = (np.clip(np.asarray(frames), 0.0, 1.0) * 255).round().astype(np.uint8)
+
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             encode_video(
-                video[0],
+                frames,
                 fps=FPS,
                 audio=audio[0].float().cpu(),
                 audio_sample_rate=pipe.vocoder.config.output_sampling_rate,
@@ -224,6 +251,7 @@ def handler(job):
             "duration": duration,
             "width": WIDTH,
             "height": HEIGHT,
+            "path": _init_report.get("path"),
         }
     except Exception as e:  # surface failures to the edge function (it falls back to Wavespeed)
         return {"error": f"LTX generation failed: {e}"}

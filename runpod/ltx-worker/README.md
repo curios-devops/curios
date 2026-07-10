@@ -9,9 +9,15 @@ function falls back, the user never notices).
 | Item | Cost | Notes |
 |---|---|---|
 | Network Volume 80 GB (US-IL-1) | ~$4/month | The ONLY idle cost. Weights parked once (~65 GB), never re-downloaded. |
-| GPU while generating | ~$0.05–0.08/video | 48GB-class flex worker (L40S), per-second billing. |
+| GPU while generating | ~$0.01–0.02/video | fp8 on L40S: 4s clip ≈ 19.5s, 8s ≈ 40s (measured 2026-07-10). |
 | Warm window after a job | ~$0.16/session | Idle timeout 300s — worker sleeps 5 min after the last job. |
+| Cold start | ~50 s init | fp8 quantization at load (~35s) + weights mmap (~10s); warmup ping hides it. |
 | No traffic | $0 GPU | Min workers = 0. Nothing runs, nothing bills. |
+
+Quantization (torchao, at load): transformer → fp8 dynamic, text encoder → int8 weight-only;
+everything stays GPU-resident (~35 GB), no per-job offload. `LTX_QUANT=none` reverts to bf16.
+⚠️ `LTX_COMPILE=1` (torch.compile) is OFF by default: measured NaN/black output with the fp8
+transformer and only ~10% speed for an ~18 min first-compile per worker.
 
 ⚠️ **Do NOT download `Lightricks/LTX-Video` or the single-file checkpoints** — that repo is
 ~314 GB of every variant (the $50 mistake). And don't download the diffusers snapshot raw

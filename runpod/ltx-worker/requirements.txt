@@ -2,7 +2,10 @@ runpod>=1.6.0
 torch==2.5.1
 torchaudio==2.5.1
 diffusers>=0.36.0
-torchao>=0.7.0,<0.11
+# Pinned: torchao publishes no torch requirement, so a loose pin let pip install
+# 0.10.x (built for torch 2.6) next to torch 2.5.1 — it imports and then fails at
+# runtime, silently dropping the worker to the bf16 fallback. 0.8.0 targets torch 2.5.
+torchao==0.8.0
 transformers>=4.48.0
 accelerate>=0.34.0
 sentencepiece>=0.2.0
