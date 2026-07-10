@@ -10,7 +10,8 @@ import { logger } from '../../../utils/logger';
 import type { MovieSwipe, MovieSource, SwipeRole } from '../types';
 
 const ROLE_ORDER: SwipeRole[] = ['core', 'why', 'how', 'data', 'insight'];
-const DEFAULT_SWIPE_DURATION = 10;
+// Render cost is linear in seconds (GPU frames); 10s max keeps swipes snappy AND cheap.
+const DEFAULT_SWIPE_DURATION = 8;
 
 interface RawSwipeSet {
   title: string;
@@ -45,16 +46,16 @@ Return JSON with:
 - swipes: array of 5 objects, each with:
   - role: one of core | why | how | data | insight (exactly one of each)
   - title: 2-4 word swipe label
-  - narration: 1-2 sentence voiceover (tight, high idea-density)
+  - narration: 1 short sentence of voiceover (tight, high idea-density — it must fit the swipe's duration when spoken calmly)
   - imagePrompt: a vivid 16:9 still-frame description for an image model (compose the shot; do NOT mention motion)
   - videoPrompt: how this still should animate (camera move, subject motion) for an image-to-video model
   - transitionStyle: one of cut | fade | dissolve | whip
-  - durationSeconds: 10, 12 or 14`;
+  - durationSeconds: 6, 8 or 10`;
 
 function clampDuration(d?: number): number {
-  if (!d || d <= 10) return 10;
-  if (d <= 12) return 12;
-  return 14;
+  if (!d || d <= 6) return 6;
+  if (d <= 8) return 8;
+  return 10;
 }
 
 function normalizeRole(role: string | undefined, index: number): SwipeRole {
