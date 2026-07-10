@@ -50,6 +50,10 @@ export default function Explore() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            // Send the anon key: the Supabase gateway 401s headerless calls whenever the
+            // function is deployed with JWT verification on (its default).
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
             query: 'technology', // Default query - can be made dynamic later
