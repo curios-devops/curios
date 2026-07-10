@@ -8,9 +8,10 @@
 import { supabase } from '../../../lib/supabase';
 import { logger } from '../../../utils/logger';
 
-// A warm RunPod render is ~4 min for a short clip; allow a cold start + a long swipe.
+// fp8 renders are 20-45s warm; a cold start adds ~2-3 min. Beyond 6 minutes something
+// is wrong (queue stall, lost webhook) — give up and retry via Wavespeed.
 const JOB_POLL_INTERVAL_MS = 5000;
-const JOB_TIMEOUT_MS = 12 * 60 * 1000;
+const JOB_TIMEOUT_MS = 6 * 60 * 1000;
 
 export interface RunPodLTXRequest {
   imageUrl: string;

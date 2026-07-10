@@ -34,9 +34,9 @@ import type {
 
 const DEFAULT_USER_ID = 'curios-guest';
 
-// Secondary frames are generated in the background one-after-another with this gap, to
-// stay under Gemini's rate limit while the core video renders concurrently.
-const SECONDARY_IMAGE_STAGGER_MS = 1000;
+// Secondary frames fire near-concurrently (paid Vertex tier handles 8 parallel fine);
+// a small stagger just avoids a synchronized burst.
+const SECONDARY_IMAGE_STAGGER_MS = 250;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

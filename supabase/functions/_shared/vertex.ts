@@ -58,7 +58,13 @@ async function createJWT(): Promise<string> {
   return `${signatureInput}.${signatureB64}`;
 }
 
+// Tokens last ~1h — cache per warm function instance instead of paying an RSA sign +
+// OAuth round-trip (~0.5-1.5s) on EVERY model call (5 frames per movie = 5 exchanges).
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
 export async function getVertexAccessToken(): Promise<string> {
+  if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.token;
+
   const jwt = await createJWT();
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -72,7 +78,12 @@ export async function getVertexAccessToken(): Promise<string> {
     throw new Error(`Failed to get Vertex access token: ${await response.text()}`);
   }
   const data = await response.json();
-  return data.access_token;
+  // Refresh a minute early so a token never expires mid-request.
+  cachedToken = {
+    token: data.access_token,
+    expiresAt: Date.now() + ((data.expires_in ?? 3600) - 60) * 1000,
+  };
+  return cachedToken.token;
 }
 
 function vertexHost(location: string): string {

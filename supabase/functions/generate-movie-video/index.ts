@@ -58,6 +58,9 @@ const runpodConfigured = Boolean(RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID);
 const RUNPOD_BASE = `https://api.runpod.ai/v2/${RUNPOD_ENDPOINT_ID}`;
 // Hard cap on a single RunPod job so an abandoned/stuck render can't bill forever.
 const RUNPOD_JOB_TIMEOUT_MS = Number(Deno.env.get("RUNPOD_JOB_TIMEOUT_MS") || 600000);
+// Queued jobs expire after this — if no worker picks it up (capacity crunch), the client
+// has long since fallen back to Wavespeed; don't let a stale job grab a GPU later.
+const RUNPOD_JOB_TTL_MS = Number(Deno.env.get("RUNPOD_JOB_TTL_MS") || 480000);
 
 // Users see this instead of raw upstream errors (e.g. "Insufficient credits") —
 // provider/billing details are an internal matter; full details go to the function logs.
@@ -101,8 +104,29 @@ async function uploadVideo(
 }
 
 // ── RunPod async path ───────────────────────────────────────────────────────────
+// True when the endpoint can actually serve a job soon. The stall signature is:
+// every candidate host throttled (GPU taken by other tenants) and nothing of ours
+// running — a submitted job would sit IN_QUEUE indefinitely.
+async function runpodHasCapacity(): Promise<boolean> {
+  try {
+    const res = await fetch(`${RUNPOD_BASE}/health`, { headers: runpodHeaders });
+    const h = await res.json();
+    const w = h?.workers ?? {};
+    const active = (w.idle ?? 0) + (w.ready ?? 0) + (w.running ?? 0) + (w.initializing ?? 0);
+    return active > 0 || (w.throttled ?? 0) === 0;
+  } catch (err) {
+    console.error("RunPod health check failed", String(err));
+    return false;
+  }
+}
+
 // Create a job row + submit to RunPod with a webhook; respond immediately.
-async function startRunPodJob(body: Body): Promise<Response> {
+// Returns null when RunPod can't take the job — the caller falls back to Wavespeed.
+async function startRunPodJob(body: Body): Promise<Response | null> {
+  if (!(await runpodHasCapacity())) {
+    console.error("RunPod capacity stall (all workers throttled) — falling back to Wavespeed");
+    return null;
+  }
   const db = admin();
   const { data: row, error } = await db
     .from("video_jobs")
@@ -116,7 +140,7 @@ async function startRunPodJob(body: Body): Promise<Response> {
     .single();
   if (error || !row) {
     console.error("video_jobs insert failed", error?.message);
-    return json({ error: FRIENDLY_ERROR }, 500);
+    return null; // let Wavespeed carry it
   }
   const rowId = row.id as string;
 
@@ -133,21 +157,21 @@ async function startRunPodJob(body: Body): Promise<Response> {
           ...(typeof body.seed === "number" ? { seed: body.seed } : {}),
         },
         webhook: webhookUrl,
-        policy: { executionTimeout: RUNPOD_JOB_TIMEOUT_MS },
+        policy: { executionTimeout: RUNPOD_JOB_TIMEOUT_MS, ttl: RUNPOD_JOB_TTL_MS },
       }),
     });
     const submitBody = await submit.json().catch(() => null);
     if (!submit.ok || !submitBody?.id) {
       console.error("RunPod submit failed", submit.status, JSON.stringify(submitBody).slice(0, 300));
       await db.from("video_jobs").update({ status: "error", error: "runpod submit failed", updated_at: new Date().toISOString() }).eq("id", rowId);
-      return json({ error: FRIENDLY_ERROR, jobId: rowId }, 502);
+      return null; // let Wavespeed carry it
     }
     await db.from("video_jobs").update({ runpod_job_id: submitBody.id, updated_at: new Date().toISOString() }).eq("id", rowId);
     return json({ jobId: rowId, async: true, backend: "runpod" }, 202);
   } catch (err) {
     console.error("RunPod submit threw", String(err));
     await db.from("video_jobs").update({ status: "error", error: "runpod submit failed", updated_at: new Date().toISOString() }).eq("id", rowId);
-    return json({ error: FRIENDLY_ERROR, jobId: rowId }, 502);
+    return null; // let Wavespeed carry it
   }
 }
 
@@ -379,7 +403,9 @@ serve(async (req) => {
   }
 
   if (runpodConfigured && body.forceBackend !== "wavespeed") {
-    return await startRunPodJob(body);
+    const started = await startRunPodJob(body);
+    if (started) return started;
+    // No capacity / submit failure → serve the user via Wavespeed right now.
   }
   return await runWavespeed(body, duration);
 });
