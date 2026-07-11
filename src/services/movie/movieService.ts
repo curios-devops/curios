@@ -34,9 +34,9 @@ import type {
 
 const DEFAULT_USER_ID = 'curios-guest';
 
-// Secondary frames fire near-concurrently (paid Vertex tier handles 8 parallel fine);
-// a small stagger just avoids a synchronized burst.
-const SECONDARY_IMAGE_STAGGER_MS = 250;
+// Measured in prod (2026-07-10): 250ms spacing tripped Vertex RESOURCE_EXHAUSTED on the
+// 4th/5th frame — this project's per-minute image quota needs ~1s between requests.
+const SECONDARY_IMAGE_STAGGER_MS = 1000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

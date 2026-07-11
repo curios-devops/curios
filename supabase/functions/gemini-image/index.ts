@@ -55,27 +55,39 @@ Deno.serve(async (req: Request) => {
     const model = body.model || IMAGE_MODEL;
     const location = body.location || IMAGE_LOCATION;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    const response = await fetch(`${vertexModelUrl(model, location)}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseModalities: ["IMAGE"],
-          imageConfig: { aspectRatio: body.aspectRatio || "16:9" },
-        },
-      }),
-      signal: controller.signal,
+    const requestBody = JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ["IMAGE"],
+        imageConfig: { aspectRatio: body.aspectRatio || "16:9" },
+      },
     });
-    clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("Vertex image API error:", { status: response.status, error });
-      return new Response(JSON.stringify({ error: `Vertex image error: ${response.status}`, details: error }), {
-        status: response.status,
+    // Rate-limit 429s (RESOURCE_EXHAUSTED without `limit: 0`) are transient — retry with
+    // backoff instead of failing the frame. A `limit: 0` body means no quota at all: no retry.
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 2000));
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      response = await fetch(`${vertexModelUrl(model, location)}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: requestBody,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (response.status !== 429) break;
+      const peek = await response.clone().text();
+      if (peek.includes('"limit": 0') || peek.includes('"limit":0')) break; // no quota — retrying is useless
+      console.warn(`Vertex image 429 (attempt ${attempt + 1}/3) — backing off`);
+    }
+
+    if (!response || !response.ok) {
+      const error = response ? await response.text() : "no response";
+      console.error("Vertex image API error:", { status: response?.status, error });
+      return new Response(JSON.stringify({ error: `Vertex image error: ${response?.status}`, details: error }), {
+        status: response?.status || 502,
         headers: corsHeaders,
       });
     }
