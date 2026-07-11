@@ -275,6 +275,13 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+# Must stay public: RunPod's async webhook posts the finished render back here with no
+# Supabase JWT (it authenticates by unguessable job-row id + matching RunPod job id).
+# Deploying this with verify_jwt=true would silently break every RunPod video callback.
+[functions.generate-movie-video]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
