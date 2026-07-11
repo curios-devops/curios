@@ -141,7 +141,11 @@ export async function generateMovie(
       logger.info('[MovieService] Core frame skipped: Enhance queued', { swipeId: coreSwipe.id });
     } else {
       try {
-        coreSwipe.imageUrl = await imageProvider.generate(coreSwipe.imagePrompt, { userId, referenceImageUrl });
+        coreSwipe.imageUrl = await imageProvider.generate(coreSwipe.imagePrompt, {
+          userId,
+          referenceImageUrl,
+          realismScore: enhanced.realismScore,
+        });
         coreSwipe.status = 'image_ready';
       } catch (error) {
         coreSwipe.status = 'error';
@@ -190,7 +194,11 @@ export async function generateMovie(
         return;
       }
       try {
-        swipe.imageUrl = await imageProvider.generate(swipe.imagePrompt, { userId, referenceImageUrl });
+        swipe.imageUrl = await imageProvider.generate(swipe.imagePrompt, {
+          userId,
+          referenceImageUrl,
+          realismScore: enhanced.realismScore,
+        });
         swipe.status = 'image_ready';
       } catch (error) {
         swipe.status = 'error';
