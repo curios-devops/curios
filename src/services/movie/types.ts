@@ -35,6 +35,8 @@ export interface MovieSwipe {
   videoPrompt: string;   // motion prompt for LTX image-to-video
   transitionStyle: string;
   durationSeconds: number;
+  /** Voice chosen for the whole set (who best carries the topic). Not persisted — set-level. */
+  narratorGender?: 'male' | 'female';
 
   imageUrl?: string;
   videoUrl?: string;
@@ -68,6 +70,8 @@ export interface MovieExperience {
   totalDurationSeconds: number;
   /** Shared seed so on-demand swipe videos keep the core's visual style. */
   styleSeed: number;
+  /** The narrator voice chosen for this experience (male/female). */
+  narratorGender?: 'male' | 'female';
   /** The core swipe's video — the primary shareable asset. */
   coreVideoUrl?: string;
   /** Alias of coreVideoUrl, kept for the public share page / persistence column. */

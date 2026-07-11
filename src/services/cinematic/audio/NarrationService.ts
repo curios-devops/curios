@@ -25,9 +25,13 @@ export interface NarrationResult {
 
 export interface NarrationOptions {
   voice?: string;
+  /** Pick a male/female ElevenLabs voice when no explicit `voice` id is given. */
+  gender?: 'male' | 'female';
   speed?: number;
   stability?: number;
   similarityBoost?: number;
+  /** 0-1 expressiveness for ElevenLabs; higher = more animated/energetic delivery. */
+  style?: number;
 }
 
 export class NarrationService {
@@ -39,6 +43,23 @@ export class NarrationService {
   private static readonly OPENAI_VOICES = new Set([
     'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer',
   ]);
+
+  // Energetic, expressive ElevenLabs voices, one per gender. Chosen per-video by the
+  // director agent (who best carries the topic) via NarrationOptions.gender.
+  private static readonly ELEVENLABS_VOICE_BY_GENDER = {
+    female: 'EXAVITQu4vr4xnSDxMaL', // Sarah — confident, expressive
+    male: 'TxGEqnHWrfWFTfGW9XjX',   // Josh — energetic, punchy
+  } as const;
+
+  // OpenAI-TTS fallback voice per gender (from OPENAI_VOICES).
+  private static readonly OPENAI_VOICE_BY_GENDER = {
+    female: 'nova',
+    male: 'onyx',
+  } as const;
+
+  // Lower stability + high style = more dynamic, passionate delivery (vs. flat/robotic).
+  private static readonly ENERGETIC_STABILITY = 0.35;
+  private static readonly ENERGETIC_STYLE = 0.8;
 
   /**
    * Generate narration audio from text segments
@@ -92,14 +113,17 @@ export class NarrationService {
     text: string,
     options: NarrationOptions
   ): Promise<NarrationResult> {
-    // Use default voice: Sarah - Mature, Reassuring, Confident
-    const voiceId = options.voice || 'EXAVITQu4vr4xnSDxMaL';
+    // Explicit voice id wins; otherwise pick an energetic voice by chosen gender.
+    const voiceId =
+      options.voice ||
+      NarrationService.ELEVENLABS_VOICE_BY_GENDER[options.gender ?? 'female'];
 
     const data = await this.invokeTtsFunction('elevenlabs-tts', {
       text,
       voiceId,
-      stability: options.stability,
-      similarityBoost: options.similarityBoost,
+      stability: options.stability ?? NarrationService.ENERGETIC_STABILITY,
+      similarityBoost: options.similarityBoost ?? 0.75,
+      style: options.style ?? NarrationService.ENERGETIC_STYLE,
     });
 
     // ElevenLabs returns audio as base64
@@ -131,7 +155,7 @@ export class NarrationService {
   ): Promise<NarrationResult> {
     const voice = options.voice && NarrationService.OPENAI_VOICES.has(options.voice)
       ? options.voice
-      : 'alloy';
+      : NarrationService.OPENAI_VOICE_BY_GENDER[options.gender ?? 'female'];
     const speed = options.speed ?? 1.0;
 
     const data = await this.invokeTtsFunction('openai-tts', {

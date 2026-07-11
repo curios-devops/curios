@@ -45,11 +45,23 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // swipe's narration script into the motion prompt so the generated audio speaks it —
 // giving narration without a separate TTS (ElevenLabs) call. (Experimental: phrasing
 // may need tuning depending on how LTX interprets the voiceover directive.)
-function buildLtxPrompt(swipe: MovieSwipe): string {
+//
+// Two behaviours are steered here: (1) the animation must be alive — real in-frame
+// subject motion, not a slow zoom/pan; for REAL (realismScore > 80) that motion may
+// only be what physically exists in the frame; (2) the narrator is energetic and
+// passionate, in the voice chosen for this set.
+function buildLtxPrompt(swipe: MovieSwipe, realismScore?: number): string {
   const motion = swipe.videoPrompt?.trim() || '';
+  const animationRule =
+    (realismScore ?? 0) > 80
+      ? 'Animate only what genuinely exists in the frame with physically-plausible motion — no new objects, characters, faces or lip-sync. Bring the real subject to life (ignite engines, exhaust, smoke, sparks, moving crowds/water/flame). Do not settle for a slow zoom or static pan.'
+      : 'Bring the whole scene dramatically to life with vivid in-frame motion — the subject itself moves. Do not settle for a slow zoom or static pan.';
+
   const script = swipe.narration?.trim();
-  if (!script) return motion;
-  return `${motion}\n\nVoiceover: a single calm narrator clearly speaks these exact words aloud, with no on-screen text or captions: "${script}"`;
+  if (!script) return `${motion}\n\n${animationRule}`;
+
+  const voice = swipe.narratorGender === 'male' ? 'male' : 'female';
+  return `${motion}\n\n${animationRule}\n\nVoiceover: a single ${voice} narrator speaks these exact words aloud with high energy, genuine excitement and passionate cadence (never flat or robotic), with no on-screen text or captions: "${script}"`;
 }
 
 async function researchSources(query: string): Promise<MovieSource[]> {
@@ -115,11 +127,12 @@ export async function generateMovie(
 
   // Step 4 — swipe set (1 core + 4 secondary)
   emit?.({ stage: 'storyboard', message: 'Designing your swipes...', progress: 42 });
-  const { title, description, swipes } = await buildSwipeSet({
+  const { title, description, narratorGender, swipes } = await buildSwipeSet({
     question,
     visualStoryQuestion: enhanced.visualStoryQuestion,
     narrative,
     sources,
+    realismScore: enhanced.realismScore,
   });
 
   const styleSeed = Math.floor(Math.random() * 1_000_000); // shared seed → style consistency
@@ -167,7 +180,7 @@ export async function generateMovie(
           try {
             const { videoUrl } = await ltx.generate({
               imageUrl: coreSwipe.imageUrl!,
-              prompt: buildLtxPrompt(coreSwipe),
+              prompt: buildLtxPrompt(coreSwipe, enhanced.realismScore),
               duration: coreSwipe.durationSeconds,
               seed: styleSeed,
               userId,
@@ -221,7 +234,7 @@ export async function generateMovie(
         duration: s.durationSeconds,
         sceneId: s.id,
       }));
-      const results = await narrationService.generateSegmentedNarration(segments);
+      const results = await narrationService.generateSegmentedNarration(segments, { gender: narratorGender });
       swipes.forEach((s) => {
         const r = results.get(s.id);
         if (r) s.narrationAudioUrl = r.audioUrl;
@@ -246,6 +259,7 @@ export async function generateMovie(
     sources,
     totalDurationSeconds,
     styleSeed,
+    narratorGender,
     coreVideoUrl: coreSwipe?.videoUrl,
     fullVideoUrl: coreSwipe?.videoUrl,
   };

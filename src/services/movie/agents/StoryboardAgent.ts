@@ -17,6 +17,7 @@ interface RawSwipeSet {
   title: string;
   description: string;
   styleAnchor: string;
+  narratorGender?: string;
   swipes: Array<{
     role?: string;
     title: string;
@@ -39,18 +40,35 @@ The 5 swipes have these roles, in this order:
 4. "data"   — a striking fact, number, comparison or analogy
 5. "insight"— the surprising takeaway or "so what"
 
+NARRATION — energetic delivery is mandatory. Every narration line is spoken by a THRILLED expert who can't wait to tell you this — high energy, real passion, punchy cadence. NEVER flat, calm or robotic. Vary the rhythm and land hard on the payoff word. Keep it tight enough to fit the swipe's duration when spoken fast and excited.
+
+ANIMATION — this is video, not a photo slideshow. The PRIMARY motion of every videoPrompt MUST be the subject/scene itself physically moving: describe the concrete action happening inside the frame (e.g. rocket engines igniting with roaring exhaust plumes, billowing smoke, sparks and heat-haze; crowds surging; water churning; flames, steam, hair and cloth moving; machinery turning; particles streaming). Camera movement (a dolly, pan, parallax, rack-focus) may ONLY be layered on top as support — NEVER let camera movement be the whole motion, and NEVER settle for a slow zoom or a static pan. Make it alive and kinetic.
+
 Return JSON with:
 - title: a punchy, shareable title
 - description: one-sentence logline
 - styleAnchor: a single consistent visual-style sentence (art direction, palette, lens, recurring character/world) that EVERY swipe image must follow
+- narratorGender: "male" or "female" — pick the ONE voice that best carries THIS topic's authority and emotion, and use that same narrator for all 5 swipes
 - swipes: array of 5 objects, each with:
   - role: one of core | why | how | data | insight (exactly one of each)
   - title: 2-4 word swipe label
-  - narration: 1 short sentence of voiceover (tight, high idea-density — it must fit the swipe's duration when spoken calmly)
+  - narration: 1 short, high-energy sentence of voiceover (tight, high idea-density, written to be spoken with excitement)
   - imagePrompt: a vivid 16:9 still-frame description for an image model (compose the shot; do NOT mention motion)
-  - videoPrompt: how this still should animate (camera move, subject motion) for an image-to-video model
+  - videoPrompt: the in-frame action that brings this still ALIVE for an image-to-video model (subject motion first, camera move only as support — see ANIMATION rule)
   - transitionStyle: one of cut | fade | dissolve | whip
   - durationSeconds: 6, 8 or 10`;
+
+// Realism band drives how far the animation may stray from what's literally in the frame.
+// Mirrors the image-side bands in NanoBananaProvider (docs/Movie/enhaced_refactor.md).
+function animationBandRule(realismScore?: number): string {
+  if ((realismScore ?? 0) > 80) {
+    return `REALISM BAND: REAL (photojournalistic footage). Animate ONLY what genuinely exists in each frame, with physically-plausible motion. Do NOT invent new objects, characters or on-screen text; do NOT regenerate, reshape or lip-sync faces; do NOT generate new bodies. Example: if a rocket sits on the pad, IGNITE its real engines with real exhaust, smoke and heat-haze — never add rockets, people or effects that aren't already there.`;
+  }
+  if ((realismScore ?? 0) >= 50) {
+    return `REALISM BAND: HYBRID (real anchor, creative motion). Keep the real subject authentic, but you may animate the scene dramatically around it.`;
+  }
+  return `REALISM BAND: FULL_AI (stylized). Full creative freedom — bring the entire scene vividly and dramatically to life.`;
+}
 
 function clampDuration(d?: number): number {
   if (!d || d <= 6) return 6;
@@ -69,7 +87,8 @@ export async function buildSwipeSet(params: {
   visualStoryQuestion: string;
   narrative: string;
   sources: MovieSource[];
-}): Promise<{ title: string; description: string; swipes: MovieSwipe[] }> {
+  realismScore?: number;
+}): Promise<{ title: string; description: string; narratorGender: 'male' | 'female'; swipes: MovieSwipe[] }> {
   const factLines = params.sources
     .slice(0, 8)
     .map((s) => `- ${s.title}: ${s.snippet}`)
@@ -77,6 +96,8 @@ export async function buildSwipeSet(params: {
 
   const userPrompt = `Question: ${params.question}
 Visual framing: ${params.visualStoryQuestion}
+
+${animationBandRule(params.realismScore)}
 
 Narrative:
 ${params.narrative}
@@ -91,11 +112,14 @@ ${factLines || '(none)'}`;
       title: 'string',
       description: 'string',
       styleAnchor: 'string',
+      narratorGender: 'male | female',
       swipes: 'array of { role, title, narration, imagePrompt, videoPrompt, transitionStyle, durationSeconds }',
     },
     0.6,
   );
 
+  const narratorGender: 'male' | 'female' =
+    (raw.narratorGender || '').toLowerCase().trim() === 'male' ? 'male' : 'female';
   const styleAnchor = (raw.styleAnchor || '').trim();
   const rawSwipes = Array.isArray(raw.swipes) ? raw.swipes.slice(0, 5) : [];
 
@@ -115,9 +139,10 @@ ${factLines || '(none)'}`;
       narration: swipe.narration || '',
       // Weave the shared style anchor into every image prompt for cross-swipe consistency.
       imagePrompt: styleAnchor ? `${swipe.imagePrompt}. Consistent style: ${styleAnchor}` : swipe.imagePrompt,
-      videoPrompt: swipe.videoPrompt || 'slow cinematic camera movement',
+      videoPrompt: swipe.videoPrompt || 'the subject comes alive with vivid, energetic in-frame motion',
       transitionStyle: swipe.transitionStyle || 'cut',
       durationSeconds: clampDuration(swipe.durationSeconds) || DEFAULT_SWIPE_DURATION,
+      narratorGender,
       status: 'pending' as const,
     };
   });
@@ -134,6 +159,7 @@ ${factLines || '(none)'}`;
   return {
     title: raw.title?.trim() || params.question,
     description: raw.description?.trim() || '',
+    narratorGender,
     swipes,
   };
 }

@@ -64,8 +64,16 @@ Deno.serve(async (req: Request) => {
       return createJsonResponse({ error: 'ElevenLabs API key not configured' }, 500, corsHeaders);
     }
 
-    // Parse request
-    const { text, voiceId = 'EXAVITQu4vr4xnSDxMaL' } = await req.json(); // Sarah - Mature, Reassuring, Confident
+    // Parse request. stability/style/similarity_boost are optional — when omitted we keep
+    // the reassuring defaults; the Movie director passes low stability + high style for an
+    // energetic, passionate delivery.
+    const {
+      text,
+      voiceId = 'EXAVITQu4vr4xnSDxMaL', // Sarah - Mature, Reassuring, Confident
+      stability = 0.5,
+      similarityBoost = 0.75,
+      style = 0,
+    } = await req.json();
 
     if (!text) {
       return createJsonResponse({ error: 'Text is required' }, 400, corsHeaders);
@@ -91,8 +99,10 @@ Deno.serve(async (req: Request) => {
           model_id: 'eleven_multilingual_v2', // Modelo más confiable y compatible con free tier
           output_format: 'mp3_44100_128',
           voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
+            stability,
+            similarity_boost: similarityBoost,
+            style,
+            use_speaker_boost: true,
           },
         }),
       }
