@@ -106,7 +106,22 @@ async function handleCheckoutSession(session: Stripe.Checkout.Session) {
   }
 
   const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-  
+
+  // A reactivation checkout creates a NEW subscription; cancel any older one still
+  // hanging on the customer (e.g. past_due retrying a failed card) so the user
+  // can't be double-charged if the old retry later succeeds.
+  const otherSubs = await stripe.subscriptions.list({
+    customer: session.customer as string,
+    status: 'all',
+    limit: 10,
+  });
+  for (const old of otherSubs.data) {
+    if (old.id !== subscription.id && !['canceled', 'incomplete_expired'].includes(old.status)) {
+      await stripe.subscriptions.cancel(old.id);
+      console.log('Canceled superseded subscription:', old.id);
+    }
+  }
+
   const { error } = await supabase
     .from('profiles')
     .update({

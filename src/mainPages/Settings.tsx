@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '../hooks/useSession';
+import { useSubscription } from '../hooks/useSubscription';
+import { cancelSubscription } from '../commonApp/stripe/api';
 import { signOut } from '../lib/auth';
 import GeneralSection from '../components/settings/GeneralSection';
 import AccountSection from '../components/settings/AccountSection';
@@ -9,8 +12,47 @@ import { X, Crown } from 'lucide-react';
 export default function Settings() {
   const navigate = useNavigate();
   const { session } = useSession();
+  const { subscription, loading: subscriptionLoading } = useSubscription(session);
   const email = session?.user?.email || '';
   const username = getUserDisplayName(session?.user) ?? email.split('@')[0];
+
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [justCanceled, setJustCanceled] = useState(false);
+
+  const isPastDue = !justCanceled && subscription?.status === 'past_due';
+  const isSubscribed = !justCanceled && (subscription?.isActive || isPastDue);
+
+  const subscriptionLabel = subscriptionLoading
+    ? 'Checking…'
+    : justCanceled
+      ? 'Canceled — you are now on the free plan'
+      : subscription?.isActive
+        ? 'Active'
+        : isPastDue
+          ? 'Payment issue — your card didn’t go through'
+          : 'Free plan';
+
+  const subscriptionLabelColor = subscription?.isActive && !justCanceled
+    ? 'text-green-500'
+    : isPastDue
+      ? 'text-amber-500'
+      : '';
+
+  const handleConfirmCancel = async () => {
+    setCanceling(true);
+    setCancelError(null);
+    try {
+      await cancelSubscription();
+      setJustCanceled(true);
+      setShowCancelConfirm(false);
+    } catch (error) {
+      setCancelError(error instanceof Error ? error.message : 'Failed to cancel subscription');
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -65,17 +107,28 @@ export default function Settings() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Subscription</h3>
-                      <p className="text-green-500 text-sm mt-1">Active</p>
+                      <p
+                        className={`text-sm mt-1 ${subscriptionLabelColor}`}
+                        style={subscriptionLabelColor ? undefined : { color: 'var(--ui-text-secondary)' }}
+                      >
+                        {subscriptionLabel}
+                      </p>
+                      {cancelError && !showCancelConfirm && (
+                        <p className="text-red-500 text-sm mt-1">{cancelError}</p>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      className="transition-colors text-sm"
-                      style={{ color: 'var(--accent-primary)' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-hover)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--accent-primary)'; }}
-                    >
-                      Manage
-                    </button>
+                    {isSubscribed && (
+                      <button
+                        type="button"
+                        onClick={() => { setCancelError(null); setShowCancelConfirm(true); }}
+                        className="transition-colors text-sm"
+                        style={{ color: 'var(--accent-primary)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-hover)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--accent-primary)'; }}
+                      >
+                        Cancel subscription
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="py-6">
@@ -124,6 +177,44 @@ export default function Settings() {
           />
         </div>
       </main>
+
+      {/* Cancel subscription confirmation dialog */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div
+            className="w-full max-w-md p-6 rounded-2xl border"
+            style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
+          >
+            <h3 className="text-lg font-medium" style={{ color: 'var(--ui-text-primary)' }}>
+              Cancel subscription?
+            </h3>
+            <p className="text-sm mt-2" style={{ color: 'var(--ui-text-secondary)' }}>
+              Your Premium subscription will be canceled immediately and your account will
+              switch to the free plan (3 Pro credits per day). You won’t be charged again.
+            </p>
+            {cancelError && <p className="text-red-500 text-sm mt-2">{cancelError}</p>}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setShowCancelConfirm(false)}
+                disabled={canceling}
+                className="text-sm px-4 py-2 rounded-lg transition-colors"
+                style={{ color: 'var(--ui-text-secondary)' }}
+              >
+                Keep subscription
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancel}
+                disabled={canceling}
+                className="text-sm px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-60"
+              >
+                {canceling ? 'Canceling…' : 'Yes, cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

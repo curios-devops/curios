@@ -120,3 +120,34 @@ export async function checkSubscription(userId: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function cancelSubscription(): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+    body: {}
+  });
+
+  if (error) {
+    const httpError = error as FunctionsHttpError;
+    const serverError = (
+      (httpError.context as Record<string, any>)?.response?.error ||
+      (httpError.context as Record<string, any>)?.error ||
+      (data as { error?: string } | null | undefined)?.error
+    );
+
+    console.error('Cancel subscription error:', {
+      error,
+      serverError,
+      status: httpError.context?.response?.status,
+    });
+
+    throw new Error(
+      (typeof serverError === 'string' && serverError.trim().length > 0)
+        ? serverError
+        : httpError.message || 'Failed to cancel subscription'
+    );
+  }
+
+  if (!data?.success) {
+    throw new Error(data?.error || 'Failed to cancel subscription');
+  }
+}

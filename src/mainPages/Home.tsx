@@ -57,6 +57,16 @@ export default function Home() {
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
+  // Failed-payment notice: shown once per session when the subscription is past_due
+  const [pastDueDismissed, setPastDueDismissed] = useState(
+    () => sessionStorage.getItem('curios_past_due_notice') === 'dismissed'
+  );
+  const isPastDue = subscription?.status === 'past_due';
+  const showPastDueNotice = isPastDue && !pastDueDismissed && !showProModal;
+  const dismissPastDueNotice = () => {
+    sessionStorage.setItem('curios_past_due_notice', 'dismissed');
+    setPastDueDismissed(true);
+  };
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
   const [cookiesAccepted, setCookiesAccepted] = useState(() => !!localStorage.getItem('cookieConsent'));
@@ -325,6 +335,43 @@ export default function Home() {
         <Suspense fallback={null}>
           <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} />
         </Suspense>
+      )}
+
+      {/* Failed-payment notice: card declined, account temporarily on the free plan */}
+      {showPastDueNotice && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div
+            className="w-full max-w-md p-6 rounded-2xl border"
+            style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
+          >
+            <h3 className="text-lg font-medium" style={{ color: 'var(--ui-text-primary)' }}>
+              We couldn’t process your payment
+            </h3>
+            <p className="text-sm mt-2" style={{ color: 'var(--ui-text-secondary)' }}>
+              Your card didn’t go through, so your account is temporarily on the free plan
+              (3 Pro credits per day). Reactivate your Premium subscription to get your
+              full benefits back.
+            </p>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={dismissPastDueNotice}
+                className="text-sm px-4 py-2 rounded-lg transition-colors"
+                style={{ color: 'var(--ui-text-secondary)' }}
+              >
+                Not now
+              </button>
+              <button
+                type="button"
+                onClick={() => { dismissPastDueNotice(); setShowProModal(true); }}
+                className="text-sm px-4 py-2 rounded-lg text-white transition-colors"
+                style={{ backgroundColor: accentColors.primary }}
+              >
+                Reactivate now
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
