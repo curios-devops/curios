@@ -104,16 +104,40 @@ async function uploadVideo(
 }
 
 // ── RunPod async path ───────────────────────────────────────────────────────────
-// True when the endpoint can actually serve a job soon. The stall signature is:
-// every candidate host throttled (GPU taken by other tenants) and nothing of ours
-// running — a submitted job would sit IN_QUEUE indefinitely.
+// True only when RunPod can PICK THE JOB UP PROMPTLY — otherwise the caller serves the
+// user on Wavespeed (hosted, synchronous) instead of letting the job wait in line.
+// We serve on RunPod (cheap self-hosted) when:
+//   • a worker is idle/ready        → instant pickup, or
+//   • a worker is initializing      → booting (e.g. our warmup ping); picked up shortly, or
+//   • the endpoint is fully cold     → FlashBoot cold start from zero (fast now).
+// We fall back to Wavespeed when the job would QUEUE:
+//   • every worker is busy (running) with none free, or
+//   • there's already a queue backlog (jobs.inQueue > 0), or
+//   • the throttle stall (all candidate hosts throttled, nothing of ours active).
 async function runpodHasCapacity(): Promise<boolean> {
   try {
     const res = await fetch(`${RUNPOD_BASE}/health`, { headers: runpodHeaders });
     const h = await res.json();
     const w = h?.workers ?? {};
-    const active = (w.idle ?? 0) + (w.ready ?? 0) + (w.running ?? 0) + (w.initializing ?? 0);
-    return active > 0 || (w.throttled ?? 0) === 0;
+    const j = h?.jobs ?? {};
+
+    // A backlog means new jobs wait — serve the user immediately on Wavespeed instead.
+    if ((j.inQueue ?? 0) > 0) {
+      console.error("RunPod busy (queue backlog) — falling back to Wavespeed");
+      return false;
+    }
+
+    const availableNow = (w.idle ?? 0) + (w.ready ?? 0) > 0;
+    const booting = (w.initializing ?? 0) > 0;
+    const anyWorker =
+      (w.idle ?? 0) + (w.ready ?? 0) + (w.running ?? 0) + (w.initializing ?? 0) + (w.throttled ?? 0) > 0;
+    const cold = !anyWorker; // scaled to zero → FlashBoot cold start
+
+    if (availableNow || booting || cold) return true;
+
+    // Workers exist but all are busy/throttled and none can take the job now → queue.
+    console.error("RunPod busy (all workers occupied/throttled) — falling back to Wavespeed");
+    return false;
   } catch (err) {
     console.error("RunPod health check failed", String(err));
     return false;
