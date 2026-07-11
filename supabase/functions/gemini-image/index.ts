@@ -16,7 +16,80 @@ const corsHeaders = {
 const IMAGE_MODEL = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-3.1-flash-lite-image";
 // @ts-ignore
 const IMAGE_LOCATION = Deno.env.get("GEMINI_IMAGE_LOCATION") || "global";
+// Fallback when Vertex is exhausted/unavailable after retries — a pricier frame beats a
+// broken one. Quality "low" (~$0.016) keeps the fallback cheap for default swipe frames.
+// @ts-ignore
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+// @ts-ignore
+const FALLBACK_IMAGE_MODEL = Deno.env.get("MOVIE_IMAGE_MODEL") || "gpt-image-2";
 const TIMEOUT_MS = 60000;
+
+function b64ToBytes(b64: string): Uint8Array {
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+/** Fetch a reference photo and return { mime, data } base64, or null on any failure. */
+async function fetchReference(url: string): Promise<{ mime: string; data: string } | null> {
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 15000);
+    const r = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    if (!r.ok) return null;
+    const mime = r.headers.get("content-type") || "image/jpeg";
+    if (!mime.startsWith("image/")) return null;
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    if (bytes.length > 8_000_000) return null;
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    return { mime, data: btoa(binary) };
+  } catch {
+    return null;
+  }
+}
+
+/** OpenAI gpt-image-2 fallback: /generations (prompt-only) or /edits (with reference). */
+async function openaiFallback(
+  prompt: string,
+  aspectRatio: string,
+  reference: { mime: string; data: string } | null,
+): Promise<string | null> {
+  if (!OPENAI_API_KEY) return null;
+  const size = aspectRatio === "16:9" ? "1536x1024" : aspectRatio === "9:16" ? "1024x1536" : "1024x1024";
+  try {
+    let res: Response;
+    if (reference) {
+      const form = new FormData();
+      form.append("model", FALLBACK_IMAGE_MODEL);
+      form.append("prompt", prompt);
+      form.append("size", size);
+      form.append("quality", "low");
+      form.append("n", "1");
+      form.append("image", new Blob([b64ToBytes(reference.data).buffer as ArrayBuffer], { type: reference.mime }), "reference.png");
+      res = await fetch("https://api.openai.com/v1/images/edits", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: form,
+      });
+    } else {
+      res = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: FALLBACK_IMAGE_MODEL, prompt, size, quality: "low", n: 1 }),
+      });
+    }
+    if (!res.ok) {
+      console.error("openai image fallback failed", res.status, (await res.text()).slice(0, 200));
+      return null;
+    }
+    const b64 = (await res.json())?.data?.[0]?.b64_json;
+    return typeof b64 === "string" && b64 ? b64 : null;
+  } catch (err) {
+    console.error("openai image fallback threw", String(err));
+    return null;
+  }
+}
 
 // Pull the first inline image (base64) out of a generateContent response, tolerating
 // both camelCase (inlineData) and snake_case (inline_data) part shapes.
@@ -55,8 +128,15 @@ Deno.serve(async (req: Request) => {
     const model = body.model || IMAGE_MODEL;
     const location = body.location || IMAGE_LOCATION;
 
+    // Optional grounding: a real photo as input (Pipeline A "REAL") — image part FIRST,
+    // then the text instruction, per the verified Vertex Express reference.
+    const reference = body.referenceImageUrl ? await fetchReference(body.referenceImageUrl) : null;
+    const parts: Array<Record<string, unknown>> = [];
+    if (reference) parts.push({ inline_data: { mime_type: reference.mime, data: reference.data } });
+    parts.push({ text: prompt });
+
     const requestBody = JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      contents: [{ role: "user", parts }],
       generationConfig: {
         responseModalities: ["IMAGE"],
         imageConfig: { aspectRatio: body.aspectRatio || "16:9" },
@@ -83,20 +163,27 @@ Deno.serve(async (req: Request) => {
       console.warn(`Vertex image 429 (attempt ${attempt + 1}/3) — backing off`);
     }
 
-    if (!response || !response.ok) {
+    let b64: string | undefined;
+    if (response && response.ok) {
+      const data = await response.json();
+      b64 = extractImageBase64(data);
+      if (!b64) console.error("No image data in Vertex response");
+    } else {
       const error = response ? await response.text() : "no response";
       console.error("Vertex image API error:", { status: response?.status, error });
-      return new Response(JSON.stringify({ error: `Vertex image error: ${response?.status}`, details: error }), {
-        status: response?.status || 502,
-        headers: corsHeaders,
-      });
     }
 
-    const data = await response.json();
-    const b64 = extractImageBase64(data);
+    // Vertex exhausted/failed/refused → gpt-image-2 fallback rather than failing the frame.
     if (!b64) {
-      console.error("No image data in Vertex response");
-      return new Response(JSON.stringify({ error: "Vertex returned no image data" }), { status: 502, headers: corsHeaders });
+      console.warn("Falling back to OpenAI", FALLBACK_IMAGE_MODEL);
+      const fb = await openaiFallback(prompt, body.aspectRatio || "16:9", reference);
+      if (fb) b64 = fb;
+    }
+    if (!b64) {
+      return new Response(JSON.stringify({ error: "Image generation failed on both providers" }), {
+        status: 502,
+        headers: corsHeaders,
+      });
     }
 
     // Upload server-side (service role → works for guests) and return a public URL.

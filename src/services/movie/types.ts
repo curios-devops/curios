@@ -17,6 +17,8 @@ export interface MovieSource {
 export interface EnhancedQuestion {
   researchQuestion: string;   // for the grounding/search step
   visualStoryQuestion: string; // the human/emotional framing for the visuals
+  /** 0 = artistic/abstract, 100 = photojournalistic. ≥50 grounds the swipe frames on a real photo. */
+  realismScore?: number;
 }
 
 // The core swipe answers the question directly; the rest deepen it.

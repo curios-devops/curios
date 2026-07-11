@@ -11,6 +11,7 @@
 //
 // Reuses cinematic infrastructure: search tools, streamNarrative, NarrationService.
 
+import { supabase } from '../../lib/supabase.ts';
 import { searchWithTavily } from '../../commonService/searchTools/tavilyService.ts';
 import { braveSearchTool } from '../../commonService/searchTools/braveSearchTool.ts';
 import { streamNarrative } from '../cinematic/core/narrativeFlow.ts';
@@ -92,6 +93,18 @@ export async function generateMovie(
   emit?.({ stage: 'enhancing', message: 'Understanding your question...', progress: 6 });
   const enhanced = await enhanceQuestion(question);
 
+  // Pipeline A "REAL" (docs/Movie/enhaced_refactor.md), cheap default variant: for
+  // photojournalistic topics (realismScore ≥ 50) find ONE real reference photo and ground
+  // ALL swipe frames on it. Runs concurrently with research/narrative/storyboard — zero
+  // added latency; any failure just means the frames stay prompt-only.
+  const referenceImagePromise: Promise<string | undefined> =
+    (enhanced.realismScore ?? 0) >= 50
+      ? supabase.functions
+          .invoke('movie-reference-image', { body: { query: enhanced.researchQuestion } })
+          .then(({ data }) => (data as { imageUrl?: string | null })?.imageUrl || undefined)
+          .catch(() => undefined)
+      : Promise.resolve(undefined);
+
   // Step 2 — research / grounding
   emit?.({ stage: 'research', message: 'Collecting trusted sources...', progress: 16 });
   const sources = await researchSources(enhanced.researchQuestion);
@@ -120,13 +133,15 @@ export async function generateMovie(
   // Step 5 — CORE frame first: it's the only thing the core video (image-to-video) needs,
   // so we get it before anything else and don't wait on the secondary frames.
   emit?.({ stage: 'images', message: 'Creating your core frame...', progress: 50, swipes });
+  const referenceImageUrl = await referenceImagePromise; // resolved during steps 2-4
+  if (referenceImageUrl) logger.info('[MovieService] Grounding frames on real photo', { referenceImageUrl });
   if (coreSwipe) {
     if (options.isEnhanceRequested?.(coreSwipe)) {
       // User already queued the premium Enhance for this swipe — don't spend the default render.
       logger.info('[MovieService] Core frame skipped: Enhance queued', { swipeId: coreSwipe.id });
     } else {
       try {
-        coreSwipe.imageUrl = await imageProvider.generate(coreSwipe.imagePrompt, { userId });
+        coreSwipe.imageUrl = await imageProvider.generate(coreSwipe.imagePrompt, { userId, referenceImageUrl });
         coreSwipe.status = 'image_ready';
       } catch (error) {
         coreSwipe.status = 'error';
@@ -175,7 +190,7 @@ export async function generateMovie(
         return;
       }
       try {
-        swipe.imageUrl = await imageProvider.generate(swipe.imagePrompt, { userId });
+        swipe.imageUrl = await imageProvider.generate(swipe.imagePrompt, { userId, referenceImageUrl });
         swipe.status = 'image_ready';
       } catch (error) {
         swipe.status = 'error';

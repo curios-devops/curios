@@ -6,16 +6,26 @@ import { supabase } from '../../../lib/supabase';
 import { logger } from '../../../utils/logger';
 
 export class NanoBananaProvider {
-  async generate(imagePrompt: string, opts: { userId?: string } = {}): Promise<string> {
+  async generate(
+    imagePrompt: string,
+    opts: { userId?: string; referenceImageUrl?: string } = {},
+  ): Promise<string> {
     const uid = opts.userId || 'guest';
     const uuid = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
 
+    // Pipeline A "REAL": when a real reference photo exists, the frame is REGENERATED from
+    // image + text (the model is an editor) — real subject appearance, prompt's composition.
+    const prompt = opts.referenceImageUrl
+      ? `SCENE TO CREATE: ${imagePrompt}\n\nUse the attached real photograph as the factual visual anchor: keep the real subject's appearance, materials and atmosphere authentic. Follow the SCENE's composition and framing. Photorealistic, documentary quality, no text or watermarks.`
+      : imagePrompt;
+
     const { data, error } = await supabase.functions.invoke('gemini-image', {
       body: {
-        prompt: imagePrompt,
+        prompt,
         aspectRatio: '16:9',
         storageBucket: 'movie-assets',
         storagePath: `${uid}/images/${uuid}.png`,
+        ...(opts.referenceImageUrl ? { referenceImageUrl: opts.referenceImageUrl } : {}),
       },
     });
 
