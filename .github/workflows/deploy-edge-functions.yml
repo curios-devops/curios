@@ -1,6 +1,9 @@
 name: Deploy Supabase Edge Functions
 
-# Deploys edge functions whenever their source (or the JWT/config) changes on main.
+# Deploys ONLY the edge functions changed in a push — never the whole set. Deploying
+# all functions fails the moment any single one in the repo has a stale/broken import
+# graph, so we scope each run to what actually changed.
+#
 # verify_jwt per function is declared in supabase/config.toml — keep it there so a
 # deploy never silently flips a public webhook (e.g. generate-movie-video) to JWT-only.
 on:
@@ -8,9 +11,12 @@ on:
     branches: [main]
     paths:
       - "supabase/functions/**"
-      - "supabase/config.toml"
-      - ".github/workflows/deploy-edge-functions.yml"
-  workflow_dispatch: {} # allow manual runs from the Actions tab
+  workflow_dispatch:
+    inputs:
+      functions:
+        description: "Space-separated function names to deploy (e.g. 'elevenlabs-tts generate-movie-video')"
+        required: false
+        default: ""
 
 jobs:
   deploy:
@@ -20,10 +26,33 @@ jobs:
       PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so we can diff the pushed range
 
       - uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Deploy edge functions
-        run: supabase functions deploy --project-ref "$PROJECT_ID"
+      - name: Determine functions to deploy
+        id: pick
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            FUNCS="${{ github.event.inputs.functions }}"
+          else
+            BEFORE="${{ github.event.before }}"
+            # First push to a branch (or force-push) may not have a valid `before` — diff the last commit.
+            if ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then BEFORE="${{ github.event.after }}~1"; fi
+            FUNCS=$(git diff --name-only "$BEFORE" "${{ github.event.after }}" -- 'supabase/functions/' \
+              | sed -nE 's#^supabase/functions/([^/]+)/.*#\1#p' | sort -u | tr '\n' ' ')
+          fi
+          echo "funcs=$FUNCS" >> "$GITHUB_OUTPUT"
+          echo "Functions to deploy: '${FUNCS}'"
+
+      - name: Deploy changed functions
+        if: steps.pick.outputs.funcs != ''
+        run: |
+          for fn in ${{ steps.pick.outputs.funcs }}; do
+            echo "::group::deploy $fn"
+            supabase functions deploy "$fn" --project-ref "$PROJECT_ID"
+            echo "::endgroup::"
+          done
