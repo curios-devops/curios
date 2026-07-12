@@ -14,7 +14,7 @@
 //   STEP 5  Video (Gemini Omni Flash, documentary motion prompt) → upload → mark row 'ready'
 //
 // Substitutions vs the doc: EXA→SerpAPI(+Brave); "AI Detector"→Gemini-vision realism score.
-import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
+/// <reference types="jsr:@supabase/functions-js@2/edge-runtime.d.ts" />
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { getVertexAccessToken, vertexModelUrl, vertexInteractionsUrl } from "../_shared/vertex.ts";
 

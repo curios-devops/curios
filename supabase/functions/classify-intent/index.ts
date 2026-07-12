@@ -2,7 +2,6 @@
 // Auto Mode intent classifier.
 // Classifies a user query into one of: search | avatar | movie and returns { mode }.
 // Orchestration layer only — does not call any downstream mode.
-import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -1,7 +1,6 @@
 // deno-lint-ignore-file no-import-prefix
 // Simplified Supabase Edge Function for OpenAI API calls
 // Supports both streaming and non-streaming modes for chat completions
-import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {

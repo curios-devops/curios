@@ -13,7 +13,6 @@
 //
 // FALLBACK = Veo 3.1 (predictLongRunning + poll). Selected automatically when GEMINI_OMNI_MODEL
 // is set to a `veo-*` id (with GEMINI_OMNI_LOCATION=us-central1).
-import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { getVertexAccessToken, vertexModelUrl, vertexInteractionsUrl } from "../_shared/vertex.ts";
 

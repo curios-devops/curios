@@ -3,7 +3,6 @@
 // on VERTEX AI (service-account auth, curios-vertex project). The cheap/fast default for Movie
 // swipe frames. Billed via Vertex, so it avoids the AI-Studio free-tier limit and the leaked
 // API-key block. Uploads the returned base64 image to Storage and returns a hosted public URL.
-import "jsr:@supabase/functions-js@2/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { getVertexAccessToken, vertexModelUrl } from "../_shared/vertex.ts";
 
