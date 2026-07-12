@@ -7,6 +7,7 @@
 
 import { callMovieLLMJson } from '../core/llm';
 import { logger } from '../../../utils/logger';
+import type { MovieModeSpec } from '../config/movieModes';
 import type { MovieSwipe, MovieSource, SwipeRole } from '../types';
 
 const ROLE_ORDER: SwipeRole[] = ['core', 'why', 'how', 'data', 'insight'];
@@ -18,6 +19,7 @@ interface RawSwipeSet {
   description: string;
   styleAnchor: string;
   narratorGender?: string;
+  relatedTopics?: string[];
   swipes: Array<{
     role?: string;
     title: string;
@@ -47,8 +49,9 @@ ANIMATION — this is video, not a photo slideshow. The PRIMARY motion of every 
 Return JSON with:
 - title: a punchy, shareable title
 - description: one-sentence logline
-- styleAnchor: a single consistent visual-style sentence (art direction, palette, lens, recurring character/world) that EVERY swipe image must follow
+- styleAnchor: a single consistent visual-style sentence (art direction, palette, lens, recurring character/world) that EVERY swipe image must follow. It MUST embody the VISUAL MODE given in the user message — the mode is the law; build the anchor inside it.
 - narratorGender: "male" or "female" — pick the ONE voice that best carries THIS topic's authority and emotion, and use that same narrator for all 5 swipes
+- relatedTopics: EXACTLY 4 short related themes (3-8 words each) the viewer would want to watch next — intriguing, curiosity-driven, adjacent to (never repeating) this question
 - swipes: array of 5 objects, each with:
   - role: one of core | why | how | data | insight (exactly one of each)
   - title: 2-4 word swipe label
@@ -88,16 +91,35 @@ export async function buildSwipeSet(params: {
   narrative: string;
   sources: MovieSource[];
   realismScore?: number;
-}): Promise<{ title: string; description: string; narratorGender: 'male' | 'female'; swipes: MovieSwipe[] }> {
+  mode?: MovieModeSpec;
+}): Promise<{
+  title: string;
+  description: string;
+  narratorGender: 'male' | 'female';
+  swipes: MovieSwipe[];
+  relatedTopics: string[];
+}> {
   const factLines = params.sources
     .slice(0, 8)
     .map((s) => `- ${s.title}: ${s.snippet}`)
     .join('\n');
 
+  // The realism bands only make sense for photographic output; stylized modes replace
+  // them with the mode's own art direction (full creative freedom inside that style).
+  const bandRule = !params.mode || params.mode.id === 'real'
+    ? animationBandRule(params.realismScore)
+    : `REALISM BAND: FULL_AI (stylized). Full creative freedom inside the visual mode below.`;
+
+  const modeRule = params.mode
+    ? `VISUAL MODE: ${params.mode.label}. ${params.mode.imageStyle} Motion character: ${params.mode.motionStyle}`
+    : '';
+
   const userPrompt = `Question: ${params.question}
 Visual framing: ${params.visualStoryQuestion}
 
-${animationBandRule(params.realismScore)}
+${modeRule}
+
+${bandRule}
 
 Narrative:
 ${params.narrative}
@@ -113,6 +135,7 @@ ${factLines || '(none)'}`;
       description: 'string',
       styleAnchor: 'string',
       narratorGender: 'male | female',
+      relatedTopics: 'array of 4 strings',
       swipes: 'array of { role, title, narration, imagePrompt, videoPrompt, transitionStyle, durationSeconds }',
     },
     0.6,
@@ -156,10 +179,16 @@ ${factLines || '(none)'}`;
     ...swipes.filter((s) => !s.isCore),
   ].map((s, i) => ({ ...s, order: i }));
 
+  const relatedTopics = (Array.isArray(raw.relatedTopics) ? raw.relatedTopics : [])
+    .map((t) => (typeof t === 'string' ? t.trim() : ''))
+    .filter(Boolean)
+    .slice(0, 4);
+
   return {
     title: raw.title?.trim() || params.question,
     description: raw.description?.trim() || '',
     narratorGender,
     swipes,
+    relatedTopics,
   };
 }

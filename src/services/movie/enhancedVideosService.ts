@@ -5,6 +5,7 @@
 
 import { supabase } from '../../lib/supabase';
 import { logger } from '../../utils/logger';
+import type { MovieMode } from './types';
 
 export interface EnhancedVideo {
   id: string;
@@ -28,6 +29,8 @@ export interface CreateEnhanceJobParams {
   imagePrompt: string;
   videoPrompt: string;
   aspectRatio?: string;
+  /** The movie's visual mode — the premium render must keep the same style. */
+  mode?: MovieMode;
 }
 
 /** Kick the server-owned enhance job. Returns the job id; the video finishes in the background. */

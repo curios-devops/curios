@@ -14,11 +14,12 @@
 import { supabase } from '../../lib/supabase.ts';
 import { searchWithTavily } from '../../commonService/searchTools/tavilyService.ts';
 import { braveSearchTool } from '../../commonService/searchTools/braveSearchTool.ts';
-import { streamNarrative } from '../cinematic/core/narrativeFlow.ts';
-import { NarrationService } from '../cinematic/audio/NarrationService.ts';
+import { streamNarrative } from './core/narrativeFlow.ts';
+import { NarrationService } from './audio/NarrationService.ts';
 import { logger } from '../../utils/logger.ts';
 
 import { enhanceQuestion } from './agents/QuestionEnhancementAgent.ts';
+import { MOVIE_MODES, DEFAULT_MOVIE_MODE, normalizeMovieMode } from './config/movieModes.ts';
 import { warmMovieGpu } from './warmupService.ts';
 import { buildSwipeSet } from './agents/StoryboardAgent.ts';
 import { packageForVirality } from './agents/ViralDirectorAgent.ts';
@@ -28,6 +29,8 @@ import { MoviePersistenceService } from './video/MoviePersistenceService.ts';
 import type {
   GenerateMovieOptions,
   MovieExperience,
+  MovieMode,
+  MovieRelatedTopic,
   MovieSwipe,
   MovieSource,
   RenderSwipeVideoOptions,
@@ -50,12 +53,15 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // subject motion, not a slow zoom/pan; for REAL (realismScore > 80) that motion may
 // only be what physically exists in the frame; (2) the narrator is energetic and
 // passionate, in the voice chosen for this set.
-function buildLtxPrompt(swipe: MovieSwipe, realismScore?: number): string {
+function buildLtxPrompt(swipe: MovieSwipe, realismScore?: number, mode?: MovieMode): string {
   const motion = swipe.videoPrompt?.trim() || '';
-  const animationRule =
-    (realismScore ?? 0) > 80
-      ? 'Animate only what genuinely exists in the frame with physically-plausible motion — no new objects, characters, faces or lip-sync. Bring the real subject to life (ignite engines, exhaust, smoke, sparks, moving crowds/water/flame). Do not settle for a slow zoom or static pan.'
-      : 'Bring the whole scene dramatically to life with vivid in-frame motion — the subject itself moves. Do not settle for a slow zoom or static pan.';
+  const modeSpec = mode ? MOVIE_MODES[mode] : undefined;
+  // Stylized modes get their own motion character; the strict "real footage" rule only
+  // applies when the movie IS photojournalistic (real mode / high realism, no mode set).
+  const isReal = modeSpec ? modeSpec.id === 'real' : (realismScore ?? 0) > 80;
+  const animationRule = isReal && (realismScore ?? 100) > 80
+    ? 'Animate only what genuinely exists in the frame with physically-plausible motion — no new objects, characters, faces or lip-sync. Bring the real subject to life (ignite engines, exhaust, smoke, sparks, moving crowds/water/flame). Do not settle for a slow zoom or static pan.'
+    : `Bring the whole scene dramatically to life with vivid in-frame motion — the subject itself moves. Do not settle for a slow zoom or static pan.${modeSpec && modeSpec.id !== 'real' ? ` Keep the established visual style: ${modeSpec.motionStyle}` : ''}`;
 
   const script = swipe.narration?.trim();
   if (!script) return `${motion}\n\n${animationRule}`;
@@ -105,12 +111,19 @@ export async function generateMovie(
   emit?.({ stage: 'enhancing', message: 'Understanding your question...', progress: 6 });
   const enhanced = await enhanceQuestion(question);
 
+  // Visual mode: explicit user choice (mode dropdown) wins; otherwise the agent's proposal.
+  const mode = normalizeMovieMode(options.mode) ||
+    enhanced.proposedMode ||
+    ((enhanced.realismScore ?? 0) >= 50 ? 'real' : DEFAULT_MOVIE_MODE);
+  const modeSpec = MOVIE_MODES[mode];
+
   // Pipeline A "REAL" (docs/Movie/enhaced_refactor.md), cheap default variant: for
   // photojournalistic topics (realismScore ≥ 50) find ONE real reference photo and ground
   // ALL swipe frames on it. Runs concurrently with research/narrative/storyboard — zero
   // added latency; any failure just means the frames stay prompt-only.
+  // Free-grounding modes (meme) never fetch it — the style, not the photo, leads.
   const referenceImagePromise: Promise<string | undefined> =
-    (enhanced.realismScore ?? 0) >= 50
+    (enhanced.realismScore ?? 0) >= 50 && modeSpec.grounding !== 'free'
       ? supabase.functions
           .invoke('movie-reference-image', { body: { query: enhanced.researchQuestion } })
           .then(({ data }) => (data as { imageUrl?: string | null })?.imageUrl || undefined)
@@ -127,12 +140,13 @@ export async function generateMovie(
 
   // Step 4 — swipe set (1 core + 4 secondary)
   emit?.({ stage: 'storyboard', message: 'Designing your swipes...', progress: 42 });
-  const { title, description, narratorGender, swipes } = await buildSwipeSet({
+  const { title, description, narratorGender, swipes, relatedTopics: relatedTopicTitles } = await buildSwipeSet({
     question,
     visualStoryQuestion: enhanced.visualStoryQuestion,
     narrative,
     sources,
     realismScore: enhanced.realismScore,
+    mode: modeSpec,
   });
 
   const styleSeed = Math.floor(Math.random() * 1_000_000); // shared seed → style consistency
@@ -158,6 +172,7 @@ export async function generateMovie(
           userId,
           referenceImageUrl,
           realismScore: enhanced.realismScore,
+          grounding: modeSpec.grounding,
         });
         coreSwipe.status = 'image_ready';
       } catch (error) {
@@ -180,7 +195,7 @@ export async function generateMovie(
           try {
             const { videoUrl } = await ltx.generate({
               imageUrl: coreSwipe.imageUrl!,
-              prompt: buildLtxPrompt(coreSwipe, enhanced.realismScore),
+              prompt: buildLtxPrompt(coreSwipe, enhanced.realismScore, mode),
               duration: coreSwipe.durationSeconds,
               seed: styleSeed,
               userId,
@@ -211,6 +226,7 @@ export async function generateMovie(
           userId,
           referenceImageUrl,
           realismScore: enhanced.realismScore,
+          grounding: modeSpec.grounding,
         });
         swipe.status = 'image_ready';
       } catch (error) {
@@ -222,7 +238,32 @@ export async function generateMovie(
     }),
   );
 
-  await Promise.all([coreVideoPromise, secondaryImagesPromise]);
+  // "Continue Exploring": 4 related themes, each with a small generated image (same
+  // NanoBanana logic as the swipe frames — no reference grounding, style-neutral teaser).
+  // On a mode regeneration the caller passes the existing topics through untouched.
+  const relatedTopicsPromise: Promise<MovieRelatedTopic[]> = options.relatedTopics?.length
+    ? Promise.resolve(options.relatedTopics)
+    : Promise.all(
+        relatedTopicTitles.map(async (topic, index): Promise<MovieRelatedTopic> => {
+          // Queue behind the secondary frames so we never trip the per-minute image quota.
+          await delay((secondarySwipes.length + index) * SECONDARY_IMAGE_STAGGER_MS);
+          try {
+            const imageUrl = await imageProvider.generate(
+              `A striking, curiosity-sparking 16:9 teaser image for the topic: ${topic}. One clear subject, bold composition, no text.`,
+              { userId },
+            );
+            return { title: topic, imageUrl };
+          } catch (error) {
+            logger.warn('[MovieService] Related topic image failed (non-fatal)', {
+              topic,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return { title: topic };
+          }
+        }),
+      );
+
+  const [, , relatedTopics] = await Promise.all([coreVideoPromise, secondaryImagesPromise, relatedTopicsPromise]);
 
   // Optional narration (disabled by default in the UI) — needs the frames, so it runs here.
   if (options.enableNarration) {
@@ -255,8 +296,10 @@ export async function generateMovie(
     title,
     description,
     narrative,
+    mode,
     swipes,
     sources,
+    relatedTopics,
     totalDurationSeconds,
     styleSeed,
     narratorGender,
@@ -324,7 +367,7 @@ export async function renderSwipeVideo(
   try {
     const { videoUrl } = await ltx.generate({
       imageUrl: swipe.imageUrl,
-      prompt: buildLtxPrompt(swipe),
+      prompt: buildLtxPrompt(swipe, undefined, options.mode),
       duration: swipe.durationSeconds,
       seed: options.styleSeed,
       userId: options.userId,
@@ -335,8 +378,10 @@ export async function renderSwipeVideo(
     swipe.status = 'ready';
 
     if (options.projectId) {
+      // The core video is lazy now (renders on the user's Play), so its URL must also
+      // become the project's primary video (share page / Discover feed).
       new MoviePersistenceService()
-        .updateSwipeVideo(options.projectId, swipe.order, videoUrl)
+        .updateSwipeVideo(options.projectId, swipe.order, videoUrl, { isCore: swipe.isCore })
         .catch(() => undefined);
     }
   } catch (error) {
