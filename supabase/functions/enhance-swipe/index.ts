@@ -61,6 +61,40 @@ const VIDEO_RULES =
   "Preserve identity, lighting, textures and composition. No object generation, no facial deformation, " +
   "no camera spins, no added text.";
 
+// Movie Mode style boosters (docs/Movie/moviemode.md) — keep in sync with the client's
+// src/services/movie/config/movieModes.ts. 'real' (or absent) keeps the legacy grounded
+// photojournalistic pipeline above; stylized modes replace the realism booster and rules.
+const MODE_STYLES: Record<string, { image: string; video: string }> = {
+  cinematic: {
+    image: "cinematic film still, dramatic lighting, anamorphic lens, epic wide composition, movie-grade color grading",
+    video: "Dramatic, film-like motion: open up the shot, add atmosphere and scale. Preserve the established cinematic look. No added text.",
+  },
+  cartoon: {
+    image: "2D illustrated cartoon, bold outlines, flat vibrant colors, expressive characters",
+    video: "Bouncy, expressive cartoon animation with squash-and-stretch energy. Keep the illustrated style consistent. No added text.",
+  },
+  pixar: {
+    image: "Pixar-like 3D animation, soft rounded shapes, warm cinematic lighting, expressive stylized characters, high-detail render",
+    video: "Smooth, character-driven 3D animation with lively secondary motion. Keep the 3D animated style consistent. No added text.",
+  },
+  lego: {
+    image: "LEGO brick world, everything built from LEGO bricks, minifigure characters, glossy plastic textures, playful diorama",
+    video: "Stop-motion-style brick animation: minifigures and brick-built parts moving. Keep the LEGO look consistent. No added text.",
+  },
+  anime: {
+    image: "Japanese anime, cel shading, dramatic line work, expressive eyes, dynamic action framing",
+    video: "Dynamic anime action: speed lines, dramatic pans, expressive character motion. Keep the anime style consistent. No added text.",
+  },
+  retro80s: {
+    image: "retro 1980s aesthetic, VHS grain, neon palette, synthwave glow, period-accurate styling",
+    video: "Retro broadcast motion: analog glitches, neon flicker, synthwave pulse. Keep the 80s look consistent. No added text.",
+  },
+  meme: {
+    image: "exaggerated internet-meme style, comedic exaggeration of the situation while keeping its recognizable context, punchy",
+    video: "Comedic, exaggerated motion with punchline timing. Keep the meme energy consistent. No added text.",
+  },
+};
+
 function admin() {
   return createClient(
     // @ts-ignore
@@ -248,7 +282,7 @@ async function qualityRealism(imageB64: string, question: string, token: string)
 }
 
 // ── Gemini Omni Flash (Interactions API) image→video ────────────────────────────
-async function generateVideo(imageB64: string, prompt: string, aspectRatio: string, token: string): Promise<string> {
+async function generateVideo(imageB64: string, prompt: string, aspectRatio: string, token: string, rules: string = VIDEO_RULES): Promise<string> {
   const res = await fetchWithTimeout(vertexInteractionsUrl(OMNI_LOCATION), 280000, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -256,7 +290,7 @@ async function generateVideo(imageB64: string, prompt: string, aspectRatio: stri
       model: OMNI_MODEL,
       input: [
         { type: "image", data: imageB64, mime_type: "image/png" },
-        { type: "text", text: `${prompt}\n\n${VIDEO_RULES}` },
+        { type: "text", text: `${prompt}\n\n${rules}` },
       ],
       response_format: { type: "video", aspect_ratio: aspectRatio },
     }),
@@ -282,20 +316,27 @@ interface JobParams {
   imagePrompt: string;
   videoPrompt: string;
   aspectRatio: string;
+  /** Movie Mode ("Watch as…"). real/absent → legacy grounded pipeline; else stylized. */
+  mode?: string;
 }
 
 async function runJob(jobId: string, p: JobParams) {
   const db = admin();
   try {
     const token = await getVertexAccessToken();
+    const modeStyle = p.mode && p.mode !== "real" ? MODE_STYLES[p.mode] : undefined;
 
-    // STEP 1 + 2 — classify → strategy.
+    // STEP 1 + 2 — classify → strategy. A stylized mode overrides the realism-driven
+    // pipeline choice: cinematic still grounds loosely on a real photo (HYBRID); the
+    // fully stylized modes skip real-image grounding entirely (FULL_AI).
     const cls = await classify(p.question || p.imagePrompt, token);
-    const pipeline = cls.realism_score > 80 ? "REAL" : cls.realism_score >= 50 ? "HYBRID" : "FULL_AI";
-    console.log("[enhance]", { jobId, realism: cls.realism_score, pipeline });
+    let pipeline = cls.realism_score > 80 ? "REAL" : cls.realism_score >= 50 ? "HYBRID" : "FULL_AI";
+    if (modeStyle) pipeline = p.mode === "cinematic" ? "HYBRID" : "FULL_AI";
+    console.log("[enhance]", { jobId, realism: cls.realism_score, pipeline, mode: p.mode ?? "real" });
 
     // STEP 3 — build the base image prompt (+ optional real-image grounding).
-    let imagePrompt = `${p.imagePrompt}. ${REALISM_BOOSTER}. ${SAFETY}`;
+    const booster = modeStyle ? modeStyle.image : REALISM_BOOSTER;
+    let imagePrompt = `${p.imagePrompt}. ${booster}. ${SAFETY}`;
     let best: ImageAnalysis | null = null;
 
     if (pipeline !== "FULL_AI") {
@@ -314,18 +355,23 @@ async function runJob(jobId: string, p: JobParams) {
       imageB64 = await generateImageFromReference(best.url, prompt);
     } else if (pipeline === "HYBRID" && best && best.score >= GOOD_SEARCH_SCORE) {
       // B — remix the user scene with a description of the real image.
-      imagePrompt = `Create a highly realistic image.\nSCENE: ${p.imagePrompt}\nREFERENCE (real photo of the subject): ${best.description}\n${REALISM_BOOSTER}. ${SAFETY}`;
+      imagePrompt = modeStyle
+        ? `Create an image in this style: ${modeStyle.image}.\nSCENE: ${p.imagePrompt}\nREFERENCE (real photo of the subject, for identity only — restyle it fully): ${best.description}\n${SAFETY}`
+        : `Create a highly realistic image.\nSCENE: ${p.imagePrompt}\nREFERENCE (real photo of the subject): ${best.description}\n${REALISM_BOOSTER}. ${SAFETY}`;
       imageB64 = await generateImageFromText(imagePrompt);
     } else {
       // C — full AI (or no usable real image found).
       imageB64 = await generateImageFromText(imagePrompt);
     }
 
-    // STEP 4 — realism gate (one retry).
-    const realism = await qualityRealism(imageB64, p.question, token);
-    if (realism < QUALITY_MIN) {
-      console.log("[enhance] realism gate retry", { jobId, realism });
-      imageB64 = await generateImageFromText(`${imagePrompt} Maximize photorealism; remove any AI artifacts, plastic skin, warped hands or unnatural lighting.`);
+    // STEP 4 — realism gate (one retry). Only meaningful for photorealistic output;
+    // stylized modes are SUPPOSED to look non-photographic, so they skip it.
+    if (!modeStyle) {
+      const realism = await qualityRealism(imageB64, p.question, token);
+      if (realism < QUALITY_MIN) {
+        console.log("[enhance] realism gate retry", { jobId, realism });
+        imageB64 = await generateImageFromText(`${imagePrompt} Maximize photorealism; remove any AI artifacts, plastic skin, warped hands or unnatural lighting.`);
+      }
     }
 
     // Upload the frame.
@@ -340,8 +386,9 @@ async function runJob(jobId: string, p: JobParams) {
     // can replace the swipe's image while the video still renders.
     await db.from("enhanced_videos").update({ image_url: imageUrl, updated_at: new Date().toISOString() }).eq("id", jobId);
 
-    // STEP 5 — video.
-    const videoB64 = await generateVideo(imageB64, p.videoPrompt, p.aspectRatio, token);
+    // STEP 5 — video. Stylized modes swap the documentary rules for their own
+    // style-preserving motion rules (the doc rules would fight the art style).
+    const videoB64 = await generateVideo(imageB64, p.videoPrompt, p.aspectRatio, token, modeStyle?.video ?? VIDEO_RULES);
     const videoPath = `${p.userId}/enhanced/${jobId}.mp4`;
     await db.storage.from("movie-assets").upload(videoPath, Uint8Array.from(atob(videoB64), (c) => c.charCodeAt(0)), {
       contentType: "video/mp4",
@@ -397,6 +444,7 @@ Deno.serve(async (req: Request) => {
     const question = body.question || title || "";
     const swipeOrder = Number(body.swipeOrder ?? 0);
     const aspectRatio = body.aspectRatio || "16:9";
+    const mode = typeof body.mode === "string" ? body.mode.toLowerCase().trim() : undefined;
     if (!userId || !imagePrompt || !videoPrompt) {
       return new Response(JSON.stringify({ error: "Missing userId, imagePrompt or videoPrompt" }), { status: 400, headers: corsHeaders });
     }
@@ -415,7 +463,7 @@ Deno.serve(async (req: Request) => {
 
     const jobId = row.id as string;
     // @ts-ignore EdgeRuntime is provided by the Supabase edge runtime
-    EdgeRuntime.waitUntil(runJob(jobId, { userId, projectId, swipeOrder, question, imagePrompt, videoPrompt, aspectRatio }));
+    EdgeRuntime.waitUntil(runJob(jobId, { userId, projectId, swipeOrder, question, imagePrompt, videoPrompt, aspectRatio, mode }));
 
     return new Response(JSON.stringify({ jobId }), {
       status: 202,

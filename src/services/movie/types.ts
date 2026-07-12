@@ -8,6 +8,15 @@
 
 export type MovieAspectRatio = '16:9';
 
+/** Visual style the whole movie is rendered in ("Watch as…", docs/Movie/moviemode.md). */
+export type MovieMode = 'real' | 'cinematic' | 'cartoon' | 'pixar' | 'lego' | 'anime' | 'retro80s' | 'meme';
+
+/** "Continue Exploring" carousel item — a related theme with a small generated image. */
+export interface MovieRelatedTopic {
+  title: string;
+  imageUrl?: string;
+}
+
 export interface MovieSource {
   title: string;
   url: string;
@@ -19,6 +28,8 @@ export interface EnhancedQuestion {
   visualStoryQuestion: string; // the human/emotional framing for the visuals
   /** 0 = artistic/abstract, 100 = photojournalistic. ≥50 grounds the swipe frames on a real photo. */
   realismScore?: number;
+  /** Visual mode the agent proposes for this query (news→real, science→cinematic, …). */
+  proposedMode?: MovieMode;
 }
 
 // The core swipe answers the question directly; the rest deepen it.
@@ -65,8 +76,12 @@ export interface MovieExperience {
   title: string;
   description: string;
   narrative: string;
+  /** The visual mode this movie was rendered in — Enhance and lazy renders must respect it. */
+  mode?: MovieMode;
   swipes: MovieSwipe[];
   sources: MovieSource[];
+  /** "Continue Exploring" themes (kept as-is across mode regenerations). */
+  relatedTopics?: MovieRelatedTopic[];
   totalDurationSeconds: number;
   /** Shared seed so on-demand swipe videos keep the core's visual style. */
   styleSeed: number;
@@ -100,6 +115,10 @@ export interface GenerateMovieOptions {
   userId?: string;
   aspectRatio?: MovieAspectRatio;
   enableNarration?: boolean;
+  /** Visual mode override (mode dropdown). When absent, the enhancement agent's proposal is used. */
+  mode?: MovieMode;
+  /** Reuse these Continue Exploring topics instead of generating new ones (mode regeneration). */
+  relatedTopics?: MovieRelatedTopic[];
   /** When false, skip even the core video and stop at images (storyboard preview). */
   renderCoreVideo?: boolean;
   /**
@@ -117,4 +136,6 @@ export interface RenderSwipeVideoOptions {
   userId?: string;
   projectId?: string;
   styleSeed?: number;
+  /** The movie's visual mode — keeps lazy renders in the same style. */
+  mode?: MovieMode;
 }

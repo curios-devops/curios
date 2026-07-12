@@ -4,7 +4,8 @@
 
 import { supabase } from '../../../lib/supabase';
 import { logger } from '../../../utils/logger';
-import type { MovieExperience, MovieSwipe, MovieSource, SwipeRole, ViralPackage } from '../types';
+import { normalizeMovieMode } from '../config/movieModes';
+import type { MovieExperience, MovieRelatedTopic, MovieSwipe, MovieSource, SwipeRole, ViralPackage } from '../types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -58,6 +59,8 @@ export class MoviePersistenceService {
           duration_seconds: experience.totalDurationSeconds,
           aspect_ratio: aspectRatio,
           sources: experience.sources,
+          video_mode: experience.mode ?? null,
+          related_topics: experience.relatedTopics ?? [],
           viral: experience.viral ?? {},
           generation_time_ms: generationTimeMs,
           status: 'complete',
@@ -185,8 +188,10 @@ export class MoviePersistenceService {
       title: (data.title as string) || '',
       description: (data.description as string) || '',
       narrative: (data.narrative as string) || '',
+      mode: normalizeMovieMode(data.video_mode as string | null),
       swipes,
       sources: (data.sources ?? []) as MovieSource[],
+      relatedTopics: (data.related_topics ?? []) as MovieRelatedTopic[],
       totalDurationSeconds: (data.duration_seconds as number) || 0,
       styleSeed: 0, // not persisted; lazy renders just proceed without the shared seed
       coreVideoUrl: (data.full_video_url as string) || undefined,
@@ -196,7 +201,12 @@ export class MoviePersistenceService {
   }
 
   /** Persist a lazily-generated swipe video back to its row (best-effort). */
-  async updateSwipeVideo(projectId: string, swipeOrder: number, videoUrl: string): Promise<void> {
+  async updateSwipeVideo(
+    projectId: string,
+    swipeOrder: number,
+    videoUrl: string,
+    opts: { isCore?: boolean } = {},
+  ): Promise<void> {
     if (!this.isValidUuid(projectId)) return;
     const { error } = await supabase
       .from('movie_scenes')
@@ -204,6 +214,15 @@ export class MoviePersistenceService {
       .eq('project_id', projectId)
       .eq('scene_order', swipeOrder);
     if (error) logger.warn('[MoviePersistence] updateSwipeVideo failed', { error: error.message });
+
+    // Core renders lazily (on Play) — keep the project's primary/shareable video in sync.
+    if (opts.isCore) {
+      const { error: projError } = await supabase
+        .from('movie_projects')
+        .update({ full_video_url: videoUrl })
+        .eq('id', projectId);
+      if (projError) logger.warn('[MoviePersistence] core full_video_url update failed', { error: projError.message });
+    }
   }
 
   async incrementShareCount(projectId: string): Promise<void> {
