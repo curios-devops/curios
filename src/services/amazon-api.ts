@@ -18,7 +18,30 @@ export interface AmazonSearchResult {
   success: boolean;
   products: AmazonProduct[];
   query: string;
+  /** The Amazon marketplace domain actually searched (e.g. "amazon.es"). */
+  domain?: string;
   error?: string;
+}
+
+/**
+ * Best-effort buyer country from the browser's own language/region setting
+ * (e.g. "es-ES" → "ES") — no geolocation prompt, no network call. Used to search
+ * the buyer's own Amazon marketplace instead of always amazon.com, since products
+ * on a different marketplace are frequently unshippable to the buyer's country
+ * ("This item cannot be shipped to your selected delivery location").
+ * Falls back to 'US' when no region subtag is available (e.g. bare "en").
+ */
+export function detectUserCountry(): string {
+  try {
+    const locales = navigator.languages?.length ? navigator.languages : [navigator.language];
+    for (const locale of locales) {
+      const region = locale?.split('-')[1];
+      if (region && region.length === 2) return region.toUpperCase();
+    }
+  } catch {
+    // navigator unavailable (SSR/non-browser) — fall through to default.
+  }
+  return 'US';
 }
 
 /**
@@ -82,11 +105,13 @@ function optimizeAmazonQuery(query: string): string {
  */
 export async function searchAmazonProducts(
   query: string,
-  maxResults: number = 4
+  maxResults: number = 4,
+  countryCode?: string
 ): Promise<AmazonSearchResult> {
   try {
+    const country = countryCode || detectUserCountry();
     console.log(`\n🛒🛒🛒 [AMAZON API CALLED] 🛒🛒🛒`);
-    console.log(`📥 ORIGINAL QUERY FROM USER: "${query}"`);
+    console.log(`📥 ORIGINAL QUERY FROM USER: "${query}" (country: ${country})`);
 
     // Optimize query for better Amazon product results
     const optimizedQuery = optimizeAmazonQuery(query);
@@ -121,7 +146,7 @@ export async function searchAmazonProducts(
         'Authorization': `Bearer ${supabaseAnonKey}`,
         'apikey': supabaseAnonKey
       },
-      body: JSON.stringify({ query: optimizedQuery, maxResults }),
+      body: JSON.stringify({ query: optimizedQuery, maxResults, country }),
       signal: AbortSignal.timeout(10000) // 10 second timeout
     });
 
@@ -153,18 +178,21 @@ export async function searchAmazonProducts(
       };
     }
 
-    console.log(`✅ [Amazon API] Success! Found ${data.products?.length || 0} products`);
+    console.log(`✅ [Amazon API] Success! Found ${data.products?.length || 0} products on ${data.domain || 'amazon.com'}`);
 
-    // Validate product URLs before returning
+    // Validate product URLs before returning — fallback rebuilds on the SAME resolved
+    // marketplace domain, not hardcoded .com (that would reintroduce the shipping issue).
+    const domain = data.domain || 'amazon.com';
     const validatedProducts = (data.products || []).map((product: AmazonProduct) => ({
       ...product,
-      productUrl: validateAmazonUrl(product.productUrl, product.asin)
+      productUrl: validateAmazonUrl(product.productUrl, product.asin, domain)
     }));
 
     return {
       success: true,
       products: validatedProducts,
       query: data.query || query,
+      domain,
       error: data.error
     };
   } catch (error) {
@@ -180,30 +208,42 @@ export async function searchAmazonProducts(
   }
 }
 
+// Matches any Amazon marketplace domain (amazon.com, amazon.es, amazon.co.uk,
+// amazon.com.mx, www.amazon.de, ...) — NOT just amazon.com. The previous
+// `hostname.includes('amazon.com')` check rejected every non-.com marketplace URL
+// and silently rewrote it back to amazon.com, which is exactly what produced
+// "This item cannot be shipped to your selected delivery location" for buyers
+// outside the US: the resolved (correct, shippable) marketplace link was being
+// discarded in favor of a US one that often can't ship to them.
+const AMAZON_HOSTNAME_RE = /(^|\.)amazon\.[a-z.]+$/i;
+
 /**
- * Validate and sanitize Amazon product URLs
+ * Validate and sanitize Amazon product URLs. `domain` is the marketplace actually
+ * searched (e.g. "amazon.es") — the fallback URL is built on THAT domain, not a
+ * hardcoded amazon.com, so a rebuilt link still points at a shippable marketplace.
  */
-function validateAmazonUrl(url: string, asin: string): string {
+function validateAmazonUrl(url: string, asin: string, domain: string = 'amazon.com'): string {
+  const fallback = `https://www.${domain}/dp/${asin}`;
   try {
     // If URL is empty or invalid, build default Amazon URL
     if (!url || typeof url !== 'string' || url.trim().length === 0) {
-      return `https://www.amazon.com/dp/${asin}`;
+      return fallback;
     }
 
     // Parse URL to validate it
     const parsedUrl = new URL(url);
 
-    // Ensure it's an Amazon domain
-    if (!parsedUrl.hostname.includes('amazon.com')) {
+    // Ensure it's an Amazon domain (any marketplace, not just .com)
+    if (!AMAZON_HOSTNAME_RE.test(parsedUrl.hostname)) {
       console.warn('⚠️ [Amazon API] Non-Amazon URL detected, using default:', url);
-      return `https://www.amazon.com/dp/${asin}`;
+      return fallback;
     }
 
     return url;
   } catch (error) {
     // If URL parsing fails, return default Amazon URL
     console.warn('⚠️ [Amazon API] Invalid URL detected, using default:', url);
-    return `https://www.amazon.com/dp/${asin}`;
+    return fallback;
   }
 }
 
