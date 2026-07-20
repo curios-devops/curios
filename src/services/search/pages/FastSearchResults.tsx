@@ -14,6 +14,13 @@ import DynamicShareRow from '../../../components/share/DynamicShareRow';
 import { formatTimeAgo } from '../../../utils/time';
 import { saveNode, ensureShared, type SavedNodeRef } from '../../space/nodePersistenceService';
 import SaveButton from '../../space/components/SaveButton';
+import { resolveBuyIntent } from '../buyIntent';
+import { searchAmazonProducts, type AmazonProduct } from '../../amazon-api';
+import ProductCard from '../../../components/shopping/ProductCard';
+
+// Sponsor/product carousel is capped here — legacy search capped at 4, this replaces
+// it with up to 10 so the carousel has enough tiles to actually scroll.
+const MAX_SPONSOR_PRODUCTS = 10;
 
 // Helper to extract clean domain name from URL
 function extractDomainName(url: string): string {
@@ -39,6 +46,10 @@ export default function FastSearchResults() {
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
   const wantsDeep = searchParams.get('deep') === '1';
+  // Auto mode already confirmed buy intent before routing here — trust it and skip
+  // re-detecting. Absent for an explicitly-selected Search (or a direct/shared URL),
+  // which self-detects below, in parallel with the main search workflow.
+  const buyIntentConfirmed = searchParams.get('buy') === '1';
 
   const { requestProAccess } = useProCredits();
 
@@ -59,6 +70,10 @@ export default function FastSearchResults() {
   const [frozenSourcesForAnimation, setFrozenSourcesForAnimation] = useState<Array<{ title: string; url: string; snippet: string }>>([]);
   const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
   const [images, setImages] = useState<Array<{ url: string; title: string; source: string }>>([]);
+  // Sponsor carousel: populated only when buy intent is detected (Auto's `&buy=1` flag,
+  // or this page's own parallel detection for an explicitly-selected Search). Replaces
+  // the image carousel in place — the underlying image search still runs regardless.
+  const [sponsorProducts, setSponsorProducts] = useState<AmazonProduct[]>([]);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('answer');
   // The persisted curiosity node (authenticated only). Drives the Share snapshot.
@@ -181,6 +196,24 @@ export default function FastSearchResults() {
         setFoundSources([]);
         setFrozenSourcesForAnimation([]);
         setHeaderImage(null);
+        setSponsorProducts([]);
+
+        // Sponsor carousel (buy intent): fire-and-forget, never blocks the search/answer.
+        // Auto already confirmed it (`&buy=1`) — go straight to fetching products. Otherwise
+        // (explicit Search mode, direct/shared URL) detect it here, in parallel with the
+        // search workflow below, exactly like the legacy search's shopping-intent check.
+        const fetchSponsorProducts = () =>
+          searchAmazonProducts(query, MAX_SPONSOR_PRODUCTS)
+            .then((result) => { if (result.success) setSponsorProducts(result.products); })
+            .catch(() => undefined);
+
+        if (buyIntentConfirmed) {
+          void fetchSponsorProducts();
+        } else {
+          void resolveBuyIntent(query).then((result) => {
+            if (result.isBuyIntent) void fetchSponsorProducts();
+          });
+        }
 
         const locale = navigator.language.split('-')[0] || 'en';
 
@@ -447,9 +480,14 @@ export default function FastSearchResults() {
           </div>
         )}
 
-        {/* Images at top - between tabs and content */}
-        {!isLoading && carouselImages.length > 0 && activeTab === 'answer' && (
-          <ImagesCarousel images={carouselImages} featuredFirst={hasFeaturedImage} />
+        {/* Images at top - between tabs and content. Buy intent replaces it with the
+            sponsor products carousel (Amazon) — same slot, same tab. */}
+        {!isLoading && activeTab === 'answer' && (
+          sponsorProducts.length > 0 ? (
+            <ProductsCarousel products={sponsorProducts} />
+          ) : carouselImages.length > 0 && (
+            <ImagesCarousel images={carouselImages} featuredFirst={hasFeaturedImage} />
+          )
         )}
 
         {/* Dynamic share row - between carousel and outline (blueprint placement).
@@ -883,6 +921,67 @@ function ImagesCarousel({ images, featuredFirst = false }: { images: Array<{ url
         >
           <ChevronRight className="w-5 h-5 text-gray-700 dark:text-gray-300" />
         </button>
+      </div>
+    </div>
+  );
+}
+
+// Sponsor Products Carousel — same horizontal scroll-snap shell as ImagesCarousel,
+// each tile is the shared ProductCard (image, price badge, rating, "View on Amazon").
+function ProductsCarousel({ products }: { products: AmazonProduct[] }) {
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (!containerRef.current) return;
+    const scrollAmount = 300;
+    const newPosition = direction === 'left'
+      ? Math.max(0, scrollPosition - scrollAmount)
+      : scrollPosition + scrollAmount;
+
+    containerRef.current.scrollTo({ left: newPosition, behavior: 'smooth' });
+    setScrollPosition(newPosition);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
+        <span>Sponsored</span>
+      </div>
+      <div className="relative group">
+        {scrollPosition > 0 && (
+          <button
+            onClick={() => scroll('left')}
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+          </button>
+        )}
+
+        <div
+          ref={containerRef}
+          className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory items-stretch"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {products.map((product) => (
+            <div key={product.asin} className="flex-shrink-0 snap-start w-44">
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() => scroll('right')}
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+        </button>
+      </div>
+
+      <div className="text-[11px] text-gray-400 dark:text-gray-500">
+        Products are fetched from Amazon. Prices and availability may vary.
       </div>
     </div>
   );

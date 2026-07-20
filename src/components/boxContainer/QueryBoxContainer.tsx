@@ -14,6 +14,7 @@ import { logger } from '../../utils/logger.ts';
 import { useVoiceRecording } from '../../hooks/useVoiceRecording.ts';
 import { transcribeAudioWithFallback } from '../../services/stt/transcriptionService.ts';
 import { classifyIntent } from '../../services/auto/intentRouter.ts';
+import { resolveBuyIntent } from '../../services/search/buyIntent.ts';
 import { warmMovieGpu } from '../../services/movie/warmupService.ts';
 
 interface QueryBoxContainerProps {
@@ -125,15 +126,23 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
     // Auto mode: detect intent and resolve to a concrete mode before routing.
     // Explicit modes (selectedMode !== 'auto') are honored as-is — no classification.
     let resolvedMode = selectedMode;
+    let buyIntentDetected = false;
     if (selectedMode === 'auto') {
       if (hasImages) {
         // Images always mean reverse-image search — skip classification.
         resolvedMode = 'fastsearch';
       } else {
         setIsRouting(true);
-        const intent = await classifyIntent(trimmedQuery);
-        resolvedMode =
-          intent === 'avatar' ? 'avatar'
+        // Buy-intent runs alongside the mode classifier (not after it) — for now the
+        // sponsor carousel only lives in Search, so a confirmed buy intent always wins
+        // the route, overriding whatever avatar/movie/stories was otherwise guessed.
+        const [intent, buyIntent] = await Promise.all([
+          classifyIntent(trimmedQuery),
+          resolveBuyIntent(trimmedQuery),
+        ]);
+        buyIntentDetected = buyIntent.isBuyIntent;
+        resolvedMode = buyIntentDetected ? 'fastsearch'
+          : intent === 'avatar' ? 'avatar'
           : intent === 'movie' ? 'movie'
           : intent === 'stories' ? 'stories'
           : 'fastsearch';
@@ -147,11 +156,14 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
 
     // Pass image URLs as URL parameters (comma-separated)
     const imageParam = imageUrls.length > 0 ? `&images=${encodeURIComponent(imageUrls.join(','))}` : '';
+    // Already-confirmed buy intent → tell the Search page so it doesn't re-detect
+    // (explicit "Search" mode selections still self-detect on the results page).
+    const buyParam = buyIntentDetected ? '&buy=1' : '';
 
     // Launched — drop the saved draft so we don't restore a stale query later.
     try { sessionStorage.removeItem('home_search_draft'); } catch { /* ignore */ }
 
-    navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${imageParam}`);
+    navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${imageParam}${buyParam}`);
   };
 
   // Enter no longer launches the search — it inserts a newline (use the arrow
