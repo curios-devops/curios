@@ -92,6 +92,10 @@ function generateDynamicFollowUps(query: string): string[] {
 export interface FastSearchRequest {
   query: string;
   locale?: string;
+  /** Buy intent confirmed — route image search straight to Brave, skipping the SerpAPI
+   * quota the sponsor products carousel (search-amazon-products) already spent on this
+   * same query. See mediaSearchProvider.searchImages for the shared-quota rationale. */
+  skipSerpApiImages?: boolean;
 }
 
 export interface FastSearchResponse {
@@ -222,7 +226,7 @@ export async function executeFastSearchStreaming(
   onSourcesFound?: (sources: Array<{ title: string; url: string; snippet: string }>) => void,
   onImagesFound?: (images: Array<{ url: string; title: string; source: string }>) => void
 ): Promise<Omit<FastSearchResponse, 'answer'>> {
-  const { query, locale = 'en' } = request;
+  const { query, locale = 'en', skipSerpApiImages } = request;
 
   logger.info('FastSearch: Starting streaming search', { query, locale });
 
@@ -234,7 +238,7 @@ export async function executeFastSearchStreaming(
 
     const [allWebResults, images, videos] = await Promise.all([
       executeWebSearch(query),
-      searchImages(query),
+      searchImages(query, { skipSerpApi: skipSerpApiImages }),
       searchVideos(query)
     ]);
 
@@ -355,7 +359,7 @@ export async function executeDeepFastSearchStreaming(
   onImagesFound?: (images: Array<{ url: string; title: string; source: string }>) => void,
   onHeaderImage?: (url: string) => void
 ): Promise<Omit<FastSearchResponse, 'answer'> & { headerImage?: string }> {
-  const { query, locale = 'en' } = request;
+  const { query, locale = 'en', skipSerpApiImages } = request;
 
   logger.info('FastSearch[Deep]: Starting Ask Deeper search', { query, locale });
 
@@ -370,8 +374,8 @@ export async function executeDeepFastSearchStreaming(
     // replacing it: base images are kept and the expanded-angle ones are added,
     // deduped by URL so nothing repeats or disappears.
     const [{ webResults, images: deepImages, videos }, baseImages] = await Promise.all([
-      executeDeepRetrieval(expanded),
-      searchImages(query).catch(() => [] as ImageResult[]),
+      executeDeepRetrieval(expanded, { skipSerpApiImages }),
+      searchImages(query, { skipSerpApi: skipSerpApiImages }).catch(() => [] as ImageResult[]),
     ]);
     const images = dedupeImagesByUrl([baseImages, deepImages]);
 

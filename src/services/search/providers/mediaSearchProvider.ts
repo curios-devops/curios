@@ -41,11 +41,22 @@ function dedupeByUrl(images: ImageResult[]): ImageResult[] {
 
 /**
  * Execute image search: SerpAPI primary, Brave fallback when sparse.
+ *
+ * `skipSerpApi`: go straight to Brave. Used when buy intent is confirmed — the
+ * sponsor products carousel already spends one SerpAPI call (search-amazon-products,
+ * same shared SERPAPI_API_KEY as this engine's google-images-search), and the image
+ * carousel isn't even shown in that case (only the Images tab still needs the data),
+ * so there's no reason to double-spend the shared SerpAPI quota on the same query.
  */
-export async function searchImages(query: string): Promise<ImageResult[]> {
+export async function searchImages(query: string, opts: { skipSerpApi?: boolean } = {}): Promise<ImageResult[]> {
   if (!query?.trim()) {
     logger.warn('MediaSearchProvider: Empty query provided for image search');
     return [];
+  }
+
+  if (opts.skipSerpApi) {
+    logger.info('MediaSearchProvider: Skipping SerpAPI (buy intent), using Brave images directly');
+    return (await searchBraveImages(query)).slice(0, 12);
   }
 
   const serpImages = await searchSerpApiImages(query);
