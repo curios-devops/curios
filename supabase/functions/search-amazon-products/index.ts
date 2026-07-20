@@ -7,6 +7,50 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 const SERPAPI_API_KEY = Deno.env.get('SERPAPI_API_KEY');
 const AMAZON_STORE_ID = Deno.env.get('AMAZON_STORE_ID') || '';
 
+// ISO 3166-1 alpha-2 country → Amazon marketplace domain. Products from amazon.com
+// are frequently unshippable to non-US buyers ("This item cannot be shipped to your
+// selected delivery location"); searching the buyer's own marketplace instead returns
+// products that domain actually delivers. Unmapped/unknown countries fall back to the
+// US marketplace (previous, only) behavior.
+//
+// NOTE — affiliate tag: AMAZON_STORE_ID is a single Associates tag. Amazon's Associates
+// program is region-specific — a US tag is NOT valid on amazon.es/de/fr/etc (the EU
+// Associates program covers many EU domains with one tag, but non-EU marketplaces like
+// amazon.co.jp/amazon.com.au need their own separate registration). Appending the same
+// AMAZON_STORE_ID to every marketplace's URL only earns a referral fee on the domain(s)
+// it's actually registered for — this does not (and, from an edge function, cannot)
+// verify that.
+const AMAZON_DOMAINS: Record<string, string> = {
+  US: 'amazon.com',
+  CA: 'amazon.ca',
+  MX: 'amazon.com.mx',
+  BR: 'amazon.com.br',
+  GB: 'amazon.co.uk',
+  UK: 'amazon.co.uk',
+  IE: 'amazon.ie',
+  DE: 'amazon.de',
+  FR: 'amazon.fr',
+  IT: 'amazon.it',
+  ES: 'amazon.es',
+  NL: 'amazon.nl',
+  SE: 'amazon.se',
+  PL: 'amazon.pl',
+  BE: 'amazon.com.be',
+  TR: 'amazon.com.tr',
+  AE: 'amazon.ae',
+  SA: 'amazon.sa',
+  EG: 'amazon.eg',
+  IN: 'amazon.in',
+  JP: 'amazon.co.jp',
+  SG: 'amazon.sg',
+  AU: 'amazon.com.au',
+};
+
+function resolveAmazonDomain(country?: string): string {
+  const code = (country || '').trim().toUpperCase();
+  return AMAZON_DOMAINS[code] || 'amazon.com';
+}
+
 Deno.serve(async (req: Request) => {
   // CORS headers
   const corsHeaders = {
@@ -46,7 +90,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Parse request body
-    const { query, maxResults = 4 } = await req.json();
+    const { query, maxResults = 4, country } = await req.json();
 
     if (!query || typeof query !== 'string') {
       return new Response(
@@ -55,14 +99,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const domain = resolveAmazonDomain(country);
+
     // Build SerpAPI request URL
     const serpApiUrl = new URL('https://serpapi.com/search');
     serpApiUrl.searchParams.set('engine', 'amazon');
-    serpApiUrl.searchParams.set('amazon_domain', 'amazon.com');
+    serpApiUrl.searchParams.set('amazon_domain', domain);
     serpApiUrl.searchParams.set('k', query);
     serpApiUrl.searchParams.set('api_key', SERPAPI_API_KEY);
 
-    console.log('[Amazon Products] Searching:', query);
+    console.log('[Amazon Products] Searching:', query, 'domain:', domain, 'country:', country || '(none)');
 
     // Make request to SerpAPI
     const response = await fetch(serpApiUrl.toString());
@@ -103,10 +149,11 @@ Deno.serve(async (req: Request) => {
       // Skip if no ASIN
       if (!result.asin) continue;
 
-      // Build affiliate URL
+      // Build affiliate URL on the RESOLVED marketplace domain (not hardcoded .com) —
+      // otherwise a Spain buyer gets an amazon.com link the item can't ship to.
       const productUrl = AMAZON_STORE_ID
-        ? `https://www.amazon.com/dp/${result.asin}?tag=${AMAZON_STORE_ID}`
-        : result.link || `https://www.amazon.com/dp/${result.asin}`;
+        ? `https://www.${domain}/dp/${result.asin}?tag=${AMAZON_STORE_ID}`
+        : result.link || `https://www.${domain}/dp/${result.asin}`;
 
       // Extract price
       let price = 'N/A';
@@ -151,7 +198,8 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         products: products,
-        query: query
+        query: query,
+        domain: domain
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
