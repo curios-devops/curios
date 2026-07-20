@@ -75,7 +75,8 @@ function dedupeImages(imageGroups: ImageResult[][]): ImageResult[] {
  * nothing.
  */
 export async function executeDeepRetrieval(
-  queries: ExpandedQueries
+  queries: ExpandedQueries,
+  opts: { skipSerpApiImages?: boolean } = {}
 ): Promise<DeepRetrievalResult> {
   // Three engines in parallel, routed per angle:
   //   principal / expansion → Tavily Deep (advanced)
@@ -86,8 +87,8 @@ export async function executeDeepRetrieval(
       searchTavilyDeep(queries.expansion).catch(() => [] as WebSearchResult[]),
       searchExa(queries.contrapunto, 10).catch(() => [] as WebSearchResult[]),
       searchBraveWeb(queries.contrapunto).catch(() => [] as WebSearchResult[]),
-      searchImages(queries.principal).catch(() => [] as ImageResult[]),
-      searchImages(queries.expansion).catch(() => [] as ImageResult[]),
+      searchImages(queries.principal, { skipSerpApi: opts.skipSerpApiImages }).catch(() => [] as ImageResult[]),
+      searchImages(queries.expansion, { skipSerpApi: opts.skipSerpApiImages }).catch(() => [] as ImageResult[]),
       searchVideos(queries.principal).catch(() => [] as VideoResult[]),
     ]);
 

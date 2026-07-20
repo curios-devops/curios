@@ -243,16 +243,20 @@ export default function FastSearchResults() {
           setImages(imgs);
         };
 
+        // Buy intent already confirmed (Auto's &buy=1) → images only feed the
+        // secondary "Images" tab now (the carousel shows products instead), so
+        // skip SerpAPI here and go straight to Brave — the sponsor carousel's
+        // own Amazon lookup already spent this query's SerpAPI quota.
         const response = deep
           ? await executeDeepFastSearchStreaming(
-              { query, locale },
+              { query, locale, skipSerpApiImages: buyIntentConfirmed },
               onChunk,
               onSources,
               onImagesFound,
               (url: string) => setHeaderImage(url)
             )
           : await executeFastSearchStreaming(
-              { query, locale },
+              { query, locale, skipSerpApiImages: buyIntentConfirmed },
               onChunk,
               onSources,
               onImagesFound
