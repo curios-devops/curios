@@ -42,8 +42,12 @@ jobs:
             BEFORE="${{ github.event.before }}"
             # First push to a branch (or force-push) may not have a valid `before` — diff the last commit.
             if ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then BEFORE="${{ github.event.after }}~1"; fi
+            # _shared is imported BY functions (e.g. vertex.ts, awsSigV4.ts) — it isn't
+            # a deployable function itself, and `supabase functions deploy _shared`
+            # hard-fails ("Invalid Function name"), aborting the whole loop before any
+            # real function gets deployed. Exclude it explicitly.
             FUNCS=$(git diff --name-only "$BEFORE" "${{ github.event.after }}" -- 'supabase/functions/' \
-              | sed -nE 's#^supabase/functions/([^/]+)/.*#\1#p' | sort -u | tr '\n' ' ')
+              | sed -nE 's#^supabase/functions/([^/]+)/.*#\1#p' | sort -u | grep -v '^_shared$' | tr '\n' ' ')
           fi
           echo "funcs=$FUNCS" >> "$GITHUB_OUTPUT"
           echo "Functions to deploy: '${FUNCS}'"
