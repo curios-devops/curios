@@ -24,27 +24,6 @@ export interface AmazonSearchResult {
 }
 
 /**
- * Best-effort buyer country from the browser's own language/region setting
- * (e.g. "es-ES" → "ES") — no geolocation prompt, no network call. Used to search
- * the buyer's own Amazon marketplace instead of always amazon.com, since products
- * on a different marketplace are frequently unshippable to the buyer's country
- * ("This item cannot be shipped to your selected delivery location").
- * Falls back to 'US' when no region subtag is available (e.g. bare "en").
- */
-export function detectUserCountry(): string {
-  try {
-    const locales = navigator.languages?.length ? navigator.languages : [navigator.language];
-    for (const locale of locales) {
-      const region = locale?.split('-')[1];
-      if (region && region.length === 2) return region.toUpperCase();
-    }
-  } catch {
-    // navigator unavailable (SSR/non-browser) — fall through to default.
-  }
-  return 'US';
-}
-
-/**
  * Optimize query for Amazon product search
  * Extracts product names and removes unnecessary words
  */
@@ -105,13 +84,11 @@ function optimizeAmazonQuery(query: string): string {
  */
 export async function searchAmazonProducts(
   query: string,
-  maxResults: number = 4,
-  countryCode?: string
+  maxResults: number = 4
 ): Promise<AmazonSearchResult> {
   try {
-    const country = countryCode || detectUserCountry();
     console.log(`\n🛒🛒🛒 [AMAZON API CALLED] 🛒🛒🛒`);
-    console.log(`📥 ORIGINAL QUERY FROM USER: "${query}" (country: ${country})`);
+    console.log(`📥 ORIGINAL QUERY FROM USER: "${query}"`);
 
     // Optimize query for better Amazon product results
     const optimizedQuery = optimizeAmazonQuery(query);
@@ -146,7 +123,7 @@ export async function searchAmazonProducts(
         'Authorization': `Bearer ${supabaseAnonKey}`,
         'apikey': supabaseAnonKey
       },
-      body: JSON.stringify({ query: optimizedQuery, maxResults, country }),
+      body: JSON.stringify({ query: optimizedQuery, maxResults }),
       signal: AbortSignal.timeout(10000) // 10 second timeout
     });
 

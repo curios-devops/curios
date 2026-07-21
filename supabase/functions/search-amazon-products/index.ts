@@ -1,50 +1,157 @@
 // deno-lint-ignore-file no-import-prefix
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import { signPaapiRequest } from "../_shared/awsSigV4.ts";
 
 /**
- * Supabase Edge Function: Search Amazon Products via SerpAPI, gated per-store.
+ * Supabase Edge Function: Search Amazon Products — US store only, no location/
+ * region gating. Buy intent alone is enough to show the sponsor carousel,
+ * regardless of where the buyer is (simplified from an earlier per-country/
+ * per-store design — country detection and the Spain store were removed).
  *
- * Each "store" (US, ES, ...) has its own Associate tag and an ON/OFF flag. A buyer
- * only sees the sponsor carousel if their detected country matches an ENABLED
- * store's country — a country whose store is OFF, or that doesn't match any
- * configured store at all, gets an empty result and the caller falls back to the
- * regular image carousel. No cross-store fallback (a US buyer never sees ES ads).
- *
- * NOTE: this uses SerpAPI's "amazon" engine (not a direct PA-API call) — direct
- * PA-API (AWS-signed) code exists in git history / _shared/awsSigV4.ts and can be
- * wired back in once real PA-API Access/Secret Key credentials are available; for
- * now only a plain Associates tag (Store ID) is configured per store, which is all
- * SerpAPI + a manually-built affiliate URL needs.
+ * Tries the Product Advertising API (PA-API 5.0, direct/signed) first; since real
+ * PA-API Access/Secret Key credentials aren't configured yet, that attempt no-ops
+ * and this falls straight through to SerpAPI's "amazon" engine + the US Associate
+ * tag. No further fallback beyond that — an error or zero results just means an
+ * empty product list, and the caller (FastSearchResults / legacy search) already
+ * shows the regular image carousel instead.
  */
 
 // @ts-ignore Deno.env is available in the Supabase Edge Functions runtime
 const SERPAPI_API_KEY = Deno.env.get('SERPAPI_API_KEY');
+// @ts-ignore
+const AMAZON_US_STORE_ID = (Deno.env.get('AMAZON_US_STORE_ID') || '').trim();
+// @ts-ignore
+const AMAZON_US_ENABLED = (Deno.env.get('AMAZON_US_ENABLED') || '').trim().toLowerCase() === 'true';
+// @ts-ignore
+const PAAPI_ACCESS_KEY = Deno.env.get('PAAPI_US_ACCESS_KEY');
+// @ts-ignore
+const PAAPI_SECRET_KEY = Deno.env.get('PAAPI_US_SECRET_KEY');
+// @ts-ignore
+const PAAPI_PARTNER_TAG = Deno.env.get('PAAPI_US_PARTNER_TAG');
 
-interface Store {
-  /** ISO 3166-1 alpha-2 countries this store serves. */
-  countries: string[];
-  domain: string;
-  storeId: string;
-  enabled: boolean;
+const DOMAIN = 'amazon.com';
+const PAAPI_HOST = 'webservices.amazon.com';
+const PAAPI_REGION = 'us-east-1';
+const PAAPI_MARKETPLACE = 'www.amazon.com';
+
+interface AmazonProductOut {
+  asin: string;
+  title: string;
+  price: string;
+  imageUrl: string;
+  description: string;
+  productUrl: string;
+  rating: number | null;
+  reviewCount: number | null;
 }
 
-function readStore(prefix: 'AMAZON_US' | 'AMAZON_ES', domain: string, countries: string[]): Store {
-  // @ts-ignore
-  const storeId = (Deno.env.get(`${prefix}_STORE_ID`) || '').trim();
-  // @ts-ignore
-  const enabled = (Deno.env.get(`${prefix}_ENABLED`) || '').trim().toLowerCase() === 'true';
-  return { countries, domain, storeId, enabled: enabled && !!storeId };
+interface PaapiItem {
+  ASIN: string;
+  DetailPageURL?: string;
+  Images?: { Primary?: { Large?: { URL?: string } } };
+  ItemInfo?: { Title?: { DisplayValue?: string }; Features?: { DisplayValues?: string[] } };
+  Offers?: { Listings?: Array<{ Price?: { DisplayAmount?: string } }> };
 }
 
-// Add a new store here (+ its two env vars) to open a new market — no other code changes needed.
-const STORES: Store[] = [
-  readStore('AMAZON_US', 'amazon.com', ['US']),
-  readStore('AMAZON_ES', 'amazon.es', ['ES']),
-];
+/** Direct, signed PA-API 5.0 SearchItems call. Returns null when not configured. */
+async function searchViaPaapi(query: string, maxResults: number): Promise<AmazonProductOut[] | null> {
+  if (!PAAPI_ACCESS_KEY || !PAAPI_SECRET_KEY || !PAAPI_PARTNER_TAG) return null;
 
-function resolveStore(country?: string): Store | null {
-  const code = (country || '').trim().toUpperCase();
-  return STORES.find((s) => s.enabled && s.countries.includes(code)) || null;
+  const body = JSON.stringify({
+    Keywords: query,
+    ItemCount: Math.min(Math.max(maxResults, 1), 10),
+    PartnerTag: PAAPI_PARTNER_TAG,
+    PartnerType: 'Associates',
+    Marketplace: PAAPI_MARKETPLACE,
+    // Conservative resource list — an invalid entry 400s the whole request, so
+    // ratings/reviews (unstable field name across API revisions) are left out.
+    Resources: ['Images.Primary.Large', 'ItemInfo.Title', 'ItemInfo.Features', 'Offers.Listings.Price'],
+  });
+
+  const signed = await signPaapiRequest({
+    accessKey: PAAPI_ACCESS_KEY,
+    secretKey: PAAPI_SECRET_KEY,
+    region: PAAPI_REGION,
+    host: PAAPI_HOST,
+    path: '/paapi5/searchitems',
+    target: 'com.amazon.paapi5.v1.ProductAdvertisingAPIv1.SearchItems',
+    body,
+  });
+
+  const res = await fetch(signed.url, { method: 'POST', headers: signed.headers, body });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`PA-API ${res.status}: ${errText.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const items: PaapiItem[] = data?.SearchResult?.Items || [];
+  return items
+    .filter((item) => !!item.ASIN)
+    .map((item) => ({
+      asin: item.ASIN,
+      title: item.ItemInfo?.Title?.DisplayValue || 'Product',
+      price: item.Offers?.Listings?.[0]?.Price?.DisplayAmount || 'N/A',
+      imageUrl: item.Images?.Primary?.Large?.URL || '',
+      description: item.ItemInfo?.Features?.DisplayValues?.slice(0, 2).join(' ') || item.ItemInfo?.Title?.DisplayValue || '',
+      productUrl: item.DetailPageURL || `https://${PAAPI_MARKETPLACE}/dp/${item.ASIN}`,
+      rating: null,
+      reviewCount: null,
+    }));
+}
+
+/** SerpAPI "amazon" engine fallback — used because PA-API credentials aren't configured yet. */
+async function searchViaSerpApi(query: string, maxResults: number): Promise<AmazonProductOut[]> {
+  if (!SERPAPI_API_KEY || !AMAZON_US_ENABLED || !AMAZON_US_STORE_ID) return [];
+
+  const serpApiUrl = new URL('https://serpapi.com/search');
+  serpApiUrl.searchParams.set('engine', 'amazon');
+  serpApiUrl.searchParams.set('amazon_domain', DOMAIN);
+  serpApiUrl.searchParams.set('k', query);
+  serpApiUrl.searchParams.set('api_key', SERPAPI_API_KEY);
+
+  const response = await fetch(serpApiUrl.toString());
+  if (!response.ok) {
+    console.error('[Amazon Products] SerpAPI request failed:', response.status, await response.text());
+    return [];
+  }
+
+  const data = await response.json();
+  const results = data.organic_results || [];
+  const products: AmazonProductOut[] = [];
+
+  for (let i = 0; i < Math.min(results.length, maxResults); i++) {
+    const result = results[i];
+    if (!result.asin) continue;
+
+    let price = 'N/A';
+    if (result.price) price = result.price;
+    else if (result.price_string) price = result.price_string;
+
+    let rating: number | null = null;
+    if (result.rating) rating = parseFloat(result.rating);
+
+    let reviewCount: number | null = null;
+    if (result.reviews) {
+      const match = String(result.reviews).match(/[\d,]+/);
+      if (match) reviewCount = parseInt(match[0].replace(/,/g, ''), 10);
+    } else if (result.reviews_count) {
+      reviewCount = result.reviews_count;
+    }
+
+    products.push({
+      asin: result.asin,
+      title: result.title || 'Product',
+      price,
+      imageUrl: result.thumbnail || result.image || '',
+      description: result.snippet || result.description || `${result.title} - Available on Amazon`,
+      productUrl: `https://www.${DOMAIN}/dp/${result.asin}?tag=${AMAZON_US_STORE_ID}`,
+      rating,
+      reviewCount,
+    });
+  }
+
+  return products;
 }
 
 Deno.serve(async (req: Request) => {
@@ -66,7 +173,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { query, maxResults = 4, country } = await req.json();
+    const { query, maxResults = 4 } = await req.json();
 
     if (!query || typeof query !== 'string') {
       return new Response(
@@ -75,84 +182,23 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const store = resolveStore(country);
-    console.log('[Amazon Products] Searching:', query, 'country:', country || '(none)', 'store:', store?.domain || '(none open for this country)');
-
-    if (!store) {
-      // No open store for this buyer's country — no external call at all.
-      // The caller falls back to the regular image carousel.
-      return new Response(
-        JSON.stringify({ success: false, products: [], query, error: 'No store open for this region' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    let products: AmazonProductOut[] | null = null;
+    try {
+      products = await searchViaPaapi(query, maxResults);
+    } catch (error) {
+      console.warn('[Amazon Products] PA-API failed, falling back to SerpAPI:', error instanceof Error ? error.message : error);
+      products = null;
     }
 
-    if (!SERPAPI_API_KEY) {
-      console.error('[Amazon Products] SERPAPI_API_KEY not configured');
-      return new Response(
-        JSON.stringify({ success: false, products: [], query, error: 'SerpAPI not configured' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const source = products !== null ? 'paapi' : 'serpapi';
+    if (products === null) {
+      products = await searchViaSerpApi(query, maxResults);
     }
 
-    const serpApiUrl = new URL('https://serpapi.com/search');
-    serpApiUrl.searchParams.set('engine', 'amazon');
-    serpApiUrl.searchParams.set('amazon_domain', store.domain);
-    serpApiUrl.searchParams.set('k', query);
-    serpApiUrl.searchParams.set('api_key', SERPAPI_API_KEY);
-
-    const response = await fetch(serpApiUrl.toString());
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Amazon Products] Request failed:', response.status, errorText);
-      return new Response(
-        JSON.stringify({ success: false, products: [], query, domain: store.domain, error: `SerpAPI error: ${response.status}` }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const data = await response.json();
-    const results = data.organic_results || [];
-
-    const products = [];
-    for (let i = 0; i < Math.min(results.length, maxResults); i++) {
-      const result = results[i];
-      if (!result.asin) continue;
-
-      const productUrl = `https://www.${store.domain}/dp/${result.asin}?tag=${store.storeId}`;
-
-      let price = 'N/A';
-      if (result.price) price = result.price;
-      else if (result.price_string) price = result.price_string;
-
-      let rating: number | null = null;
-      if (result.rating) rating = parseFloat(result.rating);
-
-      let reviewCount: number | null = null;
-      if (result.reviews) {
-        const match = String(result.reviews).match(/[\d,]+/);
-        if (match) reviewCount = parseInt(match[0].replace(/,/g, ''), 10);
-      } else if (result.reviews_count) {
-        reviewCount = result.reviews_count;
-      }
-
-      products.push({
-        asin: result.asin,
-        title: result.title || 'Product',
-        price,
-        imageUrl: result.thumbnail || result.image || '',
-        description: result.snippet || result.description || `${result.title} - Available on Amazon`,
-        productUrl,
-        rating,
-        reviewCount,
-      });
-    }
-
-    console.log('[Amazon Products] Found products:', products.length, 'via', store.domain);
+    console.log('[Amazon Products] Found products:', products.length, 'via', source);
 
     return new Response(
-      JSON.stringify({ success: true, products, query, domain: store.domain }),
+      JSON.stringify({ success: true, products, query, domain: DOMAIN }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
