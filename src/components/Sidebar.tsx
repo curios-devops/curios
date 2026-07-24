@@ -55,8 +55,8 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, 
         }}
       >
         {/* Extra top padding when the Home banner is present so it doesn't
-            cover the logo (the banner is ~40px tall). */}
-        <div className="flex-shrink-0 p-4" style={hasTopBanner ? { paddingTop: '48px' } : undefined}>
+            cover the logo (the banner is ~36px tall). */}
+        <div className="flex-shrink-0 p-4" style={hasTopBanner ? { paddingTop: '40px' } : undefined}>
           {/* Collapsed: logo takes the full narrow width, so the collapse
               button stacks below it instead of squeezing in beside it. */}
           <div className={isCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-3'}>
