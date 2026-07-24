@@ -7,15 +7,30 @@ import Home from './mainPages/Home.tsx'; // Keep Home page eager loaded as it's 
 import OfflineError from './components/OfflineError.tsx'; // eager: must render when chunks fail
 
 // Resilient lazy(): a dynamic import can fail on flaky/lost connectivity ("Importing a module
-// script failed"). Retry once after a short delay before letting the router's errorElement
-// (OfflineError) take over — recovers transient blips without bothering the user.
+// script failed") or — more commonly — because a new deploy replaced the hashed chunk this
+// tab was referencing (the old chunk 404s and the SPA fallback serves index.html, tripping a
+// MIME error). Retry once for transient blips; if it still fails, force a one-time full reload
+// to fetch the fresh index.html + current chunks. Guarded so we never loop.
 function lazyRetry(importer: Parameters<typeof lazy>[0]) {
   return lazy(async () => {
     try {
       return await importer();
     } catch {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return importer();
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return await importer();
+      } catch (err) {
+        const KEY = 'chunkReloadAt';
+        const last = Number(sessionStorage.getItem(KEY) || 0);
+        // Only reload if we haven't already tried in the last 10s (stale deploy),
+        // otherwise fall through to the router's errorElement (genuine failure).
+        if (Date.now() - last > 10_000) {
+          sessionStorage.setItem(KEY, String(Date.now()));
+          globalThis.location.reload();
+          return await new Promise<never>(() => {}); // hold Suspense until reload
+        }
+        throw err;
+      }
     }
   });
 }
