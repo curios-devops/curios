@@ -70,10 +70,11 @@ Use me for: classification, drafting, summarization, extraction.
 Do NOT use me for: routing, retries, deterministic transforms.
 If code can answer, code answers.
 
-## Rule 6 — Token budgets are not advisory
+## Rule 6 — Token budgets and API Expenses are not advisory
 Per-task: 4,000 tokens. Per-session: 30,000 tokens.
 If approaching budget, summarize and start fresh.
 Surface the breach. Do not silently overrun.
+When Task involve expending actual money in paid API specially  RUNPOD or WaveSpeead that are the more expensive please confirm before expend money. 
 
 ## Rule 7 — Surface conflicts, don't average them
 If two patterns contradict, pick one (more recent / more tested).
@@ -101,5 +102,12 @@ If you genuinely think a convention is harmful, surface it. Don't fork silently.
 "Completed" is wrong if anything was skipped silently.
 "Tests pass" is wrong if any were skipped.
 Default to surfacing uncertainty, not hiding it.
+
+## Design
+
+Follow docs/General/UX/design-kit.md for all UI work. When a value is not covered,
+derive it from the nearest token. Never invent new colors, fonts,
+radii, or shadows. If a request conflicts with the kit, say so
+before building.
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

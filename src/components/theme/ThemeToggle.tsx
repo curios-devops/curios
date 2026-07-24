@@ -14,7 +14,11 @@ export default function ThemeToggle() {
 	const tooltipBackground = isGrayAccent ? accentColor.primary : 'var(--ui-bg-elevated)';
 	const tooltipForeground = isDarkMode ? '#F9FAFB' : '#111827';
 	const tooltipBorder = isGrayAccent ? accentColor.dark : 'var(--ui-border-subtle)';
-	const selectableAccentColors: AccentColor[] = ['blue', 'teal', 'purple', 'orange'];
+	// Current palette (design-kit.md, "Midnight + Aurora" direction). The old
+	// blue/teal/purple/orange swatches were taken out of this picker — they
+	// still work if a user had one saved (see ThemeContext's validAccentColors)
+	// but are no longer offered here.
+	const selectableAccentColors: AccentColor[] = ['ocean', 'sky', 'borealis', 'fire', 'wood', 'dusk'];
 
 	const THEME_OPTIONS = [
 		{ key: 'light' as const, label: t('light'), icon: Sun },
@@ -111,7 +115,7 @@ export default function ThemeToggle() {
 						{/* Accent color selector */}
 						<div className="border-t mt-1 pt-2 px-4 pb-2" style={{ borderColor: 'var(--ui-border-subtle)' }}>
 							<div className="text-[10px] mb-2 opacity-70">{t('accentColor')}</div>
-							<div className="flex gap-2 justify-center">
+							<div className="flex flex-wrap gap-1.5 justify-center">
 								{selectableAccentColors.map((color) => {
 									const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
 									const isSelectedColor = selectedAccentColor === color;

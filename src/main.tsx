@@ -26,9 +26,12 @@ import { applyThemeColors, type AccentColor } from './config/themeColors';
 // Apply theme synchronously before React renders — prevents black flash on load
 (function applyInitialTheme() {
   const stored = localStorage.getItem('theme') || 'system';
-  const accent = localStorage.getItem('accentColor') || 'blue';
-  const validAccents = ['blue', 'teal', 'purple', 'orange', 'gray'];
-  const safeAccent = (validAccents.includes(accent) ? accent : 'blue') as AccentColor;
+  // Default 'sky' (design-kit.md) — mirrors ThemeContext.tsx's getInitialAccentColor;
+  // keep these two in sync (this one runs pre-hydration to avoid a flash of the
+  // wrong accent, ThemeContext.tsx is the source of truth once React mounts).
+  const accent = localStorage.getItem('accentColor') || 'sky';
+  const validAccents = ['ocean', 'sky', 'borealis', 'fire', 'wood', 'dusk', 'blue', 'teal', 'purple', 'orange', 'gray'];
+  const safeAccent = (validAccents.includes(accent) ? accent : 'sky') as AccentColor;
   const effectiveTheme: 'light' | 'dark' =
     stored === 'system'
       ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'

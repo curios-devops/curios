@@ -268,10 +268,13 @@ export default function Home() {
         <div className="flex flex-col items-center justify-center mb-12 home-rise">
           <AnimatedHomeTitle
             name={getUserFirstName(session?.user)}
-            className="text-center leading-tight transition-opacity duration-300"
+            // font-space-grotesk: new brand heading font (design-kit.md). An inline
+            // style's fontFamily always wins over a class, so the legacy stack
+            // moved into the className below instead of the style object — to
+            // revert, swap "font-space-grotesk" back for "font-legacy-home-title".
+            className="text-center leading-tight transition-opacity duration-300 font-space-grotesk"
             style={{
               color: 'var(--ui-text-primary)',
-              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
               fontWeight: '600',
               letterSpacing: '-0.02em',
               fontSize: 'clamp(24px, 4vw, 42px)',
