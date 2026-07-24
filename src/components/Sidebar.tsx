@@ -20,9 +20,12 @@ interface SidebarProps {
  // When embedded inside another wrapper (like the mobile drawer),
  // avoid using fixed positioning and let the parent control size and position.
  embedded?: boolean;
+ // The Home promo banner is a full-width sticky bar (z-60) that overlaps the
+ // fixed sidebar's top — push the sidebar's top content down to clear it.
+ hasTopBanner?: boolean;
 }
 
-export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }: SidebarProps) {
+export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, hasTopBanner = false }: SidebarProps) {
  const location = ReactRouterDom.useLocation();
   const { session } = useSession(); // Call useSession hook and safely access session
  const { currentLanguage } = useLanguage();
@@ -51,7 +54,9 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
           color: 'var(--ui-text-secondary)',
         }}
       >
-        <div className="flex-shrink-0 p-4">
+        {/* Extra top padding when the Home banner is present so it doesn't
+            cover the logo (the banner is ~40px tall). */}
+        <div className="flex-shrink-0 p-4" style={hasTopBanner ? { paddingTop: '48px' } : undefined}>
           {/* Collapsed: logo takes the full narrow width, so the collapse
               button stacks below it instead of squeezing in beside it. */}
           <div className={isCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-3'}>
