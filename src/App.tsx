@@ -183,7 +183,7 @@ function AppContent() {
         )}
         <div className="flex flex-1">
           {!isMobilePortrait && (
-            <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
+            <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} hasTopBanner={isHome} />
           )}
           {isMobilePortrait && (
             <>
