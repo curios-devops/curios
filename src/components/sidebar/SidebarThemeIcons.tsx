@@ -1,14 +1,15 @@
-import { Contrast, Moon, Sun } from 'lucide-react';
+import { Monitor, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
-// Desktop sidebar quick theme switch — sits right below the logo, above the
-// nav (Home/House icon). Direct click, no dropdown (that's the old
-// ThemeToggle, still used by the mobile header in App.tsx). Accent color is
-// no longer chosen here — see Settings > General (signed-in only).
+// Desktop sidebar theme switch — full-width pill segmented control, matching
+// the reference screenshot's shape (rounded-full bar, active segment as a
+// raised light pill with icon + uppercase label). Sits right below the logo,
+// above the nav (Home/House icon). Accent color lives in Settings instead
+// (signed-in only) — see GeneralSection.tsx.
 const OPTIONS = [
-  { key: 'system' as const, icon: Contrast, label: 'System' },
   { key: 'light' as const, icon: Sun, label: 'Light' },
+  { key: 'system' as const, icon: Monitor, label: 'System' },
   { key: 'dark' as const, icon: Moon, label: 'Dark' },
 ];
 
@@ -17,7 +18,12 @@ export default function SidebarThemeIcons() {
   const accentColor = useAccentColor();
 
   return (
-    <div className="flex items-center gap-1" role="group" aria-label="Theme">
+    <div
+      className="flex items-center gap-0.5 rounded-full p-1 w-full"
+      style={{ backgroundColor: 'var(--ui-bg-secondary)' }}
+      role="group"
+      aria-label="Theme"
+    >
       {OPTIONS.map(({ key, icon: Icon, label }) => {
         const isSelected = theme === key;
         return (
@@ -28,15 +34,17 @@ export default function SidebarThemeIcons() {
             title={label}
             aria-label={label}
             aria-pressed={isSelected}
-            className="flex items-center justify-center w-7 h-7 rounded-md transition-colors"
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-full text-[10px] font-semibold uppercase tracking-wide transition-colors"
             style={{
-              color: isSelected ? accentColor.primary : 'var(--ui-text-muted)',
               backgroundColor: isSelected ? 'var(--ui-bg-elevated)' : 'transparent',
+              color: isSelected ? accentColor.primary : 'var(--ui-text-muted)',
+              boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.12)' : undefined,
             }}
             onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.color = accentColor.primary; }}
             onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.color = 'var(--ui-text-muted)'; }}
           >
-            <Icon size={16} />
+            <Icon size={13} />
+            <span>{label}</span>
           </button>
         );
       })}
