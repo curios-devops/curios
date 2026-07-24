@@ -6,11 +6,12 @@ import { useTheme } from "../theme/ThemeContext.tsx";
 interface CollapseButtonProps {
   isCollapsed: boolean;
   onClick: () => void;
-  position?: "top" | "bottom";
 }
 
+// Always rendered at the top, next to the logo — collapsed and expanded
+// alike (it used to jump to the bottom of the sidebar when collapsed).
 export default function CollapseButton(
-  { isCollapsed, onClick, position = "top" }: CollapseButtonProps,
+  { isCollapsed, onClick }: CollapseButtonProps,
 ) {
   const { t } = useTranslation();
   const accentColor = useAccentColor();
@@ -52,42 +53,18 @@ export default function CollapseButton(
     </button>
   );
 
-  // Add tooltip wrapper for bottom position when collapsed
-  if (position === "bottom" && isCollapsed) {
-    return (
-      <div className="relative group">
-        {button}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block text-xs py-1 px-2 rounded whitespace-nowrap border z-50"
-          style={{
-            backgroundColor: tooltipBackground,
-            color: tooltipForeground,
-            borderColor: tooltipBorder,
-          }}
-        >
-          {t('expand')}
-        </div>
+  return (
+    <div className="relative group">
+      {button}
+      <div className="absolute left-1/2 -translate-x-1/2 md:-translate-x-[62%] -bottom-8 hidden group-hover:block text-xs py-1 px-2 rounded whitespace-nowrap border z-50"
+        style={{
+          backgroundColor: tooltipBackground,
+          color: tooltipForeground,
+          borderColor: tooltipBorder,
+        }}
+      >
+        {isCollapsed ? t('expand') : t('collapse')}
       </div>
-    );
-  }
-
-  // Add tooltip wrapper for top position when NOT collapsed
-  if (position === "top" && !isCollapsed) {
-    return (
-      <div className="relative group">
-        {button}
-        <div className="absolute left-1/2 -translate-x-1/2 md:-translate-x-[62%] -bottom-8 hidden group-hover:block text-xs py-1 px-2 rounded whitespace-nowrap border z-50"
-          style={{
-            backgroundColor: tooltipBackground,
-            color: tooltipForeground,
-            borderColor: tooltipBorder,
-          }}
-        >
-          {t('collapse')}
-        </div>
-      </div>
-    );
-  }
-
-  // For all other cases, return button without tooltip
-  return button;
+    </div>
+  );
 }

@@ -10,6 +10,7 @@ import CollapseButton from "./sidebar/CollapseButton.tsx";
 import SignInModal from "./auth/SignInModal.tsx";
 import { useLanguage } from "../contexts/LanguageContext.tsx";
 import Logo from "./sidebar/Logo.tsx";
+import SidebarThemeIcons from "./sidebar/SidebarThemeIcons.tsx";
 import UserMenu from "./auth/UserMenu.tsx";
 // Define SidebarProps interface
 interface SidebarProps {
@@ -51,16 +52,23 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
         }}
       >
         <div className="flex-shrink-0 p-4">
-          <div className="flex items-center gap-3">
+          {/* Collapsed: logo takes the full narrow width, so the collapse
+              button stacks below it instead of squeezing in beside it. */}
+          <div className={isCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-3'}>
             <Logo isCollapsed={isCollapsed} />
-            {!isCollapsed && (
-              <CollapseButton
-                isCollapsed={isCollapsed}
-                onClick={toggleSidebar}
-                position="top"
-              />
-            )}
+            <CollapseButton
+              isCollapsed={isCollapsed}
+              onClick={toggleSidebar}
+            />
           </div>
+          {/* Theme quick-switch — always at the top, behind the logo, above
+              Home. Accent color moved to Settings (signed-in only). Hidden
+              when collapsed: 80px is too narrow for 3 more icon buttons. */}
+          {!isCollapsed && (
+            <div className="mt-3">
+              <SidebarThemeIcons />
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 px-2 py-4">
@@ -113,15 +121,6 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false }
 
         <div className={`flex-shrink-0 ${isCollapsed ? "px-2" : "px-4"} pb-6`}>
           <div className="space-y-4">
-            {isCollapsed && (
-              <div className="flex justify-center mb-2">
-                <CollapseButton
-                  isCollapsed={isCollapsed}
-                  onClick={toggleSidebar}
-                  position="bottom"
-                />
-              </div>
-            )}
             <div
               className="border-t w-full transition-colors duration-200"
               style={{ borderColor: 'var(--ui-border-subtle)' }}

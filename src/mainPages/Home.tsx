@@ -5,7 +5,6 @@ import { Crown } from 'lucide-react';
 import { useSession } from '../hooks/useSession.ts';
 import HelpButton from '../components/HelpButton.tsx';
 import InputContainer from '../components/boxContainer/InputContainer.tsx';
-import ThemeToggle from '../components/theme/ThemeToggle.tsx';
 import LanguageSelector from '../components/common/LanguageSelector.tsx';
 import CookieConsentModal from '../components/common/CookieConsentModal.tsx';
 import CookieBanner from '../components/common/CookieBanner.tsx';
@@ -152,7 +151,9 @@ export default function Home() {
         }
       `}</style>
 
-      {/* Top right: ThemeToggle, Login and Get Started buttons */}
+      {/* Top right: Login and Get Started buttons. Theme is now chosen from the
+          sidebar (icons next to the logo); accent color moved to Settings
+          (signed-in only) — see Sidebar.tsx / GeneralSection.tsx. */}
       {/* On desktop, show in current position. On mobile, these are hidden and shown in the header */}
       {/* Pro Credits battery — centered at the top, separated from the right cluster */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 h-10 flex items-center mobile:hidden">
@@ -160,9 +161,6 @@ export default function Home() {
       </div>
 
       <div className="absolute top-4 right-6 flex items-center gap-4 mobile:hidden">
-        <div className="w-7 h-7 flex items-center">
-          <ThemeToggle />
-        </div>
         {isPro ? (
           <div
             className="h-10 w-10 flex items-center justify-center"

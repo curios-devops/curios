@@ -4,6 +4,10 @@ import ToggleSwitch from './ToggleSwitch';
 import LanguageSelector from './LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../theme/ThemeContext';
+import { useSession } from '../../hooks/useSession';
+import { accentColors, type NatureAccentColor } from '../../config/themeColors';
+
+const ACCENT_OPTIONS: NatureAccentColor[] = ['ocean', 'sky', 'borealis', 'fire', 'wood', 'dusk'];
 
 type CookieOption = 'all' | 'necessary' | 'none';
 
@@ -48,8 +52,10 @@ function Segmented<T extends string>({ options, value, onChange }: {
 }
 
 export default function GeneralSection() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor } = useTheme();
   const { currentLanguage } = useLanguage();
+  const { session } = useSession();
+  const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const [cookieChoice, setCookieChoice] = useState<CookieOption>(() => {
     const stored = localStorage.getItem('cookieConsent');
@@ -88,6 +94,39 @@ export default function GeneralSection() {
               <Segmented options={themeOptions} value={theme} onChange={setTheme} />
             </div>
           </div>
+
+          {/* Accent Color — signed-in users only (guests keep the default 'sky'). */}
+          {session && (
+            <div className="py-6">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Accent Color</h3>
+                  <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>The one brand color used for buttons, highlights and progress</p>
+                </div>
+                <div className="flex gap-2">
+                  {ACCENT_OPTIONS.map((color) => {
+                    const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
+                    const isSelected = selectedAccentColor === color;
+                    return (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setAccentColor(color)}
+                        className={`w-6 h-6 rounded-full transition-transform ${isSelected ? 'border-2 border-gray-400 scale-110' : 'border border-transparent hover:scale-110'}`}
+                        style={{
+                          backgroundColor: colorConfig.primary,
+                          boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
+                        }}
+                        title={color.charAt(0).toUpperCase() + color.slice(1)}
+                        aria-label={color}
+                        aria-pressed={isSelected}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Language */}
           <div className="py-6">
