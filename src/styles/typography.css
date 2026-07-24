@@ -1,3 +1,23 @@
+/* Legacy app-wide default (still in effect everywhere except where overridden
+   below) — kept intact per design-kit.md's "keep the old as legacy" rule. */
 .font-helvetica {
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+}
+
+/* New brand type system (docs/General/UX/design-kit.md) — Michroma for the
+   logo/display moments, Space Grotesk for headings, Inter for body (already
+   loaded above as the base UI font via .font-helvetica's stack). */
+.font-michroma {
+  font-family: 'Michroma', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+}
+
+.font-space-grotesk {
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Legacy home-title font (the hero's original inline value, pre-redesign) —
+   kept as a named class so reverting the hero font is a one-word className
+   swap, not a diff. */
+.font-legacy-home-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }

@@ -20,8 +20,11 @@ export default function Logo({ isCollapsed }: { isCollapsed: boolean }) {
       <CuriosLogo size={isCollapsed ? 32 : 28} colorOverride={logoAccentColor} />
       {!isCollapsed && (
         <div className="flex items-center tracking-tight">
-          <span className="font-helvetica font-semibold text-xl tracking-tight text-gray-900 dark:text-white">Curios</span>
-          <span className="font-helvetica font-semibold text-xl tracking-tight ml-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">AI</span>
+          {/* font-michroma (new brand logo font, design-kit.md) layered after
+              font-helvetica — .font-helvetica stays as the legacy fallback;
+              revert by dropping font-michroma from these two spans. */}
+          <span className="font-helvetica font-michroma font-semibold text-lg tracking-tight text-gray-900 dark:text-white">Curios</span>
+          <span className="font-helvetica font-michroma font-semibold text-lg tracking-tight ml-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">AI</span>
         </div>
       )}
     </div>

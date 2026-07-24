@@ -13,7 +13,11 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-const validAccentColors: AccentColor[] = ['blue', 'teal', 'purple', 'orange', 'gray'];
+// Current palette + legacy (still valid so an old saved preference still resolves).
+const validAccentColors: AccentColor[] = [
+  'ocean', 'sky', 'borealis', 'fire', 'wood', 'dusk',
+  'blue', 'teal', 'purple', 'orange', 'gray',
+];
 
 function normalizeAccentColor(color: string | null | undefined): AccentColor | null {
   if (color === 'green') return 'teal';
@@ -28,7 +32,9 @@ function getInitialTheme(): Theme {
 }
 
 function getInitialAccentColor(): AccentColor {
-  return normalizeAccentColor(localStorage.getItem('accentColor')) ?? 'blue';
+  // Default moved from 'blue' to 'sky' (design-kit.md) — avoid the generic
+  // "every AI product is blue" look as the out-of-the-box first impression.
+  return normalizeAccentColor(localStorage.getItem('accentColor')) ?? 'sky';
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
