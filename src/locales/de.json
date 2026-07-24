@@ -7,7 +7,8 @@
   "search": "Suchen",
   "stories": "Geschichten",
   "cinematic": "Kinematisch",
-  "avatar": "Avatar",  "settings": "Einstellungen",
+  "avatar": "Avatar",
+  "settings": "Einstellungen",
   "help": "Hilfe",
   "helpAndFaq": "Hilfe & FAQ",
   "releaseNotes": "Versionshinweise",
@@ -57,7 +58,8 @@
   "placeholderStories": "Erkunde Ideen ausführlich...",
   "placeholderCinematic": "Lerne durch visuelle Erklärungen...",
   "placeholderAvatar": "Lerne mit einem sprechenden Leitfaden...",
-  "uploadPhotosAndFiles": "Fotos und Dateien hochladen",  "mainTitle": "Was macht Sie neugierig?",
+  "uploadPhotosAndFiles": "Fotos und Dateien hochladen",
+  "mainTitle": "Was macht Sie neugierig?",
   "signInForAccess": "Anmelden, um Zugriff zu erhalten",
   "addFilesAndMore": "Fotos und Dateien hinzufügen",
   "askByVoice": "Per Sprache fragen",
@@ -156,5 +158,8 @@
   "cinematicStageGenerating": "Generierung",
   "cinematicStageComplete": "Abgeschlossen",
   "cinematicNarrativeDraft": "Entwurf",
-  "cinematicNarrativeFinal": "Final"
+  "cinematicNarrativeFinal": "Final",
+  "seePlansAndPricing": "Abos und Preise ansehen",
+  "account": "Konto",
+  "free": "Kostenlos"
 }

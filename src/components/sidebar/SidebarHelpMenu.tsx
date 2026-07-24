@@ -1,24 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LifeBuoy } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { sidebarRowClass, sidebarRowStyle, sidebarRowEnter, sidebarRowLeave } from './sidebarMenuRow.ts';
 
 // "Help" row + popover — same menu the old floating "?" button had. Shared by
-// the guest and signed-in sidebar footers.
+// the guest and signed-in sidebar footers. The popover is portaled to the body
+// with fixed positioning so it opens in the main window and isn't clipped by
+// (or trapped inside) the sidebar — matters on the transformed mobile drawer.
 export default function SidebarHelpMenu({ isCollapsed }: { isCollapsed: boolean }) {
   const { t } = useTranslation();
   const accentColor = useAccentColor();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    if (!open) return;
     function handleClickOutside(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      if (btnRef.current && !btnRef.current.contains(event.target as Node)) setOpen(false);
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [open]);
+
+  const toggle = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ left: r.left, bottom: window.innerHeight - r.top + 8 });
+    }
+    setOpen((v) => !v);
+  };
 
   const items = [
     { label: t('helpAndFaq'), href: '#' },
@@ -29,16 +42,16 @@ export default function SidebarHelpMenu({ isCollapsed }: { isCollapsed: boolean 
   ];
 
   return (
-    <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen((v) => !v)} className={sidebarRowClass(isCollapsed)} style={sidebarRowStyle}
+    <>
+      <button ref={btnRef} type="button" onClick={toggle} className={sidebarRowClass(isCollapsed)} style={sidebarRowStyle}
         onMouseEnter={sidebarRowEnter} onMouseLeave={sidebarRowLeave} title={t('help') || 'Help'} aria-label={t('help') || 'Help'}>
         <LifeBuoy size={20} className="shrink-0" />
         {!isCollapsed && <span className="text-sm font-medium tracking-[-0.01em]">{t('help') || 'Help'}</span>}
       </button>
-      {open && (
+      {open && pos && createPortal(
         <div
-          className="absolute left-0 bottom-full mb-2 w-44 rounded-xl shadow-lg border py-1 z-50 animate-fade-in"
-          style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-subtle)' }}
+          className="fixed w-44 rounded-xl shadow-lg border py-1 z-[210] animate-fade-in"
+          style={{ left: pos.left, bottom: pos.bottom, backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-subtle)' }}
         >
           {items.map((item) => (
             <a
@@ -52,8 +65,9 @@ export default function SidebarHelpMenu({ isCollapsed }: { isCollapsed: boolean 
               {item.label}
             </a>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   );
 }

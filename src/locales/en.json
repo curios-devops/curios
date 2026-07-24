@@ -62,7 +62,8 @@
   "placeholderCinematic": "Learn through visual explanations...",
   "placeholderMovie": "Ask a question to turn into a movie...",
   "placeholderAvatar": "Learn with a talking guide...",
-  "uploadPhotosAndFiles": "Upload photos and files",  "mainTitle": "What are you curious about?",
+  "uploadPhotosAndFiles": "Upload photos and files",
+  "mainTitle": "What are you curious about?",
   "signInForAccess": "Sign in for access",
   "addFilesAndMore": "Add photos and files",
   "askByVoice": "Ask by voice",
@@ -164,5 +165,8 @@
   "cinematicStageGenerating": "Generating",
   "cinematicStageComplete": "Complete",
   "cinematicNarrativeDraft": "Draft",
-  "cinematicNarrativeFinal": "Final"
+  "cinematicNarrativeFinal": "Final",
+  "seePlansAndPricing": "See plans and pricing",
+  "account": "Account",
+  "free": "Free"
 }

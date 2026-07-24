@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Settings, Sparkles, User } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import GuestSettingsModal from './GuestSettingsModal.tsx';
@@ -24,9 +25,9 @@ export default function SidebarGuestSection({ isCollapsed, onSignInClick }: Side
     <div className="flex flex-col gap-1">
       {/* See plans and pricing */}
       <button type="button" onClick={() => setShowPricing(true)} className={sidebarRowClass(isCollapsed)} style={sidebarRowStyle}
-        onMouseEnter={sidebarRowEnter} onMouseLeave={sidebarRowLeave} title="See plans and pricing" aria-label="See plans and pricing">
+        onMouseEnter={sidebarRowEnter} onMouseLeave={sidebarRowLeave} title={t('seePlansAndPricing')} aria-label={t('seePlansAndPricing')}>
         <Sparkles size={20} className="shrink-0" />
-        {!isCollapsed && <span className="text-sm font-medium tracking-[-0.01em]">See plans and pricing</span>}
+        {!isCollapsed && <span className="text-sm font-medium tracking-[-0.01em]">{t('seePlansAndPricing')}</span>}
       </button>
 
       {/* Settings — compact modal (Theme, Accent, Language) for guests */}
@@ -73,10 +74,11 @@ export default function SidebarGuestSection({ isCollapsed, onSignInClick }: Side
       )}
 
       {showSettings && <GuestSettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />}
-      {showPricing && (
+      {showPricing && createPortal(
         <Suspense fallback={null}>
           <ProModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
-        </Suspense>
+        </Suspense>,
+        document.body,
       )}
     </div>
   );

@@ -206,8 +206,12 @@ function AppContent() {
             {mobileSidebarOpen && (
               <>
                 <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setMobileSidebarOpen(false)} />
-                <aside className="fixed top-0 left-0 z-50 h-full w-48 shadow-lg transition-transform duration-300" style={{ transform: mobileSidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
-                  <Sidebar embedded isCollapsed={false} toggleSidebar={() => setMobileSidebarOpen(false)} />
+                {/* Wider than the desktop rail (w-56) so the drawer fully covers the
+                    header's "CuriosAI" wordmark — you shouldn't see it twice at once.
+                    hasTopBanner drops the drawer logo below the promo banner so it
+                    lines up vertically with the header logo. */}
+                <aside className="fixed top-0 left-0 z-50 h-full w-56 shadow-lg transition-transform duration-300" style={{ transform: mobileSidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
+                  <Sidebar embedded isCollapsed={false} toggleSidebar={() => setMobileSidebarOpen(false)} hasTopBanner={isHome} />
                 </aside>
               </>
             )}
