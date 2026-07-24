@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Settings, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase.ts';
@@ -16,6 +17,9 @@ const ProModal = lazy(() => import('../subscription/ProModal.tsx'));
 interface SidebarUserSectionProps {
   session: Session;
   isPro: boolean;
+  // While the subscription is still loading we don't yet know free vs pro —
+  // hold back the status/upgrade UI so premium users don't flash "Upgrade".
+  subLoading: boolean;
   isCollapsed: boolean;
 }
 
@@ -31,7 +35,7 @@ function getInitials(name: string | null, email: string): string {
 
 // Signed-in sidebar footer: plans (free only) + Settings + Help, then the
 // account card (avatar, name, Free/Pro status, Upgrade button for free users).
-export default function SidebarUserSection({ session, isPro, isCollapsed }: SidebarUserSectionProps) {
+export default function SidebarUserSection({ session, isPro, subLoading, isCollapsed }: SidebarUserSectionProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const accentColor = useAccentColor();
@@ -66,12 +70,13 @@ export default function SidebarUserSection({ session, isPro, isCollapsed }: Side
 
   return (
     <div className="flex flex-col gap-1">
-      {/* See plans and pricing — free users only (premium already subscribed). */}
-      {!isPro && (
+      {/* See plans and pricing — free users only (premium already subscribed).
+          Hidden while loading so it doesn't flash in for premium users. */}
+      {!subLoading && !isPro && (
         <button type="button" onClick={() => setShowPricing(true)} className={sidebarRowClass(isCollapsed)} style={sidebarRowStyle}
-          onMouseEnter={sidebarRowEnter} onMouseLeave={sidebarRowLeave} title="See plans and pricing" aria-label="See plans and pricing">
+          onMouseEnter={sidebarRowEnter} onMouseLeave={sidebarRowLeave} title={t('seePlansAndPricing')} aria-label={t('seePlansAndPricing')}>
           <Sparkles size={20} className="shrink-0" />
-          {!isCollapsed && <span className="text-sm font-medium tracking-[-0.01em]">See plans and pricing</span>}
+          {!isCollapsed && <span className="text-sm font-medium tracking-[-0.01em]">{t('seePlansAndPricing')}</span>}
         </button>
       )}
 
@@ -98,17 +103,20 @@ export default function SidebarUserSection({ session, isPro, isCollapsed }: Side
             {avatar}
             <div className="min-w-0 text-left">
               <div className="text-sm font-medium truncate" style={{ color: 'var(--ui-text-primary)' }}>{displayName}</div>
-              {isPro ? (
+              {subLoading ? (
+                // Placeholder keeps the row height stable and avoids a Free→Pro flash.
+                <div className="mt-1 h-3 w-10 rounded animate-pulse" style={{ backgroundColor: 'var(--ui-bg-secondary)' }} />
+              ) : isPro ? (
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: '#16a34a', color: '#ffffff' }}>{t('pro') || 'PRO'}</span>
-                  <span className="text-xs font-medium" style={{ color: '#16a34a' }}>Account</span>
+                  <span className="text-xs font-medium" style={{ color: '#16a34a' }}>{t('account') || 'Account'}</span>
                 </div>
               ) : (
-                <div className="text-xs" style={{ color: 'var(--ui-text-muted)' }}>Free</div>
+                <div className="text-xs" style={{ color: 'var(--ui-text-muted)' }}>{t('free') || 'Free'}</div>
               )}
             </div>
           </button>
-          {!isPro && (
+          {!subLoading && !isPro && (
             <button
               type="button"
               onClick={() => setShowPricing(true)}
@@ -123,10 +131,11 @@ export default function SidebarUserSection({ session, isPro, isCollapsed }: Side
         </div>
       )}
 
-      {showPricing && (
+      {showPricing && createPortal(
         <Suspense fallback={null}>
           <ProModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
-        </Suspense>
+        </Suspense>,
+        document.body,
       )}
     </div>
   );

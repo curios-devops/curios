@@ -7,7 +7,8 @@
   "search": "検索",
   "stories": "ストーリー",
   "cinematic": "シネマティック",
-  "avatar": "Avatar",  "settings": "設定",
+  "avatar": "Avatar",
+  "settings": "設定",
   "help": "ヘルプ",
   "helpAndFaq": "ヘルプとFAQ",
   "releaseNotes": "リリースノート",
@@ -57,7 +58,8 @@
   "placeholderStories": "アイデアを深く探求...",
   "placeholderCinematic": "視覚的な説明で学ぶ...",
   "placeholderAvatar": "話すガイドと一緒に学ぶ...",
-  "uploadPhotosAndFiles": "写真とファイルをアップロード",  "mainTitle": "何について知りたいですか？",
+  "uploadPhotosAndFiles": "写真とファイルをアップロード",
+  "mainTitle": "何について知りたいですか？",
   "signInForAccess": "アクセスするにはサインインしてください",
   "addFilesAndMore": "写真とファイルを追加",
   "askByVoice": "音声で質問",
@@ -156,5 +158,8 @@
   "cinematicStageGenerating": "生成",
   "cinematicStageComplete": "完了",
   "cinematicNarrativeDraft": "下書き",
-  "cinematicNarrativeFinal": "最終版"
+  "cinematicNarrativeFinal": "最終版",
+  "seePlansAndPricing": "プランと料金を見る",
+  "account": "アカウント",
+  "free": "無料"
 }

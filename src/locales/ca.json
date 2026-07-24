@@ -7,7 +7,8 @@
   "search": "Cerca",
   "stories": "Històries",
   "cinematic": "Cinematogràfic",
-  "avatar": "Avatar",  "settings": "Configuració",
+  "avatar": "Avatar",
+  "settings": "Configuració",
   "help": "Ajuda",
   "helpAndFaq": "Ajuda i PMF",
   "releaseNotes": "Notes de versió",
@@ -57,7 +58,8 @@
   "placeholderStories": "Explora idees en profunditat...",
   "placeholderCinematic": "Aprèn amb explicacions visuals...",
   "placeholderAvatar": "Aprèn amb una guia parlant...",
-  "uploadPhotosAndFiles": "Pujar fotos i fitxers",  "mainTitle": "Què et fa curiós?",
+  "uploadPhotosAndFiles": "Pujar fotos i fitxers",
+  "mainTitle": "Què et fa curiós?",
   "signInForAccess": "Inicia sessió per accedir",
   "addFilesAndMore": "Afegir fotos i arxius",
   "askByVoice": "Preguntar per veu",
@@ -156,5 +158,8 @@
   "cinematicStageGenerating": "Generació",
   "cinematicStageComplete": "Completat",
   "cinematicNarrativeDraft": "Esborrany",
-  "cinematicNarrativeFinal": "Final"
+  "cinematicNarrativeFinal": "Final",
+  "seePlansAndPricing": "Mostra plans i preus",
+  "account": "Compte",
+  "free": "Gratuït"
 }

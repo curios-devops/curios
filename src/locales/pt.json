@@ -7,7 +7,8 @@
   "search": "Pesquisar",
   "stories": "Histórias",
   "cinematic": "Cinemático",
-  "avatar": "Avatar",  "settings": "Configurações",
+  "avatar": "Avatar",
+  "settings": "Configurações",
   "help": "Ajuda",
   "helpAndFaq": "Ajuda & FAQ",
   "releaseNotes": "Notas de versão",
@@ -57,7 +58,8 @@
   "placeholderStories": "Explore ideias em profundidade...",
   "placeholderCinematic": "Aprenda com explicações visuais...",
   "placeholderAvatar": "Aprenda com um guia falante...",
-  "uploadPhotosAndFiles": "Enviar fotos e arquivos",  "mainTitle": "O que te deixa curioso?",
+  "uploadPhotosAndFiles": "Enviar fotos e arquivos",
+  "mainTitle": "O que te deixa curioso?",
   "signInForAccess": "Faça login para acessar",
   "addFilesAndMore": "Adicionar fotos e arquivos",
   "askByVoice": "Perguntar por voz",
@@ -156,5 +158,8 @@
   "cinematicStageGenerating": "Geração",
   "cinematicStageComplete": "Concluído",
   "cinematicNarrativeDraft": "Rascunho",
-  "cinematicNarrativeFinal": "Final"
+  "cinematicNarrativeFinal": "Final",
+  "seePlansAndPricing": "Ver planos e preços",
+  "account": "Conta",
+  "free": "Grátis"
 }

@@ -28,7 +28,7 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, hasTopBanner = false }: SidebarProps) {
  const location = ReactRouterDom.useLocation();
   const { session } = useSession(); // Call useSession hook and safely access session
- const { subscription } = useSubscription(session);
+ const { subscription, loading: subLoading } = useSubscription(session);
  const isPro = !!session && !!subscription?.isActive;
  const { currentLanguage } = useLanguage();
  const { t } = useTranslation();
@@ -126,7 +126,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, 
             </div>
             {/* Signed-in: plans (free)/settings/help + account card. Guests: same + sign-in card. */}
             {session
-              ? <SidebarUserSection session={session} isPro={isPro} isCollapsed={isCollapsed} />
+              ? <SidebarUserSection session={session} isPro={isPro} subLoading={subLoading} isCollapsed={isCollapsed} />
               : <SidebarGuestSection isCollapsed={isCollapsed} onSignInClick={handleSignInClick} />}
           </div>
         </div>
