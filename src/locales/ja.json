@@ -161,5 +161,11 @@
   "cinematicNarrativeFinal": "最終版",
   "seePlansAndPricing": "プランを見る",
   "account": "アカウント",
-  "free": "無料"
+  "free": "無料",
+  "history": "履歴",
+  "all": "すべて",
+  "movies": "ムービー",
+  "historySubtitle": "あなたが作成したすべてを一か所で。",
+  "historySignedOut": "履歴を見るにはサインインしてください。",
+  "historyEmpty": "まだ何もありません。"
 }

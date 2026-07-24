@@ -165,5 +165,11 @@
   "cinematicNarrativeFinal": "Final",
   "seePlansAndPricing": "Ver planes",
   "account": "Cuenta",
-  "free": "Gratis"
+  "free": "Gratis",
+  "history": "Historial",
+  "all": "Todo",
+  "movies": "Películas",
+  "historySubtitle": "Todo lo que has creado, en un solo lugar.",
+  "historySignedOut": "Inicia sesión para ver tu historial.",
+  "historyEmpty": "Aún no hay nada aquí."
 }

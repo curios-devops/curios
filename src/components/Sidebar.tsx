@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Compass, FolderKanban, Globe2, HomeIcon, Library } from "lucide-react";
+import { Compass, FolderKanban, Globe2, History, HomeIcon, Library } from "lucide-react";
 import * as ReactRouterDom from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation.ts";
 import { useSession } from "../hooks/useSession.ts";
@@ -97,6 +97,15 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, 
               icon={FolderKanban}
               label={t("spaces")}
               isActive={location.pathname === "/spaces"} // Pass isActive prop
+              requiresAuth
+              isCollapsed={isCollapsed}
+              onAuthRequired={handleAuthRequired}
+            />
+            <NavItem
+              to="/history"
+              icon={History}
+              label={t("history")}
+              isActive={location.pathname === "/history"}
               requiresAuth
               isCollapsed={isCollapsed}
               onAuthRequired={handleAuthRequired}

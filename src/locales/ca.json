@@ -161,5 +161,11 @@
   "cinematicNarrativeFinal": "Final",
   "seePlansAndPricing": "Mostra plans",
   "account": "Compte",
-  "free": "Gratuït"
+  "free": "Gratuït",
+  "history": "Historial",
+  "all": "Tot",
+  "movies": "Pel·lícules",
+  "historySubtitle": "Tot el que has creat, en un sol lloc.",
+  "historySignedOut": "Inicia sessió per veure el teu historial.",
+  "historyEmpty": "Encara no hi ha res aquí."
 }
