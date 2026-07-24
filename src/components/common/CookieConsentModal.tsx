@@ -47,32 +47,33 @@ export default function CookieConsentModal({
     window.location.href = '/policies#privacy';
   };
 
-  // Modal position: left (default) or right (when opened from banner)
-  const positionClass = positionRight ? 'right-4 bottom-20' : 'left-56 bottom-12';
+  // Mobile: run side-to-side with a small margin. Desktop: positioned card
+  // anchored left (default) or right (when opened from the banner).
+  const positionClass = positionRight
+    ? 'left-3 right-3 bottom-4 sm:left-auto sm:right-4 sm:bottom-20'
+    : 'left-3 right-3 bottom-4 sm:right-auto sm:left-56 sm:bottom-12';
 
   return (
-    <div className={`fixed ${positionClass} z-[200] animate-fade-in`} style={{ marginLeft: 0, marginBottom: 0 }}>
-      <div className="rounded-md shadow-xl max-w-[320px] w-full p-4 relative border transition-colors duration-200 bg-[#FAFBF9] border-[#E3E6E3] text-[#2A3B39] dark:bg-[#181A1B] dark:border-[#222E2A] dark:text-white">
+    <div className={`fixed ${positionClass} z-[200] animate-fade-in`}>
+      <div className="rounded-xl shadow-xl w-full sm:w-[360px] p-5 relative border transition-colors duration-200 bg-[#FAFBF9] border-[#E3E6E3] text-[#2A3B39] dark:bg-[#181A1B] dark:border-[#222E2A] dark:text-white">
         {/* Close (X) button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-2 right-2 text-gray-400 hover:text-black dark:hover:text-white transition-colors"
+          className="absolute top-3 right-3 text-gray-400 hover:text-black dark:hover:text-white transition-colors"
           aria-label="Close cookie modal"
         >
-          <X size={18} />
+          <X size={20} />
         </button>
-        {/* Header with icon */}
-        <div className="flex items-center gap-1.5 mb-2">
-          <div className="p-1 rounded-full flex items-center justify-center bg-[#3FA9F5] dark:bg-gray-700">
-            <Cookie className="text-white" size={14} />
-          </div>
-          <h3 className="font-medium text-[10px] text-[#2A3B39] dark:text-white">{t('cookiePolicy')}</h3>
+        {/* Header with icon (plain icon — no colored circle) */}
+        <div className="flex items-center gap-2 mb-2.5">
+          <Cookie size={22} style={{ color: 'var(--ui-text-primary)' }} />
+          <h3 className="font-semibold text-base text-[#2A3B39] dark:text-white">{t('cookiePolicy')}</h3>
         </div>
 
         {/* Content */}
-        <div className="mb-3">
-          <p className="text-[10px] leading-tight text-[#2A3B39] dark:text-gray-300">
+        <div className="mb-4">
+          <p className="text-sm leading-relaxed text-[#2A3B39] dark:text-gray-300">
             {t('cookieConsentText')}{' '}
             <button
               type="button"
@@ -97,7 +98,7 @@ export default function CookieConsentModal({
           <button
             type="button"
             onClick={handleNecessaryOnly}
-            className="h-8 w-full rounded-lg text-[10px] font-medium transition-colors border"
+            className="h-10 w-full rounded-lg text-sm font-medium transition-colors border"
             style={{
               backgroundColor: 'var(--ui-bg-secondary)',
               color: 'var(--ui-text-primary)',
@@ -119,7 +120,7 @@ export default function CookieConsentModal({
           <button
             type="button"
             onClick={handleAcceptAll}
-            className="h-8 w-full rounded-lg text-[10px] font-medium transition-colors border"
+            className="h-10 w-full rounded-lg text-sm font-medium transition-colors border"
             style={{
               backgroundColor: primaryButtonBackground,
               color: primaryButtonText,
