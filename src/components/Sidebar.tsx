@@ -4,13 +4,14 @@ import { Compass, FolderKanban, Globe2, HomeIcon, Library } from "lucide-react";
 import * as ReactRouterDom from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation.ts";
 import { useSession } from "../hooks/useSession.ts";
+import { useSubscription } from "../hooks/useSubscription.ts";
 import NavItem from "./sidebar/NavItem.tsx";
 import CollapseButton from "./sidebar/CollapseButton.tsx";
 import SignInModal from "./auth/SignInModal.tsx";
 import { useLanguage } from "../contexts/LanguageContext.tsx";
 import Logo from "./sidebar/Logo.tsx";
 import SidebarGuestSection from "./sidebar/SidebarGuestSection.tsx";
-import UserMenu from "./auth/UserMenu.tsx";
+import SidebarUserSection from "./sidebar/SidebarUserSection.tsx";
 // Define SidebarProps interface
 interface SidebarProps {
  isCollapsed: boolean;
@@ -27,6 +28,8 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, hasTopBanner = false }: SidebarProps) {
  const location = ReactRouterDom.useLocation();
   const { session } = useSession(); // Call useSession hook and safely access session
+ const { subscription } = useSubscription(session);
+ const isPro = !!session && !!subscription?.isActive;
  const { currentLanguage } = useLanguage();
  const { t } = useTranslation();
  const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
@@ -121,9 +124,9 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, 
               style={{ borderColor: 'var(--ui-border-subtle)' }}
             >
             </div>
-            {/* Signed-in: account menu. Guests: plans/settings/help + sign-in card. */}
+            {/* Signed-in: plans (free)/settings/help + account card. Guests: same + sign-in card. */}
             {session
-              ? <UserMenu email={session.user.email || ""} isCollapsed={isCollapsed} />
+              ? <SidebarUserSection session={session} isPro={isPro} isCollapsed={isCollapsed} />
               : <SidebarGuestSection isCollapsed={isCollapsed} onSignInClick={handleSignInClick} />}
           </div>
         </div>
