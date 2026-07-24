@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Compass, FolderKanban, Globe2, HomeIcon, Library, User } from "lucide-react";
+import { Compass, FolderKanban, Globe2, HomeIcon, Library } from "lucide-react";
 import * as ReactRouterDom from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation.ts";
 import { useSession } from "../hooks/useSession.ts";
-import { useAccentColor } from "../hooks/useAccentColor.ts";
 import NavItem from "./sidebar/NavItem.tsx";
 import CollapseButton from "./sidebar/CollapseButton.tsx";
 import SignInModal from "./auth/SignInModal.tsx";
 import { useLanguage } from "../contexts/LanguageContext.tsx";
 import Logo from "./sidebar/Logo.tsx";
-import SidebarThemeIcons from "./sidebar/SidebarThemeIcons.tsx";
+import SidebarGuestSection from "./sidebar/SidebarGuestSection.tsx";
 import UserMenu from "./auth/UserMenu.tsx";
 // Define SidebarProps interface
 interface SidebarProps {
@@ -30,7 +29,6 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, 
   const { session } = useSession(); // Call useSession hook and safely access session
  const { currentLanguage } = useLanguage();
  const { t } = useTranslation();
- const accentColor = useAccentColor();
  const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
 
  const handleSignInClick = () => setShowSignInModal(true);
@@ -66,14 +64,6 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, 
               onClick={toggleSidebar}
             />
           </div>
-          {/* Theme quick-switch — always at the top, behind the logo, above
-              Home. Accent color moved to Settings (signed-in only). Hidden
-              when collapsed: 80px is too narrow for 3 more icon buttons. */}
-          {!isCollapsed && (
-            <div className="mt-3">
-              <SidebarThemeIcons />
-            </div>
-          )}
         </div>
 
         <nav className="flex-1 px-2 py-4">
@@ -131,51 +121,10 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, 
               style={{ borderColor: 'var(--ui-border-subtle)' }}
             >
             </div>
-            {/* Only render Sign In button in the sidebar for guests */}
+            {/* Signed-in: account menu. Guests: plans/settings/help + sign-in card. */}
             {session
               ? <UserMenu email={session.user.email || ""} isCollapsed={isCollapsed} />
-              : (
-                <div className="flex flex-col gap-3">
-                  {isCollapsed ? (
-                    <div className="relative group">
-                      <button
-                        type="button"
-                        onClick={handleSignInClick}
-                        className="flex items-center justify-center p-2.5 rounded-lg transition-colors duration-200 w-full"
-                        style={{ color: 'var(--ui-text-secondary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = accentColor.primary}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--ui-text-secondary)'}
-                      >
-                        <User size={24} className="transition-colors duration-200" />
-                      </button>
-                      <div
-                        className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block text-sm py-1 px-2 rounded whitespace-normal text-wrap break-words"
-                        style={{
-                          backgroundColor: 'var(--ui-bg-elevated)',
-                          color: 'var(--ui-text-primary)',
-                          border: '1px solid var(--ui-border-subtle)',
-                        }}
-                      >
-                        {t('logIn')}
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSignInClick}
-                      className="flex items-center gap-3 p-2.5 rounded-lg transition-colors duration-200 w-full"
-                      style={{ color: 'var(--ui-text-secondary)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = accentColor.primary}
-                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--ui-text-secondary)'}
-                    >
-                      <User size={24} className="transition-colors duration-200" />
-                      <span className="text-sm font-medium tracking-[-0.01em]">
-                        {t('logIn')}
-                      </span>
-                    </button>
-                  )}
-                </div>
-              )}
+              : <SidebarGuestSection isCollapsed={isCollapsed} onSignInClick={handleSignInClick} />}
           </div>
         </div>
       </aside>
