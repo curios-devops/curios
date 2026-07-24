@@ -155,12 +155,13 @@ export default function Home() {
           sidebar (icons next to the logo); accent color moved to Settings
           (signed-in only) — see Sidebar.tsx / GeneralSection.tsx. */}
       {/* On desktop, show in current position. On mobile, these are hidden and shown in the header */}
-      {/* Pro Credits battery — centered at the top, separated from the right cluster */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 h-10 flex items-center mobile:hidden">
+      {/* Pro Credits battery — centered at the top, separated from the right cluster.
+          top offset clears the fixed promo banner (~36px) that overlays the top edge. */}
+      <div className="absolute top-[52px] left-1/2 -translate-x-1/2 h-10 flex items-center mobile:hidden">
         <ProCreditsBattery />
       </div>
 
-      <div className="absolute top-4 right-6 flex items-center gap-4 mobile:hidden">
+      <div className="absolute top-[52px] right-6 flex items-center gap-4 mobile:hidden">
         {isPro ? (
           <div
             className="h-10 w-10 flex items-center justify-center"
