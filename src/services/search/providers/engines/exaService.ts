@@ -1,17 +1,21 @@
-// Exa search engine (exa.ai) — direct client call, same pattern as Tavily.
-// Primary web engine for the Default tier and the contrapunto angle in Ask Deeper.
+// Exa search engine (exa.ai) — proxied through the exa-search edge function.
+// The browser can't call api.exa.ai directly (no CORS + it would leak the key),
+// so the function makes the call server-side. Primary web engine for the
+// Default tier and the contrapunto angle in Ask Deeper.
 
 import type { WebSearchResult } from '../webSearchProvider';
 import { logger } from '../../../../utils/logger';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://gpfccicfqynahflehpqo.supabase.co';
 
 /**
  * Search the web via Exa. Returns [] on any failure or if the key is missing,
  * so callers can fall back to Brave.
  */
 export async function searchExa(query: string, numResults = 10): Promise<WebSearchResult[]> {
-  const apiKey = import.meta.env.VITE_EXA_API_KEY;
-  if (!apiKey?.trim()) {
-    logger.warn('Exa: VITE_EXA_API_KEY not configured');
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!anonKey?.trim()) {
+    logger.warn('Exa: VITE_SUPABASE_ANON_KEY not configured');
     return [];
   }
   if (!query?.trim()) return [];
@@ -20,18 +24,13 @@ export async function searchExa(query: string, numResults = 10): Promise<WebSear
   const timeoutId = setTimeout(() => controller.abort(), 12000);
 
   try {
-    const res = await fetch('https://api.exa.ai/search', {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/exa-search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
+        Authorization: `Bearer ${anonKey}`,
       },
-      body: JSON.stringify({
-        query: query.trim(),
-        type: 'auto',
-        numResults,
-        contents: { text: { maxCharacters: 600 } },
-      }),
+      body: JSON.stringify({ query: query.trim(), numResults }),
       signal: controller.signal,
     });
 
