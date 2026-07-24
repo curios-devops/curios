@@ -3,9 +3,7 @@ export type UserType = 'free' | 'premium' | 'guest';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Crown } from 'lucide-react';
 import { useSession } from '../hooks/useSession.ts';
-import HelpButton from '../components/HelpButton.tsx';
 import InputContainer from '../components/boxContainer/InputContainer.tsx';
-import LanguageSelector from '../components/common/LanguageSelector.tsx';
 import CookieConsentModal from '../components/common/CookieConsentModal.tsx';
 import CookieBanner from '../components/common/CookieBanner.tsx';
 import GuestSignUpBanner from '../components/GuestSignUpBanner.tsx';
@@ -288,13 +286,7 @@ export default function Home() {
       {/* Finite "Discover" strip under the search box (Curiosity Launcher pattern). */}
       <HomeDiscovery />
 
-      {/* Bottom right: Language and Help */}
-      <div className="fixed bottom-2 right-4 flex items-center gap-2 z-[180]">
-        <LanguageSelector />
-        <HelpButton />
-      </div>
-
-      {/* Cookie banner: bottom-right, floats over language/help buttons */}
+      {/* Cookie banner: bottom-right */}
       <CookieBanner onClick={() => setShowCookieModal(true)} hidden={!showCookieBanner} />
 
       {/* Guest Sign Up Banner - only show for guest users and after cookie consent */}
