@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Settings, Sparkles } from 'lucide-react';
+import { Crown, Settings, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase.ts';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
@@ -33,6 +33,17 @@ function getInitials(name: string | null, email: string): string {
   return (email[0] || '?').toUpperCase();
 }
 
+// OAuth providers (Google) put the profile picture in user_metadata — prefer it
+// so a signed-up-with-Google user always sees their photo, not initials.
+function metadataAvatar(user: Session['user']): string | null {
+  const m = (user.user_metadata ?? {}) as Record<string, unknown>;
+  for (const key of ['avatar_url', 'picture']) {
+    const v = m[key];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return null;
+}
+
 // Signed-in sidebar footer: plans (free only) + Settings + Help, then the
 // account card (avatar, name, Free/Pro status, Upgrade button for free users).
 export default function SidebarUserSection({ session, isPro, subLoading, isCollapsed }: SidebarUserSectionProps) {
@@ -40,7 +51,10 @@ export default function SidebarUserSection({ session, isPro, subLoading, isColla
   const { t } = useTranslation();
   const accentColor = useAccentColor();
   const { accentColor: selectedAccentColor } = useTheme();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  // Seed from OAuth metadata so the photo shows immediately; the profiles row
+  // (below) can still supply/override it. Fall back to initials only if broken.
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(metadataAvatar(session.user));
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
 
   const email = session.user.email || '';
@@ -54,17 +68,32 @@ export default function SidebarUserSection({ session, isPro, subLoading, isColla
   useEffect(() => {
     if (!session.user.id) return;
     supabase.from('profiles').select('avatar_url').eq('id', session.user.id).maybeSingle()
-      .then(({ data, error }) => { if (!error && data?.avatar_url) setAvatarUrl(data.avatar_url); });
+      .then(({ data, error }) => { if (!error && data?.avatar_url) { setAvatarUrl(data.avatar_url); setAvatarBroken(false); } });
   }, [session.user.id]);
 
   const goSettings = () => navigate('/settings');
 
+  const showPhoto = !!avatarUrl && !avatarBroken;
   const avatar = (
-    <div
-      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 overflow-hidden"
-      style={{ backgroundColor: avatarBg, color: avatarFg }}
-    >
-      {avatarUrl ? <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" /> : initials}
+    <div className="relative shrink-0">
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold overflow-hidden"
+        style={{ backgroundColor: avatarBg, color: avatarFg }}
+      >
+        {showPhoto
+          ? <img src={avatarUrl as string} alt={displayName} className="w-full h-full object-cover" onError={() => setAvatarBroken(true)} />
+          : initials}
+      </div>
+      {/* Pro badge on the avatar — shown when collapsed so premium is still legible. */}
+      {isPro && isCollapsed && (
+        <span
+          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border"
+          style={{ backgroundColor: '#16a34a', borderColor: 'var(--ui-bg-secondary)' }}
+          title={t('pro') || 'PRO'}
+        >
+          <Crown size={8} className="text-white" />
+        </span>
+      )}
     </div>
   );
 

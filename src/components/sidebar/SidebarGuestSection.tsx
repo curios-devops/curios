@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, Sparkles, User } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
+import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import GuestSettingsModal from './GuestSettingsModal.tsx';
 import SidebarHelpMenu from './SidebarHelpMenu.tsx';
 import { sidebarRowClass, sidebarRowStyle, sidebarRowEnter, sidebarRowLeave } from './sidebarMenuRow.ts';
@@ -18,6 +19,7 @@ interface SidebarGuestSectionProps {
 // "See plans and pricing", "Settings", "Help", then the sign-in card.
 export default function SidebarGuestSection({ isCollapsed, onSignInClick }: SidebarGuestSectionProps) {
   const { t } = useTranslation();
+  const accentColor = useAccentColor();
   const [showPricing, setShowPricing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -63,10 +65,8 @@ export default function SidebarGuestSection({ isCollapsed, onSignInClick }: Side
           <button
             type="button"
             onClick={onSignInClick}
-            className="mt-3 w-full py-2 rounded-full text-sm font-medium border transition-colors"
-            style={{ color: 'var(--ui-text-primary)', borderColor: 'var(--ui-border-default)', backgroundColor: 'transparent' }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--ui-bg-elevated)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+            className="mt-3 w-full py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-90"
+            style={{ backgroundColor: accentColor.primary, color: 'var(--ui-text-on-accent)' }}
           >
             {t('logIn')}
           </button>

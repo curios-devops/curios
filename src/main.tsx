@@ -58,6 +58,7 @@ const ArticleDetail = lazyRetry(() => import('./mainPages/ArticleDetail.tsx'));
 // Curiosity Engine — Space + Share + Feed
 const NodeSharePage = lazyRetry(() => import('./services/space/pages/NodeSharePage.tsx'));
 const SpacePage = lazyRetry(() => import('./services/space/pages/SpacePage.tsx'));
+const HistoryPage = lazyRetry(() => import('./services/space/pages/HistoryPage.tsx'));
 const FeedPage = lazyRetry(() => import('./services/space/pages/FeedPage.tsx'));
 const TopicPage = lazyRetry(() => import('./services/space/pages/TopicPage.tsx'));
 const Library = lazyRetry(() => import('./mainPages/Library.tsx'));
@@ -116,6 +117,7 @@ const router = createBrowserRouter(
         { path: '/s/:slug', element: <LazyPageWrapper><NodeSharePage /></LazyPageWrapper> },
         { path: '/topic/:slug', element: <LazyPageWrapper><TopicPage /></LazyPageWrapper> },
         { path: '/spaces', element: <LazyPageWrapper><SpacePage /></LazyPageWrapper> },
+        { path: '/history', element: <LazyPageWrapper><HistoryPage /></LazyPageWrapper> },
         { path: '/library', element: <LazyPageWrapper><Library /></LazyPageWrapper> },
         { path: '/feed', element: <LazyPageWrapper><FeedPage /></LazyPageWrapper> },
         { path: '/settings', element: <LazyPageWrapper><Settings /></LazyPageWrapper> },

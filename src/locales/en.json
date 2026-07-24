@@ -168,5 +168,11 @@
   "cinematicNarrativeFinal": "Final",
   "seePlansAndPricing": "See plans",
   "account": "Account",
-  "free": "Free"
+  "free": "Free",
+  "history": "History",
+  "all": "All",
+  "movies": "Movies",
+  "historySubtitle": "Everything you have created, in one place.",
+  "historySignedOut": "Sign in to see your history.",
+  "historyEmpty": "Nothing here yet."
 }
