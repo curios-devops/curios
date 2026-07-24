@@ -89,9 +89,20 @@ action/state per view — primary CTA, active tab, focus ring, progress fill,
 one status badge. Never a large body-text or background-fill color choice
 beyond the coordinated `bg`/`surface` the accent itself defines.
 
-**Picker:** `ThemeToggle.tsx` offers exactly these 6 (`ocean, sky, borealis,
-fire, wood, dusk`) — the legacy 4 (blue/teal/purple/orange) were removed from
-the picker, not from the codebase (see §11).
+**Picker (2026-07-24, updated):** accent color selection moved to Settings →
+General → Accent Color (`GeneralSection.tsx`), **signed-in users only** —
+guests keep the default `sky` with no picker shown. The desktop `ThemeToggle.tsx`
+dropdown (theme + color together) is no longer used on desktop; a new
+`SidebarThemeIcons.tsx` (3 always-visible icon buttons — System/Light/Dark,
+System using the `Contrast` half-filled-circle icon) sits in the sidebar,
+directly under the logo, above the Home nav item, and handles *theme only*.
+`ThemeToggle.tsx` itself is unchanged and still used by the mobile header
+(`App.tsx`) — it wasn't touched. The legacy 4 accents (blue/teal/purple/orange)
+remain removed from any picker, not from the codebase (see §11).
+
+The sidebar's collapse/expand button also moved: it used to jump to the
+bottom of the sidebar when collapsed — it now always stays at the top, next
+to the logo, in both states (`CollapseButton.tsx`, `Sidebar.tsx`).
 
 **One-off, non-token gradient:** the "AI" wordmark suffix gradient
 (`from-blue-500 via-purple-500 to-pink-500`) is an intentional brand
