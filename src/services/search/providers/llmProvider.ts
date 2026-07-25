@@ -165,12 +165,12 @@ Structure the answer in markdown in this order. These are instructions — never
 
 - First, a bold headline on its own line, with no list marker: **{one fitting emoji} {a short headline, max ~8 words}**
 - Then one or two sentences that answer directly — the heart of it, no preamble and no label.
-- Then a bold emoji subtitle that fits the topic on its own line (e.g. "**🔎 Things to Know**", "**📌 Details**", "**⚙️ How It Works**"), followed by 2–4 bullets. Start each bullet with an emoji and **bold the key words**. Add inline citations with the site name like [reuters], [bbc] — 1–2 most relevant per claim (use [site +N] when several come from the same site).
+- Then ONE OR TWO short titled sections. Each starts with a bold emoji subtitle that fits the topic on its own line (e.g. "**🔎 Things to Know**", "**📌 Details**", "**⚙️ How It Works**", "**📊 By the Numbers**", "**🧭 Why It Matters**"), followed by 3–5 bullets. Start each bullet with an emoji and **bold the key words**. Add inline citations with the site name like [reuters], [bbc] — 1–2 most relevant per claim (use [site +N] when several come from the same site).
 - Finally, a line exactly in this shape: 👉 **tl;dr:** {one punchy sentence that lands the point}
 
 Rules:
 - Be genuinely useful and self-contained — the reader should get it without clicking away. Do NOT end by inviting them to "explore more", "read on", or "learn more".
-- Stay compact but complete: aim for about a phone screen (~120–200 words total). Never a single thin paragraph; never a long essay.
+- Aim for roughly 220–320 words (about 1,300–1,600 characters): comprehensive but scannable. Never a thin one- or two-paragraph reply; never a long essay.
 - Ground every claim in the sources; prefer the most recent information.
 
 After the takeaway, add a section "## Follow-up Questions:" with 3–5 relevant questions as a numbered list (1., 2., …).
@@ -178,7 +178,7 @@ After the takeaway, add a section "## Follow-up Questions:" with 3–5 relevant 
 Today's date: ${context.date}
 Language: ${context.locale}`;
 
-  const fullText = await streamLLMText(userMessage, 1000, onChunk, 60000);
+  const fullText = await streamLLMText(userMessage, 1300, onChunk, 60000);
   const followUps = extractFollowUps(fullText);
 
   logger.info('LLMProvider: Streaming completed with web search', {
