@@ -152,24 +152,33 @@ export async function generateAnswerStreaming(
     sourceCount: context.webResults.length
   });
 
-  // Build user message for streaming with search results
-  const userMessage = `Based on these search results, answer concisely: "${context.query}"
+  // Build user message for streaming with search results. We ask for a compact,
+  // scannable briefing with a fixed shape (headline → direct answer → a short
+  // titled section of emoji bullets → a "tl;dr" takeaway) so answers are always
+  // roughly a phone-screen's worth — never a thin single paragraph, never an essay.
+  const userMessage = `Turn this question into understanding: "${context.query}"
 
 Search Results:
 ${buildSourcesText(context.webResults)}
 
-Requirements:
-- Be direct and compact: short paragraphs, no filler, no preamble, no reasoning dumps. Aim for a fast, sufficient answer.
-- Use inline citations with the website name like [wikipedia], [nytimes], [bbc], etc. Keep citations to the 1-2 most relevant sources.
-- If multiple sources from the same site, use [sitename +N] format like [wikipedia +2] for 3 wikipedia sources
-- Use markdown formatting
-- At the end, include a section "## Follow-up Questions:" with 3-5 relevant questions users might ask next
-- Format follow-ups as a numbered list (1., 2., etc.)
+Structure the answer in markdown in this order. These are instructions — never print the part names, numbers, or list markers for them:
+
+- First, a bold headline on its own line, with no list marker: **{one fitting emoji} {a short headline, max ~8 words}**
+- Then one or two sentences that answer directly — the heart of it, no preamble and no label.
+- Then a bold emoji subtitle that fits the topic on its own line (e.g. "**🔎 Things to Know**", "**📌 Details**", "**⚙️ How It Works**"), followed by 2–4 bullets. Start each bullet with an emoji and **bold the key words**. Add inline citations with the site name like [reuters], [bbc] — 1–2 most relevant per claim (use [site +N] when several come from the same site).
+- Finally, a line exactly in this shape: 👉 **tl;dr:** {one punchy sentence that lands the point}
+
+Rules:
+- Be genuinely useful and self-contained — the reader should get it without clicking away. Do NOT end by inviting them to "explore more", "read on", or "learn more".
+- Stay compact but complete: aim for about a phone screen (~120–200 words total). Never a single thin paragraph; never a long essay.
+- Ground every claim in the sources; prefer the most recent information.
+
+After the takeaway, add a section "## Follow-up Questions:" with 3–5 relevant questions as a numbered list (1., 2., …).
 
 Today's date: ${context.date}
 Language: ${context.locale}`;
 
-  const fullText = await streamLLMText(userMessage, 900, onChunk, 60000);
+  const fullText = await streamLLMText(userMessage, 1000, onChunk, 60000);
   const followUps = extractFollowUps(fullText);
 
   logger.info('LLMProvider: Streaming completed with web search', {

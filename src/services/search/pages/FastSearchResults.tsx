@@ -589,6 +589,22 @@ export default function FastSearchResults() {
                       <span className="inline-block w-2 h-4 ml-1 animate-pulse align-middle" style={{ backgroundColor: 'var(--accent-primary)' }}></span>
                     )}
                   </div>
+
+                  {/* Learn more — expands the compact answer into a full Ask Deeper
+                      research pass (same gated action as the Ask Deeper button). */}
+                  {!isLoading && streamingAnswer && !effectiveDeep && (
+                    <button
+                      type="button"
+                      onClick={handleToggleDeep}
+                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-colors"
+                      style={{ color: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent-primary) 10%, transparent)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                    >
+                      <Crown size={15} />
+                      <span>Learn more</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Quick Links Section - show first 4 sources */}
