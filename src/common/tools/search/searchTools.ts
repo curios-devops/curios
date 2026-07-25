@@ -35,6 +35,7 @@ interface SearchResponseData {
 }
 
 import { searchWithTavily } from '../../../commonService/searchTools/tavilyService.ts';
+import { searchWithSerpdive } from '../../../commonService/searchTools/serpdiveService.ts';
 import { braveSearchTool } from '../../../commonService/searchTools/braveSearchTool.ts';
 import { logger } from '../../../utils/logger.ts';
 
@@ -58,7 +59,7 @@ export interface SearchResult {
 export interface SearchResponse {
   query: string;
   results: SearchResult[];
-  source: 'tavily' | 'rapidapi' | 'fallback';
+  source: 'tavily' | 'serpdive' | 'rapidapi' | 'fallback';
   timestamp: Date;
   total_results: number;
 }
@@ -92,7 +93,20 @@ class SearchTools {
         return response;
       }
     } catch (error) {
-      logger.warn('Tavily search failed, trying Brave:', error);
+      logger.warn('Tavily search failed, trying SERPdive:', error);
+    }
+
+    try {
+      // SERPdive fallback: extracted, answer-ready page content (skipped
+      // silently when VITE_SERPDIVE_API_KEY is not configured)
+      const serpdiveResults = await this.searchWithSerpdive(query);
+      if (serpdiveResults.results.length > 0) {
+        const response = this.formatSearchResponse(query, serpdiveResults, 'serpdive');
+        this.addToHistory(response);
+        return response;
+      }
+    } catch (error) {
+      logger.warn('SERPdive search failed, trying Brave:', error);
     }
 
     try {
@@ -165,6 +179,29 @@ class SearchTools {
     }
   }
 
+  private async searchWithSerpdive(query: string): Promise<SearchResponseData> {
+    try {
+      const serpdiveResponse = await searchWithSerpdive(query) as SearchServiceResponse;
+
+      const results: SearchResult[] = serpdiveResponse.results.map(result => {
+        const url = result.url || '';
+        return {
+          title: result.title || 'Untitled',
+          url,
+          snippet: result.content || '',
+          content: result.content,
+          relevance_score: 0.7, // Engine returns results best-first
+          domain: this.extractDomain(url)
+        };
+      });
+
+      return { results, images: serpdiveResponse.images || [] };
+    } catch (error) {
+      logger.error('SERPdive search error:', error);
+      throw error;
+    }
+  }
+
   private async searchWithBrave(query: string): Promise<SearchResponseData> {
     try {
       const braveResponse = await braveSearchTool(query);
@@ -194,7 +231,7 @@ class SearchTools {
   private formatSearchResponse(
     query: string, 
     searchData: SearchResponseData, 
-    source: 'tavily' | 'rapidapi'
+    source: 'tavily' | 'serpdive' | 'rapidapi'
   ): SearchResponse {
     const response: SearchResponse = {
       query,

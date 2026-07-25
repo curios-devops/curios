@@ -14,6 +14,7 @@ const optionalEnvVars = {
   VITE_RAPIDAPI_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_RAPIDAPI_KEY : '') || '',
   VITE_BRAVE_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_BRAVE_API_KEY : '') || '',
   VITE_TAVILY_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_TAVILY_API_KEY : '') || '',
+  VITE_SERPDIVE_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_SERPDIVE_API_KEY : '') || '',
   VITE_STRIPE_PUBLISHABLE_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_PUBLISHABLE_KEY : '') || '',
   VITE_STRIPE_SECRET_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_SECRET_KEY : '') || '',
   VITE_STRIPE_WEBHOOK_SECRET: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_WEBHOOK_SECRET : '') || '',
@@ -60,6 +61,9 @@ export const env = {
   },
   tavily: {
     apiKey: optionalEnvVars.VITE_TAVILY_API_KEY
+  },
+  serpdive: {
+    apiKey: optionalEnvVars.VITE_SERPDIVE_API_KEY
   },
   stripe: {
     publishableKey: optionalEnvVars.VITE_STRIPE_PUBLISHABLE_KEY,

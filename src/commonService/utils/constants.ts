@@ -2,6 +2,7 @@
 // API timeouts for different services
 export const API_TIMEOUTS = {
   TAVILY: 10000,  // 10 seconds for Tavily fallback timeout
+  SERPDIVE: 10000, // 10 seconds for SERPdive fallback timeout
   SEARXNG: 10000, // 10 seconds for SearxNG timeout (reduced to prevent cascading delays)
   BRAVE: 10000,   // 10 seconds for Brave search timeout (reduced to prevent stuck states)
   GENERAL: 15000  // 15 seconds general timeout
