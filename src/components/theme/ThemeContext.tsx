@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { AccentColor, applyThemeColors } from '../../config/themeColors';
+import { appSettings } from '../../config/appSettings.ts';
 import { supabase } from '../../lib/supabase.ts';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -28,7 +29,7 @@ function normalizeAccentColor(color: string | null | undefined): AccentColor | n
 function getInitialTheme(): Theme {
   const stored = localStorage.getItem('theme') as Theme;
   if (stored && ['light', 'dark', 'system'].includes(stored)) return stored;
-  return 'system';
+  return appSettings.theme.default;
 }
 
 function getInitialAccentColor(): AccentColor {

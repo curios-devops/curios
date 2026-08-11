@@ -5,6 +5,7 @@
 
 import { useProCredits } from '../providers/ProCreditsProvider.tsx';
 import type { BatteryLevel } from '../services/proCreditsService.ts';
+import { appSettings } from '../config/appSettings.ts';
 
 const COLOR: Record<BatteryLevel, string> = {
   full: '#22c55e', // green
@@ -16,6 +17,9 @@ const COLOR: Record<BatteryLevel, string> = {
 export default function ProCreditsBattery() {
   const { remaining, max, battery, loading, tier, promptUpgrade } = useProCredits();
 
+  // Operator toggle: hide the indicator entirely when set to 'off'. ('icon' is a
+  // future variant; today only 'battery' and 'off' are implemented.)
+  if (appSettings.credits.display === 'off') return null;
   if (loading) return null;
 
   const color = COLOR[battery];
