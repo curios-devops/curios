@@ -1,85 +1,93 @@
-// Internal application settings — NOT user-facing, NOT secret.
+// Internal application settings — NOT user-facing at runtime, NOT secret.
 //
-// The single place to tune the app's chrome (top bar, logo, banner, credits,
-// defaults) WITHOUT editing component code. Safe to commit: no keys or secrets
-// (those stay in .env). Anything user-configurable (their own theme/accent)
-// still lives in the Settings UI; this is the operator-level baseline.
+// The human-editable source of truth is /app-settings.md in the repo root — a
+// plain "KEY = value" file anyone can edit without touching code. THIS file just
+// parses it into a typed object the app imports. Every field validates its value
+// and falls back to a safe default, so a typo in app-settings.md can never break
+// the app. (Changes there, like .env, take effect on the next build/deploy.)
 //
-// STRATEGY: values below MIRROR the current UI exactly, so introducing this file
-// changes nothing on screen. Flip one knob at a time to evolve the look.
-//   [wired]      = a component already reads this value.
-//   [not wired]  = documented here; the component still hardcodes it (wire later).
+// Secrets still live in .env. Advanced/technical knobs not exposed in the simple
+// file (logo typography, etc.) keep their defaults here until we choose to expose
+// them.
+
+import rawConfig from '../../app-settings.md?raw';
 
 export type ThemeName = 'system' | 'light' | 'dark';
 export type GetStartedMode = 'text' | 'icon';
 export type CreditsDisplay = 'icon' | 'battery' | 'off';
 
 export interface AppSettings {
-  theme: {
-    /** [wired] Default theme for first-time visitors (before they choose). */
-    default: ThemeName;
-  };
-  banner: {
-    /** [wired] Show the full-width promo banner across the top of the home page. */
-    enabled: boolean;
-    /** [wired] Banner copy — edit here, no code change needed. */
-    text: string;
-  };
+  theme: { default: ThemeName };
+  banner: { enabled: boolean; text: string };
   logo: {
-    /** [not wired] Icon glyph size in px (expanded / collapsed). */
     iconSize: number;
     collapsedIconSize: number;
-    /** [not wired] Show the "CuriosAI" wordmark next to the icon. */
     showWordmark: boolean;
-    /** [not wired] Wordmark typography — parametric so the look is reversible.
-        Current default is Michroma (wide/technical). To thin it out, swap the
-        family to e.g. "'Space Grotesk', sans-serif" and drop the weight. */
-    wordmark: {
-      fontFamily: string;
-      fontSize: string;
-      fontWeight: number;
-      letterSpacing: string;
-    };
+    wordmark: { fontFamily: string; fontSize: string; fontWeight: number; letterSpacing: string };
   };
-  getStarted: {
-    /** [not wired] 'text' → labelled button; 'icon' → compact person-icon button. */
-    mode: GetStartedMode;
-    /** [wired] Label used when mode === 'text'. */
-    text: string;
-  };
-  credits: {
-    /** [wired for on/off] 'battery' (current) | 'icon' (later) | 'off' (hide). */
-    display: CreditsDisplay;
-    /** [not wired] Icon/graphic size in px. */
-    iconSize: number;
-  };
+  getStarted: { mode: GetStartedMode; text: string };
+  credits: { display: CreditsDisplay; iconSize: number };
 }
+
+// Read every "KEY = value" line (ALL-CAPS keys). Prose, ### titles and ``` fences
+// don't match, so they're ignored. Any failure yields {} → all defaults apply.
+function parseConfig(raw: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  try {
+    for (const line of raw.split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*)$/);
+      if (m) out[m[1]] = m[2].trim();
+    }
+  } catch {
+    // fall through — callers get whatever parsed (possibly nothing)
+  }
+  return out;
+}
+
+const cfg = parseConfig(rawConfig);
+
+const DEFAULT_BANNER_TEXT =
+  '☀️ Summer Sale • Limited Time Only • 50% Discount • Grab It Before It Melts! 🏖️';
+
+const onOff = (v: string | undefined, def: boolean): boolean =>
+  v === 'ON' ? true : v === 'OFF' ? false : def;
+
+const asTheme = (v: string | undefined): ThemeName => {
+  const t = (v || '').toLowerCase();
+  return t === 'light' || t === 'dark' || t === 'system' ? t : 'system';
+};
+
+const asCredits = (v: string | undefined): CreditsDisplay => {
+  const c = (v || '').toLowerCase();
+  return c === 'off' ? 'off' : c === 'icon' ? 'icon' : 'battery';
+};
 
 export const appSettings: AppSettings = {
   theme: {
-    default: 'system',
+    default: asTheme(cfg.THEME),
   },
   banner: {
-    enabled: true,
-    text: '☀️ Summer Sale • Limited Time Only • 50% Discount • Grab It Before It Melts! 🏖️',
+    enabled: onOff(cfg.BANNER, false),
+    text: cfg.BANNER_TEXT || DEFAULT_BANNER_TEXT,
   },
+  // Advanced typography — not exposed in app-settings.md yet; edit here to change.
   logo: {
     iconSize: 28,
     collapsedIconSize: 32,
     showWordmark: true,
     wordmark: {
       fontFamily: "'Michroma', 'Helvetica Neue', Helvetica, Arial, sans-serif",
-      fontSize: '1.125rem', // text-lg
-      fontWeight: 600, // font-semibold
-      letterSpacing: '-0.025em', // tracking-tight
+      fontSize: '1.125rem',
+      fontWeight: 600,
+      letterSpacing: '-0.025em',
     },
   },
   getStarted: {
     mode: 'text',
-    text: 'Get Started',
+    text: cfg.GET_STARTED_TEXT || 'Get Started',
   },
   credits: {
-    display: 'battery',
+    display: asCredits(cfg.CREDITS),
     iconSize: 16,
   },
 };
