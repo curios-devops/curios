@@ -6,31 +6,42 @@
 // and falls back to a safe default, so a typo in app-settings.md can never break
 // the app. (Changes there, like .env, take effect on the next build/deploy.)
 //
-// Secrets still live in .env. Advanced/technical knobs not exposed in the simple
-// file (logo typography, etc.) keep their defaults here until we choose to expose
-// them.
+// Secrets stay in .env.
 
 import rawConfig from '../../app-settings.md?raw';
 
 export type ThemeName = 'system' | 'light' | 'dark';
 export type GetStartedMode = 'button' | 'icon';
 export type CreditsDisplay = 'battery' | 'dial' | 'off';
+export type Size = 'L' | 'M' | 'S';
+export type WordmarkColor = 'default' | 'gray';
+
+// The logo icon's own gray (see CuriosLogo.tsx frame fill) — offered as a
+// wordmark color option.
+export const LOGO_GRAY = '#9A9A9A';
+
+// Resolved logo look for one context (header vs sidebar).
+export interface LogoConfig {
+  iconSize: number; // px (expanded); collapsed adds a few px
+  nameFontSize: string; // "Curios" wordmark size
+  showAi: boolean; // show the "AI" part of the wordmark
+  aiFontSize: string;
+}
 
 export interface AppSettings {
   theme: { default: ThemeName };
   banner: { enabled: boolean; text: string };
-  logo: {
-    iconSize: number;
-    collapsedIconSize: number;
-    showWordmark: boolean;
-    wordmark: { fontFamily: string; fontSize: string; fontWeight: number; letterSpacing: string };
-  };
+  // Shared wordmark typography (family/weight); size is per-context (L/M/S).
+  wordmarkFont: { fontFamily: string; fontWeight: number; letterSpacing: string };
+  wordmarkColor: WordmarkColor;
+  header: { themeToggle: boolean; logo: LogoConfig };
+  sidebar: { logo: LogoConfig };
   getStarted: { mode: GetStartedMode; text: string };
   credits: { display: CreditsDisplay; iconSize: number };
 }
 
-// Read every "KEY = value" line (ALL-CAPS keys). Prose, ### titles and ``` fences
-// don't match, so they're ignored. Any failure yields {} → all defaults apply.
+// Read every "KEY = value" line (ALL-CAPS keys). Prose, ### titles, ``` fences and
+// ====== section rules don't match, so they're ignored. Any failure → {} → defaults.
 function parseConfig(raw: string): Record<string, string> {
   const out: Record<string, string> = {};
   try {
@@ -49,8 +60,17 @@ const cfg = parseConfig(rawConfig);
 const DEFAULT_BANNER_TEXT =
   '☀️ Summer Sale • Limited Time Only • 50% Discount • Grab It Before It Melts! 🏖️';
 
+// L / M / S size scales.
+const ICON_PX: Record<Size, number> = { L: 34, M: 28, S: 22 };
+const TEXT_REM: Record<Size, string> = { L: '1.375rem', M: '1.125rem', S: '0.9rem' };
+
 const onOff = (v: string | undefined, def: boolean): boolean =>
   v === 'ON' ? true : v === 'OFF' ? false : def;
+
+const asSize = (v: string | undefined, def: Size = 'M'): Size => {
+  const s = (v || '').toUpperCase();
+  return s === 'L' || s === 'M' || s === 'S' ? (s as Size) : def;
+};
 
 const asTheme = (v: string | undefined): ThemeName => {
   const t = (v || '').toLowerCase();
@@ -65,6 +85,27 @@ const asCredits = (v: string | undefined): CreditsDisplay => {
 const asGetStarted = (v: string | undefined): GetStartedMode =>
   (v || '').toLowerCase() === 'icon' ? 'icon' : 'button';
 
+// Wordmark typefaces. Michroma (default) is wide/technical; Space Grotesk is a
+// thinner, squarer grotesque (Perplexity-ish). Both are loaded in index.html.
+const WORDMARK_FONTS = {
+  michroma: { fontFamily: "'Michroma', 'Helvetica Neue', Helvetica, Arial, sans-serif", fontWeight: 600, letterSpacing: '-0.025em' },
+  grotesk: { fontFamily: "'Space Grotesk', 'Inter', system-ui, sans-serif", fontWeight: 500, letterSpacing: '-0.02em' },
+} as const;
+
+const asFont = (v: string | undefined) =>
+  (v || '').toLowerCase() === 'grotesk' ? WORDMARK_FONTS.grotesk : WORDMARK_FONTS.michroma;
+
+const asColor = (v: string | undefined): WordmarkColor =>
+  (v || '').toLowerCase() === 'gray' ? 'gray' : 'default';
+
+// Build a logo config from a KEY prefix (HEADER_ or SIDEBAR_). Default size M.
+const logoConfig = (prefix: string): LogoConfig => ({
+  iconSize: ICON_PX[asSize(cfg[`${prefix}_LOGO_ICON`], 'M')],
+  nameFontSize: TEXT_REM[asSize(cfg[`${prefix}_LOGO_NAME`], 'M')],
+  showAi: onOff(cfg[`${prefix}_LOGO_AI`], true),
+  aiFontSize: TEXT_REM[asSize(cfg[`${prefix}_LOGO_AI_SIZE`], 'M')],
+});
+
 export const appSettings: AppSettings = {
   theme: {
     default: asTheme(cfg.THEME),
@@ -73,17 +114,14 @@ export const appSettings: AppSettings = {
     enabled: onOff(cfg.BANNER, false),
     text: cfg.BANNER_TEXT || DEFAULT_BANNER_TEXT,
   },
-  // Advanced typography — not exposed in app-settings.md yet; edit here to change.
-  logo: {
-    iconSize: 28,
-    collapsedIconSize: 32,
-    showWordmark: true,
-    wordmark: {
-      fontFamily: "'Michroma', 'Helvetica Neue', Helvetica, Arial, sans-serif",
-      fontSize: '1.125rem',
-      fontWeight: 600,
-      letterSpacing: '-0.025em',
-    },
+  wordmarkFont: asFont(cfg.LOGO_FONT),
+  wordmarkColor: asColor(cfg.LOGO_COLOR),
+  header: {
+    themeToggle: onOff(cfg.HEADER_THEME_TOGGLE, true),
+    logo: logoConfig('HEADER'),
+  },
+  sidebar: {
+    logo: logoConfig('SIDEBAR'),
   },
   getStarted: {
     mode: asGetStarted(cfg.GET_STARTED),

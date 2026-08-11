@@ -211,12 +211,12 @@ function AppContent() {
                     <Menu size={28} className="text-gray-900 dark:text-white" />
                   </button>
                   <div className="flex items-center gap-2">
-                    <Logo isCollapsed={false} />
+                    <Logo isCollapsed={false} variant="header" />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <ProCreditsBattery />
-                  <ThemeToggle />
+                  {appSettings.header.themeToggle && <ThemeToggle />}
                   <MobileGetStarted />
                 </div>
               </header>
