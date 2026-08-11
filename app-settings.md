@@ -18,6 +18,8 @@ BANNER = ON
 
 ### BANNER_TEXT — the message shown inside the banner
 Any text and emojis. Only used when BANNER = ON.
+Recommended length: **up to ~90 characters** (the banner scrolls, so longer still
+works, but it reads best on a phone when kept under ~90). Current example ≈ 85.
 ```
 BANNER_TEXT = ☀️ Summer Sale • Limited Time Only • 50% Discount • Grab It Before It Melts! 🏖️
 ```
@@ -29,12 +31,20 @@ THEME = SYSTEM
 ```
 
 ### CREDITS — the Pro-credits indicator on the top bar
-Default = BATTERY · Valid options: BATTERY / OFF
+BATTERY = the little battery. DIAL = a round gauge (count in a ring). OFF = hidden.
+Default = BATTERY · Valid options: BATTERY / DIAL / OFF
 ```
 CREDITS = BATTERY
 ```
 
-### GET_STARTED_TEXT — label on the sign-up button
+### GET_STARTED — how the sign-up call-to-action looks
+BUTTON = a labelled button (uses GET_STARTED_TEXT below). ICON = a compact person icon.
+Default = BUTTON · Valid options: BUTTON / ICON
+```
+GET_STARTED = BUTTON
+```
+
+### GET_STARTED_TEXT — label on the sign-up button (used when GET_STARTED = BUTTON)
 Any short text. Default = Get Started
 ```
 GET_STARTED_TEXT = Get Started

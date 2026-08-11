@@ -4,7 +4,7 @@ import { ThemeProvider } from './components/theme/ThemeContext.tsx';
 import { LanguageProvider } from './contexts/LanguageContext.tsx';
 import Sidebar from './components/Sidebar.tsx';
 import Logo from './components/sidebar/Logo.tsx';
-import { Menu, Crown } from 'lucide-react';
+import { Menu, Crown, CircleUserRound } from 'lucide-react';
 import ThemeToggle from './components/theme/ThemeToggle.tsx';
 import ProCreditsBattery from './components/ProCreditsBattery.tsx';
 import SignUpModal from './components/auth/SignUpModal.tsx';
@@ -150,6 +150,22 @@ function AppContent() {
       );
     }
 
+    // Icon mode: a compact person glyph instead of the labelled button.
+    if (appSettings.getStarted.mode === 'icon') {
+      return (
+        <button
+          type="button"
+          onClick={() => setShowSignUpModal(true)}
+          title={appSettings.getStarted.text}
+          aria-label={appSettings.getStarted.text}
+          className="h-8 w-8 flex items-center justify-center rounded-full transition-colors"
+          style={{ color: 'var(--ui-text-primary)' }}
+        >
+          <CircleUserRound size={26} strokeWidth={1.75} />
+        </button>
+      );
+    }
+
     // Use the same visual style as the desktop "Get started" button (rounded-lg)
     return (
       <button
@@ -167,7 +183,7 @@ function AppContent() {
           e.currentTarget.style.color = textColor;
         }}
       >
-        {t('getStarted')}
+        {appSettings.getStarted.text}
       </button>
     );
   }
