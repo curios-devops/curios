@@ -61,33 +61,35 @@ function Battery({ remaining, color }: { remaining: number; color: string }) {
   );
 }
 
-// Round gauge (see docs/General/UX credits.jpeg): remaining count big in the
-// centre, total small beneath, inside a progress ring filled to remaining/max.
+// Round dial (see docs/General/UX credits.jpeg): an open-bottom gauge — the arc
+// leaves a gap at the bottom so the total number sits inside that gap, with the
+// remaining count big in the centre and the arc filled to remaining/max.
 function Dial({ remaining, max, color }: { remaining: number; max: number; color: string }) {
-  const size = 32;
-  const r = 14;
+  const size = 40;
+  const cx = 20, cy = 20, r = 16;
   const c = 2 * Math.PI * r;
+  const GAP_DEG = 72; // opening at the bottom where the total sits
+  const spanFrac = (360 - GAP_DEG) / 360; // fraction of the circle actually drawn
+  const rot = 90 + GAP_DEG / 2; // start so the gap is centred at the bottom (6 o'clock)
   const pct = max > 0 ? Math.max(0, Math.min(1, remaining / max)) : 0;
-  const bigFont = remaining >= 100 ? 9 : remaining >= 10 ? 11 : 12;
+  const trackLen = c * spanFrac;
+  const valueLen = c * spanFrac * pct;
+  const bigFont = remaining >= 100 ? 11 : remaining >= 10 ? 13 : 15;
 
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <circle cx="16" cy="16" r={r} fill="none" stroke="rgba(148,163,184,0.35)" strokeWidth="3" />
+    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true">
       <circle
-        cx="16"
-        cy="16"
-        r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray={`${c * pct} ${c}`}
-        transform="rotate(-90 16 16)"
+        cx={cx} cy={cy} r={r} fill="none" stroke="rgba(148,163,184,0.30)" strokeWidth="3.5"
+        strokeLinecap="round" strokeDasharray={`${trackLen} ${c}`} transform={`rotate(${rot} ${cx} ${cy})`}
       />
-      <text x="16" y="14.5" textAnchor="middle" dominantBaseline="central" fontSize={bigFont} fontWeight="700" fill={color}>
+      <circle
+        cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="3.5"
+        strokeLinecap="round" strokeDasharray={`${valueLen} ${c}`} transform={`rotate(${rot} ${cx} ${cy})`}
+      />
+      <text x={cx} y="18.5" textAnchor="middle" dominantBaseline="central" fontSize={bigFont} fontWeight="700" fill={color}>
         {remaining}
       </text>
-      <text x="16" y="23" textAnchor="middle" dominantBaseline="central" fontSize="7" fill="var(--ui-text-muted, #9ca3af)">
+      <text x={cx} y="34" textAnchor="middle" dominantBaseline="central" fontSize="9" fontWeight="600" fill="var(--ui-text-muted, #9ca3af)">
         {max}
       </text>
     </svg>
