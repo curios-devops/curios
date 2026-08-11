@@ -3,6 +3,7 @@ export type UserType = 'free' | 'premium' | 'guest';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Crown } from 'lucide-react';
 import { useSession } from '../hooks/useSession.ts';
+import { appSettings } from '../config/appSettings.ts';
 import InputContainer from '../components/boxContainer/InputContainer.tsx';
 import CookieConsentModal from '../components/common/CookieConsentModal.tsx';
 import CookieBanner from '../components/common/CookieBanner.tsx';
@@ -155,11 +156,11 @@ export default function Home() {
       {/* On desktop, show in current position. On mobile, these are hidden and shown in the header */}
       {/* Pro Credits battery — centered at the top, separated from the right cluster.
           top offset clears the fixed promo banner (~36px) that overlays the top edge. */}
-      <div className="absolute top-[52px] left-1/2 -translate-x-1/2 h-10 flex items-center mobile:hidden">
+      <div className="absolute left-1/2 -translate-x-1/2 h-10 flex items-center mobile:hidden" style={{ top: appSettings.banner.enabled ? 52 : 16 }}>
         <ProCreditsBattery />
       </div>
 
-      <div className="absolute top-[52px] right-6 flex items-center gap-4 mobile:hidden">
+      <div className="absolute right-6 flex items-center gap-4 mobile:hidden" style={{ top: appSettings.banner.enabled ? 52 : 16 }}>
         {isPro ? (
           <div
             className="h-10 w-10 flex items-center justify-center"

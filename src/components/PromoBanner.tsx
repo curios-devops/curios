@@ -1,4 +1,6 @@
-const MESSAGE = '☀️ Summer Sale • Limited Time Only • 50% Discount • Grab It Before It Melts! 🏖️';
+import { appSettings } from '../config/appSettings.ts';
+
+const MESSAGE = appSettings.banner.text;
 
 export default function PromoBanner() {
   return (

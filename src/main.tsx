@@ -37,10 +37,11 @@ function lazyRetry(importer: Parameters<typeof lazy>[0]) {
 import { logger } from './utils/logger.ts';
 import './index.css';
 import { applyThemeColors, type AccentColor } from './config/themeColors';
+import { appSettings } from './config/appSettings.ts';
 
 // Apply theme synchronously before React renders — prevents black flash on load
 (function applyInitialTheme() {
-  const stored = localStorage.getItem('theme') || 'system';
+  const stored = localStorage.getItem('theme') || appSettings.theme.default;
   // Default 'sky' (design-kit.md) — mirrors ThemeContext.tsx's getInitialAccentColor;
   // keep these two in sync (this one runs pre-hydration to avoid a flash of the
   // wrong accent, ThemeContext.tsx is the source of truth once React mounts).
