@@ -13,8 +13,8 @@
 import rawConfig from '../../app-settings.md?raw';
 
 export type ThemeName = 'system' | 'light' | 'dark';
-export type GetStartedMode = 'text' | 'icon';
-export type CreditsDisplay = 'icon' | 'battery' | 'off';
+export type GetStartedMode = 'button' | 'icon';
+export type CreditsDisplay = 'battery' | 'dial' | 'off';
 
 export interface AppSettings {
   theme: { default: ThemeName };
@@ -59,8 +59,11 @@ const asTheme = (v: string | undefined): ThemeName => {
 
 const asCredits = (v: string | undefined): CreditsDisplay => {
   const c = (v || '').toLowerCase();
-  return c === 'off' ? 'off' : c === 'icon' ? 'icon' : 'battery';
+  return c === 'off' ? 'off' : c === 'dial' ? 'dial' : 'battery';
 };
+
+const asGetStarted = (v: string | undefined): GetStartedMode =>
+  (v || '').toLowerCase() === 'icon' ? 'icon' : 'button';
 
 export const appSettings: AppSettings = {
   theme: {
@@ -83,7 +86,7 @@ export const appSettings: AppSettings = {
     },
   },
   getStarted: {
-    mode: 'text',
+    mode: asGetStarted(cfg.GET_STARTED),
     text: cfg.GET_STARTED_TEXT || 'Get Started',
   },
   credits: {

@@ -1,7 +1,7 @@
 export type UserType = 'free' | 'premium' | 'guest';
 
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { Crown } from 'lucide-react';
+import { Crown, CircleUserRound } from 'lucide-react';
 import { useSession } from '../hooks/useSession.ts';
 import { appSettings } from '../config/appSettings.ts';
 import InputContainer from '../components/boxContainer/InputContainer.tsx';
@@ -227,32 +227,47 @@ export default function Home() {
             >
               {t('logIn') || 'Log in'}
             </button>
-            <button
-              className="h-10 px-6 flex items-center justify-center font-medium transition-all"
-              style={{
-                backgroundColor: getStartedBackground,
-                color: getStartedText,
-                border: '1px solid transparent',
-                borderRadius: '12px',
-                fontSize: '15px',
-                fontWeight: '500',
-                boxShadow: '0 0 0 0 transparent',
-                transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = getStartedHover;
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = getStartedBackground;
-                e.currentTarget.style.color = getStartedText;
-                e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
-              }}
-              type="button"
-              onClick={handleShowSignUp}
-            >
-              {t('getStarted')}
-            </button>
+            {appSettings.getStarted.mode === 'icon' ? (
+              <button
+                type="button"
+                onClick={handleShowSignUp}
+                title={appSettings.getStarted.text}
+                aria-label={appSettings.getStarted.text}
+                className="h-10 w-10 flex items-center justify-center rounded-full transition-colors"
+                style={{ color: 'var(--ui-text-primary)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = accentColors.primary; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--ui-text-primary)'; }}
+              >
+                <CircleUserRound size={30} strokeWidth={1.75} />
+              </button>
+            ) : (
+              <button
+                className="h-10 px-6 flex items-center justify-center font-medium transition-all"
+                style={{
+                  backgroundColor: getStartedBackground,
+                  color: getStartedText,
+                  border: '1px solid transparent',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  boxShadow: '0 0 0 0 transparent',
+                  transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = getStartedHover;
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = getStartedBackground;
+                  e.currentTarget.style.color = getStartedText;
+                  e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
+                }}
+                type="button"
+                onClick={handleShowSignUp}
+              >
+                {appSettings.getStarted.text}
+              </button>
+            )}
           </>
         )}
       </div>
