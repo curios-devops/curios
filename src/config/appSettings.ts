@@ -60,9 +60,10 @@ const cfg = parseConfig(rawConfig);
 const DEFAULT_BANNER_TEXT =
   '☀️ Summer Sale • Limited Time Only • 50% Discount • Grab It Before It Melts! 🏖️';
 
-// L / M / S size scales.
-const ICON_PX: Record<Size, number> = { L: 34, M: 28, S: 22 };
-const TEXT_REM: Record<Size, string> = { L: '1.375rem', M: '1.125rem', S: '0.9rem' };
+// L / M / S size scales. Tuned so M is clearly smaller than the old default
+// (the previous look was L-sized); M is the everyday size, L is the big option.
+const ICON_PX: Record<Size, number> = { L: 28, M: 23, S: 19 };
+const TEXT_REM: Record<Size, string> = { L: '1.125rem', M: '0.95rem', S: '0.82rem' };
 
 const onOff = (v: string | undefined, def: boolean): boolean =>
   v === 'ON' ? true : v === 'OFF' ? false : def;
