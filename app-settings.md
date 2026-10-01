@@ -29,9 +29,9 @@ BANNER = ON
 
 ### BANNER_TEXT — the message inside the banner (only when BANNER = ON)
 Recommended length: **up to ~90 characters** (it scrolls, so longer works, but
-reads best under ~90 on a phone). Current example ≈ 85.
+reads best under ~90 on a phone). Current example ≈ 60.
 ```
-BANNER_TEXT = ☀️ Summer Sale • Limited Time Only • 50% Discount • Grab It Before It Melts! 🏖️
+BANNER_TEXT = 🎃 Halloween Launch — Pro 50% OFF · $5/month · Limited time
 ```
 
 

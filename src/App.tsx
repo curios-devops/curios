@@ -192,7 +192,7 @@ function AppContent() {
 
   return (
       <div className="flex flex-col min-h-screen transition-colors duration-200" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
-        {showBanner && <PromoBanner />}
+        {showBanner && <PromoBanner onUnlock={() => setShowProModal(true)} />}
         {/* Pro upgrade modal triggered by mobile top-bar Upgrade button (lazy loaded) */}
         {showProModal && (
           <Suspense fallback={null}>

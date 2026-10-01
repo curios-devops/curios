@@ -2,7 +2,9 @@ import { appSettings } from '../config/appSettings.ts';
 
 const MESSAGE = appSettings.banner.text;
 
-export default function PromoBanner() {
+// `onUnlock` opens the Pro pricing modal; the button sits pinned on the right
+// while the message scrolls behind it.
+export default function PromoBanner({ onUnlock }: { onUnlock: () => void }) {
   return (
     <div
       className="w-full py-2 overflow-hidden fixed top-0 left-0 z-[60]"
@@ -25,6 +27,19 @@ export default function PromoBanner() {
             ))}
           </div>
         ))}
+      </div>
+      <div
+        className="absolute inset-y-0 right-0 flex items-center pl-6 pr-3"
+        style={{ background: 'linear-gradient(to right, transparent, var(--accent-primary) 30%)' }}
+      >
+        <button
+          type="button"
+          onClick={onUnlock}
+          className="text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap transition-opacity hover:opacity-90"
+          style={{ backgroundColor: 'var(--ui-text-on-accent)', color: 'var(--accent-primary)' }}
+        >
+          Unlock Pro →
+        </button>
       </div>
     </div>
   );
