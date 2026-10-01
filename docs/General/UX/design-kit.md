@@ -46,7 +46,7 @@ picks — now sourced from the nature palette below instead of the legacy set).
 ### Global UI tokens (`--ui-*`)
 
 Same token names as before (`--ui-bg-primary`, `--ui-bg-elevated`,
-`--ui-border-default`, `--ui-text-primary/-secondary/-muted`,
+`--ui-border-default`, `--ui-text-primary/-secondary/-muted`,[text](blob:https%3A//web.whatsapp.com/cff8118d-885a-4939-afb4-f42782fd8f3e)
 `--ui-shadow-soft/-elevated`, `--ui-text-on-accent`) — see `src/index.css`.
 **New behavior to know:** `bgPrimary`/`bgSecondary`/`bgElevated` and the border/
 text tokens are *derived per-accent* (`getGlobalPaletteTokens()` in
