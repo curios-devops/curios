@@ -38,6 +38,9 @@ export interface AppSettings {
   sidebar: { logo: LogoConfig };
   getStarted: { mode: GetStartedMode; text: string };
   credits: { display: CreditsDisplay; iconSize: number };
+  // Pricing modal promo: tag above the price + struck-through regular monthly
+  // price. Empty strings hide them.
+  pricingPromo: { label: string; regularMonthly: string };
 }
 
 // Read every "KEY = value" line (ALL-CAPS keys). Prose, ### titles, ``` fences and
@@ -131,5 +134,9 @@ export const appSettings: AppSettings = {
   credits: {
     display: asCredits(cfg.CREDITS),
     iconSize: 16,
+  },
+  pricingPromo: {
+    label: cfg.PROMO_LABEL === 'OFF' ? '' : cfg.PROMO_LABEL || '',
+    regularMonthly: cfg.PROMO_REGULAR_MONTHLY === 'OFF' ? '' : cfg.PROMO_REGULAR_MONTHLY || '',
   },
 };

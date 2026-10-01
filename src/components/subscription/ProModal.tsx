@@ -5,6 +5,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useAccentColor } from '../../hooks/useAccentColor';
 import { useTheme } from '../theme/ThemeContext';
 import CheckoutButton from './CheckoutButton';
+import { appSettings } from '../../config/appSettings.ts';
 
 interface ProModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
   const { theme } = useTheme();
   const [selectedInterval, setSelectedInterval] = useState<'month' | 'year'>('month');
   const [error, setError] = useState<string | null>(null);
+  const promo = appSettings.pricingPromo;
 
   if (!isOpen) return null;
 
@@ -86,7 +88,22 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
             <div>
               <div className="text-center mb-6">
                 <h3 className={`text-xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>{t('premium')}</h3>
+                {promo.label && (
+                  <div className="mb-2">
+                    <span
+                      className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full"
+                      style={{ backgroundColor: accentColor.primary, color: 'var(--ui-text-on-accent)' }}
+                    >
+                      {promo.label}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-center gap-2">
+                  {selectedInterval === 'month' && promo.regularMonthly && (
+                    <span className={`text-xl line-through ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {promo.regularMonthly}
+                    </span>
+                  )}
                   <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {selectedInterval === 'month' ? '$5' : '$50'}
                   </span>

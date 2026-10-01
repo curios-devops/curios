@@ -102,3 +102,22 @@ GET_STARTED = ICON
 ```
 GET_STARTED_TEXT = Get Started
 ```
+
+
+====================================================================
+====================== PRICING MODAL ===============================
+====================================================================
+The Pro pricing window. Use these during a promo so $5 reads as a launch deal,
+not "the price of CuriosAI". Set to OFF when the promo ends.
+
+### PROMO_LABEL — tag shown above the Premium price
+Default = OFF · any text, or OFF
+```
+PROMO_LABEL = 🎃 Halloween Launch — 50% off
+```
+
+### PROMO_REGULAR_MONTHLY — regular monthly price, shown struck through next to $5
+Monthly view only. Default = OFF · any price text (e.g. $10), or OFF
+```
+PROMO_REGULAR_MONTHLY = $10
+```
