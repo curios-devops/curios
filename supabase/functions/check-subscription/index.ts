@@ -86,10 +86,11 @@ serve(async (req) => {
     }
 
     const subscription = subscriptions.data[0];
-    const priceId = subscription.items.data[0].price.id;
+    const price = subscription.items.data[0].price;
 
-    // Determine subscription type
-    const subscriptionType = priceId === Deno.env.get('STRIPE_MONTHLY_PRICE_ID')
+    // Determine subscription type from the price's own interval, not its ID —
+    // promo prices rotate (Summer, Halloween…) and older subscribers stay on theirs.
+    const subscriptionType = price.recurring?.interval === 'month'
       ? 'monthly'
       : 'yearly';
 
