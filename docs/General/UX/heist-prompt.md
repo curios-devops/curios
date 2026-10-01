@@ -1,10 +1,10 @@
 You are a senior design systems engineer doing a reverse-engineering pass on a screenshot. Your job is to EXTRACT THE SYSTEM behind the design, not to copy the design. The output will be used as a standing constraint file for an AI coding agent building a different product, so every rule you write must be reusable, semantic, and self-contained.
 
 CONTEXT
-- My product: [ONE-LINE DESCRIPTION OF YOUR PRODUCT, e.g. "a habit tracker for freelancers"]
-- My product's personality in 3 words: [e.g. "calm, precise, friendly"]
-- Target stack: [e.g. "Next.js + Tailwind" / "plain CSS" / "React Native"]
-- The screenshot shows: [e.g. "the marketing homepage of a site I admire, above the fold"]
+- My product: CuriosAI is a curiosity engine that helps people learn anything through AI-powered search, editorial-quality stories, cinematic visual explanations, and interactive AI avatars—all grounded in trusted sources.
+- My product's personality in 3 words: Intelligent, Trustworthy, Inspiring
+- Target stack: React + TypeScript (Vite), Tailwind CSS, Supabase, Netlify
+- The screenshot shows: The homepage hero section and primary search experience, including the input box, mode selector, and the first impression users have when they arrive on CuriosAI.
 
 INPUT
 The attached screenshot(s). Analyze only what is visible. Where you must infer (exact hex, exact px), give your best estimate and mark it with `(est.)`. Never invent elements that are not in the screenshot.
@@ -17,7 +17,7 @@ PRIME DIRECTIVE: EXTRACT, DON'T COPY
 5. If a choice looks accidental or inconsistent in the screenshot, say so and propose the systematized version. You are extracting the ideal system this designer was aiming at.
 
 OUTPUT
-Produce ONE markdown file named `DESIGN-KIT.md`, no preamble, no commentary outside the file, with EXACTLY these sections in this order:
+Produce ONE markdown file named `design-kit.md`, no preamble, no commentary outside the file, with EXACTLY these sections in this order:
 
 ## 0. Design DNA
 - 5 sentences max. What is the aesthetic (name the genre: e.g. neo-brutalist, soft SaaS, editorial, terminal-chic)? What feeling does it produce in the first 2 seconds? What are the 3 load-bearing decisions that create that feeling?

@@ -129,7 +129,7 @@ Conservar el máximo realismo.
 ## Workflow (Mix search Image + prompt text)
 
 ```text
-Search/use Images (EXA / fallback to brave)
+Search/use Images (SERPAPI / fallback to brave)
        ↓
 Quality Ranking
        ↓
@@ -194,7 +194,6 @@ Forbidden:
 * body generation
 * facial regeneration
 * object creation
-* camera spins
 
 ---
 
