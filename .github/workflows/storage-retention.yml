@@ -1,0 +1,30 @@
+name: Storage Retention
+
+# Daily cleanup of guest Movie files older than 30 days in Supabase Storage
+# (see supabase/functions/storage-retention). Run manually with dry_run=true to
+# see what would be deleted without deleting anything.
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC daily
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only report, don't delete"
+        type: boolean
+        default: true
+
+jobs:
+  retention:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call storage-retention
+        env:
+          PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          RETENTION_SECRET: ${{ secrets.RETENTION_SECRET }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        run: |
+          curl -sS --fail-with-body -X POST \
+            "https://${PROJECT_ID}.supabase.co/functions/v1/storage-retention" \
+            -H "x-retention-secret: ${RETENTION_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "{\"dryRun\": ${DRY_RUN}}"
