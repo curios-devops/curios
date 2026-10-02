@@ -13,7 +13,7 @@ import CustomMarkdown from '../../../components/CustomMarkdown';
 import TopBar from '../../../components/results/TopBar';
 import DynamicShareRow from '../../../components/share/DynamicShareRow';
 import { formatTimeAgo } from '../../../utils/time';
-import { saveNode, ensureShared, type SavedNodeRef } from '../../space/nodePersistenceService';
+import { saveNode, ensureShared, type SavedNodeRef, updateNodeAnswer } from '../../space/nodePersistenceService';
 import SaveButton from '../../space/components/SaveButton';
 import { resolveBuyIntent } from '../buyIntent';
 import { searchAmazonProducts, type AmazonProduct } from '../../amazon-api';
@@ -88,6 +88,18 @@ function cleanAnswerText(raw: string): string {
   text = text.replace(/^\s*#{0,3}\s*\**Know more:.*$/gim, '');
 
   return text;
+}
+
+// Article text persisted to the node: answer body + "Know more" expansions,
+// with the original follow-up section kept last and the agent's
+// "## Know more: …" label lines removed (they only drive the button).
+function articleForSave(main: string, expansions: string[]): string {
+  const strip = (t: string) => t.replace(/^\s*#{0,3}\s*\**Know more:.*$/gim, '').trim();
+  const m = strip(main);
+  const idx = m.search(/\n\s*##?\s*Follow-?up\s+(?:Questions?|Topics?)/i);
+  const body = idx >= 0 ? m.slice(0, idx).trim() : m;
+  const followUps = idx >= 0 ? m.slice(idx).trim() : '';
+  return [body, ...expansions.map(strip), followUps].filter(Boolean).join('\n\n');
 }
 
 export default function FastSearchResults() {
@@ -301,7 +313,7 @@ export default function FastSearchResults() {
         saveNode({
           mode: 'fast_search',
           query,
-          answer: fullAnswer,
+          answer: articleForSave(fullAnswer, []),
           sources: response.sources,
           images: response.images,
           videos: response.videos,
@@ -346,11 +358,17 @@ export default function FastSearchResults() {
     setIsExpanding(true);
     setExpansions((prev) => [...prev, '']);
     try {
+      let added = '';
       const { nextLabel } = await generateExpansionStreaming(
         { query, previous, topic, sources: foundSources, locale: navigator.language.split('-')[0] || 'en' },
-        (chunk) => setExpansions((prev) => prev.map((t, i) => (i === index ? t + chunk : t)))
+        (chunk) => {
+          added += chunk;
+          setExpansions((prev) => prev.map((t, i) => (i === index ? t + chunk : t)));
+        }
       );
       setKnowMoreLabel(nextLabel);
+      // Persist the grown article so History / Space / Share keep the expansions.
+      if (savedNode) void updateNodeAnswer(savedNode.id, articleForSave(streamingAnswer, [...expansions, added]));
     } catch {
       setExpansions((prev) => prev.slice(0, index)); // drop the failed section; button stays
     } finally {
