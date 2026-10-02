@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles, ChevronLeft, ChevronRight, Plus, Link2, Crown, FileText } from 'lucide-react';
 import { executeFastSearchStreaming, executeDeepFastSearchStreaming } from '../controller';
+import { generateExpansionStreaming, extractKnowMoreLabel } from '../providers/llmProvider';
 import type { FastSearchResponse } from '../controller';
 import { exportDeepSearchPdf } from '../utils/exportPdf';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -40,6 +41,55 @@ function extractDomainName(url: string): string {
   }
 }
 
+// Display cleanup shared by the answer and its "Know more" expansions.
+function cleanAnswerText(raw: string): string {
+  let text = raw;
+
+  // Step 1: Convert [text](url) to [sitename] (for any markdown links)
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText, url) => {
+    try {
+      const hostname = new URL(url).hostname.replace(/^www\./, '');
+      const parts = hostname.split('.');
+      const siteName = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+      return `[${siteName}]`;
+    } catch {
+      return linkText;
+    }
+  });
+
+  // Step 2: Remove parenthetical citations only if they look like citations
+  // Match: (sitename), (sitename +N), (sitename(url))
+  text = text.replace(/\s*\(([a-z0-9]+)(\s*\+\d+)?(\([^)]+\))?\)/gi, '');
+
+  // Step 2b: Drop lead-in labels the model sometimes writes inside prose
+  // ("The main takeaway: …", "Why care? …") — the style guide forbids them.
+  text = text.replace(/(^|[.!?]\s+)(?:The\s+)?(?:main|key)\s+takeaways?\s*:\s*([a-z])/gim, (_m, pre, c) => pre + c.toUpperCase());
+  text = text.replace(/(^|[.!?]\s+)Why\s+(?:care|does\s+it\s+matter|it\s+matters)\?\s+/gim, '$1');
+
+  // Step 3: Remove horizontal rules (---) but preserve markdown headings
+  // Only remove lines that are ONLY dashes/hyphens with optional whitespace
+  text = text.replace(/^\s*[-–—]{3,}\s*$/gm, '');
+
+  // Step 4: Remove unwanted sections
+  // Remove "Follow-up Questions" section (these are shown separately in the UI)
+  text = text.replace(/\n\s*##?\s*Follow-?up\s+(?:Questions?|Topics?)[:\s]*[\s\S]*$/i, '');
+
+  // Remove "Sources" section variations
+  text = text.replace(/\n\s*##?\s*Sources?\s*\(from provided search results\)[:\s]*[\s\S]*$/i, '');
+  text = text.replace(/\n\s*##?\s*Selected [Ss]ources[:\s]*[\s\S]*$/i, '');
+  text = text.replace(/\n\s*##?\s*Where to [Rr]ead [Mm]ore[:\s]*[\s\S]*$/i, '');
+  text = text.replace(/\n\s*##?\s*Quick [Rr]eference [Ll]inks[:\s]*[\s\S]*$/i, '');
+  text = text.replace(/\n\s*Sources?:[:\s]*[\s\S]*$/i, '');
+
+  // Clean up encoding issues
+  text = text.replace(/�/g, '');
+
+  // The agent's "## Know more: {label}" line drives the button, not the text.
+  text = text.replace(/^\s*#{0,3}\s*\**Know more:.*$/gim, '');
+
+  return text;
+}
+
 export default function FastSearchResults() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -65,6 +115,10 @@ export default function FastSearchResults() {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<FastSearchResponse | null>(null);
   const [streamingAnswer, setStreamingAnswer] = useState('');
+  // "Know more": each click appends the next, deeper section of the same article.
+  const [expansions, setExpansions] = useState<string[]>([]);
+  const [knowMoreLabel, setKnowMoreLabel] = useState<string | null>(null);
+  const [isExpanding, setIsExpanding] = useState(false);
   const [showSearching, setShowSearching] = useState(true);
   const [foundSources, setFoundSources] = useState<Array<{ title: string; url: string; snippet: string }>>([]);
   const [frozenSourcesForAnimation, setFrozenSourcesForAnimation] = useState<Array<{ title: string; url: string; snippet: string }>>([]);
@@ -104,53 +158,8 @@ export default function FastSearchResults() {
     });
   }, [foundSources]);
 
-  // Process answer text separately
-  const processedAnswer = useMemo(() => {
-    if (!streamingAnswer) return '';
-
-    let text = streamingAnswer;
-
-    // Step 1: Convert [text](url) to [sitename] (for any markdown links)
-    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText, url) => {
-      try {
-        const hostname = new URL(url).hostname.replace(/^www\./, '');
-        const parts = hostname.split('.');
-        const siteName = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
-        return `[${siteName}]`;
-      } catch {
-        return linkText;
-      }
-    });
-
-    // Step 2: Remove parenthetical citations only if they look like citations
-    // Match: (sitename), (sitename +N), (sitename(url))
-    text = text.replace(/\s*\(([a-z0-9]+)(\s*\+\d+)?(\([^)]+\))?\)/gi, '');
-
-    // Step 2b: Drop lead-in labels the model sometimes writes inside prose
-    // ("The main takeaway: …", "Why care? …") — the style guide forbids them.
-    text = text.replace(/(^|[.!?]\s+)(?:The\s+)?(?:main|key)\s+takeaways?\s*:\s*([a-z])/gim, (_m, pre, c) => pre + c.toUpperCase());
-    text = text.replace(/(^|[.!?]\s+)Why\s+(?:care|does\s+it\s+matter|it\s+matters)\?\s+/gim, '$1');
-
-    // Step 3: Remove horizontal rules (---) but preserve markdown headings
-    // Only remove lines that are ONLY dashes/hyphens with optional whitespace
-    text = text.replace(/^\s*[-–—]{3,}\s*$/gm, '');
-
-    // Step 4: Remove unwanted sections
-    // Remove "Follow-up Questions" section (these are shown separately in the UI)
-    text = text.replace(/\n\s*##?\s*Follow-?up\s+(?:Questions?|Topics?)[:\s]*[\s\S]*$/i, '');
-
-    // Remove "Sources" section variations
-    text = text.replace(/\n\s*##?\s*Sources?\s*\(from provided search results\)[:\s]*[\s\S]*$/i, '');
-    text = text.replace(/\n\s*##?\s*Selected [Ss]ources[:\s]*[\s\S]*$/i, '');
-    text = text.replace(/\n\s*##?\s*Where to [Rr]ead [Mm]ore[:\s]*[\s\S]*$/i, '');
-    text = text.replace(/\n\s*##?\s*Quick [Rr]eference [Ll]inks[:\s]*[\s\S]*$/i, '');
-    text = text.replace(/\n\s*Sources?:[:\s]*[\s\S]*$/i, '');
-
-    // Clean up encoding issues
-    text = text.replace(/�/g, '');
-
-    return text;
-  }, [streamingAnswer]);
+  // Process answer text separately (same cleanup for "Know more" expansions)
+  const processedAnswer = useMemo(() => (streamingAnswer ? cleanAnswerText(streamingAnswer) : ''), [streamingAnswer]);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -197,6 +206,8 @@ export default function FastSearchResults() {
         setIsLoading(true);
         setError(null);
         setStreamingAnswer('');
+        setExpansions([]);
+        setKnowMoreLabel(null);
         setShowSearching(true);
         setFoundSources([]);
         setFrozenSourcesForAnimation([]);
@@ -267,6 +278,8 @@ export default function FastSearchResults() {
               onImagesFound
             );
 
+        setKnowMoreLabel(extractKnowMoreLabel(fullAnswer));
+
         // Set follow-ups AFTER streaming completes
         if (response.followUps && response.followUps.length > 0) {
           setFollowUpQuestions(response.followUps);
@@ -321,6 +334,28 @@ export default function FastSearchResults() {
     const allowed = await requestProAccess();
     if (!allowed) return;
     navigate(`/fast-search?q=${q}&deep=1`);
+  };
+
+  // "Know more": free for everyone — continue the article one level deeper,
+  // then offer the next, more specialized topic.
+  const handleKnowMore = async () => {
+    if (isExpanding) return;
+    const topic = knowMoreLabel || 'Know more';
+    const previous = [processedAnswer, ...expansions.map(cleanAnswerText)].join('\n\n');
+    const index = expansions.length;
+    setIsExpanding(true);
+    setExpansions((prev) => [...prev, '']);
+    try {
+      const { nextLabel } = await generateExpansionStreaming(
+        { query, previous, topic, sources: foundSources, locale: navigator.language.split('-')[0] || 'en' },
+        (chunk) => setExpansions((prev) => prev.map((t, i) => (i === index ? t + chunk : t)))
+      );
+      setKnowMoreLabel(nextLabel);
+    } catch {
+      setExpansions((prev) => prev.slice(0, index)); // drop the failed section; button stays
+    } finally {
+      setIsExpanding(false);
+    }
   };
 
   const handleExportPdf = async () => {
@@ -593,21 +628,24 @@ export default function FastSearchResults() {
                     {isLoading && (
                       <span className="inline-block w-2 h-4 ml-1 animate-pulse align-middle" style={{ backgroundColor: 'var(--accent-primary)' }}></span>
                     )}
+                    {expansions.map((text, i) => (
+                      <CustomMarkdown key={i} citations={citations}>
+                        {cleanAnswerText(text)}
+                      </CustomMarkdown>
+                    ))}
                   </div>
 
-                  {/* Learn more — expands the compact answer into a full Ask Deeper
-                      research pass (same gated action as the Ask Deeper button). */}
+                  {/* Know more — continues the article one level deeper (free for all).
+                      The label is chosen by the agent and changes with each step. */}
                   {!isLoading && streamingAnswer && !effectiveDeep && (
                     <button
                       type="button"
-                      onClick={handleToggleDeep}
-                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-colors"
-                      style={{ color: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent-primary) 10%, transparent)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      onClick={handleKnowMore}
+                      disabled={isExpanding}
+                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
+                      style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
                     >
-                      <Crown size={15} />
-                      <span>Learn more</span>
+                      <span>{isExpanding ? 'Writing…' : `${knowMoreLabel || 'Know more'} →`}</span>
                     </button>
                   )}
                 </div>

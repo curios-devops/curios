@@ -183,6 +183,8 @@ Style:
 
 After the answer, add a section "## Follow-up Questions:" with 3–5 relevant questions as a numbered list (1., 2., …).
 
+Finally, on its own last line: "## Know more: {label}" — a short action label (max ~7 words) naming the single most interesting concept from your answer worth going deeper into, e.g. "Know more about AI privacy", "See how it works", "Dive deeper into neural networks", "What happens next?". Avoid generic labels like "Expand", "More" or "Continue".
+
 Today's date: ${context.date}
 Language: ${context.locale}`;
 
@@ -195,6 +197,51 @@ Language: ${context.locale}`;
   });
 
   return { followUps };
+}
+
+/**
+ * "Know more" progressive expansion: continues the same article one level
+ * deeper, assuming the reader has read everything above. Streams the new
+ * section and returns the next contextual label (recursive expansion).
+ */
+export async function generateExpansionStreaming(
+  params: { query: string; previous: string; topic: string; sources: WebSearchResult[]; locale: string },
+  onChunk: (chunk: string) => void
+): Promise<{ nextLabel: string | null }> {
+  const userMessage = `You are continuing an article that answers: "${params.query}"
+
+The reader has already read everything below and clicked "${params.topic}". Write the NEXT section of the same article — one level deeper on that topic.
+
+Article so far:
+"""
+${params.previous}
+"""
+
+Search Results:
+${buildSourcesText(params.sources)}
+
+Progressive expansion rules:
+- Treat this as the next page of the same document. Do not restart, do not summarize or repeat earlier sections, do not repeat the introduction, and don't redefine concepts already explained unless the new discussion needs it.
+- Every paragraph must teach something not covered above. Never rewrite, paraphrase or restate earlier paragraphs or bullets, and never produce another overview or conclusion before adding new information.
+- Go deeper, not sideways: overview → important facts → technical explanation → architecture → research → edge cases → future directions. Pick whichever direction naturally enriches the topic (technical implementation, history, science, real-world examples, adoption, limitations, controversies, future developments, alternatives, practical implications, expert perspectives).
+- Begin with a natural transition, e.g. "One important aspect not yet discussed is…", "At a technical level…", "In practice…", "Researchers have also found…". Never start with "Here's a more detailed explanation" or "Let's expand on that".
+- Same writing style as the article: "### " headings only when helpful, short paragraphs, optional bullets, concise but informative, no rigid template, at most one emoji. Don't force a conclusion — end naturally at the current depth.
+- About 200–400 words. Ground claims in the sources; add inline citations like [reuters] where they support a claim.
+
+Finally, on its own last line: "## Know more: {label}" — a short action label (max ~7 words) naming the next most interesting unanswered concept, more specialized than "${params.topic}". Avoid generic labels like "Expand", "More" or "Continue".
+
+Today's date: ${new Date().toISOString().split('T')[0]}
+Language: ${params.locale}`;
+
+  const fullText = await streamLLMText(userMessage, 1400, onChunk, 60000);
+  return { nextLabel: extractKnowMoreLabel(fullText) };
+}
+
+/** Pull the agent's "## Know more: {label}" line out of a response, if any. */
+export function extractKnowMoreLabel(text: string): string | null {
+  const m = text.match(/^\s*#{0,3}\s*\**Know more:\**\s*(.+?)\s*$/im);
+  const label = m?.[1]?.replace(/[*_"→]+/g, '').trim();
+  return label || null;
 }
 
 /**
