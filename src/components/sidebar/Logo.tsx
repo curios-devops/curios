@@ -25,6 +25,8 @@ export default function Logo({ isCollapsed, variant = 'sidebar' }: { isCollapsed
   const iconPx = isCollapsed ? LOGO_ICON_PX + 4 : LOGO_ICON_PX;
   const baseWordmark = { fontFamily: font.fontFamily, fontWeight: font.fontWeight, letterSpacing: font.letterSpacing } as const;
   const gray = appSettings.wordmarkColor === 'gray';
+  // DARK: both words in the header ink (same as Cookie Preferences).
+  const dark = appSettings.wordmarkColor === 'dark';
 
   return (
     <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'gap-2'}`}>
@@ -32,13 +34,15 @@ export default function Logo({ isCollapsed, variant = 'sidebar' }: { isCollapsed
       {!isCollapsed && (
         <div className="flex items-center">
           <span
-            className={gray ? '' : 'text-gray-900 dark:text-white'}
+            className={dark ? 'text-gray-700 dark:text-gray-50' : gray ? '' : 'text-gray-900 dark:text-white'}
             style={{ ...baseWordmark, fontSize: logo.nameFontSize, ...(gray ? { color: LOGO_GRAY } : {}) }}
           >
             Curios
           </span>
           {logo.showAi && (
-            gray ? (
+            dark ? (
+              <span className="ml-0.5 text-gray-700 dark:text-gray-50" style={{ ...baseWordmark, fontSize: logo.aiFontSize }}>AI</span>
+            ) : gray ? (
               <span className="ml-0.5" style={{ ...baseWordmark, fontSize: logo.aiFontSize, color: logoAccentColor }}>AI</span>
             ) : (
               <span

@@ -52,9 +52,11 @@ LOGO_FONT = GROTESK
 ### LOGO_COLOR — the wordmark color (whole app)
 DEFAULT = "Curios" ink + "AI" blue→purple→pink gradient.
 GRAY = "Curios" in the logo's own gray (#9A9A9A) + "AI" in the accent color.
-Default = DEFAULT · Valid: DEFAULT / GRAY
+DARK = both words in the header's dark ink (#374151; near-white in dark mode),
+matching the menu and account icons.
+Default = DEFAULT · Valid: DEFAULT / GRAY / DARK
 ```
-LOGO_COLOR = GRAY
+LOGO_COLOR = DARK
 ```
 
 --- Header logo (the top header — most visible on mobile) --------------------
