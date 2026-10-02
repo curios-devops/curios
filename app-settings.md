@@ -38,8 +38,9 @@ BANNER_TEXT = 🎃 Halloween Launch — Pro 50% OFF · $5/month · Limited time
 ====================================================================
 ====================== LOGO ========================================
 ====================================================================
-Everything about the "CuriosAI" logo — font, color, and per-place sizes — in one
-place. The word "Curios" itself is fixed (it can't be renamed).
+Everything about the "CuriosAI" logo — font, color, and per-place text sizes — in
+one place. The word "Curios" itself is fixed (it can't be renamed). The logo icon
+size is fixed too (not configurable).
 
 ### LOGO_FONT — the wordmark typeface (whole app)
 MICHROMA = the wide/technical face. GROTESK = a thinner, squarer face
@@ -50,16 +51,16 @@ LOGO_FONT = GROTESK
 
 ### LOGO_COLOR — the wordmark color (whole app)
 DEFAULT = "Curios" ink + "AI" blue→purple→pink gradient.
-GRAY = both words in the logo's own gray (#9A9A9A). Default = DEFAULT · Valid: DEFAULT / GRAY
+GRAY = "Curios" in the logo's own gray (#9A9A9A) + "AI" in the accent color.
+Default = DEFAULT · Valid: DEFAULT / GRAY
 ```
 LOGO_COLOR = GRAY
 ```
 
 --- Header logo (the top header — most visible on mobile) --------------------
-Icon size, "Curios" size, whether "AI" shows, and its size. Default = M each.
+"Curios" size, whether "AI" shows, and its size. Default = M each.
 Sizes: L / M / S · AI: ON / OFF
 ```
-HEADER_LOGO_ICON = M
 HEADER_LOGO_NAME = M
 HEADER_LOGO_AI = ON
 HEADER_LOGO_AI_SIZE = M
@@ -68,7 +69,6 @@ HEADER_LOGO_AI_SIZE = M
 --- Sidebar logo (left sidebar + mobile slide-out drawer) -------------------
 Same knobs, applied to the sidebar. Default = M each.
 ```
-SIDEBAR_LOGO_ICON = M
 SIDEBAR_LOGO_NAME = M
 SIDEBAR_LOGO_AI = ON
 SIDEBAR_LOGO_AI_SIZE = M

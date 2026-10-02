@@ -65,8 +65,9 @@ function Battery({ remaining, color }: { remaining: number; color: string }) {
 // leaves a gap at the bottom so the total number sits inside that gap, with the
 // remaining count big in the centre and the arc filled to remaining/max.
 function Dial({ remaining, max, color }: { remaining: number; max: number; color: string }) {
-  const size = 40;
-  const cx = 20, cy = 20, r = 16;
+  // Sized to match the account icon next to it (~27px arc vs its ~22px circle).
+  const size = 32;
+  const cx = 16, cy = 16, r = 12.5;
   const c = 2 * Math.PI * r;
   const GAP_DEG = 72; // opening at the bottom where the total sits
   const spanFrac = (360 - GAP_DEG) / 360; // fraction of the circle actually drawn
@@ -74,22 +75,22 @@ function Dial({ remaining, max, color }: { remaining: number; max: number; color
   const pct = max > 0 ? Math.max(0, Math.min(1, remaining / max)) : 0;
   const trackLen = c * spanFrac;
   const valueLen = c * spanFrac * pct;
-  const bigFont = remaining >= 100 ? 11 : remaining >= 10 ? 13 : 15;
+  const bigFont = remaining >= 100 ? 9 : remaining >= 10 ? 10.5 : 12;
 
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
       <circle
-        cx={cx} cy={cy} r={r} fill="none" stroke="rgba(148,163,184,0.30)" strokeWidth="3.5"
+        cx={cx} cy={cy} r={r} fill="none" stroke="rgba(148,163,184,0.30)" strokeWidth="3"
         strokeLinecap="round" strokeDasharray={`${trackLen} ${c}`} transform={`rotate(${rot} ${cx} ${cy})`}
       />
       <circle
-        cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="3.5"
+        cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="3"
         strokeLinecap="round" strokeDasharray={`${valueLen} ${c}`} transform={`rotate(${rot} ${cx} ${cy})`}
       />
-      <text x={cx} y="18.5" textAnchor="middle" dominantBaseline="central" fontSize={bigFont} fontWeight="700" fill={color}>
+      <text x={cx} y="14.5" textAnchor="middle" dominantBaseline="central" fontSize={bigFont} fontWeight="700" fill={color}>
         {remaining}
       </text>
-      <text x={cx} y="34" textAnchor="middle" dominantBaseline="central" fontSize="9" fontWeight="600" fill="var(--ui-text-muted, #9ca3af)">
+      <text x={cx} y="27.5" textAnchor="middle" dominantBaseline="central" fontSize="9" fontWeight="600" fill="var(--ui-text-muted, #9ca3af)">
         {max}
       </text>
     </svg>
