@@ -233,10 +233,9 @@ export default function Home() {
                 onClick={handleShowSignUp}
                 title={appSettings.getStarted.text}
                 aria-label={appSettings.getStarted.text}
-                className="h-10 w-10 flex items-center justify-center rounded-full transition-colors"
-                style={{ color: 'var(--ui-text-primary)' }}
+                className="h-10 w-10 flex items-center justify-center rounded-full transition-colors text-gray-700 dark:text-gray-50"
                 onMouseEnter={(e) => { e.currentTarget.style.color = accentColors.primary; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--ui-text-primary)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = ''; }}
               >
                 <CircleUserRound size={30} strokeWidth={1.75} />
               </button>

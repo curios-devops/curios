@@ -14,7 +14,7 @@ export type ThemeName = 'system' | 'light' | 'dark';
 export type GetStartedMode = 'button' | 'icon';
 export type CreditsDisplay = 'battery' | 'dial' | 'off';
 export type Size = 'L' | 'M' | 'S';
-export type WordmarkColor = 'default' | 'gray';
+export type WordmarkColor = 'default' | 'gray' | 'dark';
 
 // The logo icon's own gray (see CuriosLogo.tsx frame fill) — offered as a
 // wordmark color option.
@@ -99,8 +99,10 @@ const WORDMARK_FONTS = {
 const asFont = (v: string | undefined) =>
   (v || '').toLowerCase() === 'grotesk' ? WORDMARK_FONTS.grotesk : WORDMARK_FONTS.michroma;
 
-const asColor = (v: string | undefined): WordmarkColor =>
-  (v || '').toLowerCase() === 'gray' ? 'gray' : 'default';
+const asColor = (v: string | undefined): WordmarkColor => {
+  const c = (v || '').toLowerCase();
+  return c === 'gray' || c === 'dark' ? c : 'default';
+};
 
 // Build a logo config from a KEY prefix (HEADER_ or SIDEBAR_). Default size M.
 const logoConfig = (prefix: string): LogoConfig => ({
