@@ -6,10 +6,9 @@ interface CuriosLogoProps {
   size?: number;
   className?: string;
   colorOverride?: string;
-  frameColor?: string; // outer frame fill; 'currentColor' follows the CSS text color
 }
 
-export default function CuriosLogo({ size = 16, className = "", colorOverride, frameColor = "#9A9A9A" }: CuriosLogoProps) {
+export default function CuriosLogo({ size = 16, className = "", colorOverride }: CuriosLogoProps) {
   const accentColor = useAccentColor();
   const { theme, accentColor: selectedAccentColor } = useTheme();
   const maskId = useId();
@@ -47,7 +46,7 @@ export default function CuriosLogo({ size = 16, className = "", colorOverride, f
           <circle cx="420" cy="420" r="20" fill="black" />
         </mask>
       </defs>
-      <g mask={`url(#${maskId})`} fill={frameColor}>
+      <g mask={`url(#${maskId})`} fill="#9A9A9A">
         <rect x="100" y="0" width="300" height="100" rx="20" />
         <rect x="0" y="100" width="100" height="300" rx="20" />
         <rect x="100" y="400" width="300" height="100" rx="20" />

@@ -160,7 +160,7 @@ function AppContent() {
           aria-label={appSettings.getStarted.text}
           className="h-8 w-8 flex items-center justify-center rounded-full transition-colors text-gray-600 dark:text-gray-300"
         >
-          <CircleUserRound size={28} strokeWidth={1.75} />
+          <CircleUserRound size={27} strokeWidth={1.75} />
         </button>
       );
     }

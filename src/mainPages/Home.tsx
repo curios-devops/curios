@@ -237,7 +237,7 @@ export default function Home() {
                 onMouseEnter={(e) => { e.currentTarget.style.color = accentColors.primary; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = ''; }}
               >
-                <CircleUserRound size={32} strokeWidth={1.75} />
+                <CircleUserRound size={31} strokeWidth={1.75} />
               </button>
             ) : (
               <button
