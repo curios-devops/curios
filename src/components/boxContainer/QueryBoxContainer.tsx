@@ -81,6 +81,8 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
         return '/cinematic-results';
       case 'movie':
         return '/movie-results';
+      case 'character':
+        return '/character';
       case 'avatar':
         return '/avatar-search';
       default:
@@ -142,7 +144,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
         ]);
         buyIntentDetected = buyIntent.isBuyIntent;
         resolvedMode = buyIntentDetected ? 'fastsearch'
-          : intent === 'avatar' ? 'avatar'
+          : intent === 'avatar' ? 'character' // conversation intent → live full-body character
           : intent === 'movie' ? 'movie'
           : intent === 'stories' ? 'stories'
           : 'fastsearch';

@@ -61,6 +61,7 @@ import { appSettings } from './config/appSettings.ts';
 const SearchResults = lazyRetry(() => import('./services/legacy-search/regular/pages/SearchResults.tsx'));
 // Fast Search is now the primary "Search" and lives under services/search.
 const FastSearchResults = lazyRetry(() => import('./services/search/pages/FastSearchResults.tsx'));
+const CharacterResults = lazyRetry(() => import('./services/character/pages/CharacterResults.tsx'));
 const AvatarSearchResults = lazyRetry(() => import('./services/legacy-search/avatar/pages/AvatarSearchResults.tsx'));
 const ProSearchResults = lazyRetry(() => import('./services/legacy-search/pro/pages/ProSearchResults.tsx'));
 const ProSearchTest = lazyRetry(() => import('./services/legacy-search/pro/pages/ProSearchTest.tsx'));
@@ -119,6 +120,7 @@ const router = createBrowserRouter(
         { path: '/search', element: <LazyPageWrapper><SearchResults /></LazyPageWrapper> },
         { path: '/fast-search', element: <LazyPageWrapper><FastSearchResults /></LazyPageWrapper> },
         { path: '/avatar-search', element: <LazyPageWrapper><AvatarSearchResults /></LazyPageWrapper> },
+        { path: '/character', element: <LazyPageWrapper><CharacterResults /></LazyPageWrapper> },
         { path: '/pro-search', element: <LazyPageWrapper><ProSearchResults /></LazyPageWrapper> },
         { path: '/pro-search-test', element: <LazyPageWrapper><ProSearchTest /></LazyPageWrapper> },
         { path: '/stories-results', element: <LazyPageWrapper><StoriesResults /></LazyPageWrapper> },

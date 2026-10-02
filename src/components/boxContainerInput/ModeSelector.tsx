@@ -1,13 +1,14 @@
-import { BookOpen, Clapperboard, Popcorn, UserCircle, Search, Rocket } from 'lucide-react';
+import { BookOpen, Clapperboard, Popcorn, UserCircle, Search, Rocket, PersonStanding, Crown } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
-export type ModeType = 'auto' | 'search' | 'stories' | 'cinematic' | 'movie' | 'avatar' | 'fastsearch';
+export type ModeType = 'auto' | 'search' | 'stories' | 'cinematic' | 'movie' | 'character' | 'avatar' | 'fastsearch';
 
 interface Mode {
   id: ModeType;
   label: string;
   icon: React.ElementType;
+  premium?: boolean; // shows a crown (consumes a Pro Credit)
 }
 
 // 'fastsearch' is the new primary "Search" (default). Legacy 'search' is kept in
@@ -18,6 +19,7 @@ const modes: Mode[] = [
   { id: 'stories', label: 'stories', icon: BookOpen },
   { id: 'cinematic', label: 'cinematic', icon: Clapperboard },
   { id: 'movie', label: 'movie', icon: Popcorn },
+  { id: 'character', label: 'character', icon: PersonStanding, premium: true },
   { id: 'avatar', label: 'avatar', icon: UserCircle }
 ];
 
@@ -68,6 +70,7 @@ export default function ModeSelector({ selectedMode, onModeSelect, onClose }: Mo
               <span className="font-medium capitalize">
                 {t(mode.label)}
               </span>
+              {mode.premium && <Crown size={14} style={{ color: accentColor.primary }} />}
             </div>
 
             {/* Red dot indicator for active mode */}

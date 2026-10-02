@@ -168,5 +168,6 @@
   "movies": "Films",
   "historySubtitle": "Tout ce que vous avez créé, au même endroit.",
   "historySignedOut": "Connectez-vous pour voir votre historique.",
-  "historyEmpty": "Rien ici pour l’instant."
+  "historyEmpty": "Rien ici pour l’instant.",
+  "character": "Personnage"
 }

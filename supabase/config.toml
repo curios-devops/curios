@@ -305,3 +305,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [functions.storage-retention]
 enabled = true
 verify_jwt = false
+
+[functions.character-session]
+enabled = true
+verify_jwt = true

@@ -168,5 +168,6 @@
   "movies": "ムービー",
   "historySubtitle": "あなたが作成したすべてを一か所で。",
   "historySignedOut": "履歴を見るにはサインインしてください。",
-  "historyEmpty": "まだ何もありません。"
+  "historyEmpty": "まだ何もありません。",
+  "character": "キャラクター"
 }
