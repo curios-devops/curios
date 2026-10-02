@@ -158,9 +158,9 @@ function AppContent() {
           onClick={() => setShowSignUpModal(true)}
           title={appSettings.getStarted.text}
           aria-label={appSettings.getStarted.text}
-          className="h-8 w-8 flex items-center justify-center rounded-full transition-colors text-gray-700 dark:text-gray-50"
+          className="h-8 w-8 flex items-center justify-center rounded-full transition-colors text-gray-600 dark:text-gray-300"
         >
-          <CircleUserRound size={26} strokeWidth={1.75} />
+          <CircleUserRound size={28} strokeWidth={1.75} />
         </button>
       );
     }
@@ -207,7 +207,7 @@ function AppContent() {
               <header className="fixed top-0 left-0 w-full z-50 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-2 gap-3 shadow-sm" style={{ marginTop: showBanner ? '32px' : '0', backgroundColor: 'var(--background)' }}>
                 <div className="flex items-center gap-3">
                   <button type="button" className="p-2" aria-label="Open menu" onClick={() => setMobileSidebarOpen(true)}>
-                    <Menu size={24} strokeWidth={1.75} className="text-gray-700 dark:text-gray-50" />
+                    <Menu size={24} strokeWidth={1.75} className="text-gray-600 dark:text-gray-300" />
                   </button>
                   <div className="flex items-center gap-2">
                     <Logo isCollapsed={false} variant="header" />
