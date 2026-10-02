@@ -122,6 +122,13 @@ export async function getNodeBySlug(slug: string): Promise<NodeRecord | null> {
   return data as NodeRecord;
 }
 
+/** Replace a node's article text (e.g. after "Know more" expansions). Best-effort. */
+export async function updateNodeAnswer(nodeId: string, answer: string): Promise<void> {
+  if (!isValidUuid(nodeId)) return;
+  const { error } = await supabase.from('curiosity_nodes').update({ answer }).eq('id', nodeId);
+  if (error) logger.warn('[NodePersistence] updateNodeAnswer failed', { error: error.message });
+}
+
 /** Make a node public (idempotent) and count the share. */
 export async function ensureShared(nodeId: string): Promise<void> {
   if (!isValidUuid(nodeId)) return;
