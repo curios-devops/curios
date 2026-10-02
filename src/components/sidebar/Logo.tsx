@@ -1,7 +1,7 @@
 import { useAccentColor } from "../../hooks/useAccentColor.ts";
 import { useTheme } from "../theme/ThemeContext.tsx";
 import CuriosLogo from "../common/CuriosLogo.tsx";
-import { appSettings, LOGO_GRAY } from "../../config/appSettings.ts";
+import { appSettings, LOGO_GRAY, LOGO_ICON_PX } from "../../config/appSettings.ts";
 
 // `variant` picks which app-settings.md block drives the look:
 //   'sidebar' → SIDEBAR_* keys (desktop sidebar + mobile drawer)
@@ -19,10 +19,10 @@ export default function Logo({ isCollapsed, variant = 'sidebar' }: { isCollapsed
         : '#111827'
       : accentColor.primary;
 
-  // Sizes (L/M/S) + AI on/off come from app-settings.md, per context.
+  // Text sizes (L/M/S) + AI on/off come from app-settings.md, per context; icon size is fixed.
   const logo = variant === 'header' ? appSettings.header.logo : appSettings.sidebar.logo;
   const font = appSettings.wordmarkFont;
-  const iconPx = isCollapsed ? logo.iconSize + 4 : logo.iconSize;
+  const iconPx = isCollapsed ? LOGO_ICON_PX + 4 : LOGO_ICON_PX;
   const baseWordmark = { fontFamily: font.fontFamily, fontWeight: font.fontWeight, letterSpacing: font.letterSpacing } as const;
   const gray = appSettings.wordmarkColor === 'gray';
 
@@ -39,7 +39,7 @@ export default function Logo({ isCollapsed, variant = 'sidebar' }: { isCollapsed
           </span>
           {logo.showAi && (
             gray ? (
-              <span className="ml-0.5" style={{ ...baseWordmark, fontSize: logo.aiFontSize, color: LOGO_GRAY }}>AI</span>
+              <span className="ml-0.5" style={{ ...baseWordmark, fontSize: logo.aiFontSize, color: logoAccentColor }}>AI</span>
             ) : (
               <span
                 className="ml-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent"

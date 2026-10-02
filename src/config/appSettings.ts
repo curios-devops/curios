@@ -22,7 +22,6 @@ export const LOGO_GRAY = '#9A9A9A';
 
 // Resolved logo look for one context (header vs sidebar).
 export interface LogoConfig {
-  iconSize: number; // px (expanded); collapsed adds a few px
   nameFontSize: string; // "Curios" wordmark size
   showAi: boolean; // show the "AI" part of the wordmark
   aiFontSize: string;
@@ -63,10 +62,11 @@ const cfg = parseConfig(rawConfig);
 const DEFAULT_BANNER_TEXT =
   '☀️ Summer Sale • Limited Time Only • 50% Discount • Grab It Before It Melts! 🏖️';
 
-// L / M / S size scales. Tuned so M is clearly smaller than the old default
-// (the previous look was L-sized); M is the everyday size, L is the big option.
-const ICON_PX: Record<Size, number> = { L: 28, M: 23, S: 19 };
-const TEXT_REM: Record<Size, string> = { L: '1.125rem', M: '0.95rem', S: '0.82rem' };
+// Logo icon size is fixed (not configurable); collapsed sidebar adds a few px.
+export const LOGO_ICON_PX = 20;
+
+// L / M / S wordmark text sizes; M is the everyday size.
+const TEXT_REM: Record<Size, string> = { L: '1.25rem', M: '1.05rem', S: '0.9rem' };
 
 const onOff = (v: string | undefined, def: boolean): boolean =>
   v === 'ON' ? true : v === 'OFF' ? false : def;
@@ -104,7 +104,6 @@ const asColor = (v: string | undefined): WordmarkColor =>
 
 // Build a logo config from a KEY prefix (HEADER_ or SIDEBAR_). Default size M.
 const logoConfig = (prefix: string): LogoConfig => ({
-  iconSize: ICON_PX[asSize(cfg[`${prefix}_LOGO_ICON`], 'M')],
   nameFontSize: TEXT_REM[asSize(cfg[`${prefix}_LOGO_NAME`], 'M')],
   showAi: onOff(cfg[`${prefix}_LOGO_AI`], true),
   aiFontSize: TEXT_REM[asSize(cfg[`${prefix}_LOGO_AI_SIZE`], 'M')],
