@@ -1,7 +1,7 @@
 // Curiosity Engine — shared types for the Space + Share + Feed layer.
 // A CuriosityNode is the persistent snapshot of one Q&A interaction.
 
-export type NodeMode = 'fast_search' | 'stories' | 'explore';
+export type NodeMode = 'fast_search' | 'stories' | 'explore' | 'character';
 
 export interface NodeSource {
   title: string;

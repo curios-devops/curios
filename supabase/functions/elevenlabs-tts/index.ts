@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
         },
         body: JSON.stringify({
           text,
-          model_id: 'eleven_multilingual_v2', // Modelo más confiable y compatible con free tier
+          model_id: 'eleven_v4', // Latest ElevenLabs model (85 languages)
           output_format: 'mp3_44100_128',
           voice_settings: {
             stability,

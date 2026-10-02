@@ -1,5 +1,6 @@
 import { type LucideIcon, Plus, Image as ImageIcon, Search, ChevronDown, Rocket } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ActionButton from '../boxContainerInput/ActionButton.tsx';
 import ModeSelector from '../boxContainerInput/ModeSelector.tsx';
 import type { ModeType } from '../boxContainerInput/ModeSelector.tsx';
@@ -65,6 +66,7 @@ export default function ButtonBar({
   isRecording,
 }: ButtonBarProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate(); // Voice mode → live Character with the mic open
   const accentColor = useAccentColor();
   const [showModeMenu, setShowModeMenu] = useState(false);
   const modeMenuRef = useRef<HTMLDivElement>(null);
@@ -99,6 +101,8 @@ export default function ButtonBar({
         return t('cinematic') || 'Cinematic';
       case 'movie':
         return t('movie') || 'Movie';
+      case 'character':
+        return t('character') || 'Character';
       case 'avatar':
         return t('avatar') || 'Avatar';
       default:
@@ -213,10 +217,7 @@ export default function ButtonBar({
               icon={AudioBarsIcon}
               label={t('voiceMode') || 'Voice mode'}
               tooltip={t('voiceMode') || 'Voice mode'}
-              onClick={() => {
-                // TODO: Open Avatar/Voice mode
-                console.log('Voice mode clicked');
-              }}
+              onClick={() => navigate('/character?mic=1')}
             />
           </>
         ) : (
