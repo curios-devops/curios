@@ -152,33 +152,41 @@ export async function generateAnswerStreaming(
     sourceCount: context.webResults.length
   });
 
-  // Build user message for streaming with search results. We ask for a compact,
-  // scannable briefing with a fixed shape (headline → direct answer → a short
-  // titled section of emoji bullets → a "tl;dr" takeaway) so answers are always
-  // roughly a phone-screen's worth — never a thin single paragraph, never an essay.
-  const userMessage = `Turn this question into understanding: "${context.query}"
+  // Editorial style guide, not a template: a ~1-minute read (300–600 words)
+  // that feels written by an experienced editor. Structure adapts to the topic;
+  // headings rotate; emojis are rare. See the Curios search style guide.
+  const userMessage = `Question: "${context.query}"
 
 Search Results:
 ${buildSourcesText(context.webResults)}
 
-Structure the answer in markdown in this order. These are instructions — never print the part names, numbers, or list markers for them:
+Write a concise, enjoyable, trustworthy overview that can be read in about one minute — like an experienced journalist or analyst, not an AI assistant. Follow this style guide as a communication strategy, NOT a fixed template: adapt the organization to the topic and do not use an identical structure every time.
 
-- First, a bold headline on its own line, with no list marker: **{one fitting emoji} {a short headline, max ~8 words}**
-- Then one or two sentences that answer directly — the heart of it, no preamble and no label.
-- Then ONE OR TWO short titled sections. Each starts with a bold emoji subtitle that fits the topic on its own line (e.g. "**🔎 Things to Know**", "**📌 Details**", "**⚙️ How It Works**", "**📊 By the Numbers**", "**🧭 Why It Matters**"), followed by 3–5 bullets. Start each bullet with an emoji and **bold the key words**. Add inline citations with the site name like [reuters], [bbc] — 1–2 most relevant per claim (use [site +N] when several come from the same site).
-- Finally, a line exactly in this shape: 👉 **tl;dr:** {one punchy sentence that lands the point}
+Length: about 300–600 words, depending on how complex the topic is.
 
-Rules:
-- Be genuinely useful and self-contained — the reader should get it without clicking away. Do NOT end by inviting them to "explore more", "read on", or "learn more".
-- Aim for roughly 220–320 words (about 1,300–1,600 characters): comprehensive but scannable. Never a thin one- or two-paragraph reply; never a long essay.
-- Ground every claim in the sources; prefer the most recent information.
+Flow (adaptive — use what fits, don't force every part):
+- Open with a short title as a markdown "## " heading, then an introduction of 2–5 sentences that says directly what this is, why someone should care, and the main takeaway — woven into the prose, never as labels like "Why care?" or "The main takeaway:". No generic openings like "This article discusses…".
+- Expand with one natural section under a "### " heading that fits the topic (e.g. Why it matters, What's happening, Key context, Background, How it works, What changed, Bigger picture). Pick whichever fits; don't default to the same one.
+- When it helps, highlight the key points as bullets: usually 4, never fewer than 3, rarely more than 5. One meaningful idea per bullet; bold only the key words; don't repeat the introduction.
+- Close with a brief "### " section (e.g. Bottom line, In summary, Key insight, The big picture, Takeaway, TL;DR) written as one short paragraph, not another list. Vary the wording.
 
-After the takeaway, add a section "## Follow-up Questions:" with 3–5 relevant questions as a numbered list (1., 2., …).
+Adapt to the topic:
+- News → what happened and why it matters. Science → explain the concept before implications. History → context first.
+- Products → strengths, weaknesses, a practical recommendation. Comparisons → similarities, differences, conclusion. How-to → short explanation, then practical steps.
+
+Style:
+- Short paragraphs with good spacing, active voice, clear transitions, concrete language.
+- Confident but never sensational. No filler, repetition, marketing language or excessive jargon. Prioritize clarity over completeness.
+- Emojis: usually none, at most two in the whole answer, only where they genuinely help. Never in every heading, never decorative.
+- Never expose internal reasoning. Don't invite the reader to "explore more" or "read on" — the answer should stand on its own.
+- Ground every claim in the sources and prefer the most recent information. Add inline citations with the site name like [reuters], [bbc] — 1–2 most relevant per claim (use [site +N] when several come from the same site).
+
+After the answer, add a section "## Follow-up Questions:" with 3–5 relevant questions as a numbered list (1., 2., …).
 
 Today's date: ${context.date}
 Language: ${context.locale}`;
 
-  const fullText = await streamLLMText(userMessage, 1300, onChunk, 60000);
+  const fullText = await streamLLMText(userMessage, 1800, onChunk, 60000);
   const followUps = extractFollowUps(fullText);
 
   logger.info('LLMProvider: Streaming completed with web search', {
