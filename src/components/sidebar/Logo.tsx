@@ -25,12 +25,12 @@ export default function Logo({ isCollapsed, variant = 'sidebar' }: { isCollapsed
   const iconPx = isCollapsed ? LOGO_ICON_PX + 4 : LOGO_ICON_PX;
   const baseWordmark = { fontFamily: font.fontFamily, fontWeight: font.fontWeight, letterSpacing: font.letterSpacing } as const;
   const gray = appSettings.wordmarkColor === 'gray';
-  // DARK: icon frame + "Curios" in the header ink, "AI" in the accent color.
+  // DARK: "Curios" in the header ink, "AI" in the accent color (icon keeps its gray).
   const dark = appSettings.wordmarkColor === 'dark';
 
   return (
     <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'gap-2'}`}>
-      <CuriosLogo size={iconPx} colorOverride={logoAccentColor} {...(dark ? { className: 'text-gray-600 dark:text-gray-300', frameColor: 'currentColor' } : {})} />
+      <CuriosLogo size={iconPx} colorOverride={logoAccentColor} />
       {!isCollapsed && (
         <div className="flex items-center">
           <span
