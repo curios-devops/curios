@@ -165,7 +165,7 @@ Write a concise, enjoyable, trustworthy overview that can be read in about one m
 Length: about 300–600 words, depending on how complex the topic is.
 
 Flow (adaptive — use what fits, don't force every part):
-- Open with a short title as a markdown "## " heading, then an introduction of 2–5 sentences that says directly what this is, why someone should care, and the main takeaway — woven into the prose, never as labels like "Why care?" or "The main takeaway:". No generic openings like "This article discusses…".
+- Open with a short title as a markdown "## " heading, then an introduction of 2–5 plain sentences that orients the reader: what this is, why it's worth knowing, and the core point. Write it as flowing prose — no rhetorical questions and no lead-in labels or colons (never "Why care?", "The main takeaway:", "Key point:", "In short:"). No generic openings like "This article discusses…".
 - Expand with one natural section under a "### " heading that fits the topic (e.g. Why it matters, What's happening, Key context, Background, How it works, What changed, Bigger picture). Pick whichever fits; don't default to the same one.
 - When it helps, highlight the key points as bullets: usually 4, never fewer than 3, rarely more than 5. One meaningful idea per bullet; bold only the key words; don't repeat the introduction.
 - Close with a brief "### " section (e.g. Bottom line, In summary, Key insight, The big picture, Takeaway, TL;DR) written as one short paragraph, not another list. Vary the wording.

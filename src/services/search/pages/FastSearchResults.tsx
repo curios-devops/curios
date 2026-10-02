@@ -126,6 +126,11 @@ export default function FastSearchResults() {
     // Match: (sitename), (sitename +N), (sitename(url))
     text = text.replace(/\s*\(([a-z0-9]+)(\s*\+\d+)?(\([^)]+\))?\)/gi, '');
 
+    // Step 2b: Drop lead-in labels the model sometimes writes inside prose
+    // ("The main takeaway: …", "Why care? …") — the style guide forbids them.
+    text = text.replace(/(^|[.!?]\s+)(?:The\s+)?(?:main|key)\s+takeaways?\s*:\s*([a-z])/gim, (_m, pre, c) => pre + c.toUpperCase());
+    text = text.replace(/(^|[.!?]\s+)Why\s+(?:care|does\s+it\s+matter|it\s+matters)\?\s+/gim, '$1');
+
     // Step 3: Remove horizontal rules (---) but preserve markdown headings
     // Only remove lines that are ONLY dashes/hyphens with optional whitespace
     text = text.replace(/^\s*[-–—]{3,}\s*$/gm, '');
