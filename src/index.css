@@ -307,3 +307,46 @@ html[data-theme="dark"] .dark\:border-gray-800 {
     display: none;
   }
 }
+/* Logo center square: a slow, subtle breath (brighter ↔ softer) so the site
+   feels alive without drawing attention. app-settings.md → LOGO_DOT_PULSE. */
+.logo-dot-pulse {
+  animation: logoDotPulse 3.6s ease-in-out infinite;
+}
+@keyframes logoDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-dot-pulse { animation: none; }
+}
+
+/* Home search box — 2026 redesign (light mode only; dark keeps its look).
+   Passive: Vivix-style near-black icons on a warm chip. Once the user clicks
+   inside the box (focus-within) the chips switch to the theme accent (Terra by
+   default). Scoped to the chip buttons so the accent "send" button is untouched. */
+html:not([data-theme="dark"]) [data-search-box] button.bg-gray-100 {
+  background-color: #F3F0EC;
+  color: #0A0A0A;
+}
+html:not([data-theme="dark"]) [data-search-box] button.bg-gray-100:hover {
+  background-color: #E9E6E0;
+}
+html:not([data-theme="dark"]) [data-search-box]:focus-within button.bg-gray-100 {
+  background-color: var(--accent-light);
+  color: var(--accent-primary);
+}
+html:not([data-theme="dark"]) [data-search-box] textarea::placeholder {
+  color: rgba(10, 10, 10, 0.38);
+}
+
+/* Discover polaroid cards (Pamba shape). */
+.mosaic-card {
+  background-color: #FBF9F3;
+  border-color: rgba(21, 19, 13, 0.12);
+  box-shadow: 0 1px 2px rgba(21, 19, 13, 0.06), 0 18px 40px -24px rgba(21, 19, 13, 0.4);
+}
+html[data-theme="dark"] .mosaic-card {
+  background-color: var(--ui-bg-elevated);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.7);
+}

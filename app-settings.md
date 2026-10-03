@@ -15,16 +15,18 @@ Sizes use **L / M / S** (M is the everyday size; L is bigger, S smaller).
 ====================== GENERAL =====================================
 ====================================================================
 
-### THEME — default theme for first-time visitors
-Applies before a visitor picks their own. Default = SYSTEM · Valid: SYSTEM / LIGHT / DARK
+### THEME — light or dark background for first-time visitors
+Applies before a visitor picks their own. LIGHT uses Vivix's warm off-white
+background (#F9F6F4), near-black ink and Inter. AUTO follows the device.
+Default = LIGHT · Valid: LIGHT / DARK / AUTO
 ```
-THEME = SYSTEM
+THEME = LIGHT
 ```
 
 ### BANNER — show or hide the top promo banner
 Default = OFF · Valid: ON / OFF
 ```
-BANNER = ON
+BANNER = OFF
 ```
 
 ### BANNER_TEXT — the message inside the banner (only when BANNER = ON)
@@ -36,27 +38,76 @@ BANNER_TEXT = 🎃 Halloween Launch — Pro 50% OFF · $5/month · Limited time
 
 
 ====================================================================
+====================== THEMES ======================================
+====================================================================
+A theme is the accent color used everywhere (active buttons, links, labels,
+focus). Visitors can switch between the five themes in Settings; this picks the
+one they start with.
+
+### THEME_COLOR — default theme
+Default = TERRA · Valid: TERRA / OCEAN / FIRE / SKY / BOREALIS / CLASSIC_BLUE
+(CLASSIC_BLUE is our original blue — kept here to go back to, not offered to visitors)
+```
+THEME_COLOR = TERRA
+```
+
+### Theme colors — edit any hex to retune a theme (hover / soft tints are derived)
+TERRA = Vivix-family terracotta · OCEAN = Pamba blue · FIRE = Claude-like orange
+SKY = purple · BOREALIS = teal · CLASSIC_BLUE = our original blue (pinned)
+```
+TERRA = #9C7A5B
+OCEAN = #1C8BFD
+FIRE = #D97757
+SKY = #7C55D6
+BOREALIS = #12A88C
+CLASSIC_BLUE = #4F6FE0
+```
+
+
+====================================================================
 ====================== LOGO ========================================
 ====================================================================
 Everything about the "CuriosAI" logo — font, color, and per-place text sizes — in
 one place. The word "Curios" itself is fixed (it can't be renamed). The logo icon
 size is fixed too (not configurable).
 
-### LOGO_FONT — the wordmark typeface (whole app)
-MICHROMA = the wide/technical face. GROTESK = a thinner, squarer face
-(Space Grotesk), closer to Perplexity's look. Default = MICHROMA · Valid: MICHROMA / GROTESK
+### LOGO_ICON_COLOR — the logo mark (frame) color
+OCEAN_BLUE = Pamba blue (#1C8BFD) · GRAY = the original gray (#9A9A9A) ·
+CLASSIC_BLUE = our original blue (#4F6FE0) · or any hex like #1C8BFD
+Default = OCEAN_BLUE
 ```
-LOGO_FONT = GROTESK
+LOGO_ICON_COLOR = OCEAN_BLUE
+```
+
+### LOGO_DOT_COLOR — the small center square of the logo
+RED = #E5484D · ACCENT = follows the theme · or any hex. Default = RED
+```
+LOGO_DOT_COLOR = RED
+```
+
+### LOGO_DOT_PULSE — the center slowly breathes (brighter / softer)
+Subtle on purpose: it only shows the site is alive. Default = ON · Valid: ON / OFF
+```
+LOGO_DOT_PULSE = ON
+```
+
+### LOGO_FONT — the wordmark typeface (whole app)
+BRICOLAGE = Pamba's wordmark/headline face (Bricolage Grotesque).
+MICHROMA = the wide/technical face. GROTESK = Space Grotesk.
+Default = BRICOLAGE · Valid: BRICOLAGE / MICHROMA / GROTESK
+```
+LOGO_FONT = BRICOLAGE
 ```
 
 ### LOGO_COLOR — the wordmark color (whole app)
+PAMBA = "Curios" in Pamba's near-black ink (#15130D) + "AI" thinner and gray.
 DEFAULT = "Curios" ink + "AI" blue→purple→pink gradient.
 GRAY = "Curios" in the logo's own gray (#9A9A9A) + "AI" in the accent color.
 DARK = "Curios" in the header ink (gray-600; light gray in dark mode), matching
 the menu and account icons, with "AI" in the accent color. The icon keeps its gray.
-Default = DEFAULT · Valid: DEFAULT / GRAY / DARK
+Default = PAMBA · Valid: PAMBA / DEFAULT / GRAY / DARK
 ```
-LOGO_COLOR = DARK
+LOGO_COLOR = PAMBA
 ```
 
 --- Header logo (the top header — most visible on mobile) --------------------

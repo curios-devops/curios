@@ -25,22 +25,31 @@ export default function Logo({ isCollapsed, variant = 'sidebar' }: { isCollapsed
   const iconPx = isCollapsed ? LOGO_ICON_PX + 4 : LOGO_ICON_PX;
   const baseWordmark = { fontFamily: font.fontFamily, fontWeight: font.fontWeight, letterSpacing: font.letterSpacing } as const;
   const gray = appSettings.wordmarkColor === 'gray';
+  // PAMBA: "Curios" in Pamba's near-black ink, "AI" thinner and gray.
+  const pamba = appSettings.wordmarkColor === 'pamba';
   // DARK: "Curios" in the header ink, "AI" in the accent color (icon keeps its gray).
   const dark = appSettings.wordmarkColor === 'dark';
 
   return (
     <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'gap-2'}`}>
-      <CuriosLogo size={iconPx} colorOverride={logoAccentColor} />
+      <CuriosLogo
+        size={iconPx}
+        frameColor={appSettings.logoMark.iconColor}
+        colorOverride={appSettings.logoMark.dotColor === 'accent' ? logoAccentColor : appSettings.logoMark.dotColor}
+        pulse={appSettings.logoMark.dotPulse}
+      />
       {!isCollapsed && (
         <div className="flex items-center">
           <span
-            className={dark ? 'text-gray-600 dark:text-gray-300' : gray ? '' : 'text-gray-900 dark:text-white'}
+            className={pamba ? 'text-[#15130D] dark:text-[#F3F1EC]' : dark ? 'text-gray-600 dark:text-gray-300' : gray ? '' : 'text-gray-900 dark:text-white'}
             style={{ ...baseWordmark, fontSize: logo.nameFontSize, ...(gray ? { color: LOGO_GRAY } : {}) }}
           >
             Curios
           </span>
           {logo.showAi && (
-            dark ? (
+            pamba ? (
+              <span className="ml-0.5 text-[#8A857A] dark:text-[#A8A396]" style={{ ...baseWordmark, fontSize: logo.aiFontSize, fontWeight: 300 }}>AI</span>
+            ) : dark ? (
               <span className="ml-0.5" style={{ ...baseWordmark, fontSize: logo.aiFontSize, color: logoAccentColor }}>AI</span>
             ) : gray ? (
               <span className="ml-0.5" style={{ ...baseWordmark, fontSize: logo.aiFontSize, color: logoAccentColor }}>AI</span>

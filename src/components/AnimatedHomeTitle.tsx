@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { useAccentColor } from '../hooks/useAccentColor';
 
 interface AnimatedHomeTitleProps {
   name: string | null;
@@ -38,18 +37,16 @@ type Phase = 'sal-typing' | 'sal-pausing' | 'sal-deleting' | 'q-typing' | 'done'
 
 /**
  * Two-beat headline: types a random time-based greeting, deletes it, then types
- * "What are you curious about?" with a blinking accent dot on the left and stops
- * there (the left dot keeps blinking).
+ * "What are you curious about?" and stops. (The blinking accent dot was removed
+ * in the 2026 redesign — too distracting.)
  */
 export default function AnimatedHomeTitle({ name, className, style }: AnimatedHomeTitleProps) {
-  const accent = useAccentColor();
   const salutation = useMemo(() => {
     const all = buildSalutations(name);
     return all[Math.floor(Math.random() * all.length)];
   }, [name]);
 
   const [display, setDisplay] = useState('');
-  const [dotLeft, setDotLeft] = useState(false);
 
   const charRef = useRef(0);
   const phaseRef = useRef<Phase>('sal-typing');
@@ -60,14 +57,12 @@ export default function AnimatedHomeTitle({ name, className, style }: AnimatedHo
 
   useEffect(() => {
     if (prefersReduced) {
-      setDotLeft(true);
       setDisplay(QUESTION);
       return;
     }
 
     charRef.current = 0;
     phaseRef.current = 'sal-typing';
-    setDotLeft(false);
     setDisplay('');
 
     let timer: ReturnType<typeof setTimeout>;
@@ -96,7 +91,6 @@ export default function AnimatedHomeTitle({ name, className, style }: AnimatedHo
           if (charRef.current <= 0) {
             phaseRef.current = 'q-typing';
             charRef.current = 0;
-            setDotLeft(true); // dot moves to the left for the question
             timer = setTimeout(tick, 450);
           } else {
             timer = setTimeout(tick, 28);
@@ -107,7 +101,7 @@ export default function AnimatedHomeTitle({ name, className, style }: AnimatedHo
           charRef.current += 1;
           setDisplay(QUESTION.slice(0, charRef.current));
           if (charRef.current >= QUESTION.length) {
-            phaseRef.current = 'done'; // stop; left dot keeps blinking
+            phaseRef.current = 'done';
           } else {
             timer = setTimeout(tick, 55 + Math.random() * 45);
           }
@@ -122,41 +116,9 @@ export default function AnimatedHomeTitle({ name, className, style }: AnimatedHo
     return () => clearTimeout(timer);
   }, [salutation, prefersReduced]);
 
-  const dot = (
-    <span
-      className={`home-caret-dot ${dotLeft ? 'home-caret-dot--left' : ''}`}
-      style={{ backgroundColor: accent.primary }}
-      aria-hidden="true"
-    />
-  );
-
   return (
     <h1 className={className} style={{ minHeight: '1.4em', ...style }} aria-label={QUESTION}>
-      {dotLeft && dot}
       <span>{display}</span>
-      {!dotLeft && dot}
-      <style>{`
-        .home-caret-dot {
-          display: inline-block;
-          width: 0.5em;
-          height: 0.5em;
-          border-radius: 9999px;
-          margin-left: 0.14em;
-          vertical-align: middle;
-          animation: homeCaretBlink 1s steps(1, end) infinite;
-        }
-        .home-caret-dot--left {
-          margin-left: 0;
-          margin-right: 0.3em;
-        }
-        @keyframes homeCaretBlink {
-          0%, 50% { opacity: 1; }
-          50.01%, 100% { opacity: 0; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .home-caret-dot { animation: none; }
-        }
-      `}</style>
     </h1>
   );
 }

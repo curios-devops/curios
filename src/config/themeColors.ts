@@ -1,3 +1,5 @@
+import { appSettings } from './appSettings';
+
 // New brand palette (design-kit.md, "Midnight + Aurora" direction) — nature-named
 // so no color reads as "generic AI blue". These are the ones offered in the
 // picker going forward.
@@ -8,7 +10,11 @@ export type NatureAccentColor = 'ocean' | 'sky' | 'borealis' | 'fire' | 'wood' |
 // default, but the type/data stays so any old saved preference still resolves.
 export type LegacyAccentColor = 'blue' | 'teal' | 'purple' | 'orange' | 'gray';
 
-export type AccentColor = NatureAccentColor | LegacyAccentColor;
+// 2026 redesign themes (app-settings.md → THEMES). terra/classic_blue are new;
+// ocean and sky are re-tuned (Pamba blue; Sky is now purple).
+export type CuriosThemeColor = 'terra' | 'ocean' | 'fire' | 'sky' | 'borealis' | 'classic_blue';
+
+export type AccentColor = NatureAccentColor | LegacyAccentColor | CuriosThemeColor;
 export type ColorTemperature = 'cold' | 'warm' | 'neutral';
 
 export interface ColorVariants {
@@ -307,212 +313,68 @@ const natureDesignSystemThemes: Record<NatureAccentColor, { light: DesignColorSe
   },
 };
 
+// ── Curios themes (2026 redesign) ──────────────────────────────────────────
+// A theme = one accent hex from app-settings.md (hover / tints derived here).
+// Light mode uses Vivix's neutral ground for every theme (warm off-white,
+// white surfaces, warm border, near-black ink); dark mode keeps each hue
+// family's existing dark palette.
+const VIVIX_LIGHT = { bg: '#F9F6F4', surface: '#FFFFFF', border: '#DDD8D3', text: '#0A0A0A' };
+
+function mix(hex: string, target: string, t: number): string {
+  const p = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [a, b] = [p(hex), p(target)];
+  return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+function curiosTheme(hex: string, darkBase: DesignColorSet): { light: DesignColorSet; dark: DesignColorSet } {
+  return {
+    light: {
+      ...VIVIX_LIGHT,
+      brandLight: mix(hex, '#FFFFFF', 0.25),
+      brand: hex,
+      brandDark: mix(hex, '#000000', 0.18),
+      brandSubtle: mix(hex, '#FFFFFF', 0.88),
+    },
+    dark: {
+      ...darkBase,
+      brandLight: mix(hex, '#FFFFFF', 0.4),
+      brand: mix(hex, '#FFFFFF', 0.15),
+      brandDark: hex,
+    },
+  };
+}
+
+const t = appSettings.themes.colors;
+const curiosThemes: Record<CuriosThemeColor, { light: DesignColorSet; dark: DesignColorSet }> = {
+  terra: curiosTheme(t.terra, natureDesignSystemThemes.wood.dark),
+  ocean: curiosTheme(t.ocean, natureDesignSystemThemes.ocean.dark),
+  fire: curiosTheme(t.fire, natureDesignSystemThemes.fire.dark),
+  sky: curiosTheme(t.sky, natureDesignSystemThemes.dusk.dark), // Sky is now purple
+  borealis: curiosTheme(t.borealis, natureDesignSystemThemes.borealis.dark),
+  classic_blue: curiosTheme(t.classic_blue, natureDesignSystemThemes.sky.dark), // our original blue
+};
+
 const designSystemThemes: Record<AccentColor, { light: DesignColorSet; dark: DesignColorSet }> = {
   ...legacyDesignSystemThemes,
   ...natureDesignSystemThemes,
+  ...curiosThemes,
 };
 
-export const accentColors: Record<AccentColor, ThemeColors> = {
-  gray: {
-    light: {
-      primary: designSystemThemes.gray.light.brand,
-      hover: designSystemThemes.gray.light.brandDark,
-      light: designSystemThemes.gray.light.brandSubtle,
-      dark: designSystemThemes.gray.light.brandDark,
-      brandLight: designSystemThemes.gray.light.brandLight,
-      brandSubtle: designSystemThemes.gray.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.gray.dark.brand,
-      hover: designSystemThemes.gray.dark.brandDark,
-      light: designSystemThemes.gray.dark.brandSubtle,
-      dark: designSystemThemes.gray.dark.brandDark,
-      brandLight: designSystemThemes.gray.dark.brandLight,
-      brandSubtle: designSystemThemes.gray.dark.brandSubtle,
-    },
-  },
-  blue: {
-    light: {
-      primary: designSystemThemes.blue.light.brand,
-      hover: designSystemThemes.blue.light.brandDark,
-      light: designSystemThemes.blue.light.brandSubtle,
-      dark: designSystemThemes.blue.light.brandDark,
-      brandLight: designSystemThemes.blue.light.brandLight,
-      brandSubtle: designSystemThemes.blue.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.blue.dark.brand,
-      hover: designSystemThemes.blue.dark.brandDark,
-      light: designSystemThemes.blue.dark.brandSubtle,
-      dark: designSystemThemes.blue.dark.brandDark,
-      brandLight: designSystemThemes.blue.dark.brandLight,
-      brandSubtle: designSystemThemes.blue.dark.brandSubtle,
-    },
-  },
-  orange: {
-    light: {
-      primary: designSystemThemes.orange.light.brand,
-      hover: designSystemThemes.orange.light.brandDark,
-      light: designSystemThemes.orange.light.brandSubtle,
-      dark: designSystemThemes.orange.light.brandDark,
-      brandLight: designSystemThemes.orange.light.brandLight,
-      brandSubtle: designSystemThemes.orange.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.orange.dark.brand,
-      hover: designSystemThemes.orange.dark.brandDark,
-      light: designSystemThemes.orange.dark.brandSubtle,
-      dark: designSystemThemes.orange.dark.brandDark,
-      brandLight: designSystemThemes.orange.dark.brandLight,
-      brandSubtle: designSystemThemes.orange.dark.brandSubtle,
-    },
-  },
-  teal: {
-    light: {
-      primary: designSystemThemes.teal.light.brand,
-      hover: designSystemThemes.teal.light.brandDark,
-      light: designSystemThemes.teal.light.brandSubtle,
-      dark: designSystemThemes.teal.light.brandDark,
-      brandLight: designSystemThemes.teal.light.brandLight,
-      brandSubtle: designSystemThemes.teal.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.teal.dark.brand,
-      hover: designSystemThemes.teal.dark.brandDark,
-      light: designSystemThemes.teal.dark.brandSubtle,
-      dark: designSystemThemes.teal.dark.brandDark,
-      brandLight: designSystemThemes.teal.dark.brandLight,
-      brandSubtle: designSystemThemes.teal.dark.brandSubtle,
-    },
-  },
-  purple: {
-    light: {
-      primary: designSystemThemes.purple.light.brand,
-      hover: designSystemThemes.purple.light.brandDark,
-      light: designSystemThemes.purple.light.brandSubtle,
-      dark: designSystemThemes.purple.light.brandDark,
-      brandLight: designSystemThemes.purple.light.brandLight,
-      brandSubtle: designSystemThemes.purple.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.purple.dark.brand,
-      hover: designSystemThemes.purple.dark.brandDark,
-      light: designSystemThemes.purple.dark.brandSubtle,
-      dark: designSystemThemes.purple.dark.brandDark,
-      brandLight: designSystemThemes.purple.dark.brandLight,
-      brandSubtle: designSystemThemes.purple.dark.brandSubtle,
-    },
-  },
-  // ── Current palette ("Midnight + Aurora") ──────────────────────────────
-  ocean: {
-    light: {
-      primary: designSystemThemes.ocean.light.brand,
-      hover: designSystemThemes.ocean.light.brandDark,
-      light: designSystemThemes.ocean.light.brandSubtle,
-      dark: designSystemThemes.ocean.light.brandDark,
-      brandLight: designSystemThemes.ocean.light.brandLight,
-      brandSubtle: designSystemThemes.ocean.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.ocean.dark.brand,
-      hover: designSystemThemes.ocean.dark.brandDark,
-      light: designSystemThemes.ocean.dark.brandSubtle,
-      dark: designSystemThemes.ocean.dark.brandDark,
-      brandLight: designSystemThemes.ocean.dark.brandLight,
-      brandSubtle: designSystemThemes.ocean.dark.brandSubtle,
-    },
-  },
-  sky: {
-    light: {
-      primary: designSystemThemes.sky.light.brand,
-      hover: designSystemThemes.sky.light.brandDark,
-      light: designSystemThemes.sky.light.brandSubtle,
-      dark: designSystemThemes.sky.light.brandDark,
-      brandLight: designSystemThemes.sky.light.brandLight,
-      brandSubtle: designSystemThemes.sky.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.sky.dark.brand,
-      hover: designSystemThemes.sky.dark.brandDark,
-      light: designSystemThemes.sky.dark.brandSubtle,
-      dark: designSystemThemes.sky.dark.brandDark,
-      brandLight: designSystemThemes.sky.dark.brandLight,
-      brandSubtle: designSystemThemes.sky.dark.brandSubtle,
-    },
-  },
-  borealis: {
-    light: {
-      primary: designSystemThemes.borealis.light.brand,
-      hover: designSystemThemes.borealis.light.brandDark,
-      light: designSystemThemes.borealis.light.brandSubtle,
-      dark: designSystemThemes.borealis.light.brandDark,
-      brandLight: designSystemThemes.borealis.light.brandLight,
-      brandSubtle: designSystemThemes.borealis.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.borealis.dark.brand,
-      hover: designSystemThemes.borealis.dark.brandDark,
-      light: designSystemThemes.borealis.dark.brandSubtle,
-      dark: designSystemThemes.borealis.dark.brandDark,
-      brandLight: designSystemThemes.borealis.dark.brandLight,
-      brandSubtle: designSystemThemes.borealis.dark.brandSubtle,
-    },
-  },
-  fire: {
-    light: {
-      primary: designSystemThemes.fire.light.brand,
-      hover: designSystemThemes.fire.light.brandDark,
-      light: designSystemThemes.fire.light.brandSubtle,
-      dark: designSystemThemes.fire.light.brandDark,
-      brandLight: designSystemThemes.fire.light.brandLight,
-      brandSubtle: designSystemThemes.fire.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.fire.dark.brand,
-      hover: designSystemThemes.fire.dark.brandDark,
-      light: designSystemThemes.fire.dark.brandSubtle,
-      dark: designSystemThemes.fire.dark.brandDark,
-      brandLight: designSystemThemes.fire.dark.brandLight,
-      brandSubtle: designSystemThemes.fire.dark.brandSubtle,
-    },
-  },
-  wood: {
-    light: {
-      primary: designSystemThemes.wood.light.brand,
-      hover: designSystemThemes.wood.light.brandDark,
-      light: designSystemThemes.wood.light.brandSubtle,
-      dark: designSystemThemes.wood.light.brandDark,
-      brandLight: designSystemThemes.wood.light.brandLight,
-      brandSubtle: designSystemThemes.wood.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.wood.dark.brand,
-      hover: designSystemThemes.wood.dark.brandDark,
-      light: designSystemThemes.wood.dark.brandSubtle,
-      dark: designSystemThemes.wood.dark.brandDark,
-      brandLight: designSystemThemes.wood.dark.brandLight,
-      brandSubtle: designSystemThemes.wood.dark.brandSubtle,
-    },
-  },
-  dusk: {
-    light: {
-      primary: designSystemThemes.dusk.light.brand,
-      hover: designSystemThemes.dusk.light.brandDark,
-      light: designSystemThemes.dusk.light.brandSubtle,
-      dark: designSystemThemes.dusk.light.brandDark,
-      brandLight: designSystemThemes.dusk.light.brandLight,
-      brandSubtle: designSystemThemes.dusk.light.brandSubtle,
-    },
-    dark: {
-      primary: designSystemThemes.dusk.dark.brand,
-      hover: designSystemThemes.dusk.dark.brandDark,
-      light: designSystemThemes.dusk.dark.brandSubtle,
-      dark: designSystemThemes.dusk.dark.brandDark,
-      brandLight: designSystemThemes.dusk.dark.brandLight,
-      brandSubtle: designSystemThemes.dusk.dark.brandSubtle,
-    },
-  },
-};
+const toVariants = (p: DesignColorSet): ColorVariants => ({
+  primary: p.brand,
+  hover: p.brandDark,
+  light: p.brandSubtle,
+  dark: p.brandDark,
+  brandLight: p.brandLight,
+  brandSubtle: p.brandSubtle,
+});
+
+export const accentColors = Object.fromEntries(
+  (Object.keys(designSystemThemes) as AccentColor[]).map((k) => [
+    k,
+    { light: toVariants(designSystemThemes[k].light), dark: toVariants(designSystemThemes[k].dark) },
+  ]),
+) as Record<AccentColor, ThemeColors>;
 
 export const accentTemperatureMap: Record<AccentColor, ColorTemperature> = {
   // LEGACY
@@ -528,6 +390,8 @@ export const accentTemperatureMap: Record<AccentColor, ColorTemperature> = {
   fire: 'warm',
   wood: 'warm',
   dusk: 'warm',
+  terra: 'warm',
+  classic_blue: 'cold',
 };
 
 // Helper function to get current accent colors based on theme and selected color

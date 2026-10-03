@@ -5,9 +5,11 @@ import LanguageSelector from './LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../theme/ThemeContext';
 import { useSession } from '../../hooks/useSession';
-import { accentColors, type NatureAccentColor } from '../../config/themeColors';
+import { accentColors } from '../../config/themeColors';
+import { VISITOR_THEMES } from '../../config/appSettings';
 
-const ACCENT_OPTIONS: NatureAccentColor[] = ['ocean', 'sky', 'borealis', 'fire', 'wood', 'dusk'];
+// Themes offered to visitors (app-settings.md → THEMES).
+const ACCENT_OPTIONS = VISITOR_THEMES;
 
 type CookieOption = 'all' | 'necessary' | 'none';
 

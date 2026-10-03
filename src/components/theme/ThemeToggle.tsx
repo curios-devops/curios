@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAccentColor } from '../../hooks/useAccentColor';
 import { AccentColor, accentColors } from '../../config/themeColors';
+import { VISITOR_THEMES } from '../../config/appSettings';
 
 export default function ThemeToggle() {
 	const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor } = useTheme();
@@ -14,11 +15,8 @@ export default function ThemeToggle() {
 	const tooltipBackground = isGrayAccent ? accentColor.primary : 'var(--ui-bg-elevated)';
 	const tooltipForeground = isDarkMode ? '#F9FAFB' : '#111827';
 	const tooltipBorder = isGrayAccent ? accentColor.dark : 'var(--ui-border-subtle)';
-	// Current palette (design-kit.md, "Midnight + Aurora" direction). The old
-	// blue/teal/purple/orange swatches were taken out of this picker — they
-	// still work if a user had one saved (see ThemeContext's validAccentColors)
-	// but are no longer offered here.
-	const selectableAccentColors: AccentColor[] = ['ocean', 'sky', 'borealis', 'fire', 'wood', 'dusk'];
+	// Themes offered to visitors (app-settings.md → THEMES).
+	const selectableAccentColors: AccentColor[] = VISITOR_THEMES;
 
 	const THEME_OPTIONS = [
 		{ key: 'light' as const, label: t('light'), icon: Sun },

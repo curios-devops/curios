@@ -277,19 +277,20 @@ export default function Home() {
       <EnhancedVideoCard />
 
       <div className="max-w-[720px] mx-auto px-6 sm:px-8">
-        <div className="flex flex-col items-center justify-center mb-12 home-rise">
+        <div className="flex flex-col items-center justify-center mb-10 home-rise">
           <AnimatedHomeTitle
             name={getUserFirstName(session?.user)}
-            // font-space-grotesk: new brand heading font (design-kit.md). An inline
-            // style's fontFamily always wins over a class, so the legacy stack
-            // moved into the className below instead of the style object — to
-            // revert, swap "font-space-grotesk" back for "font-legacy-home-title".
-            className="text-center leading-tight transition-opacity duration-300 font-space-grotesk"
+            // 2026 redesign: Pamba's section-headline type ("How Pamba works, end
+            // to end": Bricolage Grotesque 36px/700, −0.9px). To revert, swap
+            // "font-bricolage" for "font-space-grotesk" (previous) or
+            // "font-legacy-home-title" (original).
+            className="text-center transition-opacity duration-300 font-bricolage"
             style={{
               color: 'var(--ui-text-primary)',
-              fontWeight: '600',
-              letterSpacing: '-0.02em',
-              fontSize: 'clamp(24px, 4vw, 42px)',
+              fontWeight: 700,
+              letterSpacing: '-0.025em',
+              lineHeight: 1.05,
+              fontSize: 'clamp(28px, 6vw, 36px)',
             }}
           />
         </div>

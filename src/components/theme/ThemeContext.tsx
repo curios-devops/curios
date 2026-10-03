@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { AccentColor, applyThemeColors } from '../../config/themeColors';
-import { appSettings } from '../../config/appSettings.ts';
+import { appSettings, VISITOR_THEMES } from '../../config/appSettings.ts';
 import { supabase } from '../../lib/supabase.ts';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -14,16 +14,17 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-// Current palette + legacy (still valid so an old saved preference still resolves).
-const validAccentColors: AccentColor[] = [
-  'ocean', 'sky', 'borealis', 'fire', 'wood', 'dusk',
-  'blue', 'teal', 'purple', 'orange', 'gray',
-];
+// 2026 redesign: accents became themes (app-settings.md → THEMES). Choices are
+// stored under new keys ('accentTheme' locally, 'theme:<name>' in the profile)
+// so pre-redesign saved accents — almost all the old 'sky' default — don't
+// hide the new default theme.
+const THEME_STORAGE_KEY = 'accentTheme';
+const PROFILE_PREFIX = 'theme:';
+const validThemes: AccentColor[] = [...VISITOR_THEMES, 'classic_blue'];
 
-function normalizeAccentColor(color: string | null | undefined): AccentColor | null {
-  if (color === 'green') return 'teal';
-  if (color && validAccentColors.includes(color as AccentColor)) return color as AccentColor;
-  return null;
+function normalizeAccentColor(value: string | null | undefined): AccentColor | null {
+  const name = value?.startsWith(PROFILE_PREFIX) ? value.slice(PROFILE_PREFIX.length) : value;
+  return name && validThemes.includes(name as AccentColor) ? (name as AccentColor) : null;
 }
 
 function getInitialTheme(): Theme {
@@ -33,9 +34,7 @@ function getInitialTheme(): Theme {
 }
 
 function getInitialAccentColor(): AccentColor {
-  // Default moved from 'blue' to 'sky' (design-kit.md) — avoid the generic
-  // "every AI product is blue" look as the out-of-the-box first impression.
-  return normalizeAccentColor(localStorage.getItem('accentColor')) ?? 'sky';
+  return normalizeAccentColor(localStorage.getItem(THEME_STORAGE_KEY)) ?? appSettings.themes.default;
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -66,7 +65,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.setAttribute('data-theme', effective);
     applyThemeColors(effective, accentColor);
     localStorage.setItem('theme', theme);
-    localStorage.setItem('accentColor', accentColor);
+    localStorage.setItem(THEME_STORAGE_KEY, accentColor);
 
     if (theme === 'system') {
       const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -90,7 +89,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       .eq('id', userId)
       .single()
       .then(({ data }) => {
-        const color = normalizeAccentColor(data?.accent_color);
+        // Only post-redesign choices ('theme:<name>') count; legacy values are ignored.
+        const color = data?.accent_color?.startsWith(PROFILE_PREFIX) ? normalizeAccentColor(data.accent_color) : null;
         if (color) setAccentColorState(color);
       })
       .then(undefined, () => {});
@@ -106,7 +106,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setAccentColor = useCallback((color: AccentColor) => {
     setAccentColorState(color);
     if (userId) {
-      supabase.from('profiles').update({ accent_color: color }).eq('id', userId).then(undefined, () => {});
+      supabase.from('profiles').update({ accent_color: PROFILE_PREFIX + color }).eq('id', userId).then(undefined, () => {});
     }
   }, [userId]);
 
