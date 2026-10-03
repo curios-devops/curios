@@ -35,6 +35,8 @@ export interface LiveCharacter {
   onServerEvent: (handler: (event: { type: string; [k: string]: unknown }) => void) => void;
   addProduct: (product: StageProduct) => Promise<void>;
   close: () => Promise<void>;
+  /** Fire-and-forget close that survives the tab closing (fetch keepalive). */
+  closeOnUnload: () => void;
 }
 
 /**
@@ -135,6 +137,18 @@ export async function startCharacterSession(
           assets: { images: [{ asset_id: 'OBJ_0', url: product.imageUrl, description: `${product.title}<OBJ_0>` }] },
         });
       }),
+    closeOnUnload: () => {
+      if (closing) return;
+      closing = true;
+      const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      void fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/character-session`, {
+        method: 'POST',
+        keepalive: true,
+        headers: { Authorization: `Bearer ${key}`, apikey: key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'close', sessionId: creds.sessionId }),
+      }).catch(() => undefined);
+      try { ws.close(); } catch { /* already closed */ }
+    },
     close: async () => {
       if (closing) return;
       closing = true;
