@@ -58,7 +58,7 @@ export default function CharacterResults() {
   const initialQuery = params.get('q') || '';
   const openMic = params.get('mic') === '1';
 
-  const { requestProAccess, loading: creditsLoading } = useProCredits();
+  const { requestProAccess, canUseProFeature, loading: creditsLoading } = useProCredits();
   const { session } = useSession();
   const { isRecording, startRecording, stopRecording } = useVoiceRecording();
 
@@ -178,8 +178,13 @@ export default function CharacterResults() {
 
   const start = useCallback(async (who: CharacterPreset, firstQuestion: string) => {
     // One conversation = one Pro Credit (guest 1, free 3, pro 25 per day).
-    const allowed = await requestProAccess();
-    if (!allowed) { setStatus('no-credits'); return; }
+    // Check the balance first, but only spend the credit once the character is
+    // actually up — a failed start must not cost the user anything.
+    if (!canUseProFeature) {
+      await requestProAccess(); // opens the sign-in / upgrade modal
+      setStatus('no-credits');
+      return;
+    }
     setStatusDetail(null);
     setSecondsLeft(SESSION_SECONDS);
     setFrozenFrame(null);
@@ -190,6 +195,11 @@ export default function CharacterResults() {
         (s, detail) => { setStatus(s); if (detail) setStatusDetail(detail); },
         (resume) => { resumeRef.current = resume; },
       );
+      if (!(await requestProAccess())) {
+        await live.close();
+        setStatus('no-credits');
+        return;
+      }
       liveRef.current = live;
       touch();
       live.onServerEvent((e) => {
@@ -199,10 +209,11 @@ export default function CharacterResults() {
       if (firstQuestion) void ask(firstQuestion);
       else if (openMic) void startRecording();
     } catch (e) {
+      console.error('Character start failed', e);
       setStatus('error');
-      setStatusDetail(e instanceof Error ? e.message : 'Could not start the character');
+      setStatusDetail(`${who.name} couldn't get on stage right now. Please try again in a moment.`);
     }
-  }, [ask, openMic, requestProAccess, startRecording]);
+  }, [ask, canUseProFeature, openMic, requestProAccess, startRecording]);
 
   // Start once credits are known (checking earlier reads an empty balance);
   // always release the billable session when leaving.
@@ -278,7 +289,10 @@ export default function CharacterResults() {
       <main className="max-w-5xl mx-auto px-4 py-4 flex flex-col lg:flex-row gap-6">
         {/* Stage */}
         <section className="lg:w-[400px] shrink-0">
-          <div className="relative mx-auto w-full max-w-[400px] aspect-[9/16] rounded-3xl overflow-hidden bg-black">
+          <div
+            className="relative mx-auto aspect-[9/16] rounded-3xl overflow-hidden bg-black"
+            style={{ width: 'min(100%, 400px, calc(64vh * 9 / 16))' }}
+          >
             {/* Poster until the live video arrives */}
             {!isLive && (
               <img
@@ -289,7 +303,7 @@ export default function CharacterResults() {
             )}
             <div id={VIDEO_ID} className="absolute inset-0 [&_video]:!object-cover" />
 
-            <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+            <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-black/50 text-white">
                 <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`} />
                 {isLive ? `LIVE · ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}` : status === 'connecting' ? 'Connecting…' : paused ? 'Paused' : character.name}
