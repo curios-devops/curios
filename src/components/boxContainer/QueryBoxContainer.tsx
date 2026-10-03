@@ -84,7 +84,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
       case 'character':
         return '/character';
       case 'avatar':
-        return '/avatar-search';
+        return '/character?body=half'; // Avatar merged into Character (half body)
       default:
         return '/search';
     }
@@ -165,7 +165,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
     // Launched — drop the saved draft so we don't restore a stale query later.
     try { sessionStorage.removeItem('home_search_draft'); } catch { /* ignore */ }
 
-    navigate(`${route}?q=${encodeURIComponent(trimmedQuery)}${imageParam}${buyParam}`);
+    navigate(`${route}${route.includes('?') ? '&' : '?'}q=${encodeURIComponent(trimmedQuery)}${imageParam}${buyParam}`);
   };
 
   // Enter no longer launches the search — it inserts a newline (use the arrow

@@ -1,4 +1,4 @@
-import { BookOpen, Clapperboard, Popcorn, UserCircle, Search, Rocket, PersonStanding, Crown } from 'lucide-react';
+import { BookOpen, Clapperboard, Popcorn, Search, Rocket, PersonStanding, Crown } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
@@ -19,8 +19,8 @@ const modes: Mode[] = [
   { id: 'stories', label: 'stories', icon: BookOpen },
   { id: 'cinematic', label: 'cinematic', icon: Clapperboard },
   { id: 'movie', label: 'movie', icon: Popcorn },
+  // Avatar was merged into Character (half-body option inside the page).
   { id: 'character', label: 'character', icon: PersonStanding, premium: true },
-  { id: 'avatar', label: 'avatar', icon: UserCircle }
 ];
 
 interface ModeSelectorProps {

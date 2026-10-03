@@ -3,22 +3,27 @@
 
 import { useRef, useState } from 'react';
 import { Search, Upload, Wand2, X, Loader2 } from 'lucide-react';
-import { CHARACTERS, searchCharacters, type CharacterPreset } from '../characterCatalog';
+import { searchCharacters, type CharacterPreset } from '../characterCatalog';
 import { characterFromDescription, characterFromPhoto } from '../customCharacter';
+
+// Anything with a portrait can be picked (full-body presets or Anam half-body).
+export interface PickableItem { id: string; name: string; tagline: string; imageUrl: string; tags: string[]; personality?: string }
 
 interface Props {
   selectedId: string;
-  onSelect: (c: CharacterPreset) => void;
+  items: PickableItem[];
+  allowCustom: boolean; // "create your own" only exists for full body (Vivix)
+  onSelect: (c: PickableItem | CharacterPreset) => void;
   onClose: () => void;
 }
 
-export default function CharacterPicker({ selectedId, onSelect, onClose }: Props) {
+export default function CharacterPicker({ selectedId, items, allowCustom, onSelect, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [describe, setDescribe] = useState('');
   const [busy, setBusy] = useState<null | 'photo' | 'describe'>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const list = searchCharacters(query, CHARACTERS);
+  const list = searchCharacters(query, items as CharacterPreset[]);
 
   const build = async (kind: 'photo' | 'describe', run: () => Promise<CharacterPreset>) => {
     setBusy(kind);
@@ -65,7 +70,7 @@ export default function CharacterPicker({ selectedId, onSelect, onClose }: Props
                 type="button"
                 onClick={() => onSelect(c)}
                 className="group text-left"
-                title={c.personality}
+                title={c.personality ?? c.tagline}
               >
                 <div
                   className="aspect-[9/16] rounded-full overflow-hidden border-4 transition-transform group-hover:-translate-y-0.5"
@@ -83,6 +88,7 @@ export default function CharacterPicker({ selectedId, onSelect, onClose }: Props
           )}
         </div>
 
+        {allowCustom && (
         <div className="mt-6 pt-4 border-t space-y-3" style={{ borderColor: 'var(--ui-border-default)' }}>
           <div className="text-sm font-medium">Create your own</div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -129,6 +135,7 @@ export default function CharacterPicker({ selectedId, onSelect, onClose }: Props
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
         </div>
+        )}
       </div>
     </div>
   );
