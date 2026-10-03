@@ -162,7 +162,7 @@ export default function ButtonBar({
           <button
             type="button"
             onClick={() => setShowModeMenu(!showModeMenu)}
-            className="h-10 px-3 rounded-lg flex items-center gap-2 transition-colors duration-200 text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
+            className="h-9 px-2.5 rounded-lg flex items-center gap-1.5 transition-colors duration-200 text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
             onMouseEnter={(e) => {
               e.currentTarget.style.color = accentColor.primary;
             }}
@@ -170,8 +170,8 @@ export default function ButtonBar({
               e.currentTarget.style.color = '';
             }}
           >
-            {selectedMode === 'auto' ? <Rocket size={16} /> : <Search size={16} />}
-            <span className="text-sm font-medium whitespace-nowrap">
+            {selectedMode === 'auto' ? <Rocket size={15} /> : <Search size={15} />}
+            <span className="text-[13px] font-medium whitespace-nowrap">
               {getModeLabel(selectedMode)}
             </span>
             <ChevronDown size={14} />

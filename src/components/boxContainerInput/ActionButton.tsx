@@ -31,7 +31,7 @@ export default function ActionButton({
         onClick={onClick}
         disabled={disabled}
         className={`
-          w-10 h-10 rounded-lg flex items-center justify-center transition-colors duration-200
+          w-9 h-9 rounded-lg flex items-center justify-center transition-colors duration-200
           ${
             disabled
               ? 'text-gray-600 cursor-not-allowed'
@@ -54,7 +54,7 @@ export default function ActionButton({
         }}
         aria-label={label}
       >
-        <Icon size={18} />
+        <Icon size={17} />
       </button>
       
       {tooltip && (

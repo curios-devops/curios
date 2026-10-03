@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 // tests cover only the pure parsing / scripting logic.
 vi.mock('../search/providers/webSearchProvider', () => ({ executeWebSearch: vi.fn() }));
 vi.mock('../search/providers/llmProvider', () => ({ buildSourcesText: vi.fn(), streamLLMText: vi.fn() }));
+vi.mock('../../lib/supabase', () => ({ supabase: { auth: { updateUser: vi.fn() } } }));
 
 import { parseDirectorOutput, buildScriptEvent, VMP_SEPARATOR } from './characterDirector';
 import { pickVoice, VOICES } from './voices';
@@ -100,5 +101,32 @@ describe('SpeechSplitter (half-body live speech)', () => {
     expect(s.finish()).toEqual({ speech: 'Just an answer', suggestions: [] });
     expect(spoken.join('')).toBe('Just an answer');
     expect(SUGGESTIONS_MARKER).toBe('§§');
+  });
+});
+
+import { revealWords, captionTail } from './captions';
+import { normalizePrefs } from './characterPrefs';
+
+describe('captions', () => {
+  it('reveals words at speaking pace and never more than the line', () => {
+    const line = 'one two three four five six';
+    expect(revealWords(line, 0)).toBe('');
+    expect(revealWords(line, 1000, 2)).toBe('one two');
+    expect(revealWords(line, 60_000)).toBe(line);
+  });
+
+  it('keeps only the tail of long captions, starting on a word boundary', () => {
+    const long = 'word '.repeat(80).trim();
+    const tail = captionTail(long, 50);
+    expect(tail.startsWith('…word')).toBe(true);
+    expect(tail.length).toBeLessThanOrEqual(51);
+  });
+});
+
+describe('character prefs', () => {
+  it('defaults captions ON and full body, and survives garbage', () => {
+    // Why: the user asked captions to be on by default and a bad stored value must not break the page.
+    expect(normalizePrefs(null)).toEqual({ body: 'full', fullId: null, halfId: null, captions: true });
+    expect(normalizePrefs({ body: 'half', halfId: 'liv', captions: false, junk: 1 })).toEqual({ body: 'half', fullId: null, halfId: 'liv', captions: false });
   });
 });
