@@ -96,6 +96,7 @@ Deno.serve(async (req: Request) => {
       const { imageUrl, description, voiceId, instructions } = body;
       if (typeof imageUrl !== "string" || !/^https:\/\//.test(imageUrl)) return json({ error: "imageUrl (https) required" }, 400);
 
+      const t0 = Date.now();
       const session = await vivix("realtime-avatar/sessions", {
         model: "vivix-a1-stream",
         output: { aspect_ratio: "9:16", resolution: "720p" },
@@ -132,7 +133,9 @@ Deno.serve(async (req: Request) => {
         recording_mode: "off",
       });
 
+      const vivixCreateMs = Date.now() - t0;
       return json({
+        timing: { vivixCreateMs },
         sessionId: session.session_id,
         expiresAt: session.expires_at ?? null,
         control: session.control,

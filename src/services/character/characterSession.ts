@@ -5,6 +5,7 @@
 import { supabase } from '../../lib/supabase';
 import type { CharacterPreset } from './characterCatalog';
 import type { StageProduct } from './characterDirector';
+import { mark } from './timing';
 
 interface SessionCredentials {
   sessionId: string;
@@ -50,13 +51,15 @@ export async function startCharacterSession(
   onSoundResume: (resume: () => Promise<void>) => void,
 ): Promise<LiveCharacter> {
   onStatus('connecting');
-  const creds = await invoke<SessionCredentials>({
+  mark('session.create → request');
+  const creds = await invoke<SessionCredentials & { timing?: { vivixCreateMs: number } }>({
     action: 'create',
     imageUrl: character.imageUrl,
     description: character.description,
     voiceId: character.voiceId,
   });
 
+  mark('session.create ← response', { vivixCreateMs: creds.timing?.vivixCreateMs });
   const closeServer = () => invoke({ action: 'close', sessionId: creds.sessionId }).catch(() => undefined);
 
   if (!creds.trtc) {
@@ -72,7 +75,7 @@ export async function startCharacterSession(
   let closing = false;
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => { ws.close(); reject(new Error('Control connection timed out')); }, 15000);
-    ws.onopen = () => { clearTimeout(timer); resolve(); };
+    ws.onopen = () => { clearTimeout(timer); mark('control websocket open'); resolve(); };
     ws.onerror = () => { clearTimeout(timer); reject(new Error('Control connection failed')); };
   }).catch(async (e) => { await closeServer(); throw e; });
   ws.onmessage = (msg) => {
@@ -85,6 +88,7 @@ export async function startCharacterSession(
 
   // TRTC video (lazy-loaded: the SDK is large and only this page needs it).
   const { default: TRTC } = await import('trtc-sdk-v5');
+  mark('trtc sdk loaded');
   const rtc = TRTC.create();
   const m = creds.trtc;
   rtc.on(TRTC.EVENT.AUTOPLAY_FAILED, (event: { resume: () => Promise<void> }) => {
@@ -98,7 +102,7 @@ export async function startCharacterSession(
     }
   });
   rtc.on(TRTC.EVENT.FIRST_VIDEO_FRAME, ({ userId }: { userId: string }) => {
-    if (userId === m.publisher_user_id) onStatus('live');
+    if (userId === m.publisher_user_id) { mark('first video frame (LIVE)'); onStatus('live'); }
   });
   try {
     await rtc.enterRoom({
@@ -109,6 +113,7 @@ export async function startCharacterSession(
       scene: TRTC.TYPE.SCENE_RTC,
       autoReceiveVideo: false,
     });
+    mark('trtc room entered');
   } catch (e) {
     closing = true;
     ws.close();

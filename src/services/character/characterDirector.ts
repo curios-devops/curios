@@ -7,6 +7,7 @@
 import { executeWebSearch, type WebSearchResult } from '../search/providers/webSearchProvider';
 import { buildSourcesText, streamLLMText } from '../search/providers/llmProvider';
 import type { CharacterPreset } from './characterCatalog';
+import { mark } from './timing';
 
 export interface StageProduct {
   title: string;
@@ -78,7 +79,9 @@ export async function directTurn(params: {
   locale: string;
 }): Promise<DirectedTurn> {
   const { question, character, history, product, locale } = params;
+  mark('director: web search → start');
   const sources = (await executeWebSearch(question).catch(() => [])).slice(0, 6);
+  mark('director: web search ← done', { results: sources.length });
 
   const productBlock = product
     ? `
@@ -113,5 +116,6 @@ actions: exactly ${PLANNED_SEGMENTS} English Visual Motion Prompts, one per ~5 s
 suggestions: 3 short, curious follow-up questions the user might ask next, in language "${locale}".`;
 
   const raw = await streamLLMText(prompt, 1400, () => undefined, 45000);
+  mark('director: LLM ← done', { chars: raw.length });
   return { ...parseDirectorOutput(raw, character), sources };
 }

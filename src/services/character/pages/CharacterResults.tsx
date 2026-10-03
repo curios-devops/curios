@@ -22,6 +22,7 @@ import { findCharacter, DEFAULT_CHARACTER_ID, type CharacterPreset } from '../ch
 import { directTurn, buildScriptEvent, type StageProduct } from '../characterDirector';
 import { startCharacterSession, type LiveCharacter } from '../characterSession';
 import CharacterPicker from '../components/CharacterPicker';
+import { mark } from '../timing';
 
 type Status = 'idle' | 'no-credits' | 'connecting' | 'live' | 'needs-sound' | 'paused' | 'closed' | 'error';
 interface Turn { role: 'user' | 'character'; text: string }
@@ -147,7 +148,9 @@ export default function CharacterResults() {
     setTurns(turnsRef.current);
     try {
       // Selling: on buy intent, put the product on stage so the presenter can pick it up.
+      mark('ask: question', { q });
       const buy = await resolveBuyIntent(q).catch(() => ({ isBuyIntent: false }));
+      mark('ask: buy-intent ← done', { buy: buy.isBuyIntent });
       if (buy.isBuyIntent) {
         const result = await searchAmazonProducts(q, 1).catch(() => null);
         const p = result?.success ? result.products[0] : null;
@@ -164,6 +167,7 @@ export default function CharacterResults() {
         locale: navigator.language.split('-')[0] || 'en',
       });
       live.send(buildScriptEvent(turn));
+      mark('ask: script sent to Vivix');
       setCaption(turn.speech);
       setSuggestions(turn.suggestions);
       turnsRef.current = [...turnsRef.current, { role: 'character', text: turn.speech }];
@@ -203,7 +207,7 @@ export default function CharacterResults() {
       liveRef.current = live;
       touch();
       live.onServerEvent((e) => {
-        if (e.type === 'response.render.started') speakingRef.current = true;
+        if (e.type === 'response.render.started') { speakingRef.current = true; mark('vivix: render started (speaking)'); }
         if (e.type === 'response.render.stopped') { speakingRef.current = false; touch(); }
       });
       if (firstQuestion) void ask(firstQuestion);
@@ -219,6 +223,7 @@ export default function CharacterResults() {
   // always release the billable session when leaving.
   useEffect(() => {
     if (creditsLoading || startedRef.current) return;
+    mark('credits loaded → start');
     startedRef.current = true;
     void start(character, initialQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
