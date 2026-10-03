@@ -42,6 +42,8 @@ export interface LiveAnam {
   close: () => Promise<void>;
   attachSpeech: (q: SpeechQueue) => void;
   onSpeaking: (handler: (speaking: boolean) => void) => void;
+  /** Text the avatar is saying, as it says it (exact captions). */
+  onSpokenText: (handler: (chunk: string, endOfSpeech: boolean) => void) => void;
 }
 
 export async function startAnamSession(
@@ -59,14 +61,16 @@ export async function startAnamSession(
 
   const client = createClient(data.sessionToken, { disableInputAudio: true });
   const speakingHandlers: Array<(s: boolean) => void> = [];
+  const textHandlers: Array<(chunk: string, end: boolean) => void> = [];
   let closing = false;
 
   client.addListener(AnamEvent.VIDEO_PLAY_STARTED, () => { mark('anam first video frame (LIVE)'); onStatus('live'); });
   client.addListener(AnamEvent.CONNECTION_CLOSED, () => { if (!closing) onStatus('closed'); });
   // Persona speech events: content chunks while talking, endOfSpeech when done.
-  client.addListener(AnamEvent.MESSAGE_STREAM_EVENT_RECEIVED, ((e: { role?: string; endOfSpeech?: boolean }) => {
+  client.addListener(AnamEvent.MESSAGE_STREAM_EVENT_RECEIVED, ((e: { role?: string; content?: string; endOfSpeech?: boolean }) => {
     if (e.role && e.role !== 'persona') return;
     speakingHandlers.forEach((h) => h(!e.endOfSpeech));
+    textHandlers.forEach((h) => h(e.content ?? '', !!e.endOfSpeech));
   }) as never);
 
   const ready = new Promise<void>((resolve) => client.addListener(AnamEvent.SESSION_READY, () => { mark('anam session ready'); resolve(); }));
@@ -76,6 +80,7 @@ export async function startAnamSession(
   return {
     attachSpeech: (q) => q.attach(client),
     onSpeaking: (h) => { speakingHandlers.push(h); },
+    onSpokenText: (h) => { textHandlers.push(h); },
     close: async () => {
       if (closing) return;
       closing = true;
