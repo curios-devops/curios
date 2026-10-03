@@ -37,17 +37,17 @@ function lazyRetry(importer: Parameters<typeof lazy>[0]) {
 import { logger } from './utils/logger.ts';
 import './index.css';
 import { applyThemeColors, type AccentColor } from './config/themeColors';
-import { appSettings } from './config/appSettings.ts';
+import { appSettings, VISITOR_THEMES } from './config/appSettings.ts';
 
 // Apply theme synchronously before React renders — prevents black flash on load
 (function applyInitialTheme() {
   const stored = localStorage.getItem('theme') || appSettings.theme.default;
-  // Default 'sky' (design-kit.md) — mirrors ThemeContext.tsx's getInitialAccentColor;
-  // keep these two in sync (this one runs pre-hydration to avoid a flash of the
-  // wrong accent, ThemeContext.tsx is the source of truth once React mounts).
-  const accent = localStorage.getItem('accentColor') || 'sky';
-  const validAccents = ['ocean', 'sky', 'borealis', 'fire', 'wood', 'dusk', 'blue', 'teal', 'purple', 'orange', 'gray'];
-  const safeAccent = (validAccents.includes(accent) ? accent : 'sky') as AccentColor;
+  // Mirrors ThemeContext.tsx's getInitialAccentColor (same 'accentTheme' key and
+  // app-settings default); this runs pre-hydration to avoid a flash of the
+  // wrong accent, ThemeContext.tsx is the source of truth once React mounts.
+  const accent = localStorage.getItem('accentTheme');
+  const validAccents: string[] = [...VISITOR_THEMES, 'classic_blue'];
+  const safeAccent = (accent && validAccents.includes(accent) ? accent : appSettings.themes.default) as AccentColor;
   const effectiveTheme: 'light' | 'dark' =
     stored === 'system'
       ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'

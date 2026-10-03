@@ -364,3 +364,19 @@ snap-start`; hover-revealed chevron buttons.
   --accent-dark: #0056B3;
 }
 ```
+
+## 2026 redesign (Pamba / Vivix inspired) — current tokens
+
+Supersedes the palette above for new work; the classic UI is preserved in tag
+`ui-classic-v1` (see docs/UI/README.md). Values are editable in app-settings.md.
+
+- **Light ground (Vivix):** bg `#F9F6F4`, surface `#FFFFFF`, border `#DDD8D3`, ink `#0A0A0A`.
+- **Themes (accent):** Terra `#9C7A5B` (default) · Ocean `#1C8BFD` · Fire `#D97757` ·
+  Sky `#7C55D6` · Borealis `#12A88C`; Classic Blue `#4F6FE0` kept for revert only.
+  Hover = base mixed 18 % with black; soft tint = base mixed 88 % with white.
+- **Type:** headlines Bricolage Grotesque 700 (−0.025em); section labels Geist Mono
+  11.2 px uppercase, +2.24 px tracking (`.label-mono`); body Inter.
+- **Logo:** frame Pamba blue `#1C8BFD`, center `#E5484D` with a slow 3.6 s pulse;
+  wordmark "Curios" Bricolage `#15130D`, "AI" weight 300 `#8A857A`.
+- **Cards (Discover):** Pamba polaroid — frame `#FBF9F3`, 1 px `rgba(21,19,13,.12)`,
+  radius 17.6 px, 6 px padding, layered soft shadow, ±1–1.5° tilt.

@@ -2,9 +2,11 @@ import { createPortal } from 'react-dom';
 import { Monitor, Moon, Sun, X, type LucideIcon } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import LanguageSelector from '../settings/LanguageSelector.tsx';
-import { accentColors, type NatureAccentColor } from '../../config/themeColors.ts';
+import { accentColors } from '../../config/themeColors.ts';
+import { VISITOR_THEMES } from '../../config/appSettings.ts';
 
-const ACCENT_OPTIONS: NatureAccentColor[] = ['ocean', 'sky', 'borealis', 'fire', 'wood', 'dusk'];
+// Themes offered to visitors (app-settings.md → THEMES).
+const ACCENT_OPTIONS = VISITOR_THEMES;
 
 const THEME_OPTIONS: { key: 'light' | 'system' | 'dark'; label: string; icon: LucideIcon }[] = [
   { key: 'light', label: 'Light', icon: Sun },
