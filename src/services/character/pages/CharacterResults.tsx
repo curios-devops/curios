@@ -23,12 +23,30 @@ import { directTurn, buildScriptEvent, type StageProduct } from '../characterDir
 import { startCharacterSession, type LiveCharacter } from '../characterSession';
 import CharacterPicker from '../components/CharacterPicker';
 
-type Status = 'idle' | 'no-credits' | 'connecting' | 'live' | 'needs-sound' | 'closed' | 'error';
+type Status = 'idle' | 'no-credits' | 'connecting' | 'live' | 'needs-sound' | 'paused' | 'closed' | 'error';
 interface Turn { role: 'user' | 'character'; text: string }
 
 const VIDEO_ID = 'character-stage-video';
 const LAST_CHARACTER_KEY = 'curios_character_id';
 const SESSION_SECONDS = 180;
+// No input for this long (and the character not speaking) → freeze the last
+// frame and close the billable session; the page and conversation stay.
+const IDLE_PAUSE_MS = 60_000;
+
+/** Snapshot the live video's current frame so a paused stage isn't black. */
+function captureFrame(): string | null {
+  const video = document.querySelector<HTMLVideoElement>(`#${VIDEO_ID} video`);
+  if (!video || !video.videoWidth) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  try {
+    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    return canvas.toDataURL('image/jpeg', 0.85);
+  } catch {
+    return null;
+  }
+}
 
 function transcriptMarkdown(character: CharacterPreset, turns: Turn[]): string {
   return turns.map((t) => (t.role === 'user' ? `**You:** ${t.text}` : `**${character.name}:** ${t.text}`)).join('\n\n');
@@ -40,7 +58,7 @@ export default function CharacterResults() {
   const initialQuery = params.get('q') || '';
   const openMic = params.get('mic') === '1';
 
-  const { requestProAccess } = useProCredits();
+  const { requestProAccess, loading: creditsLoading } = useProCredits();
   const { session } = useSession();
   const { isRecording, startRecording, stopRecording } = useVoiceRecording();
 
@@ -69,6 +87,10 @@ export default function CharacterResults() {
   const turnsRef = useRef<Turn[]>([]);
   const productRef = useRef<StageProduct | null>(null);
   const startedRef = useRef(false);
+  const lastActivityRef = useRef(Date.now());
+  const speakingRef = useRef(false);
+  const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
+  const touch = () => { lastActivityRef.current = Date.now(); };
 
   useEffect(() => {
     const id = setInterval(() => setTimeAgo(formatTimeAgo(startedAt)), 1000);
@@ -81,6 +103,22 @@ export default function CharacterResults() {
     const id = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(id);
   }, [status]);
+
+  // Idle watcher: freeze + close after a minute without input or speech.
+  useEffect(() => {
+    if (status !== 'live' && status !== 'needs-sound') return;
+    const id = setInterval(async () => {
+      if (thinking || speakingRef.current || isRecording) return;
+      if (Date.now() - lastActivityRef.current < IDLE_PAUSE_MS) return;
+      const live = liveRef.current;
+      if (!live) return;
+      setFrozenFrame(captureFrame());
+      liveRef.current = null;
+      await live.close();
+      setStatus('paused');
+    }, 5000);
+    return () => clearInterval(id);
+  }, [status, thinking, isRecording]);
 
   const persist = useCallback(async (all: Turn[]) => {
     const answer = transcriptMarkdown(character, all);
@@ -101,6 +139,7 @@ export default function CharacterResults() {
     const live = liveRef.current;
     const q = question.trim();
     if (!live || !q || thinking) return;
+    touch();
     setThinking(true);
     setSuggestions([]);
     const history = turnsRef.current;
@@ -143,6 +182,7 @@ export default function CharacterResults() {
     if (!allowed) { setStatus('no-credits'); return; }
     setStatusDetail(null);
     setSecondsLeft(SESSION_SECONDS);
+    setFrozenFrame(null);
     try {
       const live = await startCharacterSession(
         who,
@@ -151,6 +191,11 @@ export default function CharacterResults() {
         (resume) => { resumeRef.current = resume; },
       );
       liveRef.current = live;
+      touch();
+      live.onServerEvent((e) => {
+        if (e.type === 'response.render.started') speakingRef.current = true;
+        if (e.type === 'response.render.stopped') { speakingRef.current = false; touch(); }
+      });
       if (firstQuestion) void ask(firstQuestion);
       else if (openMic) void startRecording();
     } catch (e) {
@@ -159,15 +204,21 @@ export default function CharacterResults() {
     }
   }, [ask, openMic, requestProAccess, startRecording]);
 
-  // Start once on mount; always release the billable session when leaving.
+  // Start once credits are known (checking earlier reads an empty balance);
+  // always release the billable session when leaving.
   useEffect(() => {
-    if (startedRef.current) return;
+    if (creditsLoading || startedRef.current) return;
     startedRef.current = true;
     void start(character, initialQuery);
-    const release = () => { void liveRef.current?.close(); };
-    window.addEventListener('pagehide', release);
-    return () => { window.removeEventListener('pagehide', release); release(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creditsLoading]);
+
+  useEffect(() => {
+    // pagehide: the tab is going away → keepalive request; unmount (in-app
+    // navigation) → normal close.
+    const onHide = () => liveRef.current?.closeOnUnload();
+    window.addEventListener('pagehide', onHide);
+    return () => { window.removeEventListener('pagehide', onHide); void liveRef.current?.close(); };
   }, []);
 
   const restartWith = async (who: CharacterPreset) => {
@@ -187,14 +238,22 @@ export default function CharacterResults() {
     void start(who, '');
   };
 
+  // While paused, any new question resumes with a fresh session (1 credit).
+  const send = (q: string) => {
+    if (!q.trim()) return;
+    if (status === 'paused') void start(character, q);
+    else void ask(q);
+  };
+
   const handleMic = async () => {
+    touch();
     if (!isRecording) { await startRecording(); return; }
     setTranscribing(true);
     try {
       const blob = await stopRecording();
       if (blob) {
         const text = await transcribeAudioWithFallback(blob, navigator.language.split('-')[0] || 'en');
-        if (text.trim()) void ask(text);
+        if (text.trim()) send(text);
       }
     } finally {
       setTranscribing(false);
@@ -207,6 +266,8 @@ export default function CharacterResults() {
   };
 
   const isLive = status === 'live' || status === 'needs-sound';
+  const paused = status === 'paused';
+  const canTalk = isLive || paused;
   const ended = status === 'closed' || (isLive && secondsLeft === 0);
   const firstQuestion = turns.find((t) => t.role === 'user')?.text || initialQuery;
 
@@ -219,13 +280,19 @@ export default function CharacterResults() {
         <section className="lg:w-[400px] shrink-0">
           <div className="relative mx-auto w-full max-w-[400px] aspect-[9/16] rounded-3xl overflow-hidden bg-black">
             {/* Poster until the live video arrives */}
-            {!isLive && <img src={character.imageUrl} alt={character.name} className="absolute inset-0 w-full h-full object-cover opacity-80" />}
+            {!isLive && (
+              <img
+                src={frozenFrame || character.imageUrl}
+                alt={character.name}
+                className={`absolute inset-0 w-full h-full object-cover ${frozenFrame ? '' : 'opacity-80'}`}
+              />
+            )}
             <div id={VIDEO_ID} className="absolute inset-0 [&_video]:!object-cover" />
 
             <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-black/50 text-white">
                 <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`} />
-                {isLive ? `LIVE · ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}` : status === 'connecting' ? 'Connecting…' : character.name}
+                {isLive ? `LIVE · ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}` : status === 'connecting' ? 'Connecting…' : paused ? 'Paused' : character.name}
               </span>
               <button
                 type="button"
@@ -252,6 +319,20 @@ export default function CharacterResults() {
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-black/55 text-white">
                   <Loader2 size={14} className="animate-spin" /> {status === 'connecting' ? `${character.name} is getting ready…` : `${character.name} is thinking…`}
                 </span>
+              </div>
+            )}
+
+            {paused && (
+              <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm text-white bg-black/60">
+                <span>Paused after 1 min without activity</span>
+                <button
+                  type="button"
+                  onClick={() => void start(character, '')}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
+                  style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+                >
+                  Continue <Crown size={12} />
+                </button>
               </div>
             )}
 
@@ -344,8 +425,8 @@ export default function CharacterResults() {
                 <button
                   key={s}
                   type="button"
-                  disabled={!isLive || thinking}
-                  onClick={() => void ask(s)}
+                  disabled={!canTalk || thinking}
+                  onClick={() => send(s)}
                   className="px-3 py-1.5 rounded-full border text-sm text-left disabled:opacity-50"
                   style={{ borderColor: 'var(--ui-border-default)', color: 'var(--ui-text-primary)' }}
                 >
@@ -358,20 +439,20 @@ export default function CharacterResults() {
           <form
             className="flex items-center gap-2 p-2 rounded-2xl border"
             style={{ borderColor: 'var(--ui-border-default)', backgroundColor: 'var(--ui-bg-elevated)' }}
-            onSubmit={(e) => { e.preventDefault(); const q = input; setInput(''); void ask(q); }}
+            onSubmit={(e) => { e.preventDefault(); const q = input; setInput(''); send(q); }}
           >
             <input
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => { setInput(e.target.value); touch(); }}
               placeholder={`Ask ${character.name}…`}
-              disabled={!isLive}
+              disabled={!canTalk}
               className="flex-1 min-w-0 bg-transparent outline-none px-2 text-sm"
               style={{ color: 'var(--ui-text-primary)' }}
             />
             <button
               type="button"
               onClick={() => void handleMic()}
-              disabled={!isLive || transcribing}
+              disabled={!canTalk || transcribing}
               aria-label={isRecording ? 'Stop and send' : 'Speak'}
               className={`p-2 rounded-full ${isRecording ? 'animate-pulse' : ''} disabled:opacity-50`}
               style={isRecording ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : { color: 'var(--ui-text-secondary)' }}
@@ -380,7 +461,7 @@ export default function CharacterResults() {
             </button>
             <button
               type="submit"
-              disabled={!isLive || thinking || !input.trim()}
+              disabled={!canTalk || thinking || !input.trim()}
               aria-label="Send"
               className="p-2 rounded-full disabled:opacity-50"
               style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}

@@ -18,7 +18,7 @@ const API = "https://api.vivix.ai/v1";
 // Hard caps (cost control): a conversation lasts at most 3 minutes and closes
 // early when the user goes idle or the page disconnects.
 const MAX_DURATION_SECONDS = 180;
-const IDLE_TIMEOUT_SECONDS = 60;
+const IDLE_TIMEOUT_SECONDS = 90; // backstop: the page itself pauses after 60 s idle
 const DISCONNECTED_TIMEOUT_SECONDS = 20;
 const DEFAULT_VOICE = "cgSgspJ2msm6clMCkdW9"; // ElevenLabs "Jessica"
 // Our own ElevenLabs account, latest low-latency model (85 languages) for live talk.
