@@ -4,6 +4,8 @@
 //
 // POST { action: "create", imageUrl, description, voiceId?, instructions? }
 // POST { action: "close", sessionId }
+// POST { action: "anam-token", avatarId, voiceId } → { sessionToken }  (half-body mode:
+//   Anam renders + speaks only the text we send — its own LLM is disabled)
 // POST { action: "describe", imageUrl } → { description, gender, age, vibe }
 //   (vision pass for uploaded / generated characters: Vivix needs a scene
 //    description, and gender/age/vibe pick a matching voice client-side)
@@ -85,6 +87,29 @@ Deno.serve(async (req: Request) => {
       if (typeof body.sessionId !== "string" || !body.sessionId) return json({ error: "sessionId required" }, 400);
       const result = await vivix(`realtime-avatar/sessions/${encodeURIComponent(body.sessionId)}/close`, {});
       return json({ status: result.status });
+    }
+
+    if (body.action === "anam-token") {
+      // @ts-ignore Deno global
+      const anamKey = (Deno.env.get("ANAM_API_KEY") || "").replace(/\s+/g, "");
+      if (!anamKey) throw new Error("ANAM_API_KEY not configured");
+      if (typeof body.avatarId !== "string" || typeof body.voiceId !== "string") return json({ error: "avatarId and voiceId required" }, 400);
+      const t0 = Date.now();
+      const res = await fetch("https://api.anam.ai/v1/auth/session-token", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${anamKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaConfig: {
+            name: "Curios Character",
+            avatarId: body.avatarId,
+            voiceId: body.voiceId,
+            llmId: "CUSTOMER_CLIENT_V1", // we drive the words; Anam only renders + speaks
+          },
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.sessionToken) throw new Error(data?.message || data?.error || `Anam HTTP ${res.status}`);
+      return json({ sessionToken: data.sessionToken, timing: { anamTokenMs: Date.now() - t0 } });
     }
 
     if (body.action === "describe") {

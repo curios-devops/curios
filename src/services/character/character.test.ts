@@ -77,3 +77,28 @@ describe('catalog', () => {
     expect(findCharacter('nope').id).toBe('nova');
   });
 });
+
+import { SpeechSplitter, SUGGESTIONS_MARKER } from './speechAnswer';
+
+describe('SpeechSplitter (half-body live speech)', () => {
+  it('never speaks the suggestions marker even when it arrives split across chunks', () => {
+    // Why: anything emitted goes straight to the avatar's mouth.
+    const spoken: string[] = [];
+    const s = new SpeechSplitter((t) => spoken.push(t));
+    for (const c of ['Hola, ', 'esto es la respuesta.', '\n§', '§ ["¿Uno?","¿Dos?","¿Tres?"]']) s.feed(c);
+    const out = s.finish();
+    expect(spoken.join('')).toBe('Hola, esto es la respuesta.\n');
+    expect(spoken.join('')).not.toContain('§');
+    expect(out.speech).toBe('Hola, esto es la respuesta.');
+    expect(out.suggestions).toEqual(['¿Uno?', '¿Dos?', '¿Tres?']);
+  });
+
+  it('speaks everything when the model forgets the marker', () => {
+    const spoken: string[] = [];
+    const s = new SpeechSplitter((t) => spoken.push(t));
+    s.feed('Just an answer');
+    expect(s.finish()).toEqual({ speech: 'Just an answer', suggestions: [] });
+    expect(spoken.join('')).toBe('Just an answer');
+    expect(SUGGESTIONS_MARKER).toBe('§§');
+  });
+});

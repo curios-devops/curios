@@ -267,7 +267,9 @@ export async function streamLLMText(
   maxOutputTokens: number,
   onChunk: (chunk: string) => void,
   timeoutMs = 60000,
-  model: string = MODEL
+  model: string = MODEL,
+  // 'minimal' cuts gpt-5 latency ~3x for short, live outputs (Character mode).
+  reasoningEffort: 'minimal' | 'low' = 'low'
 ): Promise<string> {
   const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -293,7 +295,7 @@ export async function streamLLMText(
           ],
           model,
           max_output_tokens: maxOutputTokens,
-          reasoning: { effort: 'low' }
+          reasoning: { effort: reasoningEffort }
         }),
         stream: true
       }),
