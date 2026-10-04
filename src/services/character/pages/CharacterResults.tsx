@@ -28,7 +28,7 @@ import { startAnamSession, SpeechQueue, type LiveAnam } from '../anamSession';
 import { speakAnswer } from '../speechAnswer';
 import CharacterPicker from '../components/CharacterPicker';
 import { mark } from '../timing';
-import { loadPrefs, savePrefs, type CharacterPrefs } from '../characterPrefs';
+import { loadPrefs, fetchPrefs, savePrefs, type CharacterPrefs } from '../characterPrefs';
 import { revealWords, captionTail } from '../captions';
 import { recordLoop } from '../idleLoop';
 
@@ -379,12 +379,14 @@ export default function CharacterResults() {
     mark('credits loaded → start');
     startedRef.current = true;
     // Signed-in users: their saved setup (any device) — unless the URL says otherwise.
-    prefsRef.current = loadPrefs(session?.user);
-    setCaptionsOn(prefsRef.current.captions);
-    const who = urlBody || params.get('c') ? presenter : presenterFor(prefsRef.current.body, null, prefsRef.current);
-    setPresenter(who);
-    rememberPresenter(who);
-    void start(who, initialQuery);
+    void fetchPrefs(session?.user).then((prefs) => {
+      prefsRef.current = prefs;
+      setCaptionsOn(prefs.captions);
+      const who = urlBody || params.get('c') ? presenter : presenterFor(prefs.body, null, prefs);
+      setPresenter(who);
+      rememberPresenter(who);
+      void start(who, initialQuery);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creditsLoading]);
 

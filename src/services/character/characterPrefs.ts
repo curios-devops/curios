@@ -37,6 +37,16 @@ export function loadPrefs(user: User | null | undefined): CharacterPrefs {
   return DEFAULT_PREFS;
 }
 
+/**
+ * Signed-in users: read the account fresh — the user object cached in a
+ * long-lived session predates any prefs saved later (e.g. on another device).
+ */
+export async function fetchPrefs(user: User | null | undefined): Promise<CharacterPrefs> {
+  if (!user) return loadPrefs(null);
+  const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+  return loadPrefs(data.user ?? user);
+}
+
 export function savePrefs(prefs: CharacterPrefs, user: User | null | undefined) {
   try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch { /* storage blocked */ }
   if (user) void supabase.auth.updateUser({ data: { character_prefs: prefs } }).then(undefined, () => undefined);
