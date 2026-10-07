@@ -58,9 +58,9 @@ export default function SidebarGuestSection({ isCollapsed, onSignInClick }: Side
         </div>
       ) : (
         <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--ui-border-subtle)' }}>
-          <h4 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>Get responses tailored to you</h4>
+          <h4 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('sidebarSignInTitle')}</h4>
           <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--ui-text-secondary)' }}>
-            Log in to get answers based on saved chats, plus create images and upload files.
+            {t('sidebarSignInBody')}
           </p>
           <button
             type="button"

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import type { ModeType } from './ModeSelector.tsx';
 
@@ -8,7 +8,12 @@ interface SearchTextAreaProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
   className?: string;
   mode?: ModeType;
+  /** Rotate the empty Auto placeholder with the "tap Auto" hint (Home, after the title types). */
+  rotateHint?: boolean;
 }
+
+// Placeholder rotation: main prompt for 6s, hint for 4s, each line slides up and out.
+const ROTATION_MS = [6000, 4000];
 
 // Get placeholder based on mode
 const getPlaceholderKey = (mode: ModeType): string => {
@@ -28,10 +33,27 @@ const getPlaceholderKey = (mode: ModeType): string => {
   }
 };
 
-export default function SearchTextArea({ value, onChange, onKeyDown, className, mode = 'search' }: SearchTextAreaProps) {
+export default function SearchTextArea({ value, onChange, onKeyDown, className, mode = 'search', rotateHint = false }: SearchTextAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
   const placeholderKey = getPlaceholderKey(mode);
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rotating = rotateHint && mode === 'auto' && !value && !prefersReduced;
+  const lines = [t(placeholderKey), t('homeAutoHint')];
+  const [lineIndex, setLineIndex] = useState(0);
+  // -1 until the first switch, so the very first line appears without animating in.
+  const [prevIndex, setPrevIndex] = useState(-1);
+
+  useEffect(() => {
+    if (!rotating) return;
+    const timer = setTimeout(() => {
+      setPrevIndex(lineIndex);
+      setLineIndex((lineIndex + 1) % lines.length);
+    }, ROTATION_MS[lineIndex]);
+    return () => clearTimeout(timer);
+  }, [rotating, lineIndex, lines.length]);
 
   // Auto-resize functionality
   const adjustHeight = React.useCallback(() => {
@@ -69,15 +91,7 @@ export default function SearchTextArea({ value, onChange, onKeyDown, className, 
     // Height will be adjusted by the useEffect above
   };
 
-  return (
-    <textarea
-      ref={textareaRef}
-      value={value}
-      onChange={handleChange}
-      onKeyDown={onKeyDown}
-      placeholder={t(placeholderKey)}
-      rows={2}
-      className={`
+  const textareaClasses = `
         w-full 
         bg-transparent
         text-sm 
@@ -89,12 +103,47 @@ export default function SearchTextArea({ value, onChange, onKeyDown, className, 
         outline-none
         border-none
         overflow-hidden
-      ${className ? ` ${className}` : ''}`}
+      ${className ? ` ${className}` : ''}`;
+
+  return (
+    <div className="relative">
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={handleChange}
+      onKeyDown={onKeyDown}
+      placeholder={rotating ? '' : t(placeholderKey)}
+      rows={2}
+      className={textareaClasses}
       style={{
         color: 'var(--ui-text-primary)',
       }}
       spellCheck={false}
       autoComplete="off"
     />
+    {rotating && (
+      // Same box/padding as the textarea so the fake placeholder sits exactly where the real one would.
+      <div
+        aria-hidden
+        className={`${textareaClasses} absolute inset-0 pointer-events-none`}
+        style={{ color: 'var(--ui-text-muted)', opacity: 0.6 }}
+      >
+        <style>{`
+          @keyframes ph-in { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          @keyframes ph-out { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
+        `}</style>
+        <div className="relative overflow-hidden">
+          {prevIndex >= 0 && (
+            <span key={`out-${prevIndex}-${lineIndex}`} className="absolute left-0 right-0 top-0" style={{ animation: 'ph-out 350ms ease-in forwards' }}>
+              {lines[prevIndex]}
+            </span>
+          )}
+          <span key={`in-${lineIndex}`} className="block" style={prevIndex >= 0 ? { animation: 'ph-in 350ms ease-out' } : undefined}>
+            {lines[lineIndex]}
+          </span>
+        </div>
+      </div>
+    )}
+    </div>
   );
 }

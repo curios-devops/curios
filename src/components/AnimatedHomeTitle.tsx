@@ -1,36 +1,39 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useTranslation, type TranslationKey } from '../hooks/useTranslation.ts';
 
 interface AnimatedHomeTitleProps {
   name: string | null;
   className?: string;
   style?: CSSProperties;
+  /** Fires once the question has finished typing. */
+  onDone?: () => void;
 }
 
-const QUESTION = 'What are you curious about?';
-
-/** Local time of day → salutation word. */
-function getTimeWord(date = new Date()): string {
+/** Local time of day → greeting key. */
+function getTimeGreetingKey(date = new Date()): TranslationKey {
   const hour = date.getHours();
-  if (hour >= 5 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 18) return 'afternoon';
-  if (hour >= 18 && hour < 22) return 'evening';
-  return 'night';
+  if (hour >= 5 && hour < 12) return 'greetMorning';
+  if (hour >= 12 && hour < 18) return 'greetAfternoon';
+  if (hour >= 18 && hour < 22) return 'greetEvening';
+  return 'greetNight';
 }
 
 /** Time-of-day greetings; the name is omitted when there is none. */
-function buildSalutations(name: string | null): string[] {
-  const tw = getTimeWord();
-  const cap = tw.charAt(0).toUpperCase() + tw.slice(1);
-  const withName = name ? `, ${name}` : '';
-  return [
-    `Good ${tw}${withName}`,
-    `Hello${name ? `, ${name}` : ' there'}`,
-    `Hey${name ? ` ${name}` : ' there'}`,
-    `Welcome back${withName}`,
-    `Hi${name ? `, ${name}` : ' there'}`,
-    `Nice to see you${withName}`,
-    `${cap} curiosity${withName}`,
+function buildSalutations(name: string | null, t: (key: TranslationKey) => string): string[] {
+  // [with name, without name] — some greetings read differently with no name ("Hello there").
+  const pairs: [TranslationKey, TranslationKey][] = [
+    [getTimeGreetingKey(), getTimeGreetingKey()],
+    ['greetHello', 'greetHelloThere'],
+    ['greetHey', 'greetHeyThere'],
+    ['greetWelcomeBack', 'greetWelcomeBack'],
+    ['greetHi', 'greetHiThere'],
+    ['greetNiceToSeeYou', 'greetNiceToSeeYou'],
   ];
+  return pairs.map(([withKey, withoutKey]) =>
+    name
+      ? t('greetWithName').replace('{greeting}', t(withKey)).replace('{name}', name)
+      : t(withoutKey)
+  );
 }
 
 type Phase = 'sal-typing' | 'sal-pausing' | 'sal-deleting' | 'q-typing' | 'done';
@@ -40,11 +43,15 @@ type Phase = 'sal-typing' | 'sal-pausing' | 'sal-deleting' | 'q-typing' | 'done'
  * "What are you curious about?" and stops. (The blinking accent dot was removed
  * in the 2026 redesign — too distracting.)
  */
-export default function AnimatedHomeTitle({ name, className, style }: AnimatedHomeTitleProps) {
+export default function AnimatedHomeTitle({ name, className, style, onDone }: AnimatedHomeTitleProps) {
+  const { t } = useTranslation();
+  const QUESTION = t('homeTitle');
   const salutation = useMemo(() => {
-    const all = buildSalutations(name);
+    const all = buildSalutations(name, t);
     return all[Math.floor(Math.random() * all.length)];
-  }, [name]);
+  }, [name, t]);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   const [display, setDisplay] = useState('');
 
@@ -58,6 +65,7 @@ export default function AnimatedHomeTitle({ name, className, style }: AnimatedHo
   useEffect(() => {
     if (prefersReduced) {
       setDisplay(QUESTION);
+      onDoneRef.current?.();
       return;
     }
 
@@ -102,6 +110,7 @@ export default function AnimatedHomeTitle({ name, className, style }: AnimatedHo
           setDisplay(QUESTION.slice(0, charRef.current));
           if (charRef.current >= QUESTION.length) {
             phaseRef.current = 'done';
+            onDoneRef.current?.();
           } else {
             timer = setTimeout(tick, 55 + Math.random() * 45);
           }
@@ -114,7 +123,7 @@ export default function AnimatedHomeTitle({ name, className, style }: AnimatedHo
 
     timer = setTimeout(tick, 450);
     return () => clearTimeout(timer);
-  }, [salutation, prefersReduced]);
+  }, [salutation, QUESTION, prefersReduced]);
 
   return (
     <h1 className={className} style={{ minHeight: '1.4em', ...style }} aria-label={QUESTION}>

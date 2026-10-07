@@ -1,0 +1,19 @@
+{
+  "homeTitle": "Cosa ti incuriosisce?",
+  "homeAutoHint": "Tocca Auto per scegliere una modalità di ricerca",
+  "greetMorning": "Buongiorno",
+  "greetAfternoon": "Buon pomeriggio",
+  "greetEvening": "Buonasera",
+  "greetNight": "Buonanotte",
+  "greetHello": "Ciao",
+  "greetHelloThere": "Ciao",
+  "greetHey": "Ehi",
+  "greetHeyThere": "Ehi",
+  "greetWelcomeBack": "Bentornato",
+  "greetHi": "Ciao",
+  "greetHiThere": "Ciao",
+  "greetNiceToSeeYou": "Che bello vederti",
+  "greetWithName": "{greeting}, {name}",
+  "homeDiscover": "Scopri",
+  "homeSeeAll": "Vedi tutto"
+}

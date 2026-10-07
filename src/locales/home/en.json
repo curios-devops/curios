@@ -1,0 +1,19 @@
+{
+  "homeTitle": "What are you curious about?",
+  "homeAutoHint": "Tap Auto to choose a search mode",
+  "greetMorning": "Good morning",
+  "greetAfternoon": "Good afternoon",
+  "greetEvening": "Good evening",
+  "greetNight": "Good night",
+  "greetHello": "Hello",
+  "greetHelloThere": "Hello there",
+  "greetHey": "Hey",
+  "greetHeyThere": "Hey there",
+  "greetWelcomeBack": "Welcome back",
+  "greetHi": "Hi",
+  "greetHiThere": "Hi there",
+  "greetNiceToSeeYou": "Nice to see you",
+  "greetWithName": "{greeting}, {name}",
+  "homeDiscover": "Discover",
+  "homeSeeAll": "See all"
+}

@@ -19,14 +19,29 @@ import pt from '../locales/pt.json';
 import ca from '../locales/ca.json';
 import ja from '../locales/ja.json';
 
+// Per-page strings live in src/locales/<page>/<lang>.json and are merged into
+// the language's flat key space, so t('key') works the same everywhere.
+const pageLocales = import.meta.glob<{ default: Record<string, string> }>(
+  '../locales/*/*.json',
+  { eager: true }
+);
+
+function withPages(lang: LanguageCode, base: Record<string, string>) {
+  const merged = { ...base };
+  for (const [path, mod] of Object.entries(pageLocales)) {
+    if (path.endsWith(`/${lang}.json`)) Object.assign(merged, mod.default);
+  }
+  return merged;
+}
+
 // Export translations object
 export const translations: Translations = {
-  en,
-  es,
-  de,
-  fr,
-  it,
-  pt,
-  ca,
-  ja,
+  en: withPages('en', en),
+  es: withPages('es', es),
+  de: withPages('de', de),
+  fr: withPages('fr', fr),
+  it: withPages('it', it),
+  pt: withPages('pt', pt),
+  ca: withPages('ca', ca),
+  ja: withPages('ja', ja),
 };

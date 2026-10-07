@@ -9,6 +9,8 @@ interface ActionButtonProps {
   onClick: () => void;
   isActive?: boolean;
   disabled?: boolean;
+  /** Filled with the theme accent (same look as the submit arrow) — the suggested action. */
+  accent?: boolean;
   className?: string;
 }
 
@@ -19,6 +21,7 @@ export default function ActionButton({
   onClick,
   isActive = false,
   disabled = false,
+  accent = false,
   className
 }: ActionButtonProps) {
   const { theme } = useTheme();
@@ -31,9 +34,11 @@ export default function ActionButton({
         onClick={onClick}
         disabled={disabled}
         className={`
-          w-9 h-9 rounded-lg flex items-center justify-center transition-colors duration-200
+          w-9 h-9 rounded-full flex items-center justify-center transition-colors duration-200
           ${
-            disabled
+            accent
+              ? 'text-white hover:shadow-lg'
+              : disabled
               ? 'text-gray-600 cursor-not-allowed'
               : isActive
               ? 'bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
@@ -41,14 +46,18 @@ export default function ActionButton({
           }
           ${className || ''}
         `}
-        style={isActive ? { color: accentColor.primary } : undefined}
+        style={accent ? { backgroundColor: accentColor.primary } : isActive ? { color: accentColor.primary } : undefined}
         onMouseEnter={(e) => {
-          if (!disabled && !isActive) {
+          if (accent) {
+            e.currentTarget.style.backgroundColor = accentColor.hover;
+          } else if (!disabled && !isActive) {
             e.currentTarget.style.color = accentColor.primary;
           }
         }}
         onMouseLeave={(e) => {
-          if (!disabled && !isActive) {
+          if (accent) {
+            e.currentTarget.style.backgroundColor = accentColor.primary;
+          } else if (!disabled && !isActive) {
             e.currentTarget.style.color = '';
           }
         }}

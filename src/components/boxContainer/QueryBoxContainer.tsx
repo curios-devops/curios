@@ -21,9 +21,10 @@ import { warmMovieGpu } from '../../services/movie/warmupService.ts';
 
 interface QueryBoxContainerProps {
   onModeChange?: (mode: ModeType) => void;
+  rotateHint?: boolean;
 }
 
-export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerProps) {
+export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBoxContainerProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [query, setQuery] = useState(() => {
@@ -287,6 +288,7 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
             onChange={(e) => setQuery(e.target.value)}
             className="px-0"
             mode={selectedMode}
+            rotateHint={rotateHint}
           />
         </div>
 

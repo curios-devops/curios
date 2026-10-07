@@ -10,6 +10,7 @@ import { listFeed } from '../nodePersistenceService';
 import { rankFeed, feedItemHref, FEED_TYPE_BADGE } from '../feedRanking';
 import type { FeedItem } from '../types';
 import MosaicCard, { type MosaicShape } from './MosaicCard';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 // Pamba-style mosaic, in blocks of 5: two columns that start offset —
 //   left:  vertical, then square        right: square, then vertical
@@ -40,6 +41,7 @@ export function buildMosaicBlocks<T>(items: T[]): MosaicBlock<T>[] {
 const TILTS = [-1.5, 1, 1.25, -1, -0.75];
 
 export default function HomeDiscovery() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -66,14 +68,14 @@ export default function HomeDiscovery() {
     <div className="max-w-[720px] mx-auto px-4 sm:px-8 mt-16 mb-24">
       <div className="flex items-center justify-between mb-5">
         <h2 className="label-mono" style={{ color: 'var(--accent-primary)' }}>
-          Discover
+          {t('homeDiscover')}
         </h2>
         <Link
           to="/feed"
           className="inline-flex items-center gap-1 text-sm font-medium hover:opacity-80 transition-opacity"
           style={{ color: 'var(--accent-primary)' }}
         >
-          See all <ArrowRight size={14} />
+          {t('homeSeeAll')} <ArrowRight size={14} />
         </Link>
       </div>
 

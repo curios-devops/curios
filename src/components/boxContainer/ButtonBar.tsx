@@ -155,12 +155,12 @@ export default function ButtonBar({
           )}
         </div>
 
-        {/* Mode selector dropdown - rounded rectangle style like mic button */}
+        {/* Mode selector dropdown - pill, matching the round icon buttons */}
         <div className="relative" ref={modeMenuRef}>
           <button
             type="button"
             onClick={() => setShowModeMenu(!showModeMenu)}
-            className="h-9 px-2.5 rounded-lg flex items-center gap-1.5 transition-colors duration-200 text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
+            className="h-9 px-3 rounded-full flex items-center gap-1.5 transition-colors duration-200 text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
             onMouseEnter={(e) => {
               e.currentTarget.style.color = accentColor.primary;
             }}
@@ -216,6 +216,7 @@ export default function ButtonBar({
               label={t('voiceMode') || 'Voice mode'}
               tooltip={t('voiceMode') || 'Voice mode'}
               onClick={() => navigate('/character?mic=1')}
+              accent
             />
           </>
         ) : (

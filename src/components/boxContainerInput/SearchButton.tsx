@@ -16,7 +16,7 @@ export default function SearchButton({ onClick, disabled, isRouting = false }: S
       onClick={onClick}
       disabled={disabled}
       className={`
-        w-8 h-8 rounded-lg 
+        w-8 h-8 rounded-full 
         transition-all duration-250 ease-in-out
         flex items-center justify-center
         ${disabled 

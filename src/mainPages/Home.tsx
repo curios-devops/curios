@@ -69,6 +69,14 @@ export default function Home() {
   const [showCookieModal, setShowCookieModal] = useState(false);
   const [cookiesAccepted, setCookiesAccepted] = useState(() => !!localStorage.getItem('cookieConsent'));
   const [, setCurrentMode] = useState<ModeType>('search');
+  // Placeholder hint rotation starts 2s after the headline finishes typing.
+  const [titleDone, setTitleDone] = useState(false);
+  const [rotateHint, setRotateHint] = useState(false);
+  useEffect(() => {
+    if (!titleDone) return;
+    const timer = setTimeout(() => setRotateHint(true), 2000);
+    return () => clearTimeout(timer);
+  }, [titleDone]);
 
 
   const isGuest = !session; // Guest = not logged in
@@ -280,6 +288,7 @@ export default function Home() {
         <div className="flex flex-col items-center justify-center mb-10 home-rise">
           <AnimatedHomeTitle
             name={getUserFirstName(session?.user)}
+            onDone={() => setTitleDone(true)}
             // 2026 redesign: Pamba's section-headline type ("How Pamba works, end
             // to end": Bricolage Grotesque 36px/700, −0.9px). To revert, swap
             // "font-bricolage" for "font-space-grotesk" (previous) or
@@ -295,7 +304,7 @@ export default function Home() {
           />
         </div>
         <div className="home-rise home-rise-delay">
-          <InputContainer onModeChange={setCurrentMode} />
+          <InputContainer onModeChange={setCurrentMode} rotateHint={rotateHint} />
         </div>
       </div>
 

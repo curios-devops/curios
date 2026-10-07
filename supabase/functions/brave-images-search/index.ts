@@ -37,8 +37,13 @@ Deno.serve(async (req: Request) => {
     if (!BRAVE_API_KEY) {
       console.error('❌ BRAVE_API_KEY environment variable not set');
       return new Response(
-        JSON.stringify({ error: 'Brave API key not configured. Please set BRAVE_API_KEY environment variable.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Brave API key not configured. Please set BRAVE_API_KEY environment variable.',
+          details: 'Missing BRAVE_API_KEY',
+          results: []
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -63,10 +68,12 @@ Deno.serve(async (req: Request) => {
       console.error('Brave Images API error:', braveResponse.status, errorText)
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: `Brave Images API error: ${braveResponse.status}`,
-          details: errorText 
+          details: errorText,
+          results: []
         }),
-        { status: braveResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -84,8 +91,13 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('Error in brave-images-search:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: false,
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        results: []
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })

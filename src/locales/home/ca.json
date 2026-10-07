@@ -1,0 +1,19 @@
+{
+  "homeTitle": "Què et fa curiositat?",
+  "homeAutoHint": "Toca Auto per triar un mode de cerca",
+  "greetMorning": "Bon dia",
+  "greetAfternoon": "Bona tarda",
+  "greetEvening": "Bon vespre",
+  "greetNight": "Bona nit",
+  "greetHello": "Hola",
+  "greetHelloThere": "Hola",
+  "greetHey": "Ei",
+  "greetHeyThere": "Ei",
+  "greetWelcomeBack": "Benvingut de nou",
+  "greetHi": "Hola",
+  "greetHiThere": "Hola",
+  "greetNiceToSeeYou": "Quina alegria veure't",
+  "greetWithName": "{greeting}, {name}",
+  "homeDiscover": "Descobreix",
+  "homeSeeAll": "Veure-ho tot"
+}

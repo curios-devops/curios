@@ -6,9 +6,14 @@
 // Color follows a traffic-light convention (green → yellow → red), gray when
 // exhausted. Status only; guests/free users can tap it to be offered sign in / upgrade.
 
+import { useLocation } from 'react-router-dom';
 import { useProCredits } from '../providers/ProCreditsProvider.tsx';
 import type { BatteryLevel } from '../services/proCreditsService.ts';
 import { appSettings } from '../config/appSettings.ts';
+
+// A first-time guest doesn't see the counter on Home; once they open any service
+// page it appears and stays (remembered in localStorage).
+const GUEST_SEEN_KEY = 'curios_guest_credits_seen';
 
 const COLOR: Record<BatteryLevel, string> = {
   full: '#22c55e', // green
@@ -19,9 +24,21 @@ const COLOR: Record<BatteryLevel, string> = {
 
 export default function ProCreditsBattery() {
   const { remaining, max, battery, loading, tier, promptUpgrade } = useProCredits();
+  const isHome = useLocation().pathname === '/';
 
   if (appSettings.credits.display === 'off') return null;
   if (loading) return null;
+  if (tier === 'guest') {
+    let seen = false;
+    try {
+      seen = localStorage.getItem(GUEST_SEEN_KEY) === '1';
+      if (!seen && !isHome) {
+        localStorage.setItem(GUEST_SEEN_KEY, '1');
+        seen = true;
+      }
+    } catch { /* storage blocked — fall back to showing it off Home only */ }
+    if (!seen && isHome) return null;
+  }
 
   const color = COLOR[battery];
   const clickable = tier !== 'pro';

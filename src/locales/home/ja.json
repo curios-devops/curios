@@ -1,0 +1,19 @@
+{
+  "homeTitle": "何に興味がありますか？",
+  "homeAutoHint": "Autoをタップして検索モードを選択",
+  "greetMorning": "おはようございます",
+  "greetAfternoon": "こんにちは",
+  "greetEvening": "こんばんは",
+  "greetNight": "こんばんは",
+  "greetHello": "こんにちは",
+  "greetHelloThere": "こんにちは",
+  "greetHey": "やあ",
+  "greetHeyThere": "やあ",
+  "greetWelcomeBack": "おかえりなさい",
+  "greetHi": "こんにちは",
+  "greetHiThere": "こんにちは",
+  "greetNiceToSeeYou": "お会いできてうれしいです",
+  "greetWithName": "{greeting}、{name}さん",
+  "homeDiscover": "発見",
+  "homeSeeAll": "すべて見る"
+}

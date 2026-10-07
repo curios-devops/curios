@@ -211,6 +211,10 @@ export async function braveSearchTool(query: string): Promise<BraveSearchResults
 
       // Parse responses
       const webData = await webResponse.json();
+      // The edge function reports failures as 200 + success:false — still a failure, so callers fall back.
+      if (webData.success === false) {
+        throw new Error(`Brave web search failed: ${webData.error} - ${webData.details ?? ''}`);
+      }
       let imagesData = { results: [] };
       
       if (imagesResponse.ok) {
