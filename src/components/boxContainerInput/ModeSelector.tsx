@@ -1,8 +1,8 @@
-import { BookOpen, Clapperboard, Popcorn, Search, Rocket, PersonStanding, Crown } from 'lucide-react';
+import { BookOpen, Clapperboard, Search, Rocket, PersonStanding, Crown } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
-export type ModeType = 'auto' | 'search' | 'stories' | 'cinematic' | 'movie' | 'character' | 'avatar' | 'fastsearch';
+export type ModeType = 'auto' | 'search' | 'stories' | 'movie' | 'character' | 'avatar' | 'fastsearch';
 
 interface Mode {
   id: ModeType;
@@ -17,8 +17,8 @@ const modes: Mode[] = [
   { id: 'auto', label: 'auto', icon: Rocket },
   { id: 'fastsearch', label: 'search', icon: Search },
   { id: 'stories', label: 'stories', icon: BookOpen },
-  { id: 'cinematic', label: 'cinematic', icon: Clapperboard },
-  { id: 'movie', label: 'movie', icon: Popcorn },
+  // Video = Movie mode (question → explainer video); Cinematic was merged into it.
+  { id: 'movie', label: 'video', icon: Clapperboard },
   // Avatar was merged into Character (half-body option inside the page).
   { id: 'character', label: 'character', icon: PersonStanding, premium: true },
 ];

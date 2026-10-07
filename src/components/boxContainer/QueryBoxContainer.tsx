@@ -15,6 +15,8 @@ import { useVoiceRecording } from '../../hooks/useVoiceRecording.ts';
 import { transcribeAudioWithFallback } from '../../services/stt/transcriptionService.ts';
 import { classifyIntent } from '../../services/auto/intentRouter.ts';
 import { resolveBuyIntent } from '../../services/search/buyIntent.ts';
+
+const BUY_PROBABILITY_THRESHOLD = 0.5;
 import { warmMovieGpu } from '../../services/movie/warmupService.ts';
 
 interface QueryBoxContainerProps {
@@ -77,8 +79,6 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
         return '/fast-search';
       case 'stories':
         return '/stories-results';
-      case 'cinematic':
-        return '/cinematic-results';
       case 'movie':
         return '/movie-results';
       case 'character':
@@ -135,19 +135,16 @@ export default function QueryBoxContainer({ onModeChange }: QueryBoxContainerPro
         resolvedMode = 'fastsearch';
       } else {
         setIsRouting(true);
-        // Buy-intent runs alongside the mode classifier (not after it) — for now the
-        // sponsor carousel only lives in Search, so a confirmed buy intent always wins
-        // the route, overriding whatever avatar/movie/stories was otherwise guessed.
-        const [intent, buyIntent] = await Promise.all([
-          classifyIntent(trimmedQuery),
-          resolveBuyIntent(trimmedQuery),
-        ]);
-        buyIntentDetected = buyIntent.isBuyIntent;
+        // One Decisions API call answers both the mode and buy intent. Only when it fell back
+        // (buyProbability null) do we run the local heuristic resolver. For now the sponsor
+        // carousel only lives in Search, so a confirmed buy intent always wins the route.
+        const intent = await classifyIntent(trimmedQuery);
+        buyIntentDetected = intent.buyProbability !== null
+          ? intent.buyProbability >= BUY_PROBABILITY_THRESHOLD
+          : (await resolveBuyIntent(trimmedQuery)).isBuyIntent;
         resolvedMode = buyIntentDetected ? 'fastsearch'
-          : intent === 'avatar' ? 'character' // conversation intent → live full-body character
-          : intent === 'movie' ? 'movie'
-          : intent === 'stories' ? 'stories'
-          : 'fastsearch';
+          : intent.mode === 'search' ? 'fastsearch'
+          : intent.mode;
         setIsRouting(false);
         // Auto picked Movie → wake the video GPU now, before navigation.
         if (resolvedMode === 'movie') warmMovieGpu();
