@@ -51,7 +51,7 @@ async function describeImage(imageUrl: string) {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-5-mini",
+      model: "gpt-6-luna",
       reasoning: { effort: "low" },
       max_output_tokens: 800,
       input: [{

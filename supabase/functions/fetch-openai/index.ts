@@ -27,8 +27,18 @@ const TIMEOUT_MS = 28000; // 28 seconds (leave buffer for edge function)
 const STREAMING_TIMEOUT_MS = 60000; // 60 seconds for streaming (longer to allow full response)
 const IMAGE_TIMEOUT_MS = 120000; // 120s — gpt-image-2 (medium/high, 1536x1024) can take ~40-60s
 
+// GPT-5 and GPT-6 (Luna/Sol/Astra) are reasoning models served via the Responses API.
 function isGpt5Model(model: string): boolean {
-  return /^gpt-5(?:-|_|$)/i.test(model);
+  return /^gpt-[56](?:[-_.]|$)/i.test(model);
+}
+
+// Each family accepts different reasoning efforts: gpt-6 Sol/Astra reject 'minimal'/'none'
+// (low|medium only), gpt-6 Luna takes 'none' as its fastest setting.
+function normalizeReasoning(model: string, reasoning: { effort?: string } | undefined): { effort: string } {
+  const effort = reasoning?.effort || 'low';
+  if (!/^gpt-6/i.test(model)) return { effort };
+  if (effort === 'minimal' || effort === 'none') return { effort: /luna/i.test(model) ? 'none' : 'low' };
+  return { effort };
 }
 
 function normalizeResponsesInput(messages: Array<{ role?: string; content?: unknown }>): Array<{ role: string; content: string }> {
@@ -376,7 +386,8 @@ Deno.serve(async (req: Request) => {
       model,
     };
 
-    const normalizedMessages = parsedPrompt.messages || [{ role: "user", content: String(prompt) }];
+    // Callers send either chat-style `messages` or Responses-style `input`.
+    const normalizedMessages = parsedPrompt.messages || parsedPrompt.input || [{ role: "user", content: String(prompt) }];
 
     if (useResponsesApi) {
       payload.input = normalizeResponsesInput(normalizedMessages);
@@ -387,7 +398,11 @@ Deno.serve(async (req: Request) => {
     // GPT-5 family on Responses API uses max_output_tokens.
     if (gpt5 && useResponsesApi) {
       payload.max_output_tokens = parsedPrompt.max_output_tokens || 2000;
-      payload.reasoning = parsedPrompt.reasoning || { effort: 'low' };
+      payload.reasoning = normalizeReasoning(model, parsedPrompt.reasoning);
+      // JSON mode on the Responses API lives under text.format.
+      if (!enableStreaming && parsedPrompt.response_format?.type === 'json_object') {
+        payload.text = { format: { type: 'json_object' } };
+      }
 
       // Add tools if provided (for web_search, code_interpreter, etc.)
       if (parsedPrompt.tools) {
@@ -545,7 +560,7 @@ Deno.serve(async (req: Request) => {
         const retryPayload = {
           ...payload,
           max_output_tokens: retryMaxOutputTokens,
-          reasoning: { effort: 'low' },
+          reasoning: normalizeReasoning(model, { effort: 'low' }),
         };
 
         console.warn(`Retrying Responses request (${label}) after incomplete max_output_tokens`, {

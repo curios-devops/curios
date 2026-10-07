@@ -77,6 +77,8 @@ export async function directTurn(params: {
   history: Array<{ role: 'user' | 'character'; text: string }>;
   product?: StageProduct | null;
   locale: string;
+  /** Conversation's answer model (Luna/Sol/Astra); resolved while the web search runs. */
+  model?: Promise<string>;
 }): Promise<DirectedTurn> {
   const { question, character, history, product, locale } = params;
   mark('director: web search → start');
@@ -115,7 +117,7 @@ speech: what the presenter says, in language "${locale}". 40–80 words, spoken 
 actions: exactly ${PLANNED_SEGMENTS} English Visual Motion Prompts, one per ~5 seconds, played in order while speaking. Each one must stand alone and include: the camera ("Static full-body shot at eye level"), a short description of the presenter and scene, the starting pose, ONE main visible movement, and the ending pose. Vary the performance with the topic: gestures that illustrate the idea, walking a few steps across the stage, turning to point, playful moves or a short dance for fun topics. Keep the whole body and both hands visible; start each segment where the previous one ended. Never describe the mouth or lips.
 suggestions: 3 short, curious follow-up questions the user might ask next, in language "${locale}".`;
 
-  const raw = await streamLLMText(prompt, 1400, () => undefined, 45000, undefined, 'minimal');
+  const raw = await streamLLMText(prompt, 1400, () => undefined, 45000, await params.model, 'minimal');
   mark('director: LLM ← done', { chars: raw.length });
   return { ...parseDirectorOutput(raw, character), sources };
 }

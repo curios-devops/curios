@@ -1,7 +1,16 @@
 // Thin JSON-mode LLM helper for Movie agents.
 // Mirrors the fetch-openai channel used by cinematic's narrativeFlow (no API key in the client).
+import { appSettings } from '../../../config/appSettings';
 
-const MOVIE_LLM_MODEL = import.meta.env.VITE_MOVIE_LLM_MODEL || 'gpt-4.1-mini-2025-04-14';
+// The current movie's answer model (Luna/Sol/Astra, chosen per question by MovieResults).
+// Module-level because one movie generates at a time and every agent + narrativeFlow share it.
+let movieModel = appSettings.models.sol;
+export function setMovieModel(model: string): void {
+  movieModel = model;
+}
+export function getMovieModel(): string {
+  return movieModel;
+}
 
 async function fetchOpenAI(promptPayload: Record<string, unknown>): Promise<string> {
   const endpoint = import.meta.env.VITE_OPENAI_API_URL;
@@ -44,7 +53,7 @@ export async function callMovieLLMJson<T>(
         content: `${userPrompt}\n\nReturn valid JSON only. Expected keys: ${JSON.stringify(schemaHint)}`,
       },
     ],
-    model: MOVIE_LLM_MODEL,
+    model: movieModel,
     temperature,
     response_format: { type: 'json_object' },
   });

@@ -6,8 +6,9 @@
 // data: URL can't be shared to crawlers.
 
 import { logger } from '../../../utils/logger';
+import { appSettings } from '../../../config/appSettings';
 
-const IMAGE_MODEL = import.meta.env.VITE_FASTSEARCH_IMAGE_MODEL || 'gpt-image-2';
+const IMAGE_MODEL = appSettings.models.image;
 // 16:9 landscape header still.
 const IMAGE_SIZE = '1536x1024';
 // Cost lever: 'low' is plenty for a single contextual header image.

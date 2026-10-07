@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase.ts';
 import { logger } from '../../utils/logger.ts';
+import { rememberTier, type QuestionTier } from './modelTier.ts';
 
 // Modes that Auto can resolve to. 'movie' is the Video mode (Cinematic was merged into it).
 export type AutoIntent = 'search' | 'stories' | 'movie' | 'character';
@@ -24,8 +25,10 @@ export async function classifyIntent(query: string): Promise<AutoDecision> {
       .invoke('classify-intent', { body: { query: trimmed } })
       .then(({ data, error }): AutoDecision => {
         if (error) throw error;
-        const d = data as { mode?: string; buyProbability?: number | null; backend?: string } | null;
-        logger.info('[Auto] intent', { mode: d?.mode, buy: d?.buyProbability, backend: d?.backend });
+        const d = data as { mode?: string; buyProbability?: number | null; tier?: QuestionTier | null; backend?: string } | null;
+        logger.info('[Auto] intent', { mode: d?.mode, buy: d?.buyProbability, tier: d?.tier, backend: d?.backend });
+        // The same call rated difficulty — cache it so the destination page doesn't ask again.
+        rememberTier(trimmed, d?.tier ?? null);
         const mode = d?.mode;
         return {
           mode: mode === 'stories' || mode === 'movie' || mode === 'character' ? mode : 'search',

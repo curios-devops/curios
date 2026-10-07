@@ -17,9 +17,12 @@ import { searchExa } from '../../search/providers/engines/exaService';
 import { searchSerpApiImages } from '../../search/providers/engines/serpApiImages';
 import { searchSerpApiVideos } from '../../search/providers/engines/serpApiVideos';
 import { logger } from '../../../utils/logger';
+import { appSettings } from '../../../config/appSettings';
 
 export interface StoryRequest {
   query: string;
+  /** Article model (Luna/Sol/Astra), awaited just before writing; default Sol. */
+  model?: Promise<string>;
   isPro?: boolean;
   focusCategory?: string;
 }
@@ -135,7 +138,7 @@ export class StoryAgent {
         'synthesizing'
       );
 
-      const writer = await this.writeArticle(query, results, storyAreas, request.focusCategory);
+      const writer = await this.writeArticle(query, results, storyAreas, request.focusCategory, await request.model);
 
       // Step 4 — Assemble result.
       const result: StoryResult = {
@@ -287,7 +290,9 @@ Each question must be a single, specific, naturally-phrased question about the t
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
-          ]
+          ],
+          model: appSettings.models.utility,
+          response_format: { type: 'json_object' }
         })
       })
     });
@@ -475,7 +480,8 @@ Each question must be a single, specific, naturally-phrased question about the t
     query: string,
     results: SearchResult[],
     storyAreas: string[],
-    focusCategory?: string
+    focusCategory?: string,
+    model: string = appSettings.models.sol
   ): Promise<WriterOutput> {
     if (!results || results.length === 0) {
       return this.getFallbackStories(query, results, focusCategory);
@@ -564,7 +570,11 @@ Make this feel like a premium piece of journalism that readers will want to fini
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt }
-            ]
+            ],
+            model,
+            response_format: { type: 'json_object' },
+            // Reasoning tokens count toward this budget on GPT-6.
+            max_output_tokens: 6000
           })
         })
       });

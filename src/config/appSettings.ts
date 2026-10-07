@@ -48,6 +48,17 @@ export interface AppSettings {
   // Pricing modal promo: tag above the price + struck-through regular monthly
   // price. Empty strings hide them.
   pricingPromo: { label: string; regularMonthly: string };
+  // AI models. Questions are rated easy/normal/complex → luna/sol/astra (see MODELS
+  // in app-settings.md); router OFF = always sol.
+  models: {
+    router: boolean;
+    luna: string;
+    sol: string;
+    astra: string;
+    deep: string;
+    utility: string;
+    image: string;
+  };
 }
 
 // Read every "KEY = value" line (ALL-CAPS keys). Prose, ### titles, ``` fences and
@@ -152,6 +163,10 @@ const logoConfig = (prefix: string): LogoConfig => ({
   aiFontSize: TEXT_REM[asSize(cfg[`${prefix}_LOGO_AI_SIZE`], 'M')],
 });
 
+// Model ids are plain slugs (gpt-6.1-sol); anything else falls back to the default.
+const asModel = (v: string | undefined, fallback: string): string =>
+  v && /^[a-z0-9][a-z0-9._-]*$/i.test(v.trim()) ? v.trim() : fallback;
+
 export const appSettings: AppSettings = {
   theme: {
     default: asTheme(cfg.THEME),
@@ -196,5 +211,14 @@ export const appSettings: AppSettings = {
   pricingPromo: {
     label: cfg.PROMO_LABEL === 'OFF' ? '' : cfg.PROMO_LABEL || '',
     regularMonthly: cfg.PROMO_REGULAR_MONTHLY === 'OFF' ? '' : cfg.PROMO_REGULAR_MONTHLY || '',
+  },
+  models: {
+    router: onOff(cfg.MODEL_ROUTER, true),
+    luna: asModel(cfg.MODEL_LUNA, 'gpt-6-luna'),
+    sol: asModel(cfg.MODEL_SOL, 'gpt-6.1-sol'),
+    astra: asModel(cfg.MODEL_ASTRA, 'gpt-6-astra'),
+    deep: asModel(cfg.MODEL_DEEP, 'gpt-6.1-sol'),
+    utility: asModel(cfg.MODEL_UTILITY, 'gpt-6-luna'),
+    image: asModel(cfg.MODEL_IMAGE, 'gpt-image-2'),
   },
 };

@@ -1,3 +1,4 @@
+import { appSettings } from '../../../config/appSettings';
 // Image Generation Service for Insights Articles
 // Uses OpenAI gpt-image-2 (same model as Movie) via the fetch-openai edge function.
 // Quality lever: 'low' (free/standard) | 'medium' (HD / Pro).
@@ -97,7 +98,7 @@ export async function generateArticleImage(
   try {
     const prompt = buildImagePrompt(options);
     const quality = options.quality || 'low'; // 'low' = free/standard, 'medium' = HD/Pro
-    const model = import.meta.env.VITE_MOVIE_IMAGE_MODEL || 'gpt-image-2';
+    const model = appSettings.models.image;
 
     const supabaseEdgeUrl = import.meta.env.VITE_OPENAI_API_URL;
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;

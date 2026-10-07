@@ -8,6 +8,8 @@ import ResearchProgress from '../../../components/ResearchProgress';
 import TabSystem from '../../../components/TabSystem';
 import { useAccentColor } from '../../../hooks/useAccentColor';
 import { useProCredits } from '../../../providers/ProCreditsProvider';
+import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
+import AstraNotice from '../../../components/AstraNotice.tsx';
 import { saveNode } from '../../space/nodePersistenceService';
 
 // Topic categories for the header dropdown (label = what the user sees).
@@ -43,6 +45,7 @@ export default function StoriesResults() {
   const query = searchParams.get('q') || '';
   // Only use focus category if explicitly provided in URL, otherwise let auto-detection work
   const focusCategory = searchParams.get('focus') || undefined;
+  const { getModel, answerModel, continueWithAstra } = useAnswerModel(query);
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<any>(null);
@@ -132,7 +135,7 @@ export default function StoriesResults() {
     });
 
     // Simple promise handling - no complex cancellation logic
-    storiesService.performStoryAnalysis(query, handleProgress, focusCategory)
+    storiesService.performStoryAnalysis(query, handleProgress, focusCategory, getModel().then((m) => m.model))
       .then((storyResult) => {
         console.log('✅ Insights completed', { resultKeys: Object.keys(storyResult) });
         setResult(storyResult);
@@ -323,6 +326,9 @@ export default function StoriesResults() {
               Try Again
             </button>
           </div>
+        )}
+        {!loading && result && answerModel?.astraBlocked && (
+          <AstraNotice onContinueWithAstra={continueWithAstra} />
         )}
         {!loading && result && (
           <TabSystem

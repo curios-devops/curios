@@ -5,13 +5,15 @@
 
 import { AgentResponse, ResearchResult, ArticleResult } from '../../../../commonApp/types/index';
 import { logger } from '../../../../utils/logger.ts';
+import { appSettings } from '../../../../config/appSettings';
 
 // Callback type for streaming content chunks
 export type StreamingCallback = (chunk: string, isComplete: boolean) => void;
 
-const REGULAR_SEARCH_MODEL = import.meta.env.VITE_REGULAR_SEARCH_MODEL || 'gpt-5-mini';
-const REGULAR_IMAGE_SEARCH_MODEL = import.meta.env.VITE_REGULAR_IMAGE_SEARCH_MODEL || REGULAR_SEARCH_MODEL;
-const REGULAR_SEARCH_FALLBACK_MODEL = import.meta.env.VITE_REGULAR_SEARCH_FALLBACK_MODEL || 'gpt-5';
+// Legacy /search writer — models from app-settings.md MODELS.
+const REGULAR_SEARCH_MODEL = appSettings.models.sol;
+const REGULAR_IMAGE_SEARCH_MODEL = REGULAR_SEARCH_MODEL;
+const REGULAR_SEARCH_FALLBACK_MODEL = appSettings.models.luna;
 
 function shouldFallbackToGpt5(status: number, errorText: string, model: string): boolean {
   if (!/^gpt-5-mini(?:-|_|$)/i.test(model)) return false;

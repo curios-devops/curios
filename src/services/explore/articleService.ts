@@ -2,6 +2,7 @@
 
 import { logger } from '../../utils/logger';
 import { searchWithTavily } from '../../commonService/searchTools/tavilyService';
+import { appSettings } from '../../config/appSettings';
 
 export interface ArticleContent {
   mainContent: string; // AI-generated markdown content
@@ -111,7 +112,7 @@ Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'nu
       body: JSON.stringify({
         prompt: JSON.stringify({
           input: [{ role: 'user', content: prompt }],
-          model: 'gpt-4o-mini',
+          model: appSettings.models.utility,
           max_output_tokens: 2000
         }),
         stream: true

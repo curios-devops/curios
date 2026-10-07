@@ -3,6 +3,7 @@
 import type { WebSearchResult } from './webSearchProvider';
 import type { ImageResult, VideoResult } from './mediaSearchProvider';
 import { logger } from '../../../utils/logger';
+import { appSettings } from '../../../config/appSettings';
 
 export interface SearchContext {
   query: string;
@@ -11,6 +12,8 @@ export interface SearchContext {
   videos: VideoResult[];
   date: string;
   locale: string;
+  /** Answer model for this question (Luna/Sol/Astra); defaults to Sol. */
+  model?: string;
 }
 
 export interface LLMResponse {
@@ -18,7 +21,8 @@ export interface LLMResponse {
   followUps: string[];
 }
 
-const MODEL = 'gpt-5-mini'; // Fast, cost-effective GPT-5 model with Responses API support
+// Default answer model (Sol); per-question tiers come from useAnswerModel. See app-settings.md MODELS.
+const MODEL = appSettings.models.sol;
 
 /**
  * Extract site name from URL for citation format
@@ -188,7 +192,7 @@ Finally, on its own last line: "## Know more: {label}" — a short action label 
 Today's date: ${context.date}
 Language: ${context.locale}`;
 
-  const fullText = await streamLLMText(userMessage, 1800, onChunk, 60000);
+  const fullText = await streamLLMText(userMessage, 1800, onChunk, 60000, context.model);
   const followUps = extractFollowUps(fullText);
 
   logger.info('LLMProvider: Streaming completed with web search', {
@@ -205,7 +209,7 @@ Language: ${context.locale}`;
  * section and returns the next contextual label (recursive expansion).
  */
 export async function generateExpansionStreaming(
-  params: { query: string; previous: string; topic: string; sources: WebSearchResult[]; locale: string },
+  params: { query: string; previous: string; topic: string; sources: WebSearchResult[]; locale: string; model?: string },
   onChunk: (chunk: string) => void
 ): Promise<{ nextLabel: string | null }> {
   const userMessage = `You are continuing an article that answers: "${params.query}"
@@ -233,7 +237,7 @@ Finally, on its own last line: "## Know more: {label}" — a short action label 
 Today's date: ${new Date().toISOString().split('T')[0]}
 Language: ${params.locale}`;
 
-  const fullText = await streamLLMText(userMessage, 1400, onChunk, 60000);
+  const fullText = await streamLLMText(userMessage, 1400, onChunk, 60000, params.model);
   return { nextLabel: extractKnowMoreLabel(fullText) };
 }
 

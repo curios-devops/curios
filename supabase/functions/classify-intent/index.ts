@@ -3,7 +3,9 @@
 // PRIMARY: OpenAI Decisions API — one call answers two typed questions: which mode
 // (choice, with probabilities → we take the argmax) and whether the user wants to buy
 // (predicate). FALLBACK: gpt-5-nano → gpt-5-mini text classification (mode only).
-// Returns { mode, probabilities?, buyProbability (null when unknown), backend }.
+// A third question rates difficulty (tier: easy|normal|complex) → the client answers with
+// Luna / Sol / Astra. Body { query, only: "tier" } asks just that (explicit modes skip routing).
+// Returns { mode, probabilities?, buyProbability (null when unknown), tier (null when unknown), backend }.
 // Orchestration layer only — does not call any downstream mode.
 import { decide } from "../_shared/decisions.ts";
 
@@ -52,6 +54,36 @@ const MODE_CHOICES: { value: Mode; description: string }[] = [
 const MODE_INSTRUCTIONS =
   "Pick the Curios experience that best answers this request. Judge what the user would enjoy most, not what is easiest: choose search only when a short written answer fully satisfies the request. Why/how questions about nature, science, the body, history or how things work belong to movie even when a one-line answer exists.";
 
+type Tier = "easy" | "normal" | "complex";
+const TIER_INSTRUCTIONS =
+  "How much reasoning does a great answer to this request need? Most everyday questions are normal.";
+const TIER_CHOICES: { value: Tier; description: string }[] = [
+  {
+    value: "easy",
+    description:
+      "Trivial: one well-known fact, a definition, a quick conversion or calculation, a greeting or small talk, a simple lookup with an obvious answer.",
+  },
+  {
+    value: "normal",
+    description:
+      "A typical question needing a clear explanation, summary, recommendation or comparison of a few points, using common knowledge or a handful of sources.",
+  },
+  {
+    value: "complex",
+    description:
+      "Needs expert-level reasoning: multi-step analysis, non-trivial math or code, rigorous comparison across many factors, specialized medical, legal, financial or scientific depth, research synthesis, or planning under several constraints.",
+  },
+];
+
+const tierQuestion = { type: "choice" as const, name: "tier", instructions: TIER_INSTRUCTIONS, choices: TIER_CHOICES };
+
+function topTier(answers: Awaited<ReturnType<typeof decide>>): Tier | null {
+  const probs = answers?.tier?.probabilities;
+  if (!probs?.length) return null;
+  const top = probs.reduce((a, b) => (b.probability > a.probability ? b : a));
+  return TIER_CHOICES.some((c) => c.value === top.value) ? (top.value as Tier) : null;
+}
+
 const BUY_INSTRUCTIONS =
   "The user intends to buy, shop for, order, find deals or prices for, or choose a product to purchase right now — not merely learn how something works or follow news about it.";
 
@@ -83,9 +115,15 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Missing query" }, 400);
     }
 
+    if (body?.only === "tier") {
+      const answers = await decide(query, [tierQuestion], DECISIONS_TIMEOUT_MS);
+      return jsonResponse({ tier: topTier(answers), backend: answers ? "decisions" : "default" });
+    }
+
     const answers = await decide(query, [
       { type: "choice", name: "mode", instructions: MODE_INSTRUCTIONS, choices: MODE_CHOICES },
       { type: "predicate", name: "buy", instructions: BUY_INSTRUCTIONS },
+      tierQuestion,
     ], DECISIONS_TIMEOUT_MS);
 
     const probabilities = answers?.mode?.probabilities;
@@ -97,20 +135,21 @@ Deno.serve(async (req: Request) => {
           mode: top.value,
           probabilities,
           buyProbability: typeof buy === "number" ? buy : null,
+          tier: topTier(answers),
           backend: "decisions",
         });
       }
     }
 
     // Decisions unavailable → previous text classifier (mode only; client resolves buy intent).
-    let mode = await classifyWithModel("gpt-5-nano", query);
+    let mode = await classifyWithModel("gpt-6-luna", query);
     if (!mode) mode = await classifyWithModel("gpt-5-mini", query);
 
-    return jsonResponse({ mode: mode ?? "search", buyProbability: null, backend: mode ? "gpt-5" : "default" });
+    return jsonResponse({ mode: mode ?? "search", buyProbability: null, tier: null, backend: mode ? "gpt-fallback" : "default" });
   } catch (err) {
     console.error("classify-intent error", err);
     // Never block the user — degrade to search.
-    return jsonResponse({ mode: "search", buyProbability: null, backend: "default" });
+    return jsonResponse({ mode: "search", buyProbability: null, tier: null, backend: "default" });
   }
 });
 
@@ -124,7 +163,7 @@ async function classifyWithModel(model: string, query: string): Promise<Mode | n
       { role: "user", content: query },
     ],
     max_output_tokens: 50,
-    reasoning: { effort: "minimal" },
+    reasoning: { effort: model.startsWith("gpt-6") ? "none" : "minimal" }, // Luna takes none, not minimal
     text: { format: { type: "json_object" } },
   };
 

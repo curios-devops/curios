@@ -96,6 +96,8 @@ export interface FastSearchRequest {
    * quota the sponsor products carousel (search-amazon-products) already spent on this
    * same query. See mediaSearchProvider.searchImages for the shared-quota rationale. */
   skipSerpApiImages?: boolean;
+  /** Answer model (Luna/Sol/Astra), resolved in parallel with retrieval; default Sol. */
+  model?: Promise<string>;
 }
 
 export interface FastSearchResponse {
@@ -275,8 +277,10 @@ export async function executeFastSearchStreaming(
     logger.debug('FastSearch: Generating answer with streaming');
 
     const llmStartTime = Date.now();
+    const model = await request.model;
     const { followUps } = await generateAnswerStreaming({
       query,
+      model,
       webResults, // Pass real search results from Tavily/Brave
       images,
       videos,

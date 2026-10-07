@@ -22,6 +22,9 @@ import { MOVIE_MODE_LIST, MOVIE_MODES, normalizeMovieMode } from '../config/movi
 import type { MovieExperience, MovieMode, MovieProgress, MovieRelatedTopic, MovieSwipe } from '../types.ts';
 import SocialShareRow from '../components/SocialShareRow.tsx';
 import SignUpModal from '../../../components/auth/SignUpModal.tsx';
+import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
+import AstraNotice from '../../../components/AstraNotice.tsx';
+import { setMovieModel } from '../core/llm.ts';
 
 type MovieTab = 'video' | 'narrative' | 'sources';
 
@@ -38,6 +41,11 @@ export default function MovieResults() {
   const { requestProAccess, canUseProFeature } = useProCredits();
 
   const query = useMemo(() => new URLSearchParams(location.search).get('q') || '', [location.search]);
+  const { getModel, answerModel } = useAnswerModel(query);
+  const forcedAstra = new URLSearchParams(window.location.search).get('tier') === 'astra';
+  // After generation the URL becomes ?projectId=… — rerun from the question itself with Astra.
+  const continueWithAstra = () =>
+    window.location.assign(`/movie-results?q=${encodeURIComponent(query)}&tier=astra`);
   // Optional explicit style in the URL; otherwise the enhancement agent proposes one.
   const modeParam = useMemo(() => normalizeMovieMode(new URLSearchParams(location.search).get('mode')), [location.search]);
   // Reopen a saved movie (Home "latest enhanced" card) — loads from Supabase, no regeneration.
@@ -88,7 +96,10 @@ export default function MovieResults() {
   // Shared generation entry point (initial run AND mode regeneration). NOTE renderCoreVideo
   // is OFF: no swipe — not even the core — spends video GPU money until the user hits Play.
   const startGeneration = (questionText: string, modeOverride?: MovieMode) => {
-    generateMovie(questionText, {
+    // Answer model for this question (Luna/Sol/Astra) — memoized, so a mode change doesn't re-charge.
+    getModel().then((m) => {
+      setMovieModel(m.model);
+      return generateMovie(questionText, {
       userId: session?.user?.id || 'curios-guest',
       // LTX generates each swipe's audio (generate_audio); a separate ElevenLabs
       // narration track would be unused and is redundant cost, so it's disabled.
@@ -109,6 +120,7 @@ export default function MovieResults() {
         // Auto-select the core swipe as soon as it has an image.
         setSelectedSwipeId((cur) => cur ?? (swipe.isCore && swipe.imageUrl ? swipe.id : cur));
       },
+    });
     })
       .then((exp) => {
         setExperience(exp);
@@ -182,7 +194,8 @@ export default function MovieResults() {
     void (async () => {
       // Reload/back-navigation with the same question → serve the stored movie
       // (text, frames, videos) instead of paying for a new generation.
-      if (session?.user?.id) {
+      // (Skipped when the user chose "Continue with Astra" — that's an explicit regeneration.)
+      if (session?.user?.id && !forcedAstra) {
         const existingId = await new MoviePersistenceService()
           .findLatestByQuestion(session.user.id, query)
           .catch(() => null);
@@ -418,6 +431,12 @@ export default function MovieResults() {
           </div>
         }
       />
+
+      {answerModel?.astraBlocked && (
+        <div className="max-w-7xl mx-auto px-4 pt-4">
+          <AstraNotice onContinueWithAstra={continueWithAstra} />
+        </div>
+      )}
 
       {/* Tab navigation (same pattern as Cinematic: Video / Narrative / Sources) */}
       <div className="border-b" style={{ borderColor: 'var(--ui-bg-elevated)' }}>

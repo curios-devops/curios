@@ -1,3 +1,4 @@
+import { getMovieModel } from './llm';
 import { searchWithTavily } from '../../../commonService/searchTools/tavilyService.ts';
 import { logger } from '../../../utils/logger.ts';
 
@@ -43,7 +44,7 @@ async function callOpenAIJson<T>(
         content: `${userPrompt}\n\nReturn valid JSON only. Expected keys: ${JSON.stringify(schemaHint)}`,
       },
     ],
-    model: 'gpt-4.1-mini-2025-04-14',
+    model: getMovieModel(),
     temperature: 0.4,
     response_format: { type: 'json_object' },
   };
@@ -97,7 +98,7 @@ async function callOpenAIText(systemPrompt: string, userPrompt: string): Promise
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    model: 'gpt-4.1-mini-2025-04-14',
+    model: getMovieModel(),
     temperature: 0.4,
   };
 
@@ -126,7 +127,7 @@ async function fetchOpenAIStream(
     body: JSON.stringify({
       prompt: JSON.stringify({
         messages,
-        model: 'gpt-4.1-mini-2025-04-14',
+        model: getMovieModel(),
         temperature: 0.4,
         max_output_tokens: options?.maxOutputTokens ?? 1200,
       }),

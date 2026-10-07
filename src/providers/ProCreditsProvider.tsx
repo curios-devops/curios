@@ -54,6 +54,11 @@ interface ProCreditsContextValue {
    * Used by the Pro Credits battery to turn the indicator into a soft prompt.
    */
   promptUpgrade: () => void;
+  /**
+   * Spend one credit silently (no modal). Used where running out has a graceful
+   * fallback (Astra → Sol), so the caller shows its own notice instead.
+   */
+  tryConsumeCredit: () => Promise<boolean>;
 }
 
 const ProCreditsContext = createContext<ProCreditsContextValue | null>(null);
@@ -76,6 +81,10 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
 
   // Guard against concurrent consume calls causing double-decrements.
   const consuming = useRef(false);
+  // Latest credit state for back-to-back consumes (e.g. Character's conversation credit
+  // then its Astra credit) that run before React re-renders with the new count.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const load = useCallback(async () => {
     // Wait until the subscription has resolved before reading/writing credits.
@@ -108,6 +117,7 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
     consuming.current = true;
     try {
       const { ok, state: next } = await consumeCredit(tier, session, state.remaining);
+      stateRef.current = next;
       setState(next);
       if (!ok) {
         openBlockedModal(tier);
@@ -118,6 +128,19 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
       consuming.current = false;
     }
   }, [state.canUse, state.remaining, tier, session, openBlockedModal]);
+
+  const tryConsumeCredit = useCallback(async (): Promise<boolean> => {
+    if (consuming.current || !stateRef.current.canUse) return false;
+    consuming.current = true;
+    try {
+      const { ok, state: next } = await consumeCredit(tier, session, stateRef.current.remaining);
+      stateRef.current = next;
+      setState(next);
+      return ok;
+    } finally {
+      consuming.current = false;
+    }
+  }, [tier, session]);
 
   const promptUpgrade = useCallback(() => {
     if (tier === 'guest') setBlockedModal('register');
@@ -136,6 +159,7 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
     refresh: () => void load(),
     requestProAccess,
     promptUpgrade,
+    tryConsumeCredit,
   };
 
   const closeModal = () => setBlockedModal(null);

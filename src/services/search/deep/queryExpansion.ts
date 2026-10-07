@@ -6,6 +6,7 @@
 // Agent-lite: a single deterministic-shaped call, not an agent swarm.
 
 import { logger } from '../../../utils/logger';
+import { appSettings } from '../../../config/appSettings';
 
 export interface ExpandedQueries {
   principal: string;
@@ -58,10 +59,10 @@ Language: ${locale}`;
       body: JSON.stringify({
         prompt: JSON.stringify({
           input: [{ role: 'user', content: userMessage }],
-          model: 'gpt-5-mini',
+          model: appSettings.models.utility,
           response_format: { type: 'json_object' },
           max_output_tokens: 300,
-          reasoning: { effort: 'low' },
+          reasoning: { effort: 'minimal' }, // → 'none' on Luna (fetch-openai normalizes)
         }),
       }),
       signal: controller.signal,

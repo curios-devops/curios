@@ -185,3 +185,52 @@ STRIPE_MONTHLY_PRICE_ID / STRIPE_YEARLY_PRICE_ID) and don't change from here.
 ```
 PROMO_REGULAR_MONTHLY = $10
 ```
+
+
+====================================================================
+====================== MODELS ======================================
+====================================================================
+Which AI models answer questions. Every question is first rated by the
+OpenAI Decisions API as easy / normal / complex, and the matching tier
+answers it, in every mode (Search, Stories, Video, Character):
+
+  easy    → LUNA   (fast, cheapest)
+  normal  → SOL    (default)
+  complex → ASTRA  (best; costs the user 1 Pro credit)
+
+Without credits, a complex question is answered by SOL and the user sees a
+notice offering Upgrade (to continue with ASTRA) or Dismiss.
+Any invalid model name falls back to the default shown.
+Approximate cost per Search answer: LUNA ~$0.0007 · SOL ~$0.013 · ASTRA ~$0.065.
+
+### MODEL_ROUTER — rate each question and pick the tier
+ON = Luna / Sol / Astra by difficulty · OFF = always SOL. Default = ON
+```
+MODEL_ROUTER = ON
+```
+
+### MODEL_LUNA / MODEL_SOL / MODEL_ASTRA — the three answer tiers
+Defaults: gpt-6-luna · gpt-6.1-sol · gpt-6-astra
+```
+MODEL_LUNA = gpt-6-luna
+MODEL_SOL = gpt-6.1-sol
+MODEL_ASTRA = gpt-6-astra
+```
+
+### MODEL_DEEP — Search's "Ask Deeper" research synthesis (free, no credit)
+Default = gpt-6.1-sol
+```
+MODEL_DEEP = gpt-6.1-sol
+```
+
+### MODEL_UTILITY — behind-the-scenes helpers (query rewriting, topics, articles)
+Default = gpt-6-luna
+```
+MODEL_UTILITY = gpt-6-luna
+```
+
+### MODEL_IMAGE — generated images (Search, Stories)
+Default = gpt-image-2
+```
+MODEL_IMAGE = gpt-image-2
+```

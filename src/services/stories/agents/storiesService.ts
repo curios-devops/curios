@@ -37,7 +37,8 @@ class StoriesService {
   async performStoryAnalysis(
     query: string,
     onProgress?: StoryProgressCallback,
-    focusCategory?: string
+    focusCategory?: string,
+    model?: Promise<string>
   ): Promise<StoryResult> {
     try {
       logger.info('StoriesService: Starting insight analysis', { query, focusCategory });
@@ -45,7 +46,8 @@ class StoriesService {
       const request: StoryRequest = {
         query: query.trim(),
         isPro: false, // Always false for insights service
-        focusCategory: focusCategory // No default - let auto-detection work
+        focusCategory: focusCategory, // No default - let auto-detection work
+        model
       };
 
       const result = await this.getAgent().process(request, onProgress);

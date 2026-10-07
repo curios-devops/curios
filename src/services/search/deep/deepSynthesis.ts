@@ -5,9 +5,10 @@
 import { streamLLMText, buildSourcesText } from '../providers/llmProvider';
 import type { WebSearchResult } from '../providers/webSearchProvider';
 
-// Ask Deeper uses the full (non-mini) model for research-grade synthesis.
-// Default tier stays on gpt-5-mini.
-const DEEP_MODEL = import.meta.env.VITE_FASTSEARCH_DEEP_MODEL || 'gpt-5';
+import { appSettings } from '../../../config/appSettings';
+
+// Ask Deeper's research-grade synthesis model (app-settings.md MODEL_DEEP).
+const DEEP_MODEL = appSettings.models.deep;
 
 export interface DeepSynthesisContext {
   query: string;

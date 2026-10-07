@@ -53,6 +53,8 @@ export async function speakAnswer(params: {
   history: Array<{ role: 'user' | 'character'; text: string }>;
   locale: string;
   onSpeech: (text: string) => void;
+  /** Conversation's answer model (Luna/Sol/Astra); resolved while the web search runs. */
+  model?: Promise<string>;
 }): Promise<{ speech: string; suggestions: string[]; sources: WebSearchResult[] }> {
   const { question, name, history, locale, onSpeech } = params;
   mark('anam answer: web search → start');
@@ -73,11 +75,12 @@ Answer in language "${locale}" in 40–80 spoken words: direct, accurate, ground
 Then on a new line write exactly ${SUGGESTIONS_MARKER} followed by a JSON array of 3 short follow-up questions in language "${locale}".`;
 
   const splitter = new SpeechSplitter(onSpeech);
+  const model = await params.model;
   let first = true;
   await streamLLMText(prompt, 700, (chunk) => {
     if (first) { mark('anam answer: first LLM token'); first = false; }
     splitter.feed(chunk);
-  }, 45000, undefined, 'minimal');
+  }, 45000, model, 'minimal');
   const out = splitter.finish();
   mark('anam answer: LLM ← done');
   return { ...out, sources };

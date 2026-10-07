@@ -9,6 +9,8 @@ import { generateExpansionStreaming, extractKnowMoreLabel } from '../providers/l
 import type { FastSearchResponse } from '../controller';
 import { exportDeepSearchPdf } from '../utils/exportPdf';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
+import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
+import AstraNotice from '../../../components/AstraNotice.tsx';
 import CustomMarkdown from '../../../components/CustomMarkdown';
 import TopBar from '../../../components/results/TopBar';
 import DynamicShareRow from '../../../components/share/DynamicShareRow';
@@ -114,6 +116,8 @@ export default function FastSearchResults() {
   const buyIntentConfirmed = searchParams.get('buy') === '1';
 
   const { requestProAccess } = useProCredits();
+  const { getModel, answerModel, continueWithAstra } = useAnswerModel(query);
+  const forcedAstra = searchParams.get('tier') === 'astra';
 
   const [effectiveDeep, setEffectiveDeep] = useState(false);
   const [headerImage, setHeaderImage] = useState<string | null>(null);
@@ -209,7 +213,7 @@ export default function FastSearchResults() {
 
     // Guard against duplicate execution (StrictMode / re-renders) to avoid
     // firing the same search twice.
-    const runKey = `${query}|${wantsDeep}`;
+    const runKey = `${query}|${wantsDeep}|${forcedAstra}`;
     if (runKeyRef.current === runKey) return;
     runKeyRef.current = runKey;
 
@@ -284,7 +288,7 @@ export default function FastSearchResults() {
               (url: string) => setHeaderImage(url)
             )
           : await executeFastSearchStreaming(
-              { query, locale, skipSerpApiImages: buyIntentConfirmed },
+              { query, locale, skipSerpApiImages: buyIntentConfirmed, model: getModel().then((m) => m.model) },
               onChunk,
               onSources,
               onImagesFound
@@ -332,7 +336,7 @@ export default function FastSearchResults() {
     // Only re-run when the query or requested tier changes; other deps (navigate,
     // state setters) are stable/intentionally omitted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, wantsDeep]);
+  }, [query, wantsDeep, forcedAstra]);
 
   // Toggle "Ask Deeper" (a Pro feature). This is the single gate: turning it ON
   // consumes a Pro Credit via requestProAccess; if the user is out of access it
@@ -360,7 +364,7 @@ export default function FastSearchResults() {
     try {
       let added = '';
       const { nextLabel } = await generateExpansionStreaming(
-        { query, previous, topic, sources: foundSources, locale: navigator.language.split('-')[0] || 'en' },
+        { query, previous, topic, sources: foundSources, locale: navigator.language.split('-')[0] || 'en', model: answerModel?.model },
         (chunk) => {
           added += chunk;
           setExpansions((prev) => prev.map((t, i) => (i === index ? t + chunk : t)));
@@ -550,6 +554,10 @@ export default function FastSearchResults() {
           ) : carouselImages.length > 0 && (
             <ImagesCarousel images={carouselImages} featuredFirst={hasFeaturedImage} />
           )
+        )}
+
+        {!effectiveDeep && answerModel?.astraBlocked && streamingAnswer && activeTab === 'answer' && (
+          <AstraNotice onContinueWithAstra={continueWithAstra} />
         )}
 
         {/* Dynamic share row - between carousel and outline (blueprint placement).

@@ -26,6 +26,9 @@ import { directTurn, buildScriptEvent, type StageProduct, type DirectedTurn } fr
 import { startCharacterSession, type LiveCharacter } from '../characterSession';
 import { startAnamSession, SpeechQueue, type LiveAnam } from '../anamSession';
 import { speakAnswer } from '../speechAnswer';
+import { decideTier, pickAnswerModel, type AnswerModel } from '../../auto/modelTier';
+import { appSettings } from '../../../config/appSettings';
+import AstraNotice from '../../../components/AstraNotice';
 import CharacterPicker from '../components/CharacterPicker';
 import { mark } from '../timing';
 import { loadPrefs, fetchPrefs, savePrefs, type CharacterPrefs } from '../characterPrefs';
@@ -77,7 +80,7 @@ function presenterFor(body: Body, id: string | null, prefs: CharacterPrefs): Pre
 }
 
 /** Full body: buy intent → product on stage → director (search + motion). */
-async function prepareFullTurn(q: string, character: CharacterPreset, history: Turn[], knownProduct: StageProduct | null) {
+async function prepareFullTurn(q: string, character: CharacterPreset, history: Turn[], knownProduct: StageProduct | null, model?: Promise<string>) {
   mark('ask: question', { q });
   const buy = await resolveBuyIntent(q).catch(() => ({ isBuyIntent: false }));
   mark('ask: buy-intent ← done', { buy: buy.isBuyIntent });
@@ -87,7 +90,7 @@ async function prepareFullTurn(q: string, character: CharacterPreset, history: T
     const p = result?.success ? result.products[0] : null;
     if (p?.imageUrl) product = { title: p.title, imageUrl: p.imageUrl };
   }
-  const turn = await directTurn({ question: q, character, history, product: buy.isBuyIntent ? product : null, locale: locale() });
+  const turn = await directTurn({ question: q, character, history, product: buy.isBuyIntent ? product : null, locale: locale(), model });
   return { turn, product: buy.isBuyIntent ? product : null };
 }
 
@@ -97,7 +100,13 @@ export default function CharacterResults() {
   const initialQuery = params.get('q') || '';
   const openMic = params.get('mic') === '1';
 
-  const { requestProAccess, canUseProFeature, loading: creditsLoading } = useProCredits();
+  const { requestProAccess, canUseProFeature, loading: creditsLoading, remaining, tryConsumeCredit } = useProCredits();
+  // Answer model for the whole conversation, rated on its first question (Luna/Sol/Astra).
+  const modelRef = useRef<Promise<string> | undefined>(undefined);
+  const [answerModel, setAnswerModel] = useState<AnswerModel | null>(null);
+  const remainingRef = useRef(remaining);
+  remainingRef.current = remaining;
+  const forcedAstra = params.get('tier') === 'astra';
   const { session } = useSession();
   const { isRecording, startRecording, stopRecording } = useVoiceRecording();
 
@@ -238,9 +247,10 @@ export default function CharacterResults() {
 
   /** Start generating an answer — independent of the live connection. */
   const prepare = useCallback((q: string, who: Presenter, history: Turn[]): Prepared => {
-    if (who.body === 'full') return { kind: 'full', turn: prepareFullTurn(q, who.preset, history, productRef.current) };
+    const model = modelRef.current;
+    if (who.body === 'full') return { kind: 'full', turn: prepareFullTurn(q, who.preset, history, productRef.current, model) };
     const queue = new SpeechQueue();
-    const answer = speakAnswer({ question: q, name: who.preset.name, history, locale: locale(), onSpeech: (t) => queue.push(t) })
+    const answer = speakAnswer({ question: q, name: who.preset.name, history, locale: locale(), onSpeech: (t) => queue.push(t), model })
       .then((r) => { queue.end(); return r; });
     return { kind: 'half', queue, answer };
   }, []);
@@ -311,6 +321,18 @@ export default function CharacterResults() {
     stopCaptionTimer();
     speakingRef.current = false;
 
+    // Rate the first question → conversation model. Astra needs a SECOND credit (the first is
+    // the conversation's), so it's only picked with ≥2 left and charged once the session is live —
+    // waiting for the charge would delay the parallel first answer by the whole connect time.
+    let pick: Promise<AnswerModel> | null = null;
+    if (firstQ.trim()) {
+      pick = (async () => {
+        const tier = forcedAstra ? 'complex' : await decideTier(firstQ);
+        return pickAnswerModel(tier, async () => remainingRef.current >= 2);
+      })();
+      modelRef.current = pick.then((m) => m.model);
+    }
+
     // Parallel: the first answer starts now, while the session connects.
     let prepared: Prepared | null = null;
     if (firstQ.trim()) {
@@ -358,6 +380,12 @@ export default function CharacterResults() {
       }
       engineRef.current = engine;
       touch();
+      if (pick) {
+        void pick.then(async (m) => {
+          setAnswerModel(m);
+          if (m.model === appSettings.models.astra) await tryConsumeCredit();
+        });
+      }
       if (prepared) {
         await deliver(prepared).catch((e) => setStatusDetail(e instanceof Error ? e.message : 'Something went wrong'));
         setThinking(false);
@@ -371,7 +399,7 @@ export default function CharacterResults() {
       setStatus('error');
       setStatusDetail(`${who.preset.name} couldn't get on stage right now. Please try again in a moment.`);
     }
-  }, [canUseProFeature, deliver, maybeRecordLoop, openMic, prepare, requestProAccess, startRecording]);
+  }, [canUseProFeature, deliver, forcedAstra, maybeRecordLoop, openMic, prepare, requestProAccess, startRecording, tryConsumeCredit]);
 
   // Start once credits are known (checking earlier reads an empty balance).
   useEffect(() => {
@@ -669,6 +697,16 @@ export default function CharacterResults() {
               </p>
             )}
           </div>
+
+          {answerModel?.astraBlocked && (
+            <AstraNotice
+              onContinueWithAstra={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set('tier', 'astra');
+                window.location.assign(url.toString());
+              }}
+            />
+          )}
 
           {suggestions.length > 0 && (
             <div className="flex flex-wrap gap-2">

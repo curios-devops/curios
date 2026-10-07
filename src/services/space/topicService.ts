@@ -4,8 +4,9 @@
 // any failure so persistence never depends on it.
 
 import { logger } from '../../utils/logger';
+import { appSettings } from '../../config/appSettings';
 
-const TOPICS_MODEL = import.meta.env.VITE_TOPICS_LLM_MODEL || 'gpt-4.1-mini-2025-04-14';
+const TOPICS_MODEL = appSettings.models.utility;
 
 /** URL slug for a topic, e.g. "monetary policy" -> "monetary-policy". */
 export function topicSlug(topic: string): string {
