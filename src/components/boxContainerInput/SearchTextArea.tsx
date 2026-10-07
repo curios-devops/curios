@@ -19,8 +19,6 @@ const getPlaceholderKey = (mode: ModeType): string => {
       return 'placeholderSearch';
     case 'stories':
       return 'placeholderStories';
-    case 'cinematic':
-      return 'placeholderCinematic';
     case 'movie':
       return 'placeholderMovie';
     case 'avatar':

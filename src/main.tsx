@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './components/auth/AuthContext.tsx';
 import App from './App.tsx';
 import Home from './mainPages/Home.tsx'; // Keep Home page eager loaded as it's the landing page
@@ -67,7 +67,6 @@ const ProSearchResults = lazyRetry(() => import('./services/legacy-search/pro/pa
 const ProSearchTest = lazyRetry(() => import('./services/legacy-search/pro/pages/ProSearchTest.tsx'));
 // Stories — regular workflow. Pro research was removed.
 const StoriesResults = lazyRetry(() => import('./services/stories/pages/StoriesResults.tsx'));
-const CinematicResults = lazyRetry(() => import('./services/cinematic/pages/CinematicResults.tsx'));
 const MovieResults = lazyRetry(() => import('./services/movie/pages/MovieResults.tsx'));
 const MovieSharePage = lazyRetry(() => import('./services/movie/pages/MovieSharePage.tsx'));
 const Explore = lazyRetry(() => import('./mainPages/Explore.tsx'));
@@ -108,6 +107,12 @@ const LazyPageWrapper = ({ children }: { children: ReactNode }) => (
 );
 
 // Configure router with future flags
+// Redirect retired Cinematic routes to Video (Movie), preserving the query string.
+function ToVideo() {
+  const { search } = useLocation();
+  return <Navigate to={`/movie-results${search}`} replace />;
+}
+
 const router = createBrowserRouter(
   [
     {
@@ -125,10 +130,10 @@ const router = createBrowserRouter(
         { path: '/pro-search-test', element: <LazyPageWrapper><ProSearchTest /></LazyPageWrapper> },
         { path: '/stories-results', element: <LazyPageWrapper><StoriesResults /></LazyPageWrapper> },
         // Pro research routes removed (legacy code deleted).
-        // /labs-results routes now serve Cinematic
-        { path: '/labs-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
-        { path: '/pro-labs-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
-        { path: '/cinematic-results', element: <LazyPageWrapper><CinematicResults /></LazyPageWrapper> },
+        // Cinematic was merged into Video (Movie) — old links keep their ?q= and land there.
+        { path: '/labs-results', element: <ToVideo /> },
+        { path: '/pro-labs-results', element: <ToVideo /> },
+        { path: '/cinematic-results', element: <ToVideo /> },
         { path: '/movie-results', element: <LazyPageWrapper><MovieResults /></LazyPageWrapper> },
         { path: '/movie/share/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> },
         // Curiosity Engine routes

@@ -1,7 +1,11 @@
 // deno-lint-ignore-file no-import-prefix
-// Auto Mode intent classifier.
-// Classifies a user query into one of: search | avatar | movie and returns { mode }.
+// Auto Mode intent router.
+// PRIMARY: OpenAI Decisions API — one call answers two typed questions: which mode
+// (choice, with probabilities → we take the argmax) and whether the user wants to buy
+// (predicate). FALLBACK: gpt-5-nano → gpt-5-mini text classification (mode only).
+// Returns { mode, probabilities?, buyProbability (null when unknown), backend }.
 // Orchestration layer only — does not call any downstream mode.
+import { decide } from "../_shared/decisions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,23 +18,49 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const OPENAI_ORG_ID = Deno.env.get("OPENAI_ORG_ID");
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const TIMEOUT_MS = 8000; // Keep fast — Auto must not block the user.
+const DECISIONS_TIMEOUT_MS = 1500;
 
-type Mode = "search" | "avatar" | "movie" | "stories";
-const VALID_MODES: Mode[] = ["search", "avatar", "movie", "stories"];
+type Mode = "search" | "stories" | "movie" | "character";
+const VALID_MODES: Mode[] = ["search", "stories", "movie", "character"];
 
-const SYSTEM_PROMPT = `You are an intent router. Classify the user's query into exactly ONE mode:
+// Single source of truth for what each mode is for — used by Decisions and the fallback prompt.
+// Search is deliberately NOT described as the default: the old prompt's "when unsure, choose
+// search" produced a heavy Search bias and almost no Video/Character routes.
+const MODE_CHOICES: { value: Mode; description: string }[] = [
+  {
+    value: "search",
+    description:
+      "A quick written answer is enough: a specific fact, number, price, date, definition, name, score, weather, address, recipe, how-to steps, a list of options or a product to buy. Reading for a few seconds fully satisfies it.",
+  },
+  {
+    value: "stories",
+    description:
+      "News and evolving situations: what is happening, the latest developments, trends, or an ongoing story around a topic, company, person, market or event, best told with several sources.",
+  },
+  {
+    value: "movie",
+    description:
+      "Curiosity best answered by a short explainer VIDEO: how or why something works or happens, a process, a natural or scientific phenomenon, a historical event, a place, an animal, space, the body, 'show me', 'what would it look like', 'explain ... visually' or 'tell me the story of'.",
+  },
+  {
+    value: "character",
+    description:
+      "The user wants a live CONVERSATION with a person: chatting, talking to someone, advice, coaching, tutoring, practicing a language or interview, role-play, talking to a persona or expert, emotional support, or addressing the assistant personally ('can you', 'let's talk', 'I feel', 'help me practice').",
+  },
+];
 
-- "search": a specific, factual lookup with a concrete answer — facts, prices, definitions, a single piece of news. Examples: "Tesla stock price", "Who won the 2026 election", "Latest iPhone release date".
-- "stories": a request to understand what's happening, trending, or emerging around a topic — trend analysis and "what's new / what's happening / latest developments" framed broadly. Examples: "What's happening with AI?", "What's new in technology this year?", "Latest trends in startups", "Tell me about quantum computing developments".
-- "avatar": educational / explainer requests where the user wants to learn or understand a concept. Examples: "Explain black holes", "Teach me calculus", "Help me understand inflation".
-- "movie": entertainment / storytelling requests meant to be experienced as a narrative. Examples: "Tell me the story of Rome", "Explain WW2 as a movie".
+const MODE_INSTRUCTIONS =
+  "Pick the Curios experience that best answers this request. Judge what the user would enjoy most, not what is easiest: choose search only when a short written answer fully satisfies the request.";
 
-Rules:
-- "search" is for a single concrete fact; "stories" is for broader trends/developments on a topic.
-- Never output "cinematic".
-- When unsure, choose "search".
+const BUY_INSTRUCTIONS =
+  "The user intends to buy, shop for, order, find deals or prices for, or choose a product to purchase right now — not merely learn how something works or follow news about it.";
 
-Respond with strict JSON only: {"mode":"search|stories|avatar|movie","reasoning":"<short>"}.`;
+const SYSTEM_PROMPT = `You are an intent router. ${MODE_INSTRUCTIONS}
+Classify the user's query into exactly ONE mode:
+
+${MODE_CHOICES.map((c) => `- "${c.value}": ${c.description}`).join("\n")}
+
+Respond with strict JSON only: {"mode":"search|stories|movie|character"}.`;
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -53,16 +83,34 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Missing query" }, 400);
     }
 
-    // Try the fast/cheap model first; if it isn't enabled on the org (or errors),
-    // fall back to gpt-5-mini before finally defaulting to "search".
+    const answers = await decide(query, [
+      { type: "choice", name: "mode", instructions: MODE_INSTRUCTIONS, choices: MODE_CHOICES },
+      { type: "predicate", name: "buy", instructions: BUY_INSTRUCTIONS },
+    ], DECISIONS_TIMEOUT_MS);
+
+    const probabilities = answers?.mode?.probabilities;
+    if (probabilities?.length) {
+      const top = probabilities.reduce((a, b) => (b.probability > a.probability ? b : a));
+      if (VALID_MODES.includes(top.value as Mode)) {
+        const buy = answers?.buy?.probability;
+        return jsonResponse({
+          mode: top.value,
+          probabilities,
+          buyProbability: typeof buy === "number" ? buy : null,
+          backend: "decisions",
+        });
+      }
+    }
+
+    // Decisions unavailable → previous text classifier (mode only; client resolves buy intent).
     let mode = await classifyWithModel("gpt-5-nano", query);
     if (!mode) mode = await classifyWithModel("gpt-5-mini", query);
 
-    return jsonResponse({ mode: mode ?? "search" });
+    return jsonResponse({ mode: mode ?? "search", buyProbability: null, backend: mode ? "gpt-5" : "default" });
   } catch (err) {
     console.error("classify-intent error", err);
     // Never block the user — degrade to search.
-    return jsonResponse({ mode: "search" });
+    return jsonResponse({ mode: "search", buyProbability: null, backend: "default" });
   }
 });
 

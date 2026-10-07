@@ -1,10 +1,16 @@
 // deno-lint-ignore-file no-import-prefix
-// Buy-intent tie-breaker (Gemini Flash Lite via Vertex).
+// Buy-intent tie-breaker — OpenAI Decisions predicate first, Gemini Flash Lite (Vertex) fallback.
 // The client's keyword/pattern heuristic (src/services/shopping-intent.ts) already resolves
 // most queries on its own (confident yes/no, no network call). Only the AMBIGUOUS confidence
 // band falls through to this function — a single cheap yes/no classification, not a full
 // intent router. Never blocks the caller: any failure/timeout defaults to false.
 import { getVertexAccessToken, vertexModelUrl } from "../_shared/vertex.ts";
+import { decide } from "../_shared/decisions.ts";
+
+// Same wording as classify-intent's buy predicate — keep them in sync.
+const BUY_INSTRUCTIONS =
+  "The user intends to buy, shop for, order, find deals or prices for, or choose a product to purchase right now — not merely learn how something works or follow news about it.";
+const BUY_THRESHOLD = 0.5;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,6 +40,14 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const query = typeof body?.query === "string" ? body.query.trim() : "";
     if (!query) return jsonResponse({ error: "Missing query" }, 400);
+
+    const answers = await decide(query, [
+      { type: "predicate", name: "buy", instructions: BUY_INSTRUCTIONS },
+    ], 1500);
+    const probability = answers?.buy?.probability;
+    if (typeof probability === "number") {
+      return jsonResponse({ isBuyIntent: probability >= BUY_THRESHOLD, probability, backend: "decisions" });
+    }
 
     const isBuyIntent = await classify(query);
     return jsonResponse({ isBuyIntent });

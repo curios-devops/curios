@@ -1,6 +1,10 @@
-// Movie Mode — LTX image-to-video edge function.
+// Movie (Video) Mode — image-to-video edge function.
 //
-// PRIMARY: self-hosted LTX-2 19B distilled (audio+video) on RunPod Serverless — ASYNC.
+// PRIMARY: Pruna p-video-2 (image-to-video with native audio) — synchronous via Try-Sync,
+// then polling. Quality via the PRUNA_VIDEO_QUALITY secret: low (720p draft) | medium
+// (720p, default) | high (1080p). Any Pruna failure falls through to the LTX chain below.
+//
+// LTX BACKUP: self-hosted LTX-2 19B distilled (audio+video) on RunPod Serverless — ASYNC.
 // A warm render takes ~4 min, far beyond the synchronous response window, so this function
 // creates a `video_jobs` row, submits the RunPod job with a webhook back to itself, and
 // returns { jobId, async: true } immediately. When RunPod finishes it calls the webhook;
@@ -51,6 +55,12 @@ type Body = {
 const BUCKET = "movie-assets";
 const WAVESPEED_ENDPOINT =
   "https://api.wavespeed.ai/api/v3/lightricks/ltx-2-fast/image-to-video";
+
+const PRUNA_API_KEY = Deno.env.get("PRUNA_API_KEY");
+const PRUNA_BASE = "https://api.pruna.ai/v1";
+// Pruna gets this long before we fall back to LTX — leaves room for Wavespeed's ~120s
+// inside the edge function's wall-clock limit.
+const PRUNA_BUDGET_MS = 100000;
 
 const RUNPOD_API_KEY = Deno.env.get("RUNPOD_API_KEY");
 const RUNPOD_ENDPOINT_ID = Deno.env.get("RUNPOD_ENDPOINT_ID");
@@ -268,6 +278,74 @@ function getStatusAndPollUrl(payload: unknown): { status?: string; pollUrl?: str
   return { status, pollUrl };
 }
 
+// ── Pruna primary path ─────────────────────────────────────────────────────────
+function prunaQuality(): { resolution: string; draft: boolean } {
+  const q = (Deno.env.get("PRUNA_VIDEO_QUALITY") || "medium").toLowerCase();
+  if (q === "low") return { resolution: "720p", draft: true };
+  if (q === "high") return { resolution: "1080p", draft: false };
+  return { resolution: "720p", draft: false };
+}
+
+// Returns the stored video Response, or null so the caller falls back to LTX.
+async function runPruna(body: Body, duration: number): Promise<Response | null> {
+  const headers = { "Content-Type": "application/json", apikey: PRUNA_API_KEY ?? "" };
+  const deadline = Date.now() + PRUNA_BUDGET_MS;
+  try {
+    const submit = await fetch(`${PRUNA_BASE}/predictions`, {
+      method: "POST",
+      headers: { ...headers, Model: "p-video-2", "Try-Sync": "true" },
+      body: JSON.stringify({
+        input: {
+          prompt: body.prompt,
+          image: body.imageUrl,
+          duration,
+          aspect_ratio: "16:9", // movie frames are rendered 16:9
+          ...prunaQuality(),
+          ...(typeof body.seed === "number" ? { seed: body.seed } : {}),
+        },
+      }),
+    });
+    let data = await submit.json().catch(() => null);
+    if (!submit.ok) {
+      console.error("Pruna submit failed", submit.status, JSON.stringify(data).slice(0, 500));
+      return null;
+    }
+
+    // Try-Sync answers with the finished prediction when it completes within ~60s;
+    // otherwise we poll get_url until our budget runs out.
+    while (data?.status !== "succeeded") {
+      if (data?.status === "failed" || data?.status === "canceled") {
+        console.error("Pruna generation failed", JSON.stringify(data).slice(0, 500));
+        return null;
+      }
+      if (Date.now() > deadline || !data?.get_url) {
+        console.error("Pruna timed out or returned no status URL", JSON.stringify(data).slice(0, 300));
+        return null;
+      }
+      await sleep(3000);
+      const poll = await fetch(data.get_url, { headers });
+      data = { get_url: data.get_url, ...(await poll.json().catch(() => ({}))) };
+    }
+
+    const genUrl: string | undefined = data.generation_url;
+    if (!genUrl) {
+      console.error("Pruna succeeded without generation_url", JSON.stringify(data).slice(0, 300));
+      return null;
+    }
+    const fileRes = await fetch(genUrl.startsWith("http") ? genUrl : `https://api.pruna.ai${genUrl}`, { headers });
+    if (!fileRes.ok) {
+      console.error("Pruna download failed", fileRes.status);
+      return null;
+    }
+    const bytes = new Uint8Array(await fileRes.arrayBuffer());
+    const publicUrl = await uploadVideo(bytes, body.userId, body.projectId, body.sceneId);
+    return json({ videoUrl: publicUrl, duration, backend: "pruna" });
+  } catch (err) {
+    console.error("Pruna request failed", String(err));
+    return null;
+  }
+}
+
 async function runWavespeed(body: Body, duration: number): Promise<Response> {
   const apiKey = Deno.env.get("WAVESPEED_API_KEY");
   if (!apiKey) {
@@ -360,10 +438,12 @@ serve(async (req) => {
 
   if (req.method === "GET") {
     const warnings: string[] = [];
+    if (!PRUNA_API_KEY) warnings.push("PRUNA_API_KEY not configured (LTX-only mode)");
     if (!Deno.env.get("WAVESPEED_API_KEY")) warnings.push("WAVESPEED_API_KEY not configured");
     if (!runpodConfigured) warnings.push("RunPod not configured (Wavespeed-only mode)");
     return json({
       ok: true,
+      primary: PRUNA_API_KEY ? `pruna:p-video-2 (${JSON.stringify(prunaQuality())})` : null,
       backend: runpodConfigured
         ? "runpod:ltx-2-distilled async (fallback wavespeed:ltx-2-fast)"
         : "wavespeed:ltx-2-fast/image-to-video",
@@ -424,6 +504,12 @@ serve(async (req) => {
       warning: "Video call prepared but not executed (executeModelCall=false).",
       backend: runpodConfigured ? "runpod" : "wavespeed",
     });
+  }
+
+  // Pruna first; the client's forceBackend:"wavespeed" retry skips straight to LTX.
+  if (PRUNA_API_KEY && body.forceBackend !== "wavespeed") {
+    const pruna = await runPruna(body, duration);
+    if (pruna) return pruna;
   }
 
   if (runpodConfigured && body.forceBackend !== "wavespeed") {

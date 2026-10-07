@@ -97,10 +97,8 @@ export default function ButtonBar({
         return t('search') || 'Search';
       case 'stories':
         return t('stories') || 'Stories';
-      case 'cinematic':
-        return t('cinematic') || 'Cinematic';
       case 'movie':
-        return t('movie') || 'Movie';
+        return t('video') || 'Video';
       case 'character':
         return t('character') || 'Character';
       case 'avatar':
@@ -190,7 +188,7 @@ export default function ButtonBar({
               {/* Legacy "Search" option removed — Fast Search (now "Search") is
                   the default and leads the ModeSelector list below. */}
 
-              {/* Mode Selector - Search (formerly Fast Search), Stories, Avatar, Cinematic */}
+              {/* Mode Selector - Search (formerly Fast Search), Stories, Video, Character */}
               <ModeSelector
                 selectedMode={selectedMode}
                 onModeSelect={onModeSelect}

@@ -5,7 +5,7 @@ import { useSession } from '../hooks/useSession';
 import { useSubscription } from '../hooks/useSubscription';
 import { useProCredits } from '../providers/ProCreditsProvider';
 import { generateArticleImage, extractArticleSummary } from '../services/stories/agents/imageGenerationService';
-import { NarrationService } from '../services/cinematic/audio/NarrationService';
+import { NarrationService } from '../services/movie/audio/NarrationService';
 
 // Standard ElevenLabs premade voices for the "Listen to this article" picker.
 const ELEVENLABS_VOICES: { id: string; name: string; tone: string }[] = [
