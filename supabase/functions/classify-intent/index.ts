@@ -40,7 +40,7 @@ const MODE_CHOICES: { value: Mode; description: string }[] = [
   {
     value: "movie",
     description:
-      "Curiosity best answered by a short explainer VIDEO: how or why something works or happens, a process, a natural or scientific phenomenon, a historical event, a place, an animal, space, the body, 'show me', 'what would it look like', 'explain ... visually' or 'tell me the story of'.",
+      "Curiosity best answered by a short explainer VIDEO: any 'why does/is…' or 'how does…' question about how or why something works or happens, a process, a natural or scientific phenomenon, a historical event, a place, an animal, space, the body, 'show me', 'what would it look like', 'explain ... visually' or 'tell me the story of'.",
   },
   {
     value: "character",
@@ -50,7 +50,7 @@ const MODE_CHOICES: { value: Mode; description: string }[] = [
 ];
 
 const MODE_INSTRUCTIONS =
-  "Pick the Curios experience that best answers this request. Judge what the user would enjoy most, not what is easiest: choose search only when a short written answer fully satisfies the request.";
+  "Pick the Curios experience that best answers this request. Judge what the user would enjoy most, not what is easiest: choose search only when a short written answer fully satisfies the request. Why/how questions about nature, science, the body, history or how things work belong to movie even when a one-line answer exists.";
 
 const BUY_INSTRUCTIONS =
   "The user intends to buy, shop for, order, find deals or prices for, or choose a product to purchase right now — not merely learn how something works or follow news about it.";
