@@ -15,8 +15,6 @@ const optionalEnvVars = {
   VITE_BRAVE_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_BRAVE_API_KEY : '') || '',
   VITE_TAVILY_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_TAVILY_API_KEY : '') || '',
   VITE_STRIPE_PUBLISHABLE_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_PUBLISHABLE_KEY : '') || '',
-  VITE_STRIPE_SECRET_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_SECRET_KEY : '') || '',
-  VITE_STRIPE_WEBHOOK_SECRET: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_WEBHOOK_SECRET : '') || '',
   VITE_STRIPE_MONTHLY_PRICE_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_MONTHLY_PRICE_ID : '') || '',
   VITE_STRIPE_YEARLY_PRICE_ID: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_STRIPE_YEARLY_PRICE_ID : '') || '',
   VITE_GOOGLE_AI_API_KEY: (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_GOOGLE_AI_API_KEY : '') || '',
@@ -61,10 +59,9 @@ export const env = {
   tavily: {
     apiKey: optionalEnvVars.VITE_TAVILY_API_KEY
   },
+  // Stripe secrets live only in Supabase function secrets — never in VITE_* (they'd ship in the bundle).
   stripe: {
     publishableKey: optionalEnvVars.VITE_STRIPE_PUBLISHABLE_KEY,
-    secretKey: optionalEnvVars.VITE_STRIPE_SECRET_KEY,
-    webhookSecret: optionalEnvVars.VITE_STRIPE_WEBHOOK_SECRET,
     prices: {
       month: optionalEnvVars.VITE_STRIPE_MONTHLY_PRICE_ID,
       year: optionalEnvVars.VITE_STRIPE_YEARLY_PRICE_ID,

@@ -5,6 +5,7 @@
 
 import type { WebSearchResult } from '../webSearchProvider';
 import { logger } from '../../../../utils/logger';
+import { paced } from '../../../../commonService/utils/enginePacer';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://gpfccicfqynahflehpqo.supabase.co';
 
@@ -24,7 +25,7 @@ export async function searchExa(query: string, numResults = 10): Promise<WebSear
   const timeoutId = setTimeout(() => controller.abort(), 12000);
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/exa-search`, {
+    const res = await paced('exa', () => fetch(`${SUPABASE_URL}/functions/v1/exa-search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -32,7 +33,7 @@ export async function searchExa(query: string, numResults = 10): Promise<WebSear
       },
       body: JSON.stringify({ query: query.trim(), numResults }),
       signal: controller.signal,
-    });
+    }));
 
     clearTimeout(timeoutId);
 

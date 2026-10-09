@@ -1,6 +1,5 @@
 // Media Search Provider — Default tier routing.
-// Images: Serper primary, Brave fallback when sparse (or Serper key missing).
-// Videos: not yet implemented.
+// Images and videos: SerpAPI primary, Brave fallback when sparse.
 
 import { searchSerpApiImages } from './engines/serpApiImages';
 import { searchSerpApiVideos } from './engines/serpApiVideos';
@@ -25,8 +24,9 @@ export interface VideoResult {
   platform?: string;
 }
 
-// Below this many SerpAPI images we consider it "few" and bring in Brave.
+// Below this many SerpAPI images / videos we consider it "few" and bring in Brave.
 const MIN_IMAGES = 4;
+const MIN_VIDEOS = 2;
 
 function dedupeByUrl(images: ImageResult[]): ImageResult[] {
   const seen = new Set<string>();
@@ -87,7 +87,7 @@ function dedupeVideosByUrl(videos: VideoResult[]): VideoResult[] {
 }
 
 /**
- * Execute video search: Brave primary, SerpAPI fallback when Brave returns none.
+ * Execute video search: SerpAPI primary, Brave fallback when sparse (same order as images).
  */
 export async function searchVideos(query: string): Promise<VideoResult[]> {
   if (!query?.trim()) {
@@ -95,16 +95,18 @@ export async function searchVideos(query: string): Promise<VideoResult[]> {
     return [];
   }
 
-  const braveVideos = await searchBraveVideos(query);
+  const serpVideos = await searchSerpApiVideos(query);
 
-  if (braveVideos.length > 0) {
-    logger.info('MediaSearchProvider: Brave video search completed', {
-      resultCount: braveVideos.length,
+  if (serpVideos.length >= MIN_VIDEOS) {
+    logger.info('MediaSearchProvider: SerpAPI video search completed', {
+      resultCount: serpVideos.length,
     });
-    return braveVideos.slice(0, 10);
+    return dedupeVideosByUrl(serpVideos).slice(0, 10);
   }
 
-  logger.info('MediaSearchProvider: Brave returned no videos, falling back to SerpAPI');
-  const serpVideos = await searchSerpApiVideos(query);
-  return dedupeVideosByUrl(serpVideos).slice(0, 10);
+  logger.info('MediaSearchProvider: SerpAPI videos sparse, falling back to Brave', {
+    serpCount: serpVideos.length,
+  });
+  const braveVideos = await searchBraveVideos(query);
+  return dedupeVideosByUrl([...serpVideos, ...braveVideos]).slice(0, 10);
 }

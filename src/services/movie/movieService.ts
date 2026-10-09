@@ -12,8 +12,7 @@
 // Reuses cinematic infrastructure: search tools, streamNarrative, NarrationService.
 
 import { supabase } from '../../lib/supabase.ts';
-import { searchWithTavily } from '../../commonService/searchTools/tavilyService.ts';
-import { braveSearchTool } from '../../commonService/searchTools/braveSearchTool.ts';
+import { executeWebSearch } from '../search/providers/webSearchProvider.ts';
 import { streamNarrative } from './core/narrativeFlow.ts';
 import { NarrationService } from './audio/NarrationService.ts';
 import { logger } from '../../utils/logger.ts';
@@ -71,26 +70,9 @@ function buildLtxPrompt(swipe: MovieSwipe, realismScore?: number, mode?: MovieMo
 }
 
 async function researchSources(query: string): Promise<MovieSource[]> {
-  try {
-    const tavily = await searchWithTavily(query);
-    if (tavily.results?.length) {
-      return tavily.results.map((r) => ({ title: r.title, url: r.url, snippet: r.content }));
-    }
-  } catch (error) {
-    logger.warn('[MovieService] Tavily failed, trying Brave', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  try {
-    const brave = await braveSearchTool(query);
-    return brave.web.map((w) => ({ title: w.title, url: w.url, snippet: w.content }));
-  } catch (error) {
-    logger.warn('[MovieService] Brave fallback failed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return [];
-  }
+  // Same Exa → Tavily → Brave chain as Search (paced per engine).
+  const results = await executeWebSearch(query).catch(() => []);
+  return results.map((r) => ({ title: r.title, url: r.url, snippet: r.snippet }));
 }
 
 export async function generateMovie(

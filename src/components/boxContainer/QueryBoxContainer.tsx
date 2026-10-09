@@ -15,6 +15,7 @@ import { useVoiceRecording } from '../../hooks/useVoiceRecording.ts';
 import { transcribeAudioWithFallback } from '../../services/stt/transcriptionService.ts';
 import { classifyIntent } from '../../services/auto/intentRouter.ts';
 import { resolveBuyIntent } from '../../services/search/buyIntent.ts';
+import { isMovieQuery } from '../../services/auto/movieDetection.ts';
 
 const BUY_PROBABILITY_THRESHOLD = 0.5;
 import { warmMovieGpu } from '../../services/movie/warmupService.ts';
@@ -130,7 +131,13 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
     // Explicit modes (selectedMode !== 'auto') are honored as-is — no classification.
     let resolvedMode = selectedMode;
     let buyIntentDetected = false;
-    if (selectedMode === 'auto') {
+    // Movie 🍿: a film query in Auto or Video goes straight to Video with movie behavior —
+    // local detection, so Auto also skips the router call. Other modes are left as chosen.
+    const isMovie = (selectedMode === 'auto' || selectedMode === 'movie') && !hasImages && isMovieQuery(trimmedQuery);
+    if (isMovie) {
+      resolvedMode = 'movie';
+      warmMovieGpu();
+    } else if (selectedMode === 'auto') {
       if (hasImages) {
         // Images always mean reverse-image search — skip classification.
         resolvedMode = 'fastsearch';
@@ -159,11 +166,12 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
     // Already-confirmed buy intent → tell the Search page so it doesn't re-detect
     // (explicit "Search" mode selections still self-detect on the results page).
     const buyParam = buyIntentDetected ? '&buy=1' : '';
+    const movieParam = isMovie ? '&movie=1' : '';
 
     // Launched — drop the saved draft so we don't restore a stale query later.
     try { sessionStorage.removeItem('home_search_draft'); } catch { /* ignore */ }
 
-    navigate(`${route}${route.includes('?') ? '&' : '?'}q=${encodeURIComponent(trimmedQuery)}${imageParam}${buyParam}`);
+    navigate(`${route}${route.includes('?') ? '&' : '?'}q=${encodeURIComponent(trimmedQuery)}${imageParam}${buyParam}${movieParam}`);
   };
 
   // Enter no longer launches the search — it inserts a newline (use the arrow

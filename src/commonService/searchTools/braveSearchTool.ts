@@ -5,6 +5,7 @@
 
 import { logger } from '../../utils/logger';
 import { rateLimitQueue } from '../utils/rateLimit';
+import { paced } from '../utils/enginePacer';
 import type { SearxResult, ImageResult, VideoResult } from '../../types';
 
 const SUPABASE_URL = 'https://gpfccicfqynahflehpqo.supabase.co';
@@ -64,7 +65,7 @@ function truncateQuery(query: string): string {
  */
 async function callBraveWebSearch(query: string, timeout: number): Promise<Response> {
   const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  return fetch(`${SUPABASE_URL}/functions/v1/brave-web-search`, {
+  return paced('brave', () => fetch(`${SUPABASE_URL}/functions/v1/brave-web-search`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -72,7 +73,7 @@ async function callBraveWebSearch(query: string, timeout: number): Promise<Respo
     },
     body: JSON.stringify({ query }),
     signal: AbortSignal.timeout(timeout)
-  });
+  }));
 }
 
 /**
@@ -80,7 +81,7 @@ async function callBraveWebSearch(query: string, timeout: number): Promise<Respo
  */
 async function callBraveImagesSearch(query: string, timeout: number): Promise<Response> {
   const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  return fetch(`${SUPABASE_URL}/functions/v1/brave-images-search`, {
+  return paced('brave', () => fetch(`${SUPABASE_URL}/functions/v1/brave-images-search`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -88,7 +89,7 @@ async function callBraveImagesSearch(query: string, timeout: number): Promise<Re
     },
     body: JSON.stringify({ query }),
     signal: AbortSignal.timeout(timeout)
-  });
+  }));
 }
 
 /**

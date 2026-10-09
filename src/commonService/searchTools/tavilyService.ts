@@ -1,6 +1,7 @@
 import { SearchResult, ImageResult } from '../utils/types';
 import { API_TIMEOUTS } from '../utils/config';
 import { sanitizeResponse } from '../utils/utils';
+import { paced } from '../utils/enginePacer';
 
 interface TavilyImage {
   url: string;
@@ -36,9 +37,10 @@ export async function searchWithTavily(
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUTS.TAVILY);
 
     try {
-      // Validate API key
-      if (!import.meta.env.VITE_TAVILY_API_KEY?.trim()) {
-        throw new TavilyError('Tavily API key not configured');
+      // Tavily runs through the tavily-search edge function (the key stays server-side).
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!anonKey?.trim()) {
+        throw new TavilyError('Supabase anon key not configured');
       }
 
       // Validate query
@@ -46,24 +48,19 @@ export async function searchWithTavily(
         throw new TavilyError('Search query is required');
       }
 
-      // Tavily API call - does NOT use rate limit queue (independent from Brave)
-      const res = await fetch('https://api.tavily.com/search', {
+      // Tavily API call — paced per engine (independent from Brave)
+      const res = await paced('tavily', () => fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tavily-search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${anonKey}`,
         },
         body: JSON.stringify({
-          api_key: import.meta.env.VITE_TAVILY_API_KEY,
           query: query.trim(),
-          search_depth: searchDepth, // 'basic' or 'advanced' (advanced costs more)
-          max_results: 10, // Testing if more results = more images
-          include_images: true, // Set to true to test image results
-          include_image_descriptions: true, // Include descriptions for images
-          include_answer: false,
-          chunks_per_source: 1, // Reduce to 1 chunk per source to minimize payload size
+          searchDepth, // 'basic' or 'advanced' (advanced costs more)
         }),
         signal: controller.signal,
-      });
+      }));
 
       clearTimeout(timeoutId);
 

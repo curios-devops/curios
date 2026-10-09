@@ -1,8 +1,11 @@
-// Web Search Provider — Default tier routing.
-// Exa is the primary engine; if it returns few results we supplement with Brave.
+// Web Search Provider — Default tier routing (one query, fast).
+// Exa → Tavily → Brave: each engine runs only when the previous ones failed or came
+// back sparse, and its results are merged in. Calls to the same engine are paced 1s
+// apart app-wide (commonService/utils/enginePacer).
 
 import { searchExa } from './engines/exaService';
 import { searchBraveWeb } from './engines/braveAdapter';
+import { searchWithTavily } from '../../../commonService/searchTools/tavilyService';
 import { logger } from '../../../utils/logger';
 
 export interface WebSearchResult {
@@ -12,7 +15,7 @@ export interface WebSearchResult {
   content?: string;
 }
 
-// Below this many Exa results we consider it "few" and bring in Brave.
+// Below this many results we consider the search "sparse" and bring in the next engine.
 const MIN_RESULTS = 5;
 
 function dedupeByUrl(results: WebSearchResult[]): WebSearchResult[] {
@@ -26,8 +29,18 @@ function dedupeByUrl(results: WebSearchResult[]): WebSearchResult[] {
   return out;
 }
 
+async function searchTavilyBasic(query: string): Promise<WebSearchResult[]> {
+  try {
+    const { results } = await searchWithTavily(query);
+    return results.map((r) => ({ title: r.title, url: r.url, snippet: r.content, content: r.content }));
+  } catch {
+    return [];
+  }
+}
+
 /**
- * Execute Default-tier web search: Exa primary, Brave fallback when sparse.
+ * Execute Default-tier web search: Exa → Tavily → Brave, stopping at the first
+ * engine that brings the merged results up to MIN_RESULTS.
  */
 export async function executeWebSearch(query: string): Promise<WebSearchResult[]> {
   if (!query?.trim()) {
@@ -35,17 +48,20 @@ export async function executeWebSearch(query: string): Promise<WebSearchResult[]
     return [];
   }
 
-  const exaResults = await searchExa(query, 10);
+  const chain: [string, (q: string) => Promise<WebSearchResult[]>][] = [
+    ['exa', (q) => searchExa(q, 10).catch(() => [])],
+    ['tavily', searchTavilyBasic],
+    ['brave', searchBraveWeb],
+  ];
 
-  if (exaResults.length >= MIN_RESULTS) {
-    logger.info('WebSearchProvider: Exa search completed', { resultCount: exaResults.length });
-    return exaResults;
+  let results: WebSearchResult[] = [];
+  for (const [engine, search] of chain) {
+    results = dedupeByUrl([...results, ...(await search(query))]);
+    if (results.length >= MIN_RESULTS) {
+      logger.info('WebSearchProvider: search completed', { engine, resultCount: results.length });
+      return results.slice(0, 10);
+    }
+    logger.info('WebSearchProvider: sparse, trying next engine', { after: engine, resultCount: results.length });
   }
-
-  // Few results from Exa → supplement with Brave.
-  logger.info('WebSearchProvider: Exa sparse, falling back to Brave', {
-    exaCount: exaResults.length,
-  });
-  const braveResults = await searchBraveWeb(query);
-  return dedupeByUrl([...exaResults, ...braveResults]).slice(0, 10);
+  return results.slice(0, 10);
 }

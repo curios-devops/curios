@@ -13,6 +13,17 @@ import { logger } from '../../../utils/logger';
 
 const MAX_DEEP_SOURCES = 30;
 
+type WebEngine = (query: string) => Promise<WebSearchResult[]>;
+
+/** Try engines in order; the first with results wins. Never throws. */
+async function firstNonEmpty(query: string, engines: WebEngine[]): Promise<WebSearchResult[]> {
+  for (const engine of engines) {
+    const results = await engine(query).catch(() => [] as WebSearchResult[]);
+    if (results.length > 0) return results;
+  }
+  return [];
+}
+
 export interface DeepRetrievalResult {
   webResults: WebSearchResult[];
   images: ImageResult[];
@@ -78,30 +89,32 @@ export async function executeDeepRetrieval(
   queries: ExpandedQueries,
   opts: { skipSerpApiImages?: boolean } = {}
 ): Promise<DeepRetrievalResult> {
-  // Three engines in parallel, routed per angle:
-  //   principal / expansion → Tavily Deep (advanced)
-  //   contrapunto / perspectives → Exa + Brave
-  const [principalGroup, expansionGroup, contraExa, contraBrave, imgPrincipal, imgExpansion, vids] =
+  // One engine per angle, all in parallel, so no engine is hit twice at once:
+  //   principal → Tavily Deep (advanced) · expansion → Exa · contrapunto → Brave
+  // An angle whose engine fails or comes back empty falls back to the other engines
+  // (the per-engine pacer spaces any repeat call 1s apart).
+  const tavily = (q: string) => searchTavilyDeep(q);
+  const exa = (q: string) => searchExa(q, 10);
+  const brave = (q: string) => searchBraveWeb(q);
+  const [principalGroup, expansionGroup, contraGroup, imgPrincipal, imgExpansion, vids] =
     await Promise.all([
-      searchTavilyDeep(queries.principal).catch(() => [] as WebSearchResult[]),
-      searchTavilyDeep(queries.expansion).catch(() => [] as WebSearchResult[]),
-      searchExa(queries.contrapunto, 10).catch(() => [] as WebSearchResult[]),
-      searchBraveWeb(queries.contrapunto).catch(() => [] as WebSearchResult[]),
+      firstNonEmpty(queries.principal, [tavily, exa, brave]),
+      firstNonEmpty(queries.expansion, [exa, tavily, brave]),
+      firstNonEmpty(queries.contrapunto, [brave, exa, tavily]),
       searchImages(queries.principal, { skipSerpApi: opts.skipSerpApiImages }).catch(() => [] as ImageResult[]),
       searchImages(queries.expansion, { skipSerpApi: opts.skipSerpApiImages }).catch(() => [] as ImageResult[]),
       searchVideos(queries.principal).catch(() => [] as VideoResult[]),
     ]);
 
-  const webGroups = [principalGroup, expansionGroup, contraExa, contraBrave];
+  const webGroups = [principalGroup, expansionGroup, contraGroup];
   const webResults = dedupeAndRerank(webGroups);
   const images = dedupeImages([imgPrincipal, imgExpansion]);
 
   logger.info('DeepRetrieval: completed', {
     rawCounts: {
-      tavilyPrincipal: principalGroup.length,
-      tavilyExpansion: expansionGroup.length,
-      exaContrapunto: contraExa.length,
-      braveContrapunto: contraBrave.length,
+      principal: principalGroup.length,
+      expansion: expansionGroup.length,
+      contrapunto: contraGroup.length,
     },
     dedupedWebCount: webResults.length,
     imageCount: images.length,

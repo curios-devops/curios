@@ -5,6 +5,7 @@
 import { braveSearchTool } from '../../../../commonService/searchTools/braveSearchTool';
 import type { WebSearchResult } from '../webSearchProvider';
 import type { ImageResult, VideoResult } from '../mediaSearchProvider';
+import { paced } from '../../../../commonService/utils/enginePacer';
 
 function extractDomain(url: string): string {
   try {
@@ -58,7 +59,7 @@ export async function searchBraveVideos(query: string): Promise<VideoResult[]> {
   const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/brave-web-search`, {
+    const res = await paced('brave', () => fetch(`${SUPABASE_URL}/functions/v1/brave-web-search`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${anonKey}`,
@@ -66,7 +67,7 @@ export async function searchBraveVideos(query: string): Promise<VideoResult[]> {
       },
       body: JSON.stringify({ query }),
       signal: controller.signal,
-    });
+    }));
     clearTimeout(timeoutId);
     if (!res.ok) return [];
 

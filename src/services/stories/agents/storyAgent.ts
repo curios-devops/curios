@@ -440,17 +440,17 @@ Each question must be a single, specific, naturally-phrased question about the t
     }
   }
 
-  // Videos: Brave primary; fall back to SerpApi google_videos only if Brave is sparse.
+  // Videos: SerpApi google_videos primary (same as images); the Brave videos that
+  // came with the main web call are the fallback when SerpApi is sparse.
   private async resolveVideos(query: string, braveVideos: BraveSearchResults['videos']): Promise<VideoResult[]> {
     const MIN_VIDEOS = 2;
-    const videos = braveVideos
+    const serp = await this.serpVideos(query);
+    if (serp.length >= MIN_VIDEOS) return serp.slice(0, 10);
+
+    const brave = braveVideos
       .filter((v) => !!v.url)
       .map((v) => ({ title: v.title, url: v.url, thumbnail: v.thumbnail, duration: v.duration }));
-
-    if (videos.length >= MIN_VIDEOS) return videos;
-
-    const serp = await this.serpVideos(query);
-    return this.dedupeByUrl([...videos, ...serp]).slice(0, 10);
+    return this.dedupeByUrl([...serp, ...brave]).slice(0, 10);
   }
 
   private async serpVideos(query: string): Promise<VideoResult[]> {
