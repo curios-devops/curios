@@ -87,6 +87,12 @@ function topTier(answers: Awaited<ReturnType<typeof decide>>): Tier | null {
 const BUY_INSTRUCTIONS =
   "The user intends to buy, shop for, order, find deals or prices for, or choose a product to purchase right now — not merely learn how something works or follow news about it.";
 
+// Movie 🍿 (specialization of Video): same Decisions call, no extra latency. The client
+// already caught obvious cases locally (film words, franchises); this catches any title,
+// actor or director the local list can't know.
+const MOVIE_INSTRUCTIONS =
+  "The request is about films or cinema: a movie title or franchise, an actor or director and their films, cast, plot, trailer, reviews, box office, release dates, showtimes, what is playing in cinemas or theaters, or where to watch a movie. Not a real historical event, place, person's life or science topic that merely shares a name with a film.";
+
 const SYSTEM_PROMPT = `You are an intent router. ${MODE_INSTRUCTIONS}
 Classify the user's query into exactly ONE mode:
 
@@ -123,6 +129,7 @@ Deno.serve(async (req: Request) => {
     const answers = await decide(query, [
       { type: "choice", name: "mode", instructions: MODE_INSTRUCTIONS, choices: MODE_CHOICES },
       { type: "predicate", name: "buy", instructions: BUY_INSTRUCTIONS },
+      { type: "predicate", name: "movie", instructions: MOVIE_INSTRUCTIONS },
       tierQuestion,
     ], DECISIONS_TIMEOUT_MS);
 
@@ -131,10 +138,12 @@ Deno.serve(async (req: Request) => {
       const top = probabilities.reduce((a, b) => (b.probability > a.probability ? b : a));
       if (VALID_MODES.includes(top.value as Mode)) {
         const buy = answers?.buy?.probability;
+        const movie = answers?.movie?.probability;
         return jsonResponse({
           mode: top.value,
           probabilities,
           buyProbability: typeof buy === "number" ? buy : null,
+          movieProbability: typeof movie === "number" ? movie : null,
           tier: topTier(answers),
           backend: "decisions",
         });

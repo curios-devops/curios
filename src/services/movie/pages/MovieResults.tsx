@@ -25,7 +25,6 @@ import SignUpModal from '../../../components/auth/SignUpModal.tsx';
 import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
 import AstraNotice from '../../../components/AstraNotice.tsx';
 import { setMovieModel } from '../core/llm.ts';
-import { findMovieTrailer, type MovieTrailer } from '../trailer.ts';
 
 type MovieTab = 'video' | 'narrative' | 'sources';
 
@@ -51,15 +50,6 @@ export default function MovieResults() {
   const modeParam = useMemo(() => normalizeMovieMode(new URLSearchParams(location.search).get('mode')), [location.search]);
   // Reopen a saved movie (Home "latest enhanced" card) — loads from Supabase, no regeneration.
   const projectIdParam = useMemo(() => new URLSearchParams(location.search).get('projectId') || '', [location.search]);
-
-  // Movie 🍿 (film query routed from Home): the core viewer shows the official trailer,
-  // or its cover, instead of a generated video. Read once — the URL is replaced after generation.
-  const [isMovie] = useState(() => new URLSearchParams(location.search).get('movie') === '1');
-  const [trailer, setTrailer] = useState<MovieTrailer | null>(null);
-  useEffect(() => {
-    if (!isMovie || !query) return;
-    findMovieTrailer(query).then(setTrailer).catch(() => setTrailer(null));
-  }, [isMovie, query]);
 
   const [swipes, setSwipes] = useState<MovieSwipe[]>([]);
   const [experience, setExperience] = useState<MovieExperience | null>(null);
@@ -411,7 +401,6 @@ export default function MovieResults() {
         timeAgo=""
         rightSlot={
           <div className="flex items-center gap-1.5">
-            {isMovie && <span className="text-xs font-medium whitespace-nowrap">🍿 Movie</span>}
             <span
               className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded"
               style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
@@ -510,19 +499,7 @@ export default function MovieResults() {
           {/* Main viewer (active swipe) */}
           <div className="flex-1 min-w-0">
             <div className="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
-              {isMovie && (trailer?.embedUrl || trailer?.coverUrl) && (!selectedSwipe || selectedSwipe.isCore) ? (
-                trailer.embedUrl ? (
-                  <iframe
-                    src={trailer.embedUrl}
-                    title="Trailer"
-                    className="w-full h-full"
-                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                    allowFullScreen
-                  />
-                ) : (
-                  <img src={trailer.coverUrl ?? ''} alt={query} className="w-full h-full object-contain" />
-                )
-              ) : selectedSwipe?.videoUrl ? (
+              {selectedSwipe?.videoUrl ? (
                 <video src={selectedSwipe.videoUrl} controls autoPlay loop className="w-full h-full object-contain" />
               ) : selectedSwipe?.imageUrl ? (
                 <>

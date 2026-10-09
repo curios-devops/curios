@@ -1,0 +1,17 @@
+{
+  "movieTab": "Film",
+  "movieSources": "Fonti",
+  "movieTrailer": "Trailer",
+  "movieRating": "Valutazione",
+  "movieWatchOn": "Guarda su",
+  "movieDirectedBy": "Regia di",
+  "movieOscars": "Oscar",
+  "movieOscarWins": "Ha vinto {n} Oscar",
+  "movieOscarNominations": "Candidato a {n} Oscar",
+  "movieAwards": "Premi",
+  "movieCast": "Cast",
+  "movieAbout": "Sul film",
+  "movieMoreToExplore": "Altro da esplorare",
+  "movieAwardTotals": "{wins} premi · {nominations} candidature",
+  "movieVideos": "Video"
+}

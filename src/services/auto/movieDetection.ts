@@ -5,7 +5,7 @@
 // stays a history Video.
 
 const FILM_WORDS =
-  /\b(movies?|films?|pel[ií]culas?|pelis?|filmes?|trailers?|tr[aá]ilers?|sequels?|prequels?|secuelas?|precuelas?|box office|taquilla|cast of|reparto de|who played|qui[eé]n interpret[oó])\b|映画/i;
+  /\b(movies?|films?|pel[ií]culas?|pelis?|filmes?|trailers?|tr[aá]ilers?|sequels?|prequels?|secuelas?|precuelas?|box office|taquilla|cast of|reparto de|who played|qui[eé]n interpret[oó]|actor|actress|actriz|actores|filmograph(y|ies)|filmograf[ií]as?|film director|director de cine|directed by|dirigida por|cartelera|showtimes?|now playing|en cines|movie theaters?|cinemas?|estrenos? de cine|oscars?)\b|映画/i;
 
 const FRANCHISES =
   /\b(star wars|harry potter|lord of the rings|se[ñn]or de los anillos|the hobbit|el hobbit|jurassic (park|world)|toy story|avengers|vengadores|spider-?man|batman|superman|james bond|indiana jones|back to the future|volver al futuro|the godfather|el padrino|pirates of the caribbean|piratas del caribe|fast (and|&) furious|r[aá]pidos y furiosos|mission:? impossible|misi[oó]n:? imposible|star trek|terminator|shrek|pixar|studio ghibli|interstellar)\b/i;

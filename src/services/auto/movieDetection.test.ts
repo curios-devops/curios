@@ -14,6 +14,14 @@ describe('isMovieQuery (Movie 🍿 specialization of Video)', () => {
     expect(isMovieQuery('who played Gandalf')).toBe(true);
   });
 
+  // Actors, directors and what's on in cinemas are movie questions too.
+  it('detects actor, director and showtime questions', () => {
+    expect(isMovieQuery('mejor actriz de 2025')).toBe(true);
+    expect(isMovieQuery('filmografía de Almodóvar')).toBe(true);
+    expect(isMovieQuery('cartelera de cine en Santiago')).toBe(true);
+    expect(isMovieQuery('showtimes near me')).toBe(true);
+  });
+
   // Titles that are also history/science must keep their normal Video route.
   it('leaves ambiguous titles and normal curiosity questions alone', () => {
     expect(isMovieQuery('¿Por qué se hundió el Titanic?')).toBe(false);

@@ -1,0 +1,17 @@
+{
+  "movieTab": "映画",
+  "movieSources": "ソース",
+  "movieTrailer": "予告編",
+  "movieRating": "評価",
+  "movieWatchOn": "視聴できるサービス",
+  "movieDirectedBy": "監督",
+  "movieOscars": "アカデミー賞",
+  "movieOscarWins": "アカデミー賞{n}部門受賞",
+  "movieOscarNominations": "アカデミー賞{n}部門ノミネート",
+  "movieAwards": "受賞歴",
+  "movieCast": "キャスト",
+  "movieAbout": "この映画について",
+  "movieMoreToExplore": "関連作品",
+  "movieAwardTotals": "受賞{wins} · ノミネート{nominations}",
+  "movieVideos": "動画"
+}

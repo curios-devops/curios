@@ -18,6 +18,7 @@ import { resolveBuyIntent } from '../../services/search/buyIntent.ts';
 import { isMovieQuery } from '../../services/auto/movieDetection.ts';
 
 const BUY_PROBABILITY_THRESHOLD = 0.5;
+const MOVIE_PROBABILITY_THRESHOLD = 0.5;
 import { warmMovieGpu } from '../../services/movie/warmupService.ts';
 
 interface QueryBoxContainerProps {
@@ -82,6 +83,7 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
       case 'stories':
         return '/stories-results';
       case 'movie':
+      case 'movies':
         return '/movie-results';
       case 'character':
         return '/character';
@@ -133,7 +135,8 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
     let buyIntentDetected = false;
     // Movie 🍿: a film query in Auto or Video goes straight to Video with movie behavior —
     // local detection, so Auto also skips the router call. Other modes are left as chosen.
-    const isMovie = (selectedMode === 'auto' || selectedMode === 'movie') && !hasImages && isMovieQuery(trimmedQuery);
+    let isMovie = selectedMode === 'movies' ||
+      ((selectedMode === 'auto' || selectedMode === 'movie') && !hasImages && isMovieQuery(trimmedQuery));
     if (isMovie) {
       resolvedMode = 'movie';
       warmMovieGpu();
@@ -150,7 +153,11 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
         buyIntentDetected = intent.buyProbability !== null
           ? intent.buyProbability >= BUY_PROBABILITY_THRESHOLD
           : (await resolveBuyIntent(trimmedQuery)).isBuyIntent;
+        // Movie 🍿 the local list missed (any title, actor, director, showtimes…).
+        // Buying (e.g. merch, tickets deals) keeps priority for the sponsor carousel.
+        isMovie = !buyIntentDetected && (intent.movieProbability ?? 0) >= MOVIE_PROBABILITY_THRESHOLD;
         resolvedMode = buyIntentDetected ? 'fastsearch'
+          : isMovie ? 'movie'
           : intent.mode === 'search' ? 'fastsearch'
           : intent.mode;
         setIsRouting(false);

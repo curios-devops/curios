@@ -1,8 +1,9 @@
-import { BookOpen, Clapperboard, Search, Rocket, PersonStanding, Crown } from 'lucide-react';
+import { BookOpen, Clapperboard, Search, Rocket, PersonStanding, Crown, Popcorn } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
-export type ModeType = 'auto' | 'search' | 'stories' | 'movie' | 'character' | 'avatar' | 'fastsearch';
+// 'movies' = Movie 🍿 forced on (TEMPORARY test entry; normally Movie is auto-detected inside Video/Auto).
+export type ModeType = 'auto' | 'search' | 'stories' | 'movie' | 'movies' | 'character' | 'avatar' | 'fastsearch';
 
 interface Mode {
   id: ModeType;
@@ -19,6 +20,8 @@ const modes: Mode[] = [
   { id: 'stories', label: 'stories', icon: BookOpen },
   // Video = Movie mode (question → explainer video); Cinematic was merged into it.
   { id: 'movie', label: 'video', icon: Clapperboard },
+  // TEMPORARY (testing Movie 🍿): remove this entry to hide it again — detection keeps working.
+  { id: 'movies', label: 'movies', icon: Popcorn },
   // Avatar was merged into Character (half-body option inside the page).
   { id: 'character', label: 'character', icon: PersonStanding, premium: true },
 ];

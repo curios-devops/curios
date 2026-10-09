@@ -68,6 +68,13 @@ const ProSearchTest = lazyRetry(() => import('./services/legacy-search/pro/pages
 // Stories — regular workflow. Pro research was removed.
 const StoriesResults = lazyRetry(() => import('./services/stories/pages/StoriesResults.tsx'));
 const MovieResults = lazyRetry(() => import('./services/movie/pages/MovieResults.tsx'));
+const MovieFactPage = lazyRetry(() => import('./services/movie/pages/MovieFactPage.tsx'));
+
+// Movie 🍿 (movie=1 from Home) gets the film fact sheet; other questions keep the Video page.
+function MovieRoute() {
+  const { search } = useLocation();
+  return new URLSearchParams(search).get('movie') === '1' ? <MovieFactPage /> : <MovieResults />;
+}
 const MovieSharePage = lazyRetry(() => import('./services/movie/pages/MovieSharePage.tsx'));
 const Explore = lazyRetry(() => import('./mainPages/Explore.tsx'));
 const ArticleDetail = lazyRetry(() => import('./mainPages/ArticleDetail.tsx'));
@@ -134,7 +141,7 @@ const router = createBrowserRouter(
         { path: '/labs-results', element: <ToVideo /> },
         { path: '/pro-labs-results', element: <ToVideo /> },
         { path: '/cinematic-results', element: <ToVideo /> },
-        { path: '/movie-results', element: <LazyPageWrapper><MovieResults /></LazyPageWrapper> },
+        { path: '/movie-results', element: <LazyPageWrapper><MovieRoute /></LazyPageWrapper> },
         { path: '/movie/share/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> },
         // Curiosity Engine routes
         { path: '/s/:slug', element: <LazyPageWrapper><NodeSharePage /></LazyPageWrapper> },

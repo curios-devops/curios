@@ -1,0 +1,17 @@
+{
+  "movieTab": "Pel·lícula",
+  "movieSources": "Fonts",
+  "movieTrailer": "Tràiler",
+  "movieRating": "Valoració",
+  "movieWatchOn": "Mira-la a",
+  "movieDirectedBy": "Dirigida per",
+  "movieOscars": "Oscars",
+  "movieOscarWins": "Ha guanyat {n} Oscars",
+  "movieOscarNominations": "Nominada a {n} Oscars",
+  "movieAwards": "Premis",
+  "movieCast": "Repartiment",
+  "movieAbout": "Sobre la pel·lícula",
+  "movieMoreToExplore": "Més per explorar",
+  "movieAwardTotals": "{wins} premis · {nominations} nominacions",
+  "movieVideos": "Vídeos"
+}
