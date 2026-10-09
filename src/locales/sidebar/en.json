@@ -1,4 +1,9 @@
 {
   "sidebarSignInTitle": "Save your answers and videos",
-  "sidebarSignInBody": "Log in to keep your searches and videos, upload photos and files, and get more Pro credits."
+  "sidebarSignInBody": "Log in to keep your searches and videos, upload photos and files, and get more Pro credits.",
+  "settingsThemeDesc": "How CuriosAI looks on your device",
+  "settingsAccent": "Color",
+  "settingsAccentDesc": "The color for buttons and highlights",
+  "settingsLanguageDesc": "Interface language",
+  "close": "Close"
 }

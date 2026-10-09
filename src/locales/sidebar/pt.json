@@ -1,4 +1,9 @@
 {
   "sidebarSignInTitle": "Salve suas respostas e vídeos",
-  "sidebarSignInBody": "Entre para guardar suas buscas e vídeos, enviar fotos e arquivos e ganhar mais créditos Pro."
+  "sidebarSignInBody": "Entre para guardar suas buscas e vídeos, enviar fotos e arquivos e ganhar mais créditos Pro.",
+  "settingsThemeDesc": "Como o CuriosAI aparece no seu dispositivo",
+  "settingsAccent": "Cor",
+  "settingsAccentDesc": "A cor dos botões e destaques",
+  "settingsLanguageDesc": "Idioma da interface",
+  "close": "Fechar"
 }

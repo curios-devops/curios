@@ -12,8 +12,10 @@ interface SearchTextAreaProps {
   rotateHint?: boolean;
 }
 
-// Placeholder rotation: main prompt for 6s, hint for 4s, each line slides up and out.
-const ROTATION_MS = [6000, 4000];
+// Placeholder rotation: main prompt (6s) alternates with each hint (4s); lines slide up and out.
+const MAIN_MS = 6000;
+const HINT_MS = 4000;
+const HINT_KEYS = ['homeAutoHint', 'homeHintSearch', 'homeHintStories', 'homeHintVideo', 'homeHintCharacter'];
 
 // Get placeholder based on mode
 const getPlaceholderKey = (mode: ModeType): string => {
@@ -41,7 +43,8 @@ export default function SearchTextArea({ value, onChange, onKeyDown, className, 
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const rotating = rotateHint && mode === 'auto' && !value && !prefersReduced;
-  const lines = [t(placeholderKey), t('homeAutoHint')];
+  // main, hint 1, main, hint 2, … — even indexes are the main prompt.
+  const lines = HINT_KEYS.flatMap((key) => [t(placeholderKey), t(key)]);
   const [lineIndex, setLineIndex] = useState(0);
   // -1 until the first switch, so the very first line appears without animating in.
   const [prevIndex, setPrevIndex] = useState(-1);
@@ -51,7 +54,7 @@ export default function SearchTextArea({ value, onChange, onKeyDown, className, 
     const timer = setTimeout(() => {
       setPrevIndex(lineIndex);
       setLineIndex((lineIndex + 1) % lines.length);
-    }, ROTATION_MS[lineIndex]);
+    }, lineIndex % 2 === 0 ? MAIN_MS : HINT_MS);
     return () => clearTimeout(timer);
   }, [rotating, lineIndex, lines.length]);
 

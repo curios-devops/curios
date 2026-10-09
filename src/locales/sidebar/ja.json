@@ -1,4 +1,9 @@
 {
   "sidebarSignInTitle": "回答と動画を保存",
-  "sidebarSignInBody": "ログインすると、検索と動画の保存、写真やファイルのアップロードができ、Proクレジットも増えます。"
+  "sidebarSignInBody": "ログインすると、検索と動画の保存、写真やファイルのアップロードができ、Proクレジットも増えます。",
+  "settingsThemeDesc": "デバイスでのCuriosAIの見た目",
+  "settingsAccent": "カラー",
+  "settingsAccentDesc": "ボタンやハイライトの色",
+  "settingsLanguageDesc": "表示言語",
+  "close": "閉じる"
 }

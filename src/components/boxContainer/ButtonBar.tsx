@@ -11,7 +11,7 @@ import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
 // SVG for mic icon, styled to match lucide-react icons
 const MicIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((props, ref) => (
-  <svg ref={ref} width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+  <svg ref={ref} width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
     <rect x="9" y="2" width="6" height="12" rx="3" />
     <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
     <line x1="12" y1="19" x2="12" y2="22" />
@@ -22,7 +22,7 @@ MicIcon.displayName = 'MicIcon';
 
 // SVG for audio bars/waveform icon (ChatGPT style - tallest bar in middle)
 const AudioBarsIcon = React.forwardRef<SVGSVGElement, React.SVGProps<SVGSVGElement>>((props, ref) => (
-  <svg ref={ref} width={20} height={20} viewBox="0 0 24 24" fill="currentColor" {...props}>
+  <svg ref={ref} width={18} height={18} viewBox="0 0 24 24" fill="currentColor" {...props}>
     <rect x="2" y="8" width="3" height="8" rx="1.5" />
     <rect x="7" y="2" width="3" height="20" rx="1.5" />
     <rect x="12" y="4" width="3" height="16" rx="1.5" />
@@ -160,7 +160,7 @@ export default function ButtonBar({
           <button
             type="button"
             onClick={() => setShowModeMenu(!showModeMenu)}
-            className="h-9 px-3 rounded-full flex items-center gap-1.5 transition-colors duration-200 text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
+            className="h-8 px-3 rounded-full flex items-center gap-1.5 transition-colors duration-200 text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
             onMouseEnter={(e) => {
               e.currentTarget.style.color = accentColor.primary;
             }}

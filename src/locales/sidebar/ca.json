@@ -1,4 +1,9 @@
 {
   "sidebarSignInTitle": "Desa les teves respostes i vídeos",
-  "sidebarSignInBody": "Inicia sessió per conservar les teves cerques i vídeos, pujar fotos i fitxers, i obtenir més crèdits Pro."
+  "sidebarSignInBody": "Inicia sessió per conservar les teves cerques i vídeos, pujar fotos i fitxers, i obtenir més crèdits Pro.",
+  "settingsThemeDesc": "Com es veu CuriosAI al teu dispositiu",
+  "settingsAccent": "Color",
+  "settingsAccentDesc": "El color dels botons i destacats",
+  "settingsLanguageDesc": "Idioma de la interfície",
+  "close": "Tanca"
 }

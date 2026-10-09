@@ -99,6 +99,15 @@ Default = BRICOLAGE · Valid: BRICOLAGE / MICHROMA / GROTESK
 LOGO_FONT = BRICOLAGE
 ```
 
+### UI_FONT — the text typeface (whole app: menus, inputs, settings, results)
+SYSTEM = the device's own font (SF on Apple, Roboto on Android, Segoe on Windows).
+INTER = Inter, the body font named in docs/General/UX/design-kit.md (already loaded).
+Headlines and the wordmark keep their own fonts (LOGO_FONT, Home title).
+Default = SYSTEM · Valid: SYSTEM / INTER
+```
+UI_FONT = SYSTEM
+```
+
 ### LOGO_COLOR — the wordmark color (whole app)
 PAMBA = "Curios" in Pamba's near-black ink (#15130D) + "AI" thinner and gray.
 DEFAULT = "Curios" ink + "AI" blue→purple→pink gradient.

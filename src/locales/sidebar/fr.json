@@ -1,4 +1,9 @@
 {
   "sidebarSignInTitle": "Enregistrez vos réponses et vidéos",
-  "sidebarSignInBody": "Connectez-vous pour conserver vos recherches et vidéos, importer des photos et fichiers, et obtenir plus de crédits Pro."
+  "sidebarSignInBody": "Connectez-vous pour conserver vos recherches et vidéos, importer des photos et fichiers, et obtenir plus de crédits Pro.",
+  "settingsThemeDesc": "L'apparence de CuriosAI sur votre appareil",
+  "settingsAccent": "Couleur",
+  "settingsAccentDesc": "La couleur des boutons et des surlignages",
+  "settingsLanguageDesc": "Langue de l'interface",
+  "close": "Fermer"
 }

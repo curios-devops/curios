@@ -34,7 +34,7 @@ export default function ActionButton({
         onClick={onClick}
         disabled={disabled}
         className={`
-          w-9 h-9 rounded-full flex items-center justify-center transition-colors duration-200
+          w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200
           ${
             accent
               ? 'text-white hover:shadow-lg'
@@ -63,7 +63,7 @@ export default function ActionButton({
         }}
         aria-label={label}
       >
-        <Icon size={17} />
+        <Icon size={16} />
       </button>
       
       {tooltip && (

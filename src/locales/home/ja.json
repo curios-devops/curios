@@ -15,5 +15,9 @@
   "greetNiceToSeeYou": "お会いできてうれしいです",
   "greetWithName": "{greeting}、{name}さん",
   "homeDiscover": "発見",
-  "homeSeeAll": "すべて見る"
+  "homeSeeAll": "すべて見る",
+  "homeHintSearch": "検索：ウェブ全体からコンテンツを探す",
+  "homeHintStories": "ストーリー：答えを雑誌風に",
+  "homeHintVideo": "動画：検索をもっとビジュアルに",
+  "homeHintCharacter": "キャラクター：キャラクターに直接質問"
 }

@@ -41,6 +41,8 @@ export interface AppSettings {
   // Shared wordmark typography (family/weight); size is per-context (L/M/S).
   wordmarkFont: { fontFamily: string; fontWeight: number; letterSpacing: string };
   wordmarkColor: WordmarkColor;
+  // App-wide text font stack (UI_FONT), applied to <body> at startup.
+  uiFont: string;
   header: { themeToggle: boolean; logo: LogoConfig };
   sidebar: { logo: LogoConfig };
   getStarted: { mode: GetStartedMode; text: string };
@@ -138,6 +140,14 @@ const asCredits = (v: string | undefined): CreditsDisplay => {
 const asGetStarted = (v: string | undefined): GetStartedMode =>
   (v || '').toLowerCase() === 'icon' ? 'icon' : 'button';
 
+// App text font stacks (UI_FONT). SYSTEM matches the stack in index.css.
+const UI_FONTS = {
+  system: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif",
+  inter: "'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif",
+};
+const asUiFont = (v: string | undefined) =>
+  (v || '').trim().toLowerCase() === 'inter' ? UI_FONTS.inter : UI_FONTS.system;
+
 // Wordmark typefaces. Michroma (default) is wide/technical; Space Grotesk is a
 // thinner, squarer grotesque (Perplexity-ish). Both are loaded in index.html.
 const WORDMARK_FONTS = {
@@ -193,6 +203,7 @@ export const appSettings: AppSettings = {
   },
   wordmarkFont: asFont(cfg.LOGO_FONT),
   wordmarkColor: asColor(cfg.LOGO_COLOR),
+  uiFont: asUiFont(cfg.UI_FONT),
   header: {
     themeToggle: onOff(cfg.HEADER_THEME_TOGGLE, true),
     logo: logoConfig('HEADER'),

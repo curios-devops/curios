@@ -15,5 +15,9 @@
   "greetNiceToSeeYou": "Quina alegria veure't",
   "greetWithName": "{greeting}, {name}",
   "homeDiscover": "Descobreix",
-  "homeSeeAll": "Veure-ho tot"
+  "homeSeeAll": "Veure-ho tot",
+  "homeHintSearch": "Cerca: troba contingut a tot el web",
+  "homeHintStories": "Històries: la teva resposta en format revista",
+  "homeHintVideo": "Vídeo: fes la teva cerca més visual",
+  "homeHintCharacter": "Personatge: pregunta directament al nostre personatge"
 }

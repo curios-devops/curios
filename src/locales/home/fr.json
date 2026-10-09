@@ -15,5 +15,9 @@
   "greetNiceToSeeYou": "Ravi de vous voir",
   "greetWithName": "{greeting}, {name}",
   "homeDiscover": "Découvrir",
-  "homeSeeAll": "Tout voir"
+  "homeSeeAll": "Tout voir",
+  "homeHintSearch": "Recherche : trouvez du contenu sur tout le web",
+  "homeHintStories": "Histoires : votre réponse façon magazine",
+  "homeHintVideo": "Vidéo : rendez votre recherche plus visuelle",
+  "homeHintCharacter": "Personnage : posez directement vos questions à notre personnage"
 }

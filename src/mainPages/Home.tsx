@@ -21,6 +21,7 @@ import ProCreditsBattery from '../components/ProCreditsBattery.tsx';
 import HomeDiscovery from '../services/space/components/HomeDiscovery.tsx';
 import EnhancedVideoCard from '../services/movie/components/EnhancedVideoCard.tsx';
 import AnimatedHomeTitle from '../components/AnimatedHomeTitle.tsx';
+import CuriosLogo from '../components/common/CuriosLogo.tsx';
 import { getUserFirstName } from '../utils/userName.ts';
 
 // Lazy load ProModal to avoid loading Stripe unnecessarily
@@ -285,7 +286,16 @@ export default function Home() {
       <EnhancedVideoCard />
 
       <div className="max-w-[720px] mx-auto px-6 sm:px-8">
-        <div className="flex flex-col items-center justify-center mb-10 home-rise">
+        <div className="relative flex flex-col items-center justify-center mb-10 home-rise">
+          {/* Big logo mark above the title — absolute so the title/input keep their position. */}
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6">
+            <CuriosLogo
+              size={56}
+              frameColor={appSettings.logoMark.iconColor}
+              colorOverride={appSettings.logoMark.dotColor === 'accent' ? undefined : appSettings.logoMark.dotColor}
+              pulse={appSettings.logoMark.dotPulse}
+            />
+          </div>
           <AnimatedHomeTitle
             name={getUserFirstName(session?.user)}
             onDone={() => setTitleDone(true)}

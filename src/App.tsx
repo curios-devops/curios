@@ -8,6 +8,7 @@ import { Menu, Crown, CircleUserRound } from 'lucide-react';
 import ThemeToggle from './components/theme/ThemeToggle.tsx';
 import ProCreditsBattery from './components/ProCreditsBattery.tsx';
 import SignUpModal from './components/auth/SignUpModal.tsx';
+import SignInModal from './components/auth/SignInModal.tsx';
 import { useTranslation } from './hooks/useTranslation.ts';
 import { useAccentColor } from './hooks/useAccentColor.ts';
 import { useTheme } from './components/theme/ThemeContext.tsx';
@@ -33,6 +34,16 @@ function AppContent() {
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  // Devices that have ever had a signed-in session are "known"; a guest we don't
+  // recognize gets explicit Log in / Get started buttons instead of the person icon.
+  const [isKnownUser] = useState(() => {
+    try { return localStorage.getItem('curios_known_user') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    if (!session) return;
+    try { localStorage.setItem('curios_known_user', '1'); } catch { /* ignore */ }
+  }, [session]);
   const [showProModal, setShowProModal] = useState(false);
 
   useEffect(() => {
@@ -150,6 +161,31 @@ function AppContent() {
       );
     }
 
+    // First-time guest: text-only "Log in" + accent "Get started".
+    if (!session && !isKnownUser) {
+      return (
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setShowSignInModal(true)}
+            className="h-7 px-2 whitespace-nowrap text-sm font-medium text-gray-600 dark:text-gray-300 hover:opacity-80 transition-opacity"
+          >
+            {t('headerLogIn')}
+          </button>
+          <button
+            className="h-7 px-3 whitespace-nowrap rounded-lg flex items-center justify-center text-sm font-medium transition-colors shadow-md"
+            type="button"
+            onClick={() => setShowSignUpModal(true)}
+            style={{ backgroundColor, color: textColor, border: '1px solid transparent' }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBackgroundColor }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = backgroundColor }}
+          >
+            {t('getStarted')}
+          </button>
+        </div>
+      );
+    }
+
     // Icon mode: a compact person glyph instead of the labelled button.
     if (appSettings.getStarted.mode === 'icon') {
       return (
@@ -207,7 +243,7 @@ function AppContent() {
               <header className="fixed top-0 left-0 w-full z-50 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-2 gap-3 shadow-sm" style={{ marginTop: showBanner ? '32px' : '0', backgroundColor: 'var(--background)' }}>
                 <div className="flex items-center gap-3">
                   <button type="button" className="p-2" aria-label="Open menu" onClick={() => setMobileSidebarOpen(true)}>
-                    <Menu size={24} strokeWidth={1.75} className="text-gray-600 dark:text-gray-300" />
+                    <Menu size={20} strokeWidth={1.75} className="text-gray-600 dark:text-gray-300" />
                   </button>
                   <div className="flex items-center gap-2">
                     <Logo isCollapsed={false} variant="header" />
@@ -238,6 +274,9 @@ function AppContent() {
                 isOpen={showSignUpModal}
                 onClose={() => setShowSignUpModal(false)}
               />
+            )}
+            {showSignInModal && (
+              <SignInModal isOpen={showSignInModal} onClose={() => setShowSignInModal(false)} />
             )}
             </>
           )}

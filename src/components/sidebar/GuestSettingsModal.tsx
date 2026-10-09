@@ -1,17 +1,29 @@
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Monitor, Moon, Sun, X, type LucideIcon } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import LanguageSelector from '../settings/LanguageSelector.tsx';
+import { useTranslation } from '../../hooks/useTranslation.ts';
 import { accentColors } from '../../config/themeColors.ts';
 import { VISITOR_THEMES } from '../../config/appSettings.ts';
 
 // Themes offered to visitors (app-settings.md → THEMES).
 const ACCENT_OPTIONS = VISITOR_THEMES;
 
-const THEME_OPTIONS: { key: 'light' | 'system' | 'dark'; label: string; icon: LucideIcon }[] = [
-  { key: 'light', label: 'Light', icon: Sun },
-  { key: 'system', label: 'System', icon: Monitor },
-  { key: 'dark', label: 'Dark', icon: Moon },
+// Display names for the theme dots (brand names, not translated).
+const THEME_NAMES: Record<string, string> = {
+  terra: 'Terra',
+  ocean: 'Ocean',
+  fire: 'Fire',
+  sky: 'Space',
+  borealis: 'Boreal',
+  classic_blue: 'Classic Blue',
+};
+
+const THEME_OPTIONS: { key: 'light' | 'system' | 'dark'; icon: LucideIcon }[] = [
+  { key: 'light', icon: Sun },
+  { key: 'system', icon: Monitor },
+  { key: 'dark', icon: Moon },
 ];
 
 interface GuestSettingsModalProps {
@@ -23,19 +35,30 @@ interface GuestSettingsModalProps {
 // users get the full /settings page (this mirrors its General section).
 export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsModalProps) {
   const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor } = useTheme();
+  const { t } = useTranslation();
   const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  // Theme name bubble over a dot: on hover (desktop) or briefly after a tap (mobile has no hover).
+  const [labelFor, setLabelFor] = useState<string | null>(null);
+  const [tappedAt, setTappedAt] = useState(0);
+  // Mobile fires mouseleave right after a tap — don't let it hide the bubble the tap just showed.
+  const tapRef = useRef(0);
+  useEffect(() => {
+    if (!tappedAt) return;
+    const timer = setTimeout(() => setLabelFor(null), 1500);
+    return () => clearTimeout(timer);
+  }, [tappedAt]);
 
   if (!isOpen) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl border overflow-hidden"
+        className="w-full max-w-md rounded-2xl border"
         style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--ui-border-subtle)' }}>
-          <h2 className="text-lg font-medium" style={{ color: 'var(--ui-text-primary)' }}>Settings</h2>
+          <h2 className="text-base font-semibold tracking-[-0.01em]" style={{ color: 'var(--ui-text-primary)' }}>{t('settings')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -43,7 +66,7 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
             style={{ color: 'var(--ui-text-muted)' }}
             onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--ui-text-primary)'; e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--ui-text-muted)'; e.currentTarget.style.backgroundColor = 'transparent'; }}
-            aria-label="Close settings"
+            aria-label={t('close')}
           >
             <X size={18} />
           </button>
@@ -53,15 +76,16 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
           {/* Theme */}
           <div className="py-5 flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Theme</h3>
-              <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>How CuriosAI looks on your device</p>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('theme')}</h3>
+              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsThemeDesc')}</p>
             </div>
             <div
               className="flex items-center gap-1 rounded-lg p-1 border"
               style={{ backgroundColor: 'var(--ui-bg-secondary)', borderColor: 'var(--ui-border-default)' }}
             >
-              {THEME_OPTIONS.map(({ key, label, icon: Icon }) => {
+              {THEME_OPTIONS.map(({ key, icon: Icon }) => {
                 const selected = theme === key;
+                const label = t(key);
                 return (
                   <button
                     key={key}
@@ -85,24 +109,35 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
           {/* Accent */}
           <div className="py-5 flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Accent</h3>
-              <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>The brand color for buttons and highlights</p>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('settingsAccent')}</h3>
+              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsAccentDesc')}</p>
             </div>
             <div className="flex gap-2">
               {ACCENT_OPTIONS.map((color) => {
                 const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
                 const isSelected = selectedAccentColor === color;
+                const name = THEME_NAMES[color] ?? color;
                 return (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setAccentColor(color)}
-                    className={`w-6 h-6 rounded-full transition-transform ${isSelected ? 'border-2 border-gray-400 scale-110' : 'border border-transparent hover:scale-110'}`}
-                    style={{ backgroundColor: colorConfig.primary, boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.2)' : undefined }}
-                    title={color.charAt(0).toUpperCase() + color.slice(1)}
-                    aria-label={color}
-                    aria-pressed={isSelected}
-                  />
+                  <div key={color} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => { const now = Date.now(); tapRef.current = now; setAccentColor(color); setLabelFor(color); setTappedAt(now); }}
+                      onMouseEnter={() => setLabelFor(color)}
+                      onMouseLeave={() => { if (Date.now() - tapRef.current > 1500) setLabelFor(null); }}
+                      className={`w-6 h-6 rounded-full transition-transform ${isSelected ? 'border-2 border-gray-400 scale-110' : 'border border-transparent hover:scale-110'}`}
+                      style={{ backgroundColor: colorConfig.primary, boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.2)' : undefined }}
+                      aria-label={name}
+                      aria-pressed={isSelected}
+                    />
+                    {labelFor === color && (
+                      <span
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs rounded whitespace-nowrap pointer-events-none border"
+                        style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-primary)', borderColor: 'var(--ui-border-subtle)' }}
+                      >
+                        {name}
+                      </span>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -111,10 +146,10 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
           {/* Language */}
           <div className="py-5 flex items-center justify-between gap-4">
             <div>
-              <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Language</h3>
-              <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Interface language</p>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('language')}</h3>
+              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsLanguageDesc')}</p>
             </div>
-            <LanguageSelector />
+            <LanguageSelector openUp />
           </div>
         </div>
       </div>

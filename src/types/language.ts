@@ -7,15 +7,16 @@ export interface Language {
 }
 
 export const languages: Language[] = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'ca', name: 'Català', flag: '/ca.svg' }, // Using text for Catalan flag
-  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-  { code: 'pt', name: 'Português', flag: '🇧🇷' },
-  { code: 'ru', name: 'Русский', flag: '🇷🇺' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' },
-  { code: 'ko', name: '한국어', flag: '🇰🇷' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  // Round SVG flags from circle-flags (MIT, see public/flags/LICENSE.md).
+  { code: 'en', name: 'English', flag: '/flags/us.svg' },
+  { code: 'es', name: 'Español', flag: '/flags/es.svg' },
+  { code: 'de', name: 'Deutsch', flag: '/flags/de.svg' },
+  { code: 'fr', name: 'Français', flag: '/flags/fr.svg' },
+  { code: 'ca', name: 'Català', flag: '/flags/es-ct.svg' },
+  { code: 'it', name: 'Italiano', flag: '/flags/it.svg' },
+  { code: 'pt', name: 'Português', flag: '/flags/br.svg' },
+  { code: 'ru', name: 'Русский', flag: '/flags/ru.svg' },
+  { code: 'zh', name: '中文', flag: '/flags/cn.svg' },
+  { code: 'ko', name: '한국어', flag: '/flags/kr.svg' },
+  { code: 'ja', name: '日本語', flag: '/flags/jp.svg' },
 ];
