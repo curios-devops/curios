@@ -3,7 +3,7 @@
 // carousel), cards (rating, platforms, store, developer), "Play in your
 // browser" in place of the cast, "More to explore" with a platform filter, then the
 // explanation with Listen. Queries that don't name a game get the games list instead.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Code2, Gamepad2, Play, Image as ImageIcon, Link2, Loader2, Video, type LucideIcon } from 'lucide-react';
 import TopBar from '../../../components/results/TopBar.tsx';
@@ -22,8 +22,8 @@ import {
 } from '../gamesSearch.ts';
 import GamesResults from './GamesResults.tsx';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
-import { generateArcadeGame, repairArcadeGame, type ArcadeGame } from '../arcade/arcadeService.ts';
-import ArcadeScreen from '../arcade/ArcadeScreen.tsx';
+import { savedArcadeGames } from '../arcade/arcadeService.ts';
+import ArcadeStudio from '../arcade/ArcadeStudio.tsx';
 
 type Tab = 'game' | 'videos' | 'images' | 'sources';
 
@@ -40,11 +40,11 @@ export default function GameFactPage() {
   const { currentLanguage } = useLanguage();
   const query = useMemo(() => new URLSearchParams(location.search).get('q') || '', [location.search]);
   const { getModel } = useAnswerModel(query);
-  const { requestProAccess, tier } = useProCredits();
+  const { requestProAccess, tier, canUseProFeature } = useProCredits();
 
-  // "Create your own game inspired by X": one Pro credit → a mini arcade game (Curios Arcade).
-  const [arcade, setArcade] = useState<{ game: ArcadeGame | null; status: 'creating' | 'ready' | 'error' } | null>(null);
-  const repairedRef = useRef(false);
+  // "Create your own game inspired by X" → co-creation studio (Curios Arcade, 1 Pro credit).
+  const [studioOpen, setStudioOpen] = useState(false);
+  const [myGames, setMyGames] = useState(savedArcadeGames);
 
   const [tab, setTab] = useState<Tab>('game');
   const [info, setInfo] = useState<GameInfo | null>(null);
@@ -152,37 +152,11 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
 
   const images = (info?.screenshots ?? []).map((url) => ({ url, title: info?.name ?? '', source: 'rawg.io' }));
 
-  const createArcade = async () => {
-    if (!info) return;
-    const outMessage = tier === 'guest' ? t('creditsOutArcadeGuest') : tier === 'free' ? t('creditsOutArcadeFree') : undefined;
-    if (!(await requestProAccess(outMessage))) return;
-    repairedRef.current = false;
-    setArcade({ game: null, status: 'creating' });
-    try {
-      const game = await generateArcadeGame({
-        inspiredBy: info.name,
-        genres: info.genres,
-        description: info.description,
-        screenshot: info.screenshots[0] ?? info.imageUrl,
-        language: currentLanguage.code,
-      });
-      setArcade((a) => (a ? { game, status: 'ready' } : a));
-    } catch {
-      setArcade((a) => (a ? { game: null, status: 'error' } : a));
-    }
+  // Out of credits → the sign-up / upgrade modal right away, before any question.
+  const openStudio = () => {
+    if (canUseProFeature) { setStudioOpen(true); return; }
+    void requestProAccess(tier === 'guest' ? t('creditsOutArcadeGuest') : tier === 'free' ? t('creditsOutArcadeFree') : undefined);
   };
-
-  // The console's smoke test threw → one free fix of the same game, then give up.
-  const onArcadeError = useCallback((message: string) => {
-    const game = arcade?.game;
-    if (!game || !info) return;
-    if (repairedRef.current) { setArcade({ game: null, status: 'error' }); return; }
-    repairedRef.current = true;
-    setArcade({ game, status: 'creating' });
-    repairArcadeGame(game.id, message, info.genres, currentLanguage.code)
-      .then((fixed) => setArcade((a) => (a ? { game: fixed, status: 'ready' } : a)))
-      .catch(() => setArcade((a) => (a ? { game: null, status: 'error' } : a)));
-  }, [arcade?.game, info, currentLanguage.code]);
 
   // Not a specific game ("retro racing games") → the games list.
   if (!loadingInfo && !info) return <GamesResults />;
@@ -349,13 +323,33 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
             {info && (
               <button
                 type="button"
-                onClick={() => void createArcade()}
+                onClick={openStudio}
                 className="mt-4 w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium"
                 style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
               >
                 <Gamepad2 size={18} />
                 {t('arcadeCreate').replace('{name}', info.name)}
               </button>
+            )}
+
+            {/* Games saved to play later (this device) */}
+            {myGames.length > 0 && (
+              <div className="mt-3">
+                <p className="text-[11px] mb-1.5 text-gray-500 dark:text-gray-400">{t('arcadeMyGames')}</p>
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                  {myGames.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => navigate(`/arcade/${g.id}`)}
+                      className="flex-shrink-0 rounded-full border px-3 py-1.5 text-sm flex items-center gap-1.5"
+                      style={cardStyle}
+                    >
+                      <Gamepad2 size={14} /> {g.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* More to explore: lists dropdown + platform filter; each card opens its own fact sheet */}
@@ -414,8 +408,8 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
         )}
       </div>
 
-      {arcade && (
-        <ArcadeScreen game={arcade.game} status={arcade.status} onClose={() => setArcade(null)} onError={onArcadeError} />
+      {studioOpen && info && (
+        <ArcadeStudio info={info} query={query} onClose={() => { setStudioOpen(false); setMyGames(savedArcadeGames()); }} />
       )}
     </div>
   );

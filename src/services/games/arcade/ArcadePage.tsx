@@ -20,8 +20,8 @@ export default function ArcadePage() {
     return () => { cancelled = true; };
   }, [id]);
 
-  // Closing goes to the inspiration's fact sheet (where you can make your own game).
-  const close = () => navigate(game?.inspiredBy ? `/games-results?q=${encodeURIComponent(game.inspiredBy)}` : '/');
+  // Closing / remaking go to the inspiration's fact sheet (where you can make your own game).
+  const toGamePage = () => navigate(game?.inspiredBy ? `/games-results?q=${encodeURIComponent(game.inspiredBy)}` : '/');
 
-  return <ArcadeScreen game={game} status={status} onClose={close} onError={() => setStatus('error')} />;
+  return <ArcadeScreen game={game} failed={status === 'error'} onClose={toGamePage} onError={() => setStatus('error')} onRemake={toGamePage} />;
 }

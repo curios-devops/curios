@@ -12,6 +12,18 @@ export interface ArcadeGame {
   palette: string[];
   code: string;
   inspiredBy: string;
+  mode?: ArcadeMode;
+  idea?: string | null;
+  votesUp?: number;
+  votesDown?: number;
+}
+
+export type ArcadeMode = '2d' | '3d';
+
+// 3D (first person) is offered only where it fits: shooters and dungeon RPGs, or when the
+// player asked for it. Code, not a model call: instant and free.
+export function offers3D(genres: string[], query: string): boolean {
+  return genres.some((g) => g === 'Shooter' || g === 'RPG') || /\b3d\b|first[- ]person|primera persona/i.test(query);
 }
 
 // Perceived difficulty of squeezing the inspiration into a one-screen arcade game, from its
@@ -36,14 +48,37 @@ async function invokeArcade(body: object): Promise<ArcadeGame> {
   return data as ArcadeGame;
 }
 
-export function generateArcadeGame(input: {
-  inspiredBy: string;
-  genres: string[];
-  description: string;
-  screenshot: string | null;
-  language: string;
-}): Promise<ArcadeGame> {
-  return invokeArcade({ ...input, model: arcadeModel(input.genres) });
+export type BuildEvent = { type: 'progress'; chars: number } | { type: 'fixing' };
+
+/** Streams the generation: progress events (characters written so far) while the model works. */
+export async function generateArcadeGame(
+  input: { inspiredBy: string; genres: string[]; description: string; screenshot: string | null; language: string; mode: ArcadeMode; idea: string },
+  onEvent: (e: BuildEvent) => void,
+): Promise<ArcadeGame> {
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/arcade-generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
+    body: JSON.stringify({ ...input, model: arcadeModel(input.genres) }),
+  });
+  if (!res.ok || !res.body) throw new Error(`arcade-generate ${res.status}`);
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split('\n\n');
+    buffer = events.pop() ?? '';
+    for (const raw of events) {
+      if (!raw.startsWith('data: ')) continue;
+      const ev = JSON.parse(raw.slice(6));
+      if (ev.type === 'done') return ev.game as ArcadeGame;
+      if (ev.type === 'error') throw new Error('arcade-generate failed');
+      onEvent(ev);
+    }
+  }
+  throw new Error('arcade-generate: stream ended');
 }
 
 /** The game threw in the smoke test → one server-side fix of the stored game. */
@@ -54,14 +89,17 @@ export function repairArcadeGame(id: string, error: string, genres: string[], la
 export async function fetchArcadeGame(id: string): Promise<ArcadeGame | null> {
   const { data, error } = await supabase
     .from('arcade_games')
-    .select('id, title, how_to, palette, code, inspired_by')
+    .select('id, title, how_to, palette, code, inspired_by, mode, idea, votes_up, votes_down')
     .eq('id', id)
     .maybeSingle();
   if (error || !data) {
     if (error) logger.warn('[arcade] load failed', { error: error.message });
     return null;
   }
-  return { id: data.id, title: data.title, howTo: data.how_to ?? '', palette: data.palette ?? [], code: data.code, inspiredBy: data.inspired_by ?? '' };
+  return {
+    id: data.id, title: data.title, howTo: data.how_to ?? '', palette: data.palette ?? [], code: data.code,
+    inspiredBy: data.inspired_by ?? '', mode: data.mode === '3d' ? '3d' : '2d', idea: data.idea, votesUp: data.votes_up, votesDown: data.votes_down,
+  };
 }
 
 // ---- Leaderboard ------------------------------------------------------------------
@@ -87,4 +125,43 @@ export async function fetchBoards(gameId: string): Promise<{ today: ArcadeScore[
   };
   const [today, allTime] = await Promise.all([board(midnight.toISOString()), board()]);
   return { today: (today.data ?? []) as ArcadeScore[], allTime: (allTime.data ?? []) as ArcadeScore[] };
+}
+
+// ---- Votes (👍/👎) and saved games: remembered on this device -----------------------
+
+const VOTES_KEY = 'curios_arcade_votes';
+const SAVED_KEY = 'curios_arcade_saved';
+
+function readJson<T>(key: string, fallback: T): T {
+  try { return JSON.parse(localStorage.getItem(key) ?? '') as T; } catch { return fallback; }
+}
+function writeJson(key: string, value: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage blocked */ }
+}
+
+export const myVote = (gameId: string): -1 | 0 | 1 => readJson<Record<string, -1 | 1>>(VOTES_KEY, {})[gameId] ?? 0;
+
+/** Tapping the same thumb again removes the vote. Returns the new counters. */
+export async function voteArcadeGame(gameId: string, vote: -1 | 1): Promise<{ up: number; down: number; mine: -1 | 0 | 1 } | null> {
+  const prev = myVote(gameId);
+  const next = prev === vote ? 0 : vote;
+  const { data, error } = await supabase.rpc('arcade_vote', { game: gameId, vote: next, prev });
+  if (error || !data?.[0]) return null;
+  const votes = readJson<Record<string, -1 | 1>>(VOTES_KEY, {});
+  if (next) votes[gameId] = next; else delete votes[gameId];
+  writeJson(VOTES_KEY, votes);
+  return { up: data[0].votes_up, down: data[0].votes_down, mine: next };
+}
+
+export interface SavedArcadeGame { id: string; title: string; inspiredBy: string }
+
+export const savedArcadeGames = (): SavedArcadeGame[] => readJson<SavedArcadeGame[]>(SAVED_KEY, []);
+export const isArcadeSaved = (id: string) => savedArcadeGames().some((g) => g.id === id);
+
+/** "Save to play later" (the link, not any game state). Returns whether it is now saved. */
+export function toggleSavedArcade(game: ArcadeGame): boolean {
+  const list = savedArcadeGames();
+  const saved = list.some((g) => g.id === game.id);
+  writeJson(SAVED_KEY, saved ? list.filter((g) => g.id !== game.id) : [{ id: game.id, title: game.title, inspiredBy: game.inspiredBy }, ...list].slice(0, 30));
+  return !saved;
 }
