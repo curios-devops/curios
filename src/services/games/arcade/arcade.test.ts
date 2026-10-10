@@ -46,7 +46,15 @@ describe('arcade console page', () => {
     expect(safePalette(['#000', '#000', '#000', '#000"];alert(1);//'])).toEqual(DEFAULT_PALETTE);
     expect(safePalette(undefined)).toEqual(DEFAULT_PALETTE);
   });
-  // Button labels come from the model and are shown on the controls: text only, short.
+  // The size is injected into the console page as code, and old games' code assumes 160.
+  it('only renders at 160 (first games) or 240 (new games)', () => {
+    const canvas = (res: unknown) => buildArcadeHtml('function init(){} function update(){}', null, { res: res as number }).match(/<canvas id="c" width="(\d+)"/)?.[1];
+    expect(canvas(240)).toBe('240');
+    expect(canvas(undefined)).toBe('160');
+    expect(canvas('240;alert(1)')).toBe('160');
+    expect(canvas(4000)).toBe('160');
+  });
+    // Button labels come from the model and are shown on the controls: text only, short.
   it('keeps button labels short and plain', () => {
     expect(safeLabels({ a: 'dispara<img src=x>', b: '' })).toEqual({ a: 'DISPARAI', b: '' });
     expect(safeLabels({ a: 'saltar', b: 'golpe' })).toEqual({ a: 'SALTAR', b: 'GOLPE' });

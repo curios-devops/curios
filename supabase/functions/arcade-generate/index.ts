@@ -68,12 +68,15 @@ const STYLE: Record<string, string> = {
 const OLD_STYLES: Record<string, string> = { retro: "retro_arcade", cyberpunk: "cyberpunk" };
 const styleId = (v: unknown) => (typeof v === "string" && STYLE[v] ? v : OLD_STYLES[String(v)] ?? "retro_arcade");
 
-interface Spec { language: string; mode: "2d" | "3d"; style: string }
+// New games are 240×240; remakes and fixes keep their game's size.
+const RES = 240;
 
-const SYSTEM = ({ language, mode, style }: Spec) => `You write tiny one-screen arcade games for the Curios Arcade fantasy console (like WASM-4), played on phones.
-Screen 160x160 pixels, 4 colors (0 = background), 60 fps. Global API:
+interface Spec { language: string; mode: "2d" | "3d"; style: string; res: number }
+
+const SYSTEM = ({ language, mode, style, res }: Spec) => `You write tiny one-screen arcade games for the Curios Arcade fantasy console (like WASM-4), played on phones.
+Screen ${res}x${res} pixels, 4 colors (0 = background), 60 fps.${res > 160 ? ` Use the extra detail: sprites about 12-20 px with a few details (eyes, stripes, outlines).` : ""} Global API:
 cls(c) rect(x,y,w,h,c) rectb(x,y,w,h,c) circ(x,y,r,c) line(x0,y0,x1,y1,c)
-text(s,x,y,c,k) pixel font, uppercase, 4px per char and 5px tall at scale k=1 (k=2 for titles)
+text(s,x,y,c,k) pixel font, uppercase, 4px per char and 5px tall at scale k=1${res > 160 ? " — use k=2 for normal text and k=3 for titles" : " (k=2 for titles)"}
 btn(i) held / btnp(i) just pressed: 0 LEFT 1 RIGHT 2 UP 3 DOWN (an on-screen joystick) 4 A 5 B (two buttons)
 rnd(n) random float 0..n; over(score) ends the run (the console shows GAME OVER and restarts).
 ${mode === "3d" ? `3D (first person, like DOOM/Wolfenstein) — use it for this game:
@@ -206,11 +209,12 @@ const getRow = async (id: unknown) => (await db(`arcade_games?id=eq.${encodeURIC
 const out = (row: any) => ({
   id: row.id, title: row.title, howTo: row.how_to, palette: row.palette, code: row.code, inspiredBy: row.inspired_by,
   mode: row.mode, style: row.style, idea: row.idea, buttons: row.buttons, votesUp: row.votes_up, votesDown: row.votes_down,
-  creatorName: row.creator_name,
+  creatorName: row.creator_name, res: row.res,
 });
 
 const specOf = (row: any, language: string): Spec => ({
   language,
+  res: row.res === 240 ? 240 : 160,
   mode: row.mode === "3d" ? "3d" : "2d",
   style: styleId(row.style),
 });
@@ -287,7 +291,7 @@ ${JSON.stringify(previous)}`,
         body: JSON.stringify({
           title: game.title.slice(0, 60), inspired_by: row.inspired_by, how_to: game.howTo.slice(0, 200),
           palette: game.palette, code: game.code, model, mode: spec.mode, style: spec.style, idea: row.idea,
-          buttons: buttonLabels(game.buttons), parent_id: row.id, genres: row.genres ?? [], ...creator,
+          buttons: buttonLabels(game.buttons), parent_id: row.id, genres: row.genres ?? [], res: spec.res, ...creator,
         }),
       }))[0]);
     }
@@ -296,7 +300,7 @@ ${JSON.stringify(previous)}`,
     if (!inspiredBy) return json({ error: "Missing inspiredBy" }, 400);
     const genres = Array.isArray(body?.genres) ? body.genres.slice(0, 4).join(", ") : "";
     const description = String(body?.description ?? "").replace(/\s+/g, " ").slice(0, 600);
-    const spec: Spec = { language, mode: body?.mode === "3d" ? "3d" : "2d", style: styleId(body?.style) };
+    const spec: Spec = { language, mode: body?.mode === "3d" ? "3d" : "2d", style: styleId(body?.style), res: RES };
     const idea = String(body?.idea ?? "").replace(/\s+/g, " ").trim().slice(0, 140);
 
     const user: unknown[] = [{
@@ -314,6 +318,7 @@ ${JSON.stringify(previous)}`,
         title: game.title.slice(0, 60), inspired_by: inspiredBy, how_to: game.howTo.slice(0, 200),
         palette: game.palette, code: game.code, model, mode: spec.mode, style: spec.style, idea: idea || null,
         buttons: buttonLabels(game.buttons),
+        res: spec.res,
         genres: Array.isArray(body?.genres) ? body.genres.slice(0, 6).map((g: unknown) => String(g).slice(0, 40)) : [],
         ...creator,
       }),

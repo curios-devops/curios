@@ -45,7 +45,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
   const frameRef = useRef<HTMLIFrameElement>(null);
   // Plays are counted once per page view (the first run started).
   const countedRef = useRef(false);
-  const html = useMemo(() => (game ? buildArcadeHtml(game.code, game.palette, { style: lookOf(game.style), buttons: game.buttons }) : ''), [game]);
+  const html = useMemo(() => (game ? buildArcadeHtml(game.code, game.palette, { style: lookOf(game.style), buttons: game.buttons, res: game.res }) : ''), [game]);
   const font = lookOf(game?.style) === 'cyberpunk' ? NEON_FONT : PIXEL_FONT;
   const [p0, p1, p2, p3] = safePalette(game?.palette);
   const [tested, setTested] = useState(false);

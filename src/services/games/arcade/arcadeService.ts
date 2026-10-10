@@ -18,6 +18,8 @@ export interface ArcadeGame {
   /** What A / B do ("DISPARA"); b = '' when unused. */
   buttons?: { a: string; b: string } | null;
   idea?: string | null;
+  /** Screen size: 240 (new games) or 160 (the first ones). */
+  res?: number;
   votesUp?: number;
   votesDown?: number;
 }
@@ -116,7 +118,7 @@ export function repairArcadeGame(id: string, error: string, model: string, langu
 export async function fetchArcadeGame(id: string): Promise<ArcadeGame | null> {
   const { data, error } = await supabase
     .from('arcade_games')
-    .select('id, title, how_to, palette, code, inspired_by, mode, style, buttons, idea, votes_up, votes_down')
+    .select('id, title, how_to, palette, code, inspired_by, mode, style, buttons, idea, votes_up, votes_down, res')
     .eq('id', id)
     .maybeSingle();
   if (error || !data) {
@@ -125,7 +127,7 @@ export async function fetchArcadeGame(id: string): Promise<ArcadeGame | null> {
   }
   return {
     id: data.id, title: data.title, howTo: data.how_to ?? '', palette: data.palette ?? [], code: data.code,
-    inspiredBy: data.inspired_by ?? '', mode: data.mode === '3d' ? '3d' : '2d', style: data.style, buttons: data.buttons, idea: data.idea, votesUp: data.votes_up, votesDown: data.votes_down,
+    inspiredBy: data.inspired_by ?? '', mode: data.mode === '3d' ? '3d' : '2d', style: data.style, buttons: data.buttons, idea: data.idea, res: data.res, votesUp: data.votes_up, votesDown: data.votes_down,
   };
 }
 

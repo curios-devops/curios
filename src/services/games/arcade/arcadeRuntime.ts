@@ -22,10 +22,10 @@ export function scriptSafe(code: string): string {
 }
 
 const RUNTIME = String.raw`
-var P = __PALETTE__, LABELS = __LABELS__, C = document.getElementById('c').getContext('2d');
+var W = __RES__, HALF = W/2, UI = W/160, P = __PALETTE__, LABELS = __LABELS__, C = document.getElementById('c').getContext('2d');
 var held = [0,0,0,0,0,0], prev = [0,0,0,0,0,0], t = 0, state = 'title', score = 0, overAt = 0, game = null;
 function col(c){ return P[(((c|0)%4)+4)%4]; }
-function cls(c){ C.fillStyle = col(c||0); C.fillRect(0,0,160,160); }
+function cls(c){ C.fillStyle = col(c||0); C.fillRect(0,0,W,W); }
 function rect(x,y,w,h,c){ C.fillStyle = col(c); C.fillRect(x|0,y|0,w|0,h|0); }
 function rectb(x,y,w,h,c){ C.strokeStyle = col(c); C.lineWidth = 1; C.strokeRect((x|0)+.5,(y|0)+.5,(w|0)-1,(h|0)-1); }
 function circ(x,y,r,c){ C.fillStyle = col(c); C.beginPath(); C.arc(x,y,Math.max(0,r),0,7); C.fill(); }
@@ -43,14 +43,14 @@ function text(s,x,y,c,k){
 function textw(s,k){ return String(s).length*4*(k||1) - (k||1); }
 
 // 3D (raycaster, Wolfenstein/DOOM-like). map: array of strings, '.' = floor, '1'-'3' = wall color.
-var ZB = new Float32Array(160), CAM = { x: 0, y: 0, a: 0, f: 1.05 }, IMG = C.createImageData(160, 160), PIX = new Uint32Array(IMG.data.buffer), RGB = [];
+var ZB = new Float32Array(W), CAM = { x: 0, y: 0, a: 0, f: 1.05 }, IMG = C.createImageData(W, W), PIX = new Uint32Array(IMG.data.buffer), RGB = [];
 function rgba(c){ var h = col(c).slice(1); if (h.length === 3) h = h.replace(/./g, '$&$&'); var n = parseInt(h, 16); return (255 << 24) | ((n & 255) << 16) | (n & 0xff00) | (n >> 16); }
 function wall(map,x,y){ var row = map[Math.floor(y)]; var ch = row && row[Math.floor(x)]; return ch === undefined || (ch !== '.' && ch !== ' '); }
 function view3d(map,px,py,a){
   CAM.x = px; CAM.y = py; CAM.a = a;
   for (var i = 0; i < 4; i++) RGB[i] = rgba(i);
-  for (var x = 0; x < 160; x++) {
-    var ra = a + (x/160 - 0.5)*CAM.f, dx = Math.cos(ra), dy = Math.sin(ra);
+  for (var x = 0; x < W; x++) {
+    var ra = a + (x/W - 0.5)*CAM.f, dx = Math.cos(ra), dy = Math.sin(ra);
     var mx = Math.floor(px), my = Math.floor(py), ddx = Math.abs(1/dx), ddy = Math.abs(1/dy);
     var sx = dx < 0 ? -1 : 1, sy = dy < 0 ? -1 : 1;
     var sdx = (dx < 0 ? px - mx : mx + 1 - px)*ddx, sdy = (dy < 0 ? py - my : my + 1 - py)*ddy, side = 0, ch = '3';
@@ -61,11 +61,11 @@ function view3d(map,px,py,a){
       if (ch !== '.' && ch !== ' ') break;
     }
     var d = (side === 0 ? sdx - ddx : sdy - ddy)*Math.cos(ra - a); ZB[x] = d;
-    var h = Math.min(160, 160/Math.max(d, 0.01)), top = (80 - h/2)|0, bot = (80 + h/2)|0;
+    var h = Math.min(W, W/Math.max(d, 0.01)), top = (HALF - h/2)|0, bot = (HALF + h/2)|0;
     var wc = RGB[/[1-3]/.test(ch) ? +ch : 2], shade = side === 1 || d > 7;
-    for (var y = 0; y < 160; y++) {
+    for (var y = 0; y < W; y++) {
       var v = y < top ? RGB[0] : y >= bot ? RGB[1] : (shade && ((x + y) & 1) ? RGB[0] : wc);
-      PIX[y*160 + x] = v;
+      PIX[y*W + x] = v;
     }
   }
   C.putImageData(IMG, 0, 0);
@@ -76,10 +76,10 @@ function sprite3d(sx,sy,c,s){
   var dx = sx - CAM.x, dy = sy - CAM.y, d = Math.sqrt(dx*dx + dy*dy); if (d < 0.2) return null;
   var ang = Math.atan2(dy, dx) - CAM.a; while (ang > Math.PI) ang -= 2*Math.PI; while (ang < -Math.PI) ang += 2*Math.PI;
   if (Math.abs(ang) > CAM.f/2 + 0.3) return null;
-  var pd = d*Math.cos(ang), h = Math.min(320, 160*s/pd), w = h, cx = (ang/CAM.f + 0.5)*160;
-  var x0 = Math.round(cx - w/2), y0 = Math.round(80 + 80/pd - h), shown = false;
+  var pd = d*Math.cos(ang), h = Math.min(2*W, W*s/pd), w = h, cx = (ang/CAM.f + 0.5)*W;
+  var x0 = Math.round(cx - w/2), y0 = Math.round(HALF + HALF/pd - h), shown = false;
   C.fillStyle = col(c);
-  for (var x = Math.max(0, x0); x < Math.min(160, x0 + w); x++) if (pd < ZB[x]) { C.fillRect(x, y0, 1, Math.ceil(h)); shown = true; }
+  for (var x = Math.max(0, x0); x < Math.min(W, x0 + w); x++) if (pd < ZB[x]) { C.fillRect(x, y0, 1, Math.ceil(h)); shown = true; }
   return shown ? { x: x0, y: y0, w: Math.round(w), h: Math.round(h), d: pd } : null;
 }
 function btn(i){ return !!held[i]; }
@@ -87,9 +87,10 @@ function btnp(i){ return !!held[i] && !prev[i]; }
 function rnd(n){ return Math.random()*(n===undefined?1:n); }
 function over(s){ if (state === 'play' || state === 'smoke') { score = Math.max(0, Math.floor(+s||0)); state = state === 'smoke' ? 'smoke-over' : 'over'; } }
 function post(m){ parent.postMessage(Object.assign({ arcade: true }, m), '*'); }
-function fail(e){ state = 'error'; post({ type: 'error', message: String(e && e.message || e).slice(0, 300) }); cls(0); center('ERROR', 76, 3, 2); }
-function center(s,y,c,k){ text(s, 80 - textw(s,k)/2, y, c, k); }
-function box(lines){ rect(16,50,128,60,0); rectb(16,50,128,60,3); rectb(18,52,124,56,2); lines.forEach(function(l,i){ center(l, 58 + i*16, 3, i === 0 ? 2 : 1); }); }
+function fail(e){ state = 'error'; post({ type: 'error', message: String(e && e.message || e).slice(0, 300) }); cls(0); center('ERROR', HALF - 4*UI, 3, 2); }
+// The console's own screens (PRESS A, GAME OVER) scale with the resolution.
+function center(s,y,c,k){ k = Math.max(1, Math.round((k||1)*UI)); text(s, HALF - textw(s,k)/2, y, c, k); }
+function box(lines){ var u = UI; rect(16*u,50*u,128*u,60*u,0); rectb(16*u,50*u,128*u,60*u,3); rectb(18*u,52*u,124*u,56*u,2); lines.forEach(function(l,i){ center(l, (58 + i*16)*u, 3, i === 0 ? 2 : 1); }); }
 
 // Smoke test: init + 600 frames with random input. Catches most runtime bugs before play.
 function smoke(){
@@ -173,7 +174,7 @@ const STYLE_CSS: Record<ArcadeStyle, string> = {
 body{background:#0b0b0b;font-family:'Pixelify Sans',ui-monospace,monospace}
 #stick{background:radial-gradient(circle at 50% 40%,#2c2c2c,#121212 70%);box-shadow:inset 0 6px 14px rgba(0,0,0,.8),0 0 0 2px #2e2e2e,0 3px 0 #3a3a3a}
 #knob{background:radial-gradient(circle at 35% 30%,#f2f2f2,#9a9a9a 55%,#4a4a4a);box-shadow:0 8px 12px rgba(0,0,0,.7),inset 0 -4px 6px rgba(0,0,0,.35)}
-.btn{background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 55%,#fff),var(--c) 55%,color-mix(in srgb,var(--c) 60%,#000));box-shadow:0 7px 0 color-mix(in srgb,var(--c) 45%,#000),0 10px 14px rgba(0,0,0,.6);color:#111;text-shadow:0 1px 0 rgba(255,255,255,.4)}
+.btn{background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 55%,#fff),var(--c) 55%,color-mix(in srgb,var(--c) 60%,#000));box-shadow:0 7px 0 color-mix(in srgb,var(--c) 45%,#000),0 10px 14px rgba(0,0,0,.6);color:var(--p0);text-shadow:0 1px 0 rgba(255,255,255,.25)}
 .btn.on{transform:translateY(5px);box-shadow:0 2px 0 color-mix(in srgb,var(--c) 45%,#000),0 3px 6px rgba(0,0,0,.6)}
 canvas{box-shadow:0 0 0 4px #222,0 0 0 6px #000}`,
   cyberpunk: `
@@ -183,15 +184,16 @@ body{background:#05050a;font-family:'Orbitron','Pixelify Sans',ui-monospace,mono
 .btn{background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 35%,#000),#07070c 70%);border:2px solid var(--c);box-shadow:0 0 14px var(--c),0 6px 0 color-mix(in srgb,var(--c) 30%,#000);color:var(--c);text-shadow:0 0 6px var(--c)}
 .btn.on{transform:translateY(4px);background:color-mix(in srgb,var(--c) 45%,#000);box-shadow:0 0 22px var(--c),0 2px 0 color-mix(in srgb,var(--c) 30%,#000)}
 canvas{box-shadow:0 0 0 2px var(--p3),0 0 22px color-mix(in srgb,var(--p3) 60%,transparent)}
-#bB{--c:var(--p3)}
 #scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(0,0,0,.28) 0 1px,transparent 1px 3px)}`,
 };
 
 /** Self-contained page for <iframe sandbox="allow-scripts" srcdoc=…>. */
-export function buildArcadeHtml(code: string, palette: unknown, opts: { style?: ArcadeStyle; buttons?: unknown } = {}): string {
+export function buildArcadeHtml(code: string, palette: unknown, opts: { style?: ArcadeStyle; buttons?: unknown; res?: number } = {}): string {
   const pal = safePalette(palette);
+  // Screen size: 240 for new games, 160 for the first ones (their code assumes it).
+  const res = opts.res === 240 ? 240 : 160;
   const style: ArcadeStyle = opts.style === 'cyberpunk' ? 'cyberpunk' : 'retro';
-  const runtime = RUNTIME.replace('__PALETTE__', JSON.stringify(pal)).replace('__LABELS__', JSON.stringify(safeLabels(opts.buttons)));
+  const runtime = RUNTIME.replace('__RES__', String(res)).replace('__PALETTE__', JSON.stringify(pal)).replace('__LABELS__', JSON.stringify(safeLabels(opts.buttons)));
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@600&family=Orbitron:wght@700&display=swap">
 <style>
@@ -207,9 +209,10 @@ canvas{width:100%;height:100%;image-rendering:pixelated;display:block}
 .ab{display:flex;gap:16px;align-items:flex-end}
 .btn{width:76px;height:76px;border-radius:50%;border:0;font-weight:700;font-size:11px;font-family:inherit;letter-spacing:.5px;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform .05s,box-shadow .05s;padding:0 4px;overflow:hidden}
 #bB{width:66px;height:66px;margin-bottom:22px;font-size:10px}
-#bA{--c:var(--p2)}#bB{--c:var(--p1)}
+/* A and B use the palette's bright colors; labels use the background color (max contrast). */
+#bA{--c:var(--p2)}#bB{--c:var(--p3)}
 ${STYLE_CSS[style]}
-</style></head><body><div id="w"><div id="screen"><canvas id="c" width="160" height="160"></canvas>${style === 'cyberpunk' ? '<div id="scan"></div>' : ''}</div>
+</style></head><body><div id="w"><div id="screen"><canvas id="c" width="${res}" height="${res}"></canvas>${style === 'cyberpunk' ? '<div id="scan"></div>' : ''}</div>
 <div id="pad"><div id="stick"><div id="knob"></div></div>
 <div class="ab"><button class="btn" id="bB" data-b="5"><span id="lB"></span></button><button class="btn" id="bA" data-b="4"><span id="lA"></span></button></div></div></div>
 <script>${runtime}</script>
