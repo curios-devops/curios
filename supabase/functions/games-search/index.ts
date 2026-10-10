@@ -1,8 +1,10 @@
 // Games 🎮: games similar to the user's query, from two sources in one call.
 // - playable: browser games (itch.io / WASM-4 / Newgrounds) found by Exa; a URL filter
 //   keeps only actual game pages (no devlogs, jams or profiles).
-// - similar: commercial games from RAWG — when the query names a game, its genres and
-//   tags find similar ones; otherwise RAWG's search results. Skipped without RAWG_API_KEY.
+// - similar: commercial games. Which games are similar is a judgment call, so a fast LLM
+//   names them (and the game the query names, if any); RAWG then supplies cover, year,
+//   platforms and Metacritic, and titles RAWG can't find are dropped. Without the LLM,
+//   RAWG's own search results. Skipped without RAWG_API_KEY.
 // Body { query } → { anchor, similar, playable, rawg }.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,6 +16,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const EXA_API_KEY = Deno.env.get("EXA_API_KEY") ?? "";
 // @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
 const RAWG_API_KEY = Deno.env.get("RAWG_API_KEY") ?? "";
+// @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -51,19 +55,65 @@ const toGame = (g: any): Game => ({
 
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
-async function similarGames(query: string): Promise<{ anchor: Game | null; similar: Game[] }> {
-  const found = (await rawg(`/games?search=${encodeURIComponent(query)}&page_size=12`))?.results ?? [];
-  const top = found[0];
-  // The query names this game ("juegos como Hollow Knight" / "hollow knight").
-  const named = top && norm(top.name).length > 2 && norm(query).includes(norm(top.name));
-  if (!named) return { anchor: null, similar: found.filter((g: any) => g.background_image).map(toGame) };
+// RAWG's tags/genres are too noisy for similarity (Hollow Knight → GTA V), so the LLM picks.
+async function suggestTitles(query: string): Promise<{ anchor: string | null; titles: string[] } | null> {
+  if (!OPENAI_API_KEY) return null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: "gpt-6-luna",
+        input: [
+          {
+            role: "system",
+            content: 'The user is looking for video games. If they name a specific game, "anchor" is its exact official title, else null. "titles": 10 well-known commercial video games most similar to what they ask for (gameplay, style, mood), most similar first, excluding the anchor, exact official English titles. Reply with strict JSON {"anchor": string|null, "titles": string[]}.',
+          },
+          { role: "user", content: query },
+        ],
+        max_output_tokens: 300,
+        reasoning: { effort: "none" },
+        text: { format: { type: "json_object" } },
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data.output_text ?? data.output?.flatMap((o: any) => o.content ?? []).map((c: any) => c.text ?? "").join("") ?? "";
+    const parsed = JSON.parse(text);
+    const titles = Array.isArray(parsed?.titles) ? parsed.titles.filter((t: unknown) => typeof t === "string") : [];
+    return { anchor: typeof parsed?.anchor === "string" ? parsed.anchor : null, titles };
+  } catch {
+    return null;
+  }
+}
 
-  const genres = (top.genres ?? []).map((g: any) => g.id).join(",");
-  const tags = (top.tags ?? []).filter((t: any) => t.language === "eng").slice(0, 3).map((t: any) => t.id).join(",");
-  const data = await rawg(`/games?ordering=-added&page_size=13${genres ? `&genres=${genres}` : ""}${tags ? `&tags=${tags}` : ""}`);
+// The RAWG entry for an exact title: name must match, and among matches the most-played
+// one wins (RAWG also lists jam games and fan copies with the same name).
+async function findGame(title: string): Promise<any | null> {
+  const results = (await rawg(`/games?search=${encodeURIComponent(title)}&page_size=6`))?.results ?? [];
+  const t = norm(title);
+  return results
+    .filter((g: any) => g.background_image && (norm(g.name) === t || norm(g.name).startsWith(`${t} `) || t.startsWith(`${norm(g.name)} `)))
+    .sort((a: any, b: any) => (b.added ?? 0) - (a.added ?? 0))[0] ?? null;
+}
+
+// Fallback without the LLM: RAWG search, minus the near-empty entries.
+const MIN_ADDED = 50;
+
+async function similarGames(query: string): Promise<{ anchor: Game | null; similar: Game[] }> {
+  const picks = await suggestTitles(query);
+  if (!picks?.titles.length) {
+    const found = (await rawg(`/games?search=${encodeURIComponent(query)}&page_size=20`))?.results ?? [];
+    return { anchor: null, similar: found.filter((g: any) => g.background_image && (g.added ?? 0) >= MIN_ADDED).slice(0, 12).map(toGame) };
+  }
+  const [anchor, ...similar] = await Promise.all(
+    [picks.anchor, ...picks.titles.slice(0, 12)].map((t) => (t ? findGame(t).catch(() => null) : Promise.resolve(null))),
+  );
+  const seen = new Set<number>(anchor ? [anchor.id] : []);
   return {
-    anchor: toGame(top),
-    similar: (data?.results ?? []).filter((g: any) => g.id !== top.id && g.background_image).slice(0, 12).map(toGame),
+    anchor: anchor ? toGame(anchor) : null,
+    similar: similar.filter((g) => g && !seen.has(g.id) && seen.add(g.id)).map(toGame),
   };
 }
 

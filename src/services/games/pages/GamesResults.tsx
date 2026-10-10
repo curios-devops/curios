@@ -1,11 +1,14 @@
 // Games 🎮 page: games similar to the query — browser games to play right now
 // (itch.io / WASM-4 / Newgrounds), then similar commercial games (RAWG).
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type SyntheticEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import TopBar from '../../../components/results/TopBar.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { searchGames, type GamesResult } from '../gamesSearch.ts';
+
+// Dead cover URLs (itch.io removes images) → keep the box, hide the broken-image icon.
+const hideBroken = (e: SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.visibility = 'hidden'; };
 
 export default function GamesResults() {
   const { search } = useLocation();
@@ -46,7 +49,7 @@ export default function GamesResults() {
                   style={cardStyle}
                 >
                   {g.imageUrl
-                    ? <img src={g.imageUrl} alt={g.title} className="w-full aspect-video object-cover" loading="lazy" />
+                    ? <img src={g.imageUrl} alt={g.title} className="w-full aspect-video object-cover" loading="lazy" onError={hideBroken} />
                     : <div className="w-full aspect-video" style={{ backgroundColor: 'var(--ui-bg-secondary)' }} />}
                   <div className="p-2">
                     <p className="text-sm font-medium leading-tight line-clamp-2">{g.title}</p>
@@ -73,7 +76,7 @@ export default function GamesResults() {
                   className="w-48 flex-shrink-0 rounded-xl overflow-hidden border"
                   style={cardStyle}
                 >
-                  {g.imageUrl && <img src={g.imageUrl} alt={g.name} className="w-full aspect-video object-cover" loading="lazy" />}
+                  {g.imageUrl && <img src={g.imageUrl} alt={g.name} className="w-full aspect-video object-cover" loading="lazy" onError={hideBroken} />}
                   <div className="p-2">
                     <p className="text-sm font-medium leading-tight line-clamp-2 flex items-center gap-1.5">
                       {g.name}
