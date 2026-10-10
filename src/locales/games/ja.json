@@ -3,5 +3,12 @@
   "gamesPlayable": "ブラウザで遊ぶ",
   "gamesSimilar": "似ているゲーム",
   "gamesSimilarTo": "{name}に似たゲーム",
-  "gamesEmpty": "似ているゲームが見つかりませんでした。"
+  "gamesEmpty": "似ているゲームが見つかりませんでした。",
+  "gameTab": "ゲーム",
+  "gamePlatforms": "プラットフォーム",
+  "gameStore": "ストア",
+  "gameDeveloper": "開発",
+  "gamePublisher": "パブリッシャー",
+  "exploreNewReleases": "新作（30日以内）",
+  "platformAll": "すべてのプラットフォーム"
 }

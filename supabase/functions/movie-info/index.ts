@@ -130,7 +130,7 @@ Deno.serve(async (req: Request) => {
 
     const lang = language.split("-")[0];
     const m = await tmdb(
-      `/movie/${id}?language=${language}&append_to_response=credits,videos,release_dates,watch/providers,recommendations,similar&include_video_language=${lang},en,null`,
+      `/movie/${id}?language=${language}&append_to_response=credits,videos,release_dates,watch/providers,recommendations,similar,images&include_video_language=${lang},en,null&include_image_language=${lang},en,null`,
     );
 
     const omdb = OMDB_API_KEY && m.imdb_id
@@ -182,6 +182,8 @@ Deno.serve(async (req: Request) => {
       trailerYoutubeId: trailer?.key ?? null,
       // Videos tab: every official YouTube video TMDB lists (trailers, teasers, clips, featurettes).
       videos: videos.slice(0, 12).map((v: any) => ({ youtubeId: v.key, name: v.name, type: v.type })),
+      // Images tab: the film's stills (backdrops).
+      images: (m.images?.backdrops ?? []).slice(0, 20).map((b: any) => `${IMG}/w1280${b.file_path}`),
       directors: (m.credits?.crew ?? []).filter((c: any) => c.job === "Director").map((c: any) => c.name),
       cast: (m.credits?.cast ?? []).slice(0, 12).map((c: any) => ({
         name: c.name,

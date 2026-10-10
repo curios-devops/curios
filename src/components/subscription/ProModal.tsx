@@ -10,9 +10,11 @@ import { appSettings } from '../../config/appSettings.ts';
 interface ProModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Situation-specific text (e.g. from requestProAccess); replaces the default subtitle. */
+  message?: string;
 }
 
-export default function ProModal({ isOpen, onClose }: ProModalProps) {
+export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
   const { session } = useSession();
   const { t } = useTranslation();
   const accentColor = useAccentColor();
@@ -35,7 +37,7 @@ export default function ProModal({ isOpen, onClose }: ProModalProps) {
 
         <div className="text-center mb-4 mt-6">
           <h2 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-1`}>{t('upgradeToPremium')}</h2>
-          <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('unlockPremiumFeatures')}</p>
+          <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{message || t('unlockPremiumFeatures')}</p>
           {error && <p className="mt-2 text-red-500 text-sm">{error}</p>}
 
           <div className="flex justify-center items-center mt-4">

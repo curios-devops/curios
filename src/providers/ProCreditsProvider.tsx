@@ -45,9 +45,10 @@ interface ProCreditsContextValue {
   /**
    * Single gate for Pro Features. If a credit is available it is consumed and
    * `true` is returned; otherwise the tier-appropriate modal opens and `false`
-   * is returned. Never throws.
+   * is returned. Never throws. `message` replaces the modal's default text so it
+   * fits the situation (e.g. "out of free credits for today" on Listen).
    */
-  requestProAccess: () => Promise<boolean>;
+  requestProAccess: (message?: string) => Promise<boolean>;
   /**
    * Opens the tier-appropriate promo modal: guests are offered sign in, free
    * users are offered the upgrade. No-op for pro users (nothing to promote).
@@ -78,6 +79,7 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
   }));
   const [loading, setLoading] = useState(true);
   const [blockedModal, setBlockedModal] = useState<BlockedModal>(null);
+  const [blockedMessage, setBlockedMessage] = useState<string | undefined>(undefined);
 
   // Guard against concurrent consume calls causing double-decrements.
   const consuming = useRef(false);
@@ -102,15 +104,16 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
     void load();
   }, [load]);
 
-  const openBlockedModal = useCallback((t: ProTier) => {
+  const openBlockedModal = useCallback((t: ProTier, message?: string) => {
+    setBlockedMessage(message);
     setBlockedModal(t === 'guest' ? 'register' : t === 'free' ? 'upgrade' : 'quota');
   }, []);
 
-  const requestProAccess = useCallback(async (): Promise<boolean> => {
+  const requestProAccess = useCallback(async (message?: string): Promise<boolean> => {
     if (consuming.current) return false;
 
     if (!state.canUse) {
-      openBlockedModal(tier);
+      openBlockedModal(tier, message);
       return false;
     }
 
@@ -120,7 +123,7 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
       stateRef.current = next;
       setState(next);
       if (!ok) {
-        openBlockedModal(tier);
+        openBlockedModal(tier, message);
         return false;
       }
       return true;
@@ -143,6 +146,7 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
   }, [tier, session]);
 
   const promptUpgrade = useCallback(() => {
+    setBlockedMessage(undefined);
     if (tier === 'guest') setBlockedModal('register');
     else if (tier === 'free') setBlockedModal('upgrade');
     // pro: nothing to promote
@@ -170,13 +174,13 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
 
       {/* Centralized modal routing — reuse existing modals, single open-state. */}
       {blockedModal === 'register' && (
-        <SignUpModal isOpen onClose={closeModal} context="pro" />
+        <SignUpModal isOpen onClose={closeModal} context="pro" subtitle={blockedMessage} />
       )}
       {blockedModal === 'upgrade' && (
-        <ProModal isOpen onClose={closeModal} />
+        <ProModal isOpen onClose={closeModal} message={blockedMessage} />
       )}
       {blockedModal === 'quota' && (
-        <QuotaExhaustedModal isOpen onClose={closeModal} />
+        <QuotaExhaustedModal isOpen onClose={closeModal} message={blockedMessage} />
       )}
     </ProCreditsContext.Provider>
   );

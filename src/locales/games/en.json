@@ -3,5 +3,12 @@
   "gamesPlayable": "Play in your browser",
   "gamesSimilar": "Similar games",
   "gamesSimilarTo": "Similar to {name}",
-  "gamesEmpty": "We couldn't find similar games."
+  "gamesEmpty": "We couldn't find similar games.",
+  "gameTab": "Game",
+  "gamePlatforms": "Platforms",
+  "gameStore": "Store",
+  "gameDeveloper": "Developer",
+  "gamePublisher": "Publisher",
+  "exploreNewReleases": "New releases (30 days)",
+  "platformAll": "All platforms"
 }

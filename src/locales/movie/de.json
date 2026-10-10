@@ -21,5 +21,8 @@
   "exploreFree": "Kostenlos",
   "exploreTopRated": "Bestbewertet",
   "exploreHiddenGems": "Geheimtipps",
-  "movieAboutTitle": "Über {title}"
+  "movieAboutTitle": "Über {title}",
+  "movieImages": "Bilder",
+  "creditsOutListenGuest": "Deine kostenlosen Credits für heute sind aufgebraucht. Registriere dich für zusätzliche Credits – kostenlos.",
+  "creditsOutListenFree": "Deine Credits für heute sind aufgebraucht. Wechsle zu Pro, um weiter zuzuhören."
 }

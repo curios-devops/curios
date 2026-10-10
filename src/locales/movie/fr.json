@@ -21,5 +21,8 @@
   "exploreFree": "Gratuits",
   "exploreTopRated": "Les mieux notés",
   "exploreHiddenGems": "Pépites cachées",
-  "movieAboutTitle": "À propos de {title}"
+  "movieAboutTitle": "À propos de {title}",
+  "movieImages": "Images",
+  "creditsOutListenGuest": "Vous n'avez plus de crédits gratuits pour aujourd'hui. Inscrivez-vous pour obtenir des crédits supplémentaires, c'est gratuit.",
+  "creditsOutListenFree": "Vous n'avez plus de crédits pour aujourd'hui. Passez à Pro pour continuer à écouter."
 }

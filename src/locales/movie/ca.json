@@ -21,5 +21,8 @@
   "exploreFree": "Gratis",
   "exploreTopRated": "Més ben valorades",
   "exploreHiddenGems": "Joies amagades",
-  "movieAboutTitle": "Sobre {title}"
+  "movieAboutTitle": "Sobre {title}",
+  "movieImages": "Imatges",
+  "creditsOutListenGuest": "T'has quedat sense crèdits gratuïts per avui. Registra't per obtenir crèdits extra, és gratis.",
+  "creditsOutListenFree": "T'has quedat sense crèdits per avui. Passa't a Pro per continuar escoltant."
 }

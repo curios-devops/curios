@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles, ChevronLeft, ChevronRight, Plus, Link2, Crown, FileText } from 'lucide-react';
+import { ImagesCarousel, ImagesGrid } from '../../../components/results/ImageGallery.tsx';
 import { executeFastSearchStreaming, executeDeepFastSearchStreaming } from '../controller';
 import { generateExpansionStreaming, extractKnowMoreLabel } from '../providers/llmProvider';
 import type { FastSearchResponse } from '../controller';
@@ -878,7 +879,6 @@ export default function FastSearchResults() {
   );
 }
 
-// Images Carousel Component
 // Rotating, shimmering loading phrases (Claude-style): each phrase overwrites the
 // previous with a cross-fade while the contextual image is generated.
 const GENERATING_PHRASES = [
@@ -909,109 +909,6 @@ function GeneratingPhrases() {
     <span key={index} className="fs-shimmer font-medium">
       {GENERATING_PHRASES[index]}…
     </span>
-  );
-}
-
-function ImagesCarousel({ images, featuredFirst = false }: { images: Array<{ url: string; title: string; source: string }>; featuredFirst?: boolean }) {
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const [imageDimensions, setImageDimensions] = useState<Map<number, { width: number; height: number }>>(new Map());
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (!containerRef.current) return;
-    const scrollAmount = 300;
-    const newPosition = direction === 'left'
-      ? Math.max(0, scrollPosition - scrollAmount)
-      : scrollPosition + scrollAmount;
-
-    containerRef.current.scrollTo({ left: newPosition, behavior: 'smooth' });
-    setScrollPosition(newPosition);
-  };
-
-  const handleImageLoad = (index: number, e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    setImageDimensions(prev => new Map(prev).set(index, { width: img.naturalWidth, height: img.naturalHeight }));
-  };
-
-  const getImageClass = (index: number) => {
-    // Featured hero (Ask Deeper generated image) leads the carousel ~2 tiles wide.
-    if (featuredFirst && index === 0) return 'w-80 h-40';
-
-    const dims = imageDimensions.get(index);
-    if (!dims) return 'w-48 h-40'; // Default landscape while loading
-
-    const aspectRatio = dims.width / dims.height;
-    const fixedHeight = 'h-40'; // Same height for all: 160px
-
-    if (aspectRatio > 1.3) {
-      // Landscape - wider
-      return `w-56 ${fixedHeight}`;
-    } else if (aspectRatio < 0.7) {
-      // Portrait - narrower
-      return `w-28 ${fixedHeight}`;
-    } else {
-      // Square
-      return `w-40 ${fixedHeight}`;
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="relative group">
-        {/* Left scroll button */}
-        {scrollPosition > 0 && (
-          <button
-            onClick={() => scroll('left')}
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-          </button>
-        )}
-
-        {/* Carousel container */}
-        <div
-          ref={containerRef}
-          className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory items-center"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {images.map((image, index) => (
-            <a
-              key={index}
-              href={image.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-shrink-0 snap-start"
-            >
-              <div className={`${getImageClass(index)} rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors`}>
-                <img
-                  src={image.url}
-                  alt={image.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                  onLoad={(e) => handleImageLoad(index, e)}
-                  onError={(e) => {
-                    // Broken image (e.g. SerpAPI full-res 404/hotlink-blocked):
-                    // hide the whole tile so there's no empty box.
-                    const tile = e.currentTarget.closest('a');
-                    if (tile) (tile as HTMLElement).style.display = 'none';
-                  }}
-                />
-              </div>
-            </a>
-          ))}
-        </div>
-
-        {/* Right scroll button */}
-        <button
-          onClick={() => scroll('right')}
-          className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          aria-label="Scroll right"
-        >
-          <ChevronRight className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -1077,31 +974,3 @@ function ProductsCarousel({ products }: { products: AmazonProduct[] }) {
 }
 
 // Images Grid Component
-function ImagesGrid({ images }: { images: Array<{ url: string; title: string; source: string }> }) {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-      {images.map((image, index) => (
-        <a
-          key={index}
-          href={image.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group"
-        >
-          <div className="aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors">
-            <img
-              src={image.url}
-              alt={image.title}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              onError={(e) => {
-                const tile = e.currentTarget.closest('a');
-                if (tile) (tile as HTMLElement).style.display = 'none';
-              }}
-            />
-          </div>
-        </a>
-      ))}
-    </div>
-  );
-}

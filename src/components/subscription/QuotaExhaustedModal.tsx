@@ -5,11 +5,13 @@ import { useTheme } from '../theme/ThemeContext';
 interface QuotaExhaustedModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Situation-specific text (e.g. from requestProAccess); replaces the default body. */
+  message?: string;
 }
 
 // Shown to Pro subscribers who have used all of their daily Pro Credits.
 // Status/message only — no checkout (they already pay). Credits refill next day.
-export default function QuotaExhaustedModal({ isOpen, onClose }: QuotaExhaustedModalProps) {
+export default function QuotaExhaustedModal({ isOpen, onClose, message }: QuotaExhaustedModalProps) {
   const { t } = useTranslation();
   const { theme } = useTheme();
 
@@ -33,7 +35,7 @@ export default function QuotaExhaustedModal({ isOpen, onClose }: QuotaExhaustedM
           {t('quotaExhaustedTitle') || "You're out of Pro Credits"}
         </h2>
         <p className={`text-sm mb-6 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          {t('quotaExhaustedBody') || 'Your daily Pro Credits are used up. They refresh tomorrow.'}
+          {message || t('quotaExhaustedBody') || 'Your daily Pro Credits are used up. They refresh tomorrow.'}
         </p>
 
         <button

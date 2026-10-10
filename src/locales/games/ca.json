@@ -3,5 +3,12 @@
   "gamesPlayable": "Juga al navegador",
   "gamesSimilar": "Jocs similars",
   "gamesSimilarTo": "Similars a {name}",
-  "gamesEmpty": "No hem trobat jocs semblants."
+  "gamesEmpty": "No hem trobat jocs semblants.",
+  "gameTab": "Joc",
+  "gamePlatforms": "Plataformes",
+  "gameStore": "Botiga",
+  "gameDeveloper": "Desenvolupador",
+  "gamePublisher": "Distribuïdora",
+  "exploreNewReleases": "Novetats (30 dies)",
+  "platformAll": "Totes les plataformes"
 }

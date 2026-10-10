@@ -21,5 +21,8 @@
   "exploreFree": "Gratis",
   "exploreTopRated": "Mejor valoradas",
   "exploreHiddenGems": "Joyas ocultas",
-  "movieAboutTitle": "Sobre {title}"
+  "movieAboutTitle": "Sobre {title}",
+  "movieImages": "Imágenes",
+  "creditsOutListenGuest": "Te quedaste sin créditos gratis por hoy. Regístrate para obtener créditos extra, es gratis.",
+  "creditsOutListenFree": "Te quedaste sin créditos por hoy. Pásate a Pro para seguir escuchando."
 }

@@ -3,5 +3,12 @@
   "gamesPlayable": "Jouer dans le navigateur",
   "gamesSimilar": "Jeux similaires",
   "gamesSimilarTo": "Similaires à {name}",
-  "gamesEmpty": "Nous n'avons trouvé aucun jeu similaire."
+  "gamesEmpty": "Nous n'avons trouvé aucun jeu similaire.",
+  "gameTab": "Jeu",
+  "gamePlatforms": "Plateformes",
+  "gameStore": "Boutique",
+  "gameDeveloper": "Développeur",
+  "gamePublisher": "Éditeur",
+  "exploreNewReleases": "Nouveautés (30 jours)",
+  "platformAll": "Toutes les plateformes"
 }

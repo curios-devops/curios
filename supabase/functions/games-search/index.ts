@@ -5,7 +5,11 @@
 //   names them (and the game the query names, if any); RAWG then supplies cover, year,
 //   platforms and Metacritic, and titles RAWG can't find are dropped. Without the LLM,
 //   RAWG's own search results. Skipped without RAWG_API_KEY.
-// Body { query } → { anchor, similar, playable, rawg }.
+// Body { query } → { anchor, similar, playable, rawg }           (list page)
+// Body { query, detail: true } → game fact sheet, or { found: false }   (fast: RAWG only)
+// Body { query, similar: true } → { similar }    Body { query, playable: true } → { playable }
+//   (the fact sheet fires these alongside, so the LLM never delays the sheet)
+// Body { list, platform?, genreId? } → { items }                   ("More to explore")
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -53,6 +57,9 @@ const toGame = (g: any): Game => ({
   url: `https://rawg.io/games/${g.slug}`,
 });
 
+// RAWG disambiguates remakes with a year: "God of War (2018)" is the game "God of War".
+const nameKey = (name: string) => norm(name.replace(/\s*\(\d{4}\)\s*$/, ""));
+
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 // RAWG's tags/genres are too noisy for similarity (Hollow Knight → GTA V), so the LLM picks.
@@ -88,14 +95,16 @@ async function suggestTitles(query: string): Promise<{ anchor: string | null; ti
   }
 }
 
-// The RAWG entry for an exact title: name must match, and among matches the most-played
-// one wins (RAWG also lists jam games and fan copies with the same name).
+// The RAWG entry for a title: the exact name wins, else an edition of it ("…: Definitive
+// Edition"); among equals the most-played one (RAWG also lists jam games and fan copies).
+// Never a shorter name: "Spider-Man 2" must not resolve to "Spider-Man".
 async function findGame(title: string): Promise<any | null> {
   const results = (await rawg(`/games?search=${encodeURIComponent(title)}&page_size=6`))?.results ?? [];
   const t = norm(title);
+  const rank = (g: any) => (nameKey(g.name) === t ? 2 : nameKey(g.name).startsWith(`${t} `) ? 1 : 0);
   return results
-    .filter((g: any) => g.background_image && (norm(g.name) === t || norm(g.name).startsWith(`${t} `) || t.startsWith(`${norm(g.name)} `)))
-    .sort((a: any, b: any) => (b.added ?? 0) - (a.added ?? 0))[0] ?? null;
+    .filter((g: any) => g.background_image && rank(g) > 0)
+    .sort((a: any, b: any) => rank(b) - rank(a) || (b.added ?? 0) - (a.added ?? 0))[0] ?? null;
 }
 
 // Fallback without the LLM: RAWG search, minus the near-empty entries.
@@ -115,6 +124,103 @@ async function similarGames(query: string): Promise<{ anchor: Game | null; simil
     anchor: anchor ? toGame(anchor) : null,
     similar: similar.filter((g) => g && !seen.has(g.id) && seen.add(g.id)).map(toGame),
   };
+}
+
+// ---- Game fact sheet ------------------------------------------------------------
+
+const ESRB_SHORT: Record<string, string> = {
+  everyone: "E", "everyone-10-plus": "E10+", teen: "T", mature: "M", "adults-only": "AO", "rating-pending": "RP",
+};
+
+// The game the query names, by RAWG name contained in the query ("de qué trata Celeste"):
+// longest name first ("Spider-Man 2" over "Spider-Man"), then the most-played. Only when
+// that fails does the LLM name it (slow path).
+async function resolveGame(query: string): Promise<any | null> {
+  const results = (await rawg(`/games?search=${encodeURIComponent(query)}&page_size=10`))?.results ?? [];
+  const q = ` ${norm(query)} `;
+  const hit = results
+    .filter((g: any) => g.background_image && nameKey(g.name).length > 2 && q.includes(` ${nameKey(g.name)} `))
+    .sort((a: any, b: any) => nameKey(b.name).length - nameKey(a.name).length || (b.added ?? 0) - (a.added ?? 0))[0];
+  if (hit) return hit;
+  const picks = await suggestTitles(query);
+  return picks?.anchor ? findGame(picks.anchor).catch(() => null) : null;
+}
+
+async function similarTo(query: string): Promise<Game[]> {
+  const picks = await suggestTitles(query);
+  const anchor = norm(picks?.anchor ?? "");
+  const found = await Promise.all((picks?.titles ?? []).slice(0, 12).map((t) => findGame(t).catch(() => null)));
+  const seen = new Set<number>();
+  return found.filter((g) => g && nameKey(g.name) !== anchor && !seen.has(g.id) && seen.add(g.id)).map(toGame);
+}
+
+async function gameDetail(query: string): Promise<Record<string, unknown> | null> {
+  const base = await resolveGame(query);
+  if (!base) return null;
+
+  const empty = { results: [] };
+  const [d, movies, shots, storeLinks] = await Promise.all([
+    rawg(`/games/${base.id}`),
+    rawg(`/games/${base.id}/movies`).catch(() => empty),
+    rawg(`/games/${base.id}/screenshots`).catch(() => empty),
+    rawg(`/games/${base.id}/stores`).catch(() => empty),
+  ]);
+
+  const urlByStore = new Map<number, string>((storeLinks.results ?? []).map((s: any) => [s.store_id, s.url]));
+  const videos = (movies.results ?? [])
+    .filter((m: any) => m.data?.max || m.data?.["480"])
+    .map((m: any) => ({ name: m.name, url: m.data.max ?? m.data["480"], preview: m.preview ?? null }));
+  return {
+    found: true,
+    name: d.name,
+    year: (d.released ?? "").slice(0, 4),
+    esrb: d.esrb_rating ? { short: ESRB_SHORT[d.esrb_rating.slug] ?? d.esrb_rating.name, name: d.esrb_rating.name } : null,
+    genres: (d.genres ?? []).map((g: any) => g.name),
+    genreId: d.genres?.[0]?.id ?? null,
+    rating: d.rating || null,
+    metacritic: d.metacritic ?? null,
+    platforms: (d.platforms ?? []).map((p: any) => p.platform?.name).filter(Boolean),
+    description: d.description_raw ?? "",
+    imageUrl: d.background_image ?? null,
+    website: d.website || null,
+    developers: (d.developers ?? []).map((x: any) => ({ name: x.name, imageUrl: x.image_background ?? null })),
+    publishers: (d.publishers ?? []).map((x: any) => ({ name: x.name, imageUrl: x.image_background ?? null })),
+    stores: (d.stores ?? []).map((s: any) => ({
+      name: s.store.name,
+      domain: s.store.domain,
+      url: urlByStore.get(s.store.id) ?? `https://${s.store.domain}`,
+    })),
+    // Hero: RAWG's trailer (mp4); the client searches YouTube when there is none.
+    trailer: videos[0] ?? null,
+    videos,
+    screenshots: (shots.results ?? []).map((x: any) => x.image).filter(Boolean),
+    rawgUrl: `https://rawg.io/games/${d.slug}`,
+  };
+}
+
+// ---- "More to explore" lists -----------------------------------------------------
+
+// RAWG parent platform ids.
+const PLATFORM_IDS: Record<string, string> = { pc: "1", playstation: "2", xbox: "3" };
+const day = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+// Top rated keeps well-known entries only (RAWG also lists re-releases and duplicates).
+const MIN_TOP_ADDED = 500;
+
+const LISTS: Record<string, (genre: string) => string> = {
+  popular: () => `/games?dates=${day(365)},${day(0)}&ordering=-added`,
+  new_releases: () => `/games?dates=${day(30)},${day(0)}&ordering=-added`,
+  top_rated: (g) => `/games?ordering=-metacritic&metacritic=80,100${g ? `&genres=${g}` : ""}`,
+};
+
+async function exploreList(list: string, platform: string, genre: string): Promise<Game[] | null> {
+  const build = LISTS[list];
+  if (!build) return null;
+  const p = PLATFORM_IDS[platform];
+  const data = await rawg(`${build(genre)}&page_size=30${p ? `&parent_platforms=${p}` : ""}`);
+  return (data?.results ?? [])
+    .filter((g: any) => g.background_image && (list !== "top_rated" || (g.added ?? 0) >= MIN_TOP_ADDED))
+    .slice(0, 12)
+    .map(toGame);
 }
 
 interface PlayableGame { title: string; url: string; imageUrl: string | null; description: string; site: string }
@@ -166,8 +272,29 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const body = await req.json().catch(() => ({}));
+
+  if (typeof body?.list === "string") {
+    if (!RAWG_API_KEY) return json({ items: [] });
+    const genre = typeof body?.genreId === "number" ? String(body.genreId) : "";
+    const items = await exploreList(body.list, String(body?.platform ?? "all"), genre).catch(() => []);
+    return items ? json({ items }) : json({ error: "Unknown list" }, 400);
+  }
+
   const query = typeof body?.query === "string" ? body.query.trim() : "";
   if (!query) return json({ error: "Missing query" }, 400);
+
+  if (body?.similar) return json({ similar: RAWG_API_KEY ? await similarTo(query).catch(() => []) : [] });
+  if (body?.playable) return json({ playable: await playableGames(query).catch(() => []) });
+
+  if (body?.detail) {
+    if (!RAWG_API_KEY) return json({ found: false });
+    try {
+      return json((await gameDetail(query)) ?? { found: false });
+    } catch (e) {
+      console.error("games-search detail", e);
+      return json({ found: false });
+    }
+  }
 
   const [rawgResult, playable] = await Promise.all([
     RAWG_API_KEY

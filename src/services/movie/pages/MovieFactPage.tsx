@@ -1,17 +1,13 @@
 // Movie 🍿 page (Home routes here with movie=1): a film fact sheet instead of a
 // generated video. Title + certification/year/genres/runtime, official trailer (or a
-// searched trailer, else the cover), side cards (ratings, where to watch, sources,
-// director, awards, Oscars), a cast carousel linking to new searches, then a short
-// explanation written by ONE LLM call grounded on TMDB's synopsis + web sources.
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+// searched trailer, else the cover), side cards (ratings, where to watch, director,
+// awards), a cast carousel linking to new searches, then a short explanation written by
+// ONE LLM call grounded on TMDB's synopsis + web sources. Layout pieces are shared with
+// the Games page (components/factSheet).
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Award, ChevronDown, Film, Headphones, Link2, Loader2, Pause, Play, Trophy, Video, type LucideIcon } from 'lucide-react';
-import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
-import { ParagraphNarrator, toParagraphs, type NarratorState } from '../audio/paragraphNarrator.ts';
-import { loadNarratorVoice, narratorGender } from '../audio/narratorPrefs.ts';
-import { useSession } from '../../../hooks/useSession.ts';
+import { Award, Film, Image as ImageIcon, Link2, Loader2, Trophy, Video, type LucideIcon } from 'lucide-react';
 import TopBar from '../../../components/results/TopBar.tsx';
-import LightMarkdown from '../../../components/LightMarkdown';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
@@ -20,40 +16,11 @@ import { buildSourcesText, streamLLMText } from '../../search/providers/llmProvi
 import { fetchExploreList, fetchMovieInfo, formatRuntime, type ExploreItem, type ExploreList, type MovieInfo } from '../movieInfo.ts';
 import { findMovieTrailer, youTubeId, type MovieTrailer } from '../trailer.ts';
 import { searchVideos } from '../../search/providers/mediaSearchProvider.ts';
+import { AboutSection, FactCard as Card, FactTabs, LinksCard, MenuSelect, SourcesList, VideosGrid, domain, favicon, type VideoItem } from '../../../components/factSheet/FactSheet.tsx';
+import { ImagesGrid } from '../../../components/results/ImageGallery.tsx';
 
-type Tab = 'movie' | 'videos' | 'sources';
+type Tab = 'movie' | 'videos' | 'images' | 'sources';
 
-
-interface VideoItem { url: string; title: string; thumbnail: string; source: string }
-
-const domain = (url: string) => {
-  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
-};
-
-// Compact card (Perplexity-style): gray label over a primary value, visuals on the right.
-function Card({ label, value, right, onClick }: { label: string; value?: ReactNode; right?: ReactNode; onClick?: () => void }) {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag
-      {...(onClick ? { type: 'button' as const, onClick } : {})}
-      className="w-full text-left rounded-xl border px-4 py-3 flex items-center justify-between gap-3"
-      style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-subtle)' }}
-    >
-      <div className="min-w-0">
-        <p
-          className={value ? 'text-[11px] text-gray-500 dark:text-gray-400' : 'text-sm font-medium'}
-          style={value ? undefined : { color: 'var(--ui-text-primary)' }}
-        >
-          {label}
-        </p>
-        {value && <p className="text-sm font-medium line-clamp-2" style={{ color: 'var(--ui-text-primary)' }}>{value}</p>}
-      </div>
-      {right && <div className="flex items-center gap-2 flex-shrink-0">{right}</div>}
-    </Tag>
-  );
-}
-
-const favicon = (site: string) => `https://www.google.com/s2/favicons?domain=${site}&sz=64`;
 // Rating sources → the site whose icon we show next to the score.
 const RATING_SITE: Record<string, string> = { IMDb: 'imdb.com', 'Rotten Tomatoes': 'rottentomatoes.com', Metacritic: 'metacritic.com', TMDB: 'themoviedb.org' };
 
@@ -71,20 +38,10 @@ export default function MovieFactPage() {
   const [trailer, setTrailer] = useState<MovieTrailer | null>(null);
   const [sources, setSources] = useState<WebSearchResult[]>([]);
   const [explanation, setExplanation] = useState('');
+  const [explanationDone, setExplanationDone] = useState(false);
   const [searchedVideos, setSearchedVideos] = useState<VideoItem[]>([]);
-  const [watchOpen, setWatchOpen] = useState(false);
   // "More to explore" dropdown: TMDB lists fetched on demand and cached per list.
   const [exploreList, setExploreList] = useState<ExploreList>('related');
-  const [exploreOpen, setExploreOpen] = useState(false);
-  const exploreMenuRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!exploreOpen) return;
-    const close = (e: MouseEvent) => {
-      if (exploreMenuRef.current && !exploreMenuRef.current.contains(e.target as Node)) setExploreOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [exploreOpen]);
   const [exploreCache, setExploreCache] = useState<Partial<Record<ExploreList, ExploreItem[]>>>({});
   const exploreItems = exploreList === 'related' ? info?.related ?? [] : exploreCache[exploreList];
   const pickExplore = (list: ExploreList) => {
@@ -102,40 +59,6 @@ export default function MovieFactPage() {
     { id: 'top_rated', label: t('exploreTopRated') },
     { id: 'hidden_gems', label: t('exploreHiddenGems') },
   ];
-  const [explanationDone, setExplanationDone] = useState(false);
-  // Listen (ElevenLabs, OpenAI TTS fallback), paragraph by paragraph in the user's
-  // narrator voice. First play costs 1 Pro Credit; replays reuse the generated audio.
-  const { requestProAccess } = useProCredits();
-  const { session } = useSession();
-  const narratorRef = useRef<ParagraphNarrator | null>(null);
-  const [narration, setNarration] = useState<NarratorState | 'idle'>('idle');
-  // Leaving the page cancels any pending generation and stops playback.
-  useEffect(() => () => narratorRef.current?.stop(), []);
-
-  // Listening time at ~155 spoken words per minute.
-  const listenSeconds = Math.round((toParagraphs(explanation).join(' ').split(/\s+/).filter(Boolean).length / 155) * 60);
-  const listenTime = listenSeconds < 60 ? `${Math.max(listenSeconds, 5)} s` : `${Math.round(listenSeconds / 60)} min`;
-
-  const handleListen = async () => {
-    const current = narratorRef.current;
-    if (current && narration === 'playing') { current.pause(); return; }
-    if (current && narration === 'paused') { current.resume(); return; }
-    if (current && (narration === 'ended' || narration === 'error')) { void current.start(0); return; }
-    if (current) return; // still loading
-
-    // Created synchronously in the tap (unlocks audio on mobile), before any await.
-    const voiceId = loadNarratorVoice(session?.user);
-    const narrator = new ParagraphNarrator(toParagraphs(explanation), voiceId, narratorGender(voiceId), setNarration);
-    narratorRef.current = narrator;
-    setNarration('loading');
-    if (!(await requestProAccess())) {
-      narrator.stop();
-      narratorRef.current = null;
-      setNarration('idle');
-      return;
-    }
-    void narrator.start(0);
-  };
 
   // 1) Fact sheet first; 2) trailer search only if TMDB has none; 3) sources → explanation.
   useEffect(() => {
@@ -211,36 +134,21 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
     });
   }, [info, searchedVideos]);
 
+  // Images tab: TMDB stills of the film.
+  const images = (info?.images ?? []).map((url) => ({ url, title: info?.title ?? '', source: 'themoviedb.org' }));
+
+  // Videos / Images only when there is something to show.
   const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: 'movie', label: t('movieTab'), icon: Film },
-    // Only when there is something to show.
     ...(allVideos.length > 0 ? [{ id: 'videos' as const, label: t('movieVideos'), icon: Video }] : []),
+    ...(images.length > 0 ? [{ id: 'images' as const, label: t('movieImages'), icon: ImageIcon }] : []),
     { id: 'sources', label: t('movieSources'), icon: Link2 },
   ];
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
       <TopBar query={query} timeAgo="" />
-
-      <div className="border-b" style={{ borderColor: 'var(--ui-bg-elevated)' }}>
-        <div className="max-w-7xl mx-auto px-4">
-          <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className="flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
-                style={tab === id
-                  ? { borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }
-                  : { borderColor: 'transparent', color: 'var(--ui-text-muted)' }}
-              >
-                <Icon size={16} />
-                {label}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
+      <FactTabs tabs={TABS} active={tab} onChange={setTab} />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {tab === 'movie' && (
@@ -300,50 +208,7 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
                     />
                   )}
 
-                  {info.watch.providers.length > 0 && (
-                    <div>
-                      <Card
-                        label={t('movieWatchOn')}
-                        value={info.watch.providers.length > 1
-                          ? `${info.watch.providers[0].name}, +${info.watch.providers.length - 1}`
-                          : info.watch.providers[0].name}
-                        onClick={() => setWatchOpen((o) => !o)}
-                        right={
-                          <>
-                            <span className="flex items-center">
-                              {info.watch.providers.slice(0, 3).map((p, i) => (
-                                <img
-                                  key={p.name}
-                                  src={p.logoUrl}
-                                  alt={p.name}
-                                  className="w-6 h-6 rounded-full border-2"
-                                  style={{ marginLeft: i > 0 ? '-6px' : 0, zIndex: 3 - i, borderColor: 'var(--ui-bg-elevated)' }}
-                                />
-                              ))}
-                            </span>
-                            <ChevronDown size={14} className={`transition-transform text-gray-500 dark:text-gray-400 ${watchOpen ? 'rotate-180' : ''}`} />
-                          </>
-                        }
-                      />
-                      {watchOpen && (
-                        <ul className="mt-1 rounded-xl border py-1" style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-subtle)' }}>
-                          {info.watch.providers.map((p) => (
-                            <li key={p.name}>
-                              <a
-                                href={info.watch.link ?? '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 px-4 py-2 text-sm hover:opacity-80"
-                              >
-                                <img src={p.logoUrl} alt="" className="w-6 h-6 rounded-full" />
-                                {p.name}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
+                  <LinksCard label={t('movieWatchOn')} items={info.watch.providers} link={info.watch.link} />
 
                   {info.directors.length > 0 && (
                     <Card label={t('movieDirectedBy')} value={info.directors.join(', ')} />
@@ -358,7 +223,6 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
                         : <Award size={18} className="text-gray-500 dark:text-gray-400" />}
                     />
                   )}
-
                 </div>
               )}
             </div>
@@ -389,41 +253,8 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
             {/* More to explore: a dropdown of lists (related by default); each card opens its own fact sheet */}
             {info && (
               <section className="mt-8">
-                {/* Same dropdown style as the Home input's mode menu */}
-                <div className="relative inline-block mb-3" ref={exploreMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() => setExploreOpen((o) => !o)}
-                    className="flex items-center gap-1.5 text-base font-semibold"
-                    style={{ color: 'var(--ui-text-primary)' }}
-                  >
-                    {EXPLORE_OPTIONS.find((o) => o.id === exploreList)?.label}
-                    <ChevronDown size={16} className={`transition-transform text-gray-500 dark:text-gray-400 ${exploreOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {exploreOpen && (
-                    <div
-                      className="absolute top-full mt-2 left-0 rounded-lg shadow-lg border overflow-hidden min-w-[220px] z-50"
-                      style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)', boxShadow: '0 14px 28px var(--ui-shadow-elevated)' }}
-                    >
-                      {EXPLORE_OPTIONS.map((o) => {
-                        const active = o.id === exploreList;
-                        return (
-                          <button
-                            key={o.id}
-                            type="button"
-                            onClick={() => { pickExplore(o.id); setExploreOpen(false); }}
-                            className="w-full flex items-center justify-between gap-3 px-4 py-3 transition-colors text-left"
-                            style={{ color: active ? 'var(--accent-primary)' : 'var(--ui-text-primary)', fontWeight: active ? 500 : 400 }}
-                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--ui-bg-secondary)'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                          >
-                            <span className="text-sm">{o.label}</span>
-                            {active && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--accent-primary)' }} />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                <div className="mb-3">
+                  <MenuSelect options={EXPLORE_OPTIONS} value={exploreList} onChange={pickExplore} />
                 </div>
                 {!exploreItems ? (
                   <Loader2 size={18} className="animate-spin text-gray-500 dark:text-gray-400" />
@@ -449,92 +280,27 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
               </section>
             )}
 
-            {/* Explanation */}
-            <section className="mt-8 max-w-3xl">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <h2 className="text-base font-semibold">{info ? t('movieAboutTitle').replace('{title}', info.title) : t('movieAbout')}</h2>
-                {explanationDone && (
-                  <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">≈ {listenTime}</span>
-                  <button
-                    type="button"
-                    onClick={() => void handleListen()}
-                    disabled={narration === 'loading'}
-                    title={t('movieListen')}
-                    aria-label={t('movieListen')}
-                    className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
-                    style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--accent-primary)' }}
-                  >
-                    {narration === 'loading' ? <Loader2 size={16} className="animate-spin" /> : narration === 'playing' ? <Pause size={16} /> : <Headphones size={16} />}
-                  </button>
-                  </div>
-                )}
-              </div>
-              {explanation ? (
-                <LightMarkdown>{explanation}</LightMarkdown>
-              ) : (
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                  <Loader2 size={16} className="animate-spin" />
-                </div>
-              )}
-            </section>
+            <AboutSection
+              title={info ? t('movieAboutTitle').replace('{title}', info.title) : t('movieAbout')}
+              text={explanation}
+              done={explanationDone}
+            />
           </>
         )}
 
-        {tab === 'videos' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {allVideos.map((v) => (
-              <a
-                key={v.url}
-                href={v.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-xl overflow-hidden border transition-colors"
-                style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-subtle)' }}
-              >
-                <div className="relative aspect-video bg-black">
-                  {v.thumbnail && <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover" loading="lazy" />}
-                  <span className="absolute inset-0 flex items-center justify-center">
-                    <span className="w-11 h-11 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
-                      <Play size={20} className="text-white ml-0.5" />
-                    </span>
-                  </span>
-                </div>
-                <div className="p-3">
-                  <p className="text-sm font-medium leading-tight line-clamp-2">{v.title}</p>
-                  <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">{v.source}</p>
-                </div>
-              </a>
-            ))}
-          </div>
-        )}
+        {tab === 'videos' && <VideosGrid videos={allVideos} />}
+
+        {tab === 'images' && <ImagesGrid images={images} />}
 
         {tab === 'sources' && (
           // Same source cards as Search; IMDb and TMDB (the fact-sheet data) are listed too.
-          <div className="grid gap-3 max-w-3xl">
-            {[
+          <SourcesList
+            sources={[
               ...sources,
               ...(info?.imdbUrl ? [{ title: `${info.title} — IMDb`, url: info.imdbUrl, snippet: '' }] : []),
               ...(info ? [{ title: `${info.title} — TMDB`, url: info.tmdbUrl, snippet: '' }] : []),
-            ].map((s) => (
-              <a
-                key={s.url}
-                href={s.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-[#0a0a0a]"
-              >
-                <div className="flex-shrink-0 w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
-                  <img src={`https://www.google.com/s2/favicons?domain=${domain(s.url)}&sz=32`} alt="" className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-1 line-clamp-2">{s.title}</h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{domain(s.url)}</p>
-                  {s.snippet && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{s.snippet}</p>}
-                </div>
-              </a>
-            ))}
-          </div>
+            ]}
+          />
         )}
       </div>
     </div>

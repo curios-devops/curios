@@ -21,5 +21,8 @@
   "exploreFree": "Free to watch",
   "exploreTopRated": "Top rated",
   "exploreHiddenGems": "Hidden gems",
-  "movieAboutTitle": "About {title}"
+  "movieAboutTitle": "About {title}",
+  "movieImages": "Images",
+  "creditsOutListenGuest": "You've run out of free credits for today. Sign up for extra credits — it's free.",
+  "creditsOutListenFree": "You've run out of credits for today. Upgrade to Pro to keep listening."
 }

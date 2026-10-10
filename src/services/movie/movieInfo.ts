@@ -16,6 +16,8 @@ export interface MovieInfo {
   backdropUrl: string | null;
   trailerYoutubeId: string | null;
   videos: { youtubeId: string; name: string; type: string }[];
+  /** Stills for the Images tab. */
+  images: string[];
   directors: string[];
   cast: { name: string; character: string; photoUrl: string | null }[];
   watch: { link: string | null; providers: { name: string; logoUrl: string; type: string }[] };

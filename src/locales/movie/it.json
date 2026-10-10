@@ -21,5 +21,8 @@
   "exploreFree": "Gratis",
   "exploreTopRated": "I più votati",
   "exploreHiddenGems": "Gemme nascoste",
-  "movieAboutTitle": "Su {title}"
+  "movieAboutTitle": "Su {title}",
+  "movieImages": "Immagini",
+  "creditsOutListenGuest": "Hai esaurito i crediti gratuiti di oggi. Registrati per ottenere crediti extra, è gratis.",
+  "creditsOutListenFree": "Hai esaurito i crediti di oggi. Passa a Pro per continuare ad ascoltare."
 }

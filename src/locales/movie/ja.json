@@ -21,5 +21,8 @@
   "exploreFree": "無料で視聴",
   "exploreTopRated": "高評価",
   "exploreHiddenGems": "隠れた名作",
-  "movieAboutTitle": "{title}について"
+  "movieAboutTitle": "{title}について",
+  "movieImages": "画像",
+  "creditsOutListenGuest": "本日の無料クレジットを使い切りました。登録すると追加クレジットがもらえます（無料）。",
+  "creditsOutListenFree": "本日のクレジットを使い切りました。Proにアップグレードすると引き続き聴けます。"
 }
