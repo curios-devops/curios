@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { arcadeModel, arcadeTier } from './arcadeService';
-import { buildArcadeHtml, DEFAULT_PALETTE, safePalette, scriptSafe } from './arcadeRuntime';
+import { arcadeModel, arcadeTier, nextArcadeModel } from './arcadeService';
+import { buildArcadeHtml, DEFAULT_PALETTE, safeLabels, safePalette, scriptSafe } from './arcadeRuntime';
 
 const models = { luna: 'luna', sol: 'sol', astra: 'astra', router: true } as never;
 
@@ -21,6 +21,16 @@ describe('arcade model by perceived difficulty', () => {
   });
 });
 
+describe('remake uses a stronger model', () => {
+  // The player didn't like the game: the remake must not run on the same model again,
+  // and there is nothing above Astra.
+  it('moves Luna → Sol → Astra and stays on Astra', () => {
+    expect(nextArcadeModel('luna', models)).toBe('sol');
+    expect(nextArcadeModel('sol', models)).toBe('astra');
+    expect(nextArcadeModel('astra', models)).toBe('astra');
+  });
+});
+
 describe('arcade console page', () => {
   // Model-written code goes inside an inline <script>; "</script>" in it would end the tag
   // and the rest of the code would render as page text.
@@ -35,5 +45,35 @@ describe('arcade console page', () => {
     expect(safePalette(['red', '#000', '#000', '#000'])).toEqual(DEFAULT_PALETTE);
     expect(safePalette(['#000', '#000', '#000', '#000"];alert(1);//'])).toEqual(DEFAULT_PALETTE);
     expect(safePalette(undefined)).toEqual(DEFAULT_PALETTE);
+  });
+  // Button labels come from the model and are shown on the controls: text only, short.
+  it('keeps button labels short and plain', () => {
+    expect(safeLabels({ a: 'dispara<img src=x>', b: '' })).toEqual({ a: 'DISPARAI', b: '' });
+    expect(safeLabels({ a: 'saltar', b: 'golpe' })).toEqual({ a: 'SALTAR', b: 'GOLPE' });
+    expect(safeLabels(null)).toEqual({ a: 'A', b: 'B' });
+  });
+});
+
+describe('style categories follow the game genres', async () => {
+  const { relevantCategories, lookOf } = await import('./arcadeStyles');
+  const ids = (genres: string[]) => relevantCategories(genres).map((c) => c.id);
+  // The choice must keep the inspiration's spirit: a DOOM-like shooter is offered arcade,
+  // sci-fi or horror moods — never cozy farming or party minigames.
+  it('a shooter gets action moods, not cozy ones', () => {
+    expect(ids(['Action', 'Shooter'])).toEqual(['retro_arcade', 'cyberpunk', 'scifi']);
+    expect(ids(['Action', 'Shooter'])).not.toContain('cozy');
+  });
+  it('a farming sim gets cozy first', () => {
+    expect(ids(['Simulation', 'RPG', 'Indie'])[0]).toBe('fantasy');
+    expect(ids(['Simulation', 'Casual'])[0]).toBe('cozy');
+  });
+  it('unknown genres still offer two styles', () => {
+    expect(ids(['Indie'])).toEqual(['retro_arcade', 'cyberpunk']);
+  });
+  it('old rows keep their look', () => {
+    expect(lookOf('cyberpunk')).toBe('cyberpunk');
+    expect(lookOf('scifi')).toBe('cyberpunk');
+    expect(lookOf('retro')).toBe('retro');
+    expect(lookOf('cozy')).toBe('retro');
   });
 });

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Bookmark, BookmarkCheck, Loader2, RotateCcw, Share2, ThumbsDown, ThumbsUp, Trophy, Wand2, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { buildArcadeHtml, safePalette } from './arcadeRuntime.ts';
+import { lookOf } from './arcadeStyles.ts';
 import {
   fetchBoards, isArcadeSaved, myVote, postScore, toggleSavedArcade, voteArcadeGame,
   type ArcadeGame, type ArcadeScore,
@@ -12,15 +13,17 @@ import {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-// Pixel font for the arcade UI (Minecraft-like). Loaded once, only when the arcade opens.
+// Arcade UI type: a pixel font (Minecraft-like) for RETRO, Orbitron for CYBERPUNK. Loaded
+// once, only when the arcade opens.
 export const PIXEL_FONT = "'Pixelify Sans', ui-monospace, monospace";
+const NEON_FONT = "'Orbitron', 'Pixelify Sans', ui-monospace, monospace";
 export function usePixelFont() {
   useEffect(() => {
     if (document.getElementById('pixel-font')) return;
     const link = document.createElement('link');
     link.id = 'pixel-font';
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap';
+    link.href = 'https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Orbitron:wght@500;700&display=swap';
     document.head.appendChild(link);
   }, []);
 }
@@ -40,7 +43,8 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
   usePixelFont();
   const { t } = useTranslation();
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const html = useMemo(() => (game ? buildArcadeHtml(game.code, game.palette) : ''), [game]);
+  const html = useMemo(() => (game ? buildArcadeHtml(game.code, game.palette, { style: lookOf(game.style), buttons: game.buttons }) : ''), [game]);
+  const font = lookOf(game?.style) === 'cyberpunk' ? NEON_FONT : PIXEL_FONT;
   const [p0, p1, p2, p3] = safePalette(game?.palette);
   const [tested, setTested] = useState(false);
   const [lastScore, setLastScore] = useState<number | null>(null);
@@ -110,7 +114,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
 
   // The game's own look for everything around the console.
   const ui = {
-    bg: { backgroundColor: p0, color: p3, fontFamily: PIXEL_FONT } as CSSProperties,
+    bg: { backgroundColor: p0, color: p3, fontFamily: font } as CSSProperties,
     line: { borderColor: p1 } as CSSProperties,
     accent: { backgroundColor: p2, color: p0 } as CSSProperties,
     dim: { color: p3, opacity: 0.7 } as CSSProperties,
@@ -182,7 +186,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
                     placeholder={t('arcadeYourName')}
                     maxLength={16}
                     className="flex-1 min-w-0 h-10 px-3 rounded-md border-2 text-sm bg-transparent outline-none"
-                    style={{ ...ui.line, color: p3, fontFamily: PIXEL_FONT }}
+                    style={{ ...ui.line, color: p3, fontFamily: font }}
                   />
                   <button
                     type="button"

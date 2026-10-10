@@ -13,6 +13,10 @@ export interface ArcadeGame {
   code: string;
   inspiredBy: string;
   mode?: ArcadeMode;
+  /** Style category id (arcadeStyles.ts); old rows: 'retro' / 'cyberpunk'. */
+  style?: string;
+  /** What A / B do ("DISPARA"); b = '' when unused. */
+  buttons?: { a: string; b: string } | null;
   idea?: string | null;
   votesUp?: number;
   votesDown?: number;
@@ -42,6 +46,11 @@ export function arcadeModel(genres: string[], models = appSettings.models): stri
   return tier === 'easy' ? models.luna : tier === 'complex' ? models.astra : models.sol;
 }
 
+/** Each remake uses the next model up: Luna → Sol → Astra (Astra stays). */
+export function nextArcadeModel(model: string, models = appSettings.models): string {
+  return model === models.luna ? models.sol : models.astra;
+}
+
 async function invokeArcade(body: object): Promise<ArcadeGame> {
   const { data, error } = await supabase.functions.invoke('arcade-generate', { body });
   if (error || !data?.code) throw new Error(error?.message ?? data?.error ?? 'arcade-generate failed');
@@ -50,15 +59,11 @@ async function invokeArcade(body: object): Promise<ArcadeGame> {
 
 export type BuildEvent = { type: 'progress'; chars: number } | { type: 'fixing' };
 
-/** Streams the generation: progress events (characters written so far) while the model works. */
-export async function generateArcadeGame(
-  input: { inspiredBy: string; genres: string[]; description: string; screenshot: string | null; language: string; mode: ArcadeMode; idea: string },
-  onEvent: (e: BuildEvent) => void,
-): Promise<ArcadeGame> {
+async function streamArcade(body: object, onEvent: (e: BuildEvent) => void): Promise<ArcadeGame> {
   const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/arcade-generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
-    body: JSON.stringify({ ...input, model: arcadeModel(input.genres) }),
+    body: JSON.stringify(body),
   });
   if (!res.ok || !res.body) throw new Error(`arcade-generate ${res.status}`);
   const reader = res.body.getReader();
@@ -81,15 +86,31 @@ export async function generateArcadeGame(
   throw new Error('arcade-generate: stream ended');
 }
 
+/** Streams the generation: progress events (characters written so far) while the model works. */
+export function generateArcadeGame(
+  input: {
+    inspiredBy: string; genres: string[]; description: string; screenshot: string | null;
+    language: string; mode: ArcadeMode; style: string; idea: string; model: string;
+  },
+  onEvent: (e: BuildEvent) => void,
+): Promise<ArcadeGame> {
+  return streamArcade(input, onEvent);
+}
+
+/** "Remake": a better version of the game from the player's feedback, with a stronger model. */
+export function improveArcadeGame(id: string, feedback: string, model: string, language: string, onEvent: (e: BuildEvent) => void): Promise<ArcadeGame> {
+  return streamArcade({ improve: { id, feedback }, model, language }, onEvent);
+}
+
 /** The game threw in the smoke test → one server-side fix of the stored game. */
-export function repairArcadeGame(id: string, error: string, genres: string[], language: string): Promise<ArcadeGame> {
-  return invokeArcade({ repair: { id, error }, model: arcadeModel(genres), language });
+export function repairArcadeGame(id: string, error: string, model: string, language: string): Promise<ArcadeGame> {
+  return invokeArcade({ repair: { id, error }, model, language });
 }
 
 export async function fetchArcadeGame(id: string): Promise<ArcadeGame | null> {
   const { data, error } = await supabase
     .from('arcade_games')
-    .select('id, title, how_to, palette, code, inspired_by, mode, idea, votes_up, votes_down')
+    .select('id, title, how_to, palette, code, inspired_by, mode, style, buttons, idea, votes_up, votes_down')
     .eq('id', id)
     .maybeSingle();
   if (error || !data) {
@@ -98,7 +119,7 @@ export async function fetchArcadeGame(id: string): Promise<ArcadeGame | null> {
   }
   return {
     id: data.id, title: data.title, howTo: data.how_to ?? '', palette: data.palette ?? [], code: data.code,
-    inspiredBy: data.inspired_by ?? '', mode: data.mode === '3d' ? '3d' : '2d', idea: data.idea, votesUp: data.votes_up, votesDown: data.votes_down,
+    inspiredBy: data.inspired_by ?? '', mode: data.mode === '3d' ? '3d' : '2d', style: data.style, buttons: data.buttons, idea: data.idea, votesUp: data.votes_up, votesDown: data.votes_down,
   };
 }
 
