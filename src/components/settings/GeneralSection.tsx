@@ -94,7 +94,7 @@ export default function GeneralSection() {
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Appearance</h3>
-                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>How CuriosAI looks on your device</p>
+                <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">How CuriosAI looks on your device</p>
               </div>
               <Segmented options={themeOptions} value={theme} onChange={setTheme} />
             </div>
@@ -106,7 +106,7 @@ export default function GeneralSection() {
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Accent Color</h3>
-                  <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>The one brand color used for buttons, highlights and progress</p>
+                  <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">The one brand color used for buttons, highlights and progress</p>
                 </div>
                 <div className="flex gap-2">
                   {ACCENT_OPTIONS.map((color) => {
@@ -138,7 +138,7 @@ export default function GeneralSection() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Language</h3>
-                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Interface language: {currentLanguage.name}</p>
+                <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">Interface language: {currentLanguage.name}</p>
               </div>
               <LanguageSelector />
             </div>
@@ -149,7 +149,7 @@ export default function GeneralSection() {
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('settingsNarrator')}</h3>
-                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsNarratorDesc')}</p>
+                <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">{t('settingsNarratorDesc')}</p>
               </div>
               <NarratorVoiceSelect />
             </div>
@@ -160,7 +160,7 @@ export default function GeneralSection() {
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Cookies</h3>
-                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Manage cookie preferences</p>
+                <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">Manage cookie preferences</p>
               </div>
               <Segmented options={cookieOptions} value={cookieChoice} onChange={handleCookieChange} />
             </div>
@@ -171,7 +171,7 @@ export default function GeneralSection() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Auto-suggest</h3>
-                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Enable dropdown and tab-complete suggestions while typing a query</p>
+                <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">Enable dropdown and tab-complete suggestions while typing a query</p>
               </div>
               {/* Disabled for now — feature is off */}
               <ToggleSwitch checked={false} onChange={() => {}} disabled />

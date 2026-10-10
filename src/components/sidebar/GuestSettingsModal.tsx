@@ -78,7 +78,7 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
           <div className="py-5 flex items-center justify-between gap-4 flex-wrap">
             <div>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('theme')}</h3>
-              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsThemeDesc')}</p>
+              <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsThemeDesc')}</p>
             </div>
             <div
               className="flex items-center gap-1 rounded-lg p-1 border"
@@ -111,7 +111,7 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
           <div className="py-5 flex items-center justify-between gap-4 flex-wrap">
             <div>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('settingsAccent')}</h3>
-              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsAccentDesc')}</p>
+              <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsAccentDesc')}</p>
             </div>
             <div className="flex gap-2">
               {ACCENT_OPTIONS.map((color) => {
@@ -148,7 +148,7 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
           <div className="py-5 flex items-center justify-between gap-4">
             <div>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('language')}</h3>
-              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsLanguageDesc')}</p>
+              <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsLanguageDesc')}</p>
             </div>
             <LanguageSelector openUp />
           </div>
@@ -157,9 +157,9 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
           <div className="py-5 flex items-center justify-between gap-4">
             <div>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('settingsNarrator')}</h3>
-              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsNarratorDesc')}</p>
+              <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsNarratorDesc')}</p>
             </div>
-            <NarratorVoiceSelect />
+            <NarratorVoiceSelect openUp />
           </div>
         </div>
       </div>
