@@ -10,5 +10,22 @@
   "gameDeveloper": "開発",
   "gamePublisher": "パブリッシャー",
   "exploreNewReleases": "新作（30日以内）",
-  "platformAll": "すべてのプラットフォーム"
+  "platformAll": "すべてのプラットフォーム",
+  "arcadeCreate": "{name}にインスパイアされた自分だけのゲームを作る",
+  "arcadeCreating": "ゲームを作成中…",
+  "arcadeCreatingHint": "数秒かかります",
+  "arcadeError": "ゲームを作成できませんでした。もう一度お試しください。",
+  "arcadeInspiredBy": "{name}にインスパイア",
+  "arcadeShare": "共有",
+  "arcadeLinkCopied": "リンクをコピーしました",
+  "arcadeRecords": "記録",
+  "arcadeYourScore": "あなたのスコア",
+  "arcadeYourName": "あなたの名前",
+  "arcadeSave": "保存",
+  "arcadeToday": "今日",
+  "arcadeHallOfFame": "殿堂入り",
+  "arcadeNoScores": "まだスコアがありません。最初の一人になろう！",
+  "arcadePlayAgain": "もう一度プレイ",
+  "creditsOutArcadeGuest": "本日の無料クレジットを使い切りました。登録すると自分だけのゲームを作れます（無料）。",
+  "creditsOutArcadeFree": "本日のクレジットを使い切りました。Proにアップグレードするともっとゲームを作れます。"
 }

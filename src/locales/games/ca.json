@@ -10,5 +10,22 @@
   "gameDeveloper": "Desenvolupador",
   "gamePublisher": "Distribuïdora",
   "exploreNewReleases": "Novetats (30 dies)",
-  "platformAll": "Totes les plataformes"
+  "platformAll": "Totes les plataformes",
+  "arcadeCreate": "Crea el teu propi joc inspirat en {name}",
+  "arcadeCreating": "Creant el teu joc…",
+  "arcadeCreatingHint": "Això triga uns segons",
+  "arcadeError": "No hem pogut crear el joc. Torna-ho a provar.",
+  "arcadeInspiredBy": "Inspirat en {name}",
+  "arcadeShare": "Compartir",
+  "arcadeLinkCopied": "Enllaç copiat",
+  "arcadeRecords": "Rècords",
+  "arcadeYourScore": "La teva puntuació",
+  "arcadeYourName": "El teu nom",
+  "arcadeSave": "Desar",
+  "arcadeToday": "Avui",
+  "arcadeHallOfFame": "Saló de la fama",
+  "arcadeNoScores": "Encara no hi ha puntuacions. Sigues el primer!",
+  "arcadePlayAgain": "Tornar a jugar",
+  "creditsOutArcadeGuest": "T'has quedat sense crèdits gratuïts per avui. Registra't per crear el teu propi joc, és gratis.",
+  "creditsOutArcadeFree": "T'has quedat sense crèdits per avui. Passa't a Pro per crear més jocs."
 }

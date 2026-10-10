@@ -17,9 +17,11 @@ interface SignUpModalProps {
   currentLanguage?: Language;
   // Optional override for the modal subtitle (e.g. why sign-in is being asked for).
   subtitle?: string;
+  // Optional override for the title ("Sign up" when credits ran out, instead of "Welcome").
+  title?: string;
 }
 
-export default function SignUpModal({ isOpen, onClose, context = 'default', currentLanguage: currentLanguageProp, subtitle }: SignUpModalProps) {
+export default function SignUpModal({ isOpen, onClose, context = 'default', currentLanguage: currentLanguageProp, subtitle, title }: SignUpModalProps) {
   const { currentLanguage } = useLanguage();
   const selectedLanguage = currentLanguageProp ?? currentLanguage;
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
@@ -54,7 +56,7 @@ export default function SignUpModal({ isOpen, onClose, context = 'default', curr
 
         {/* Custom title and subtitle for sign up */}
         <div className="text-center mb-8">
-          <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{t('welcome')}</h2>
+          <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{title ?? t('welcome')}</h2>
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>{subtitle ?? t('createFreeAccount')}</p>
         </div>
         <div className="mt-10 space-y-6">

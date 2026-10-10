@@ -10,5 +10,22 @@
   "gameDeveloper": "Sviluppatore",
   "gamePublisher": "Editore",
   "exploreNewReleases": "Novità (30 giorni)",
-  "platformAll": "Tutte le piattaforme"
+  "platformAll": "Tutte le piattaforme",
+  "arcadeCreate": "Crea il tuo gioco ispirato a {name}",
+  "arcadeCreating": "Creazione del tuo gioco…",
+  "arcadeCreatingHint": "Ci vuole qualche secondo",
+  "arcadeError": "Non siamo riusciti a creare il gioco. Riprova.",
+  "arcadeInspiredBy": "Ispirato a {name}",
+  "arcadeShare": "Condividi",
+  "arcadeLinkCopied": "Link copiato",
+  "arcadeRecords": "Record",
+  "arcadeYourScore": "Il tuo punteggio",
+  "arcadeYourName": "Il tuo nome",
+  "arcadeSave": "Salva",
+  "arcadeToday": "Oggi",
+  "arcadeHallOfFame": "Hall of Fame",
+  "arcadeNoScores": "Ancora nessun punteggio. Sii il primo!",
+  "arcadePlayAgain": "Gioca ancora",
+  "creditsOutArcadeGuest": "Hai esaurito i crediti gratuiti di oggi. Registrati per creare il tuo gioco, è gratis.",
+  "creditsOutArcadeFree": "Hai esaurito i crediti di oggi. Passa a Pro per creare altri giochi."
 }

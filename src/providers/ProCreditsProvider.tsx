@@ -16,6 +16,7 @@ import {
 } from 'react';
 import { useSession } from '../hooks/useSession.ts';
 import { useSubscription } from '../hooks/useSubscription.ts';
+import { useTranslation } from '../hooks/useTranslation.ts';
 import {
   getUserTier,
   getCreditState,
@@ -78,6 +79,7 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
     canUse: true,
   }));
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
   const [blockedModal, setBlockedModal] = useState<BlockedModal>(null);
   const [blockedMessage, setBlockedMessage] = useState<string | undefined>(undefined);
 
@@ -174,7 +176,7 @@ export function ProCreditsProvider({ children }: { children: ReactNode }) {
 
       {/* Centralized modal routing — reuse existing modals, single open-state. */}
       {blockedModal === 'register' && (
-        <SignUpModal isOpen onClose={closeModal} context="pro" subtitle={blockedMessage} />
+        <SignUpModal isOpen onClose={closeModal} context="pro" subtitle={blockedMessage} title={blockedMessage ? t('signUp') : undefined} />
       )}
       {blockedModal === 'upgrade' && (
         <ProModal isOpen onClose={closeModal} message={blockedMessage} />

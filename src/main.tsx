@@ -77,6 +77,8 @@ function MovieRoute() {
 }
 // Games 🎮: game fact sheet; queries that don't name a game fall back to the games list inside it.
 const GameFactPage = lazyRetry(() => import('./services/games/pages/GameFactPage.tsx'));
+// Curios Arcade: a shared AI-made mini game.
+const ArcadePage = lazyRetry(() => import('./services/games/arcade/ArcadePage.tsx'));
 const MovieSharePage = lazyRetry(() => import('./services/movie/pages/MovieSharePage.tsx'));
 const Explore = lazyRetry(() => import('./mainPages/Explore.tsx'));
 const ArticleDetail = lazyRetry(() => import('./mainPages/ArticleDetail.tsx'));
@@ -145,6 +147,7 @@ const router = createBrowserRouter(
         { path: '/cinematic-results', element: <ToVideo /> },
         { path: '/movie-results', element: <LazyPageWrapper><MovieRoute /></LazyPageWrapper> },
         { path: '/games-results', element: <LazyPageWrapper><GameFactPage /></LazyPageWrapper> },
+        { path: '/arcade/:id', element: <LazyPageWrapper><ArcadePage /></LazyPageWrapper> },
         { path: '/movie/share/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> },
         // Curiosity Engine routes
         { path: '/s/:slug', element: <LazyPageWrapper><NodeSharePage /></LazyPageWrapper> },

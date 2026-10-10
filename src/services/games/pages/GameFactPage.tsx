@@ -1,11 +1,11 @@
 // Games 🎮 fact sheet — same layout as the Movie 🍿 page (components/factSheet):
 // title + ESRB/year/genres, the trailer (RAWG's, else YouTube, else a screenshots
-// carousel), cards (rating, platforms, store, developer, publisher), "Play in your
+// carousel), cards (rating, platforms, store, developer), "Play in your
 // browser" in place of the cast, "More to explore" with a platform filter, then the
 // explanation with Listen. Queries that don't name a game get the games list instead.
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Building2, Code2, Gamepad2, Image as ImageIcon, Link2, Loader2, Video, type LucideIcon } from 'lucide-react';
+import { Code2, Gamepad2, Image as ImageIcon, Link2, Loader2, Video, type LucideIcon } from 'lucide-react';
 import TopBar from '../../../components/results/TopBar.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
@@ -21,6 +21,9 @@ import {
   type Game, type GameInfo, type GameList, type GamePlatform, type PlayableGame,
 } from '../gamesSearch.ts';
 import GamesResults from './GamesResults.tsx';
+import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
+import { generateArcadeGame, repairArcadeGame, type ArcadeGame } from '../arcade/arcadeService.ts';
+import ArcadeScreen from '../arcade/ArcadeScreen.tsx';
 
 type Tab = 'game' | 'videos' | 'images' | 'sources';
 
@@ -37,6 +40,11 @@ export default function GameFactPage() {
   const { currentLanguage } = useLanguage();
   const query = useMemo(() => new URLSearchParams(location.search).get('q') || '', [location.search]);
   const { getModel } = useAnswerModel(query);
+  const { requestProAccess, tier } = useProCredits();
+
+  // "Create your own game inspired by X": one Pro credit → a mini arcade game (Curios Arcade).
+  const [arcade, setArcade] = useState<{ game: ArcadeGame | null; status: 'creating' | 'ready' | 'error' } | null>(null);
+  const repairedRef = useRef(false);
 
   const [tab, setTab] = useState<Tab>('game');
   const [info, setInfo] = useState<GameInfo | null>(null);
@@ -141,6 +149,38 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
   }, [info, searchedVideos]);
 
   const images = (info?.screenshots ?? []).map((url) => ({ url, title: info?.name ?? '', source: 'rawg.io' }));
+
+  const createArcade = async () => {
+    if (!info) return;
+    const outMessage = tier === 'guest' ? t('creditsOutArcadeGuest') : tier === 'free' ? t('creditsOutArcadeFree') : undefined;
+    if (!(await requestProAccess(outMessage))) return;
+    repairedRef.current = false;
+    setArcade({ game: null, status: 'creating' });
+    try {
+      const game = await generateArcadeGame({
+        inspiredBy: info.name,
+        genres: info.genres,
+        description: info.description,
+        screenshot: info.screenshots[0] ?? info.imageUrl,
+        language: currentLanguage.code,
+      });
+      setArcade((a) => (a ? { game, status: 'ready' } : a));
+    } catch {
+      setArcade((a) => (a ? { game: null, status: 'error' } : a));
+    }
+  };
+
+  // The console's smoke test threw → one free fix of the same game, then give up.
+  const onArcadeError = useCallback((message: string) => {
+    const game = arcade?.game;
+    if (!game || !info) return;
+    if (repairedRef.current) { setArcade({ game: null, status: 'error' }); return; }
+    repairedRef.current = true;
+    setArcade({ game, status: 'creating' });
+    repairArcadeGame(game.id, message, info.genres, currentLanguage.code)
+      .then((fixed) => setArcade((a) => (a ? { game: fixed, status: 'ready' } : a)))
+      .catch(() => setArcade((a) => (a ? { game: null, status: 'error' } : a)));
+  }, [arcade?.game, info, currentLanguage.code]);
 
   // Not a specific game ("retro racing games") → the games list.
   if (!loadingInfo && !info) return <GamesResults />;
@@ -251,14 +291,6 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
                       right={<Code2 size={18} className="text-gray-500 dark:text-gray-400" />}
                     />
                   )}
-
-                  {info.publishers.length > 0 && (
-                    <Card
-                      label={t('gamePublisher')}
-                      value={info.publishers.map((p) => p.name).join(', ')}
-                      right={<Building2 size={18} className="text-gray-500 dark:text-gray-400" />}
-                    />
-                  )}
                 </div>
               )}
             </div>
@@ -288,6 +320,19 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
                   ))}
                 </div>
               </section>
+            )}
+
+            {/* Create your own mini arcade game inspired by this one (1 Pro credit) */}
+            {info && (
+              <button
+                type="button"
+                onClick={() => void createArcade()}
+                className="mt-4 w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium"
+                style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+              >
+                <Gamepad2 size={18} />
+                {t('arcadeCreate').replace('{name}', info.name)}
+              </button>
             )}
 
             {/* More to explore: lists dropdown + platform filter; each card opens its own fact sheet */}
@@ -345,6 +390,10 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
           />
         )}
       </div>
+
+      {arcade && (
+        <ArcadeScreen game={arcade.game} status={arcade.status} onClose={() => setArcade(null)} onError={onArcadeError} />
+      )}
     </div>
   );
 }
