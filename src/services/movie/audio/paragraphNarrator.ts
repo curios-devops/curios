@@ -6,6 +6,11 @@
 // Plays through Web Audio: the AudioContext is created inside the tap, and once a
 // context is resumed in a user gesture, later buffers play without being blocked
 // (mobile browsers block HTMLAudioElement.play() that arrives seconds after the tap).
+//
+// iOS plays Web Audio in the "ambient" session, which the silent switch mutes — the
+// narration was only audible once the trailer's <video> was unmuted. In the tap we ask
+// for the "playback" session (Safari 16.4+) and, for older iOS, loop a silent <audio>
+// element, which also moves the page to "playback".
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -54,6 +59,18 @@ async function tts(text: string, voiceId: string, gender: 'female' | 'male', sig
   return fetch(url, { signal }).then((r) => r.arrayBuffer());
 }
 
+// 0.1 s of 16-bit mono silence as a WAV blob URL (the CSP allows blob: media, not data:).
+function silentWav(): string {
+  const samples = 800;
+  const buf = new DataView(new ArrayBuffer(44 + samples * 2));
+  const str = (o: number, t: string) => { for (let i = 0; i < t.length; i++) buf.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); buf.setUint32(4, 36 + samples * 2, true); str(8, 'WAVEfmt ');
+  buf.setUint32(16, 16, true); buf.setUint16(20, 1, true); buf.setUint16(22, 1, true);
+  buf.setUint32(24, 8000, true); buf.setUint32(28, 16000, true); buf.setUint16(32, 2, true); buf.setUint16(34, 16, true);
+  str(36, 'data'); buf.setUint32(40, samples * 2, true);
+  return URL.createObjectURL(new Blob([buf.buffer], { type: 'audio/wav' }));
+}
+
 export type NarratorState = 'loading' | 'playing' | 'paused' | 'ended' | 'error';
 
 export class ParagraphNarrator {
@@ -62,6 +79,7 @@ export class ParagraphNarrator {
   private pending = new Map<number, Promise<ArrayBuffer>>();
   private source: AudioBufferSourceNode | null = null;
   private stopped = false;
+  private keepAlive: HTMLAudioElement | null = null;
 
   /** Construct synchronously inside the tap handler (before any await). */
   constructor(
@@ -71,6 +89,13 @@ export class ParagraphNarrator {
     private onState: (state: NarratorState) => void,
   ) {
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = 'playback';
+    try {
+      this.keepAlive = new Audio(silentWav());
+      this.keepAlive.loop = true;
+      void this.keepAlive.play().catch(() => {});
+    } catch { /* no HTMLAudioElement */ }
     this.ctx = new Ctx();
     void this.ctx.resume();
   }
@@ -110,6 +135,8 @@ export class ParagraphNarrator {
     this.stopped = true;
     this.controller.abort();
     this.source = null;
+    if (this.keepAlive) { this.keepAlive.pause(); URL.revokeObjectURL(this.keepAlive.src); }
+    this.keepAlive = null;
     void this.ctx.close().catch(() => {});
   }
 }
