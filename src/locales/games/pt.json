@@ -93,5 +93,6 @@
   "arcadeFilterStyle": "Todos os estilos",
   "arcadeByAuthor": "Jogos de {name}",
   "arcadeAnonymous": "Anônimo",
-  "arcadeSound": "Som"
+  "arcadeSound": "Som",
+  "arcadeKeysHint": "Teclado: setas/WASD · Espaço = {a}"
 }

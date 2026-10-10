@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Bookmark, BookmarkCheck, Loader2, RotateCcw, Share2, ThumbsDown, ThumbsUp, Trophy, Volume2, VolumeX, Wand2, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
-import { buildArcadeHtml, paletteRoles } from './arcadeRuntime.ts';
+import { buildArcadeHtml, paletteRoles, safeLabels } from './arcadeRuntime.ts';
 import { lookOf } from './arcadeStyles.ts';
 import {
   arcadeControls, arcadeMuted, countArcadePlay, fetchBoards, isArcadeSaved, setArcadeControls, setArcadeMuted, myVote, postScore, toggleSavedArcade, voteArcadeGame,
@@ -74,6 +74,24 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
 
   const loadBoards = () => { if (game) void fetchBoards(game.id).then(setBoards); };
 
+  // Desktop: keys pressed while the page has the focus go to the game (never while typing).
+  const GAME_KEYS = /^(Arrow(Left|Right|Up|Down)|[wasdzxWASDZX ]|Enter)$/;
+  useEffect(() => {
+    const forward = (down: boolean) => (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!game || !GAME_KEYS.test(e.key) || target?.closest('input, textarea')) return;
+      e.preventDefault();
+      frameRef.current?.contentWindow?.postMessage({ arcadeCmd: 'key', key: e.key, down }, '*');
+    };
+    const onDown = forward(true), onUp = forward(false);
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game]);
+  const finePointer = typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches;
+  const labels = safeLabels(game?.buttons);
+
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       if (e.source !== frameRef.current?.contentWindow || !e.data?.arcade) return;
@@ -139,6 +157,11 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
         <div className="flex-1 min-w-0">
           <p className="text-base font-semibold truncate">{game?.title ?? ''}</p>
           <p className="text-[11px] truncate" style={ui.dim}>{game?.howTo ?? ''}</p>
+          {game && finePointer && (
+            <p className="text-[10px] truncate" style={ui.dim}>
+              {t('arcadeKeysHint').replace('{a}', labels.a)}{labels.b ? ` · X = ${labels.b}` : ''}
+            </p>
+          )}
         </div>
         {game && (
           <>
@@ -179,6 +202,8 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
             // Scripts only: no same-origin, storage, forms, popups or top navigation.
             sandbox="allow-scripts"
             className="w-full h-full border-0"
+            // Keys go straight to the game once it has the focus.
+            onLoad={(e) => e.currentTarget.focus()}
           />
         )}
 

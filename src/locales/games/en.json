@@ -93,5 +93,6 @@
   "arcadeFilterStyle": "All styles",
   "arcadeByAuthor": "Games by {name}",
   "arcadeAnonymous": "Anonymous",
-  "arcadeSound": "Sound"
+  "arcadeSound": "Sound",
+  "arcadeKeysHint": "Keyboard: arrows/WASD · Space = {a}"
 }

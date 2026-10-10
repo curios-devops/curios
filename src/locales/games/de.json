@@ -93,5 +93,6 @@
   "arcadeFilterStyle": "Alle Stile",
   "arcadeByAuthor": "Spiele von {name}",
   "arcadeAnonymous": "Anonym",
-  "arcadeSound": "Ton"
+  "arcadeSound": "Ton",
+  "arcadeKeysHint": "Tastatur: Pfeile/WASD · Leertaste = {a}"
 }

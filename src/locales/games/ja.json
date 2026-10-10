@@ -93,5 +93,6 @@
   "arcadeFilterStyle": "すべてのスタイル",
   "arcadeByAuthor": "{name}のゲーム",
   "arcadeAnonymous": "匿名",
-  "arcadeSound": "サウンド"
+  "arcadeSound": "サウンド",
+  "arcadeKeysHint": "キーボード：矢印/WASD・スペース = {a}"
 }

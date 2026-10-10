@@ -68,10 +68,11 @@ const STYLE: Record<string, string> = {
 const OLD_STYLES: Record<string, string> = { retro: "retro_arcade", cyberpunk: "cyberpunk" };
 const styleId = (v: unknown) => (typeof v === "string" && STYLE[v] ? v : OLD_STYLES[String(v)] ?? "retro_arcade");
 
-// Screen size by style (and 3D): Atari-like 160 for retro arcade, more detail for richer
-// worlds, 320 for neon / sci-fi and first-person 3D. Never above 512. Remakes keep their size.
+// Screen size by style (and 3D): 224 for retro arcade (the width of the original Pac-Man /
+// Space Invaders boards — 160 was too coarse for a maze), more detail for richer worlds, 320
+// for neon / sci-fi and first-person 3D. Never above 512. Remakes keep their size.
 const RES_BY_STYLE: Record<string, number> = {
-  retro_arcade: 160, platformer: 240, puzzle: 240, racing: 240, horror: 240, party: 240, roguelike: 240,
+  retro_arcade: 224, platformer: 240, puzzle: 240, racing: 240, horror: 240, party: 240, roguelike: 240,
   fantasy: 256, sandbox: 256, cozy: 256, cyberpunk: 320, scifi: 320,
 };
 const resFor = (style: string, mode: string) => Math.min(512, mode === "3d" ? Math.max(320, RES_BY_STYLE[style] ?? 240) : RES_BY_STYLE[style] ?? 240);
@@ -80,7 +81,7 @@ const textScale = (res: number) => Math.max(1, Math.round(res / 120));
 interface Spec { language: string; mode: "2d" | "3d"; style: string; res: number }
 
 const SYSTEM = ({ language, mode, style, res }: Spec) => `You write tiny one-screen arcade games for the Curios Arcade fantasy console (like WASM-4), played on phones.
-Screen ${res}x${res} pixels, 8 colors, 60 fps.${res > 160 ? ` Use the detail: sprites about ${Math.round(res / 16)}-${Math.round(res / 10)} px with a few details (eyes, stripes, outlines).` : ` Atari-like: chunky sprites about 8-12 px.`} Global API:
+Screen ${res}x${res} pixels, 8 colors, 60 fps. Use the detail: sprites about ${Math.round(res / 16)}-${Math.round(res / 10)} px with a few details (eyes, stripes, outlines). Global API:
 cls(c) rect(x,y,w,h,c) rectb(x,y,w,h,c) circ(x,y,r,c) line(x0,y0,x1,y1,c)
 text(s,x,y,c,k) pixel font, uppercase, 4px per char and 5px tall at scale k=1 — use k=${textScale(res)} for normal text and k=${textScale(res) + 1} for titles
 btn(i) held / btnp(i) just pressed: 0 LEFT 1 RIGHT 2 UP 3 DOWN (an on-screen joystick) 4 A 5 B (two buttons)
@@ -99,7 +100,7 @@ Write plain JavaScript (no imports, DOM, timers, storage, network, async or whil
 function init() — resets ALL game state (called at start and after every game over)
 function update() — called 60 times per second: input, logic, then draw the whole frame${mode === "3d" ? " (view3d first)" : " starting with cls(0)"}.
 Rules: one screen; no levels, saves or menus; difficulty rises with time; a run lasts 1-3 minutes; call over(score) when the player loses; draw the score with text(). Use only the buttons the game needs. Simple shapes, under ${mode === "3d" ? 180 : 150} lines, no comments, readable (not minified). Use ONE coordinate system consistently (if the world is a tile grid, convert to pixels only when drawing) and make sure the player is on screen from the first frame.
-Stay true to the inspiration's spirit: keep its core mechanic, perspective, setting and kind of enemies (a DOOM-like stays a demon shooter; never turn it into a different classic such as Pac-Man).
+Stay true to the inspiration's spirit: keep its core mechanic, perspective, setting and kind of enemies (a DOOM-like stays a demon shooter; never turn it into a different classic such as Pac-Man). Keep its iconic visual details too, mapped onto the palette — e.g. Pac-Man's four ghosts each in their own color (red, pink, cyan, orange) that turn blue when frightened.
 If the player gives an idea, build the game around it as long as it fits a one-screen arcade game.
 Return JSON: title (short and original, not the inspiration's name), howTo (one short sentence in language "${language}" naming the controls: the joystick and the button labels), buttons ({ a, b }: what each button does as ONE short uppercase word in language "${language}", max 7 letters, e.g. DISPARA / SALTA; if the game only uses the joystick, a = the word for START; b = "" when B is unused), axes ("x" if the player only moves left/right, like Space Invaders, else "xy"), palette (8 hex colors in the roles above), code.`;
 

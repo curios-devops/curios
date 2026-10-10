@@ -93,5 +93,6 @@
   "arcadeFilterStyle": "Tots els estils",
   "arcadeByAuthor": "Jocs de {name}",
   "arcadeAnonymous": "Anònim",
-  "arcadeSound": "So"
+  "arcadeSound": "So",
+  "arcadeKeysHint": "Teclat: fletxes/WASD · Espai = {a}"
 }

@@ -9,7 +9,7 @@
 // Messages to the parent: { arcade: 'ready' } after the smoke test, { arcade: 'error', message },
 // { arcade: 'start' } when a run starts from the title, { arcade: 'over', score } at each game over,
 // { arcade: 'controls', mode } when the player switches joystick / arrows.
-// From the parent: { arcadeCmd: 'restart' }, { arcadeCmd: 'mute', on }.
+// From the parent: { arcadeCmd: 'restart' }, { arcadeCmd: 'mute', on }, { arcadeCmd: 'key', key, down }.
 
 export const DEFAULT_PALETTE = ['#e0f8cf', '#86c06c', '#306850', '#071821'];
 
@@ -174,8 +174,11 @@ function loop(now){
 addEventListener('message', function(e){
   if (e.data && e.data.arcadeCmd === 'restart' && state === 'over') { game.init(); t = 0; state = 'play'; }
   if (e.data && e.data.arcadeCmd === 'mute') MUTED = !!e.data.on;
+  // Keys pressed while the page (not the game frame) has the focus, forwarded by the page.
+  if (e.data && e.data.arcadeCmd === 'key' && e.data.key in KEYS) { held[KEYS[e.data.key]] = e.data.down ? 1 : 0; if (e.data.down) audio(); }
 });
-var KEYS = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3, z: 4, Z: 4, ' ': 4, Enter: 4, x: 5, X: 5 };
+// Keyboard (desktop): arrows or WASD move, Space / Enter / Z = A, X = B.
+var KEYS = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3, a: 0, A: 0, d: 1, D: 1, w: 2, W: 2, s: 3, S: 3, ' ': 4, Enter: 4, z: 4, Z: 4, x: 5, X: 5 };
 addEventListener('keydown', function(e){ if (e.key in KEYS) { held[KEYS[e.key]] = 1; e.preventDefault(); } });
 addEventListener('keyup', function(e){ if (e.key in KEYS) held[KEYS[e.key]] = 0; });
 // Controls drawn as pixel art in the game's own palette (tiny canvases scaled up, like the
