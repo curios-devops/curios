@@ -1,0 +1,7 @@
+{
+  "games": "Jeux",
+  "gamesPlayable": "Jouer dans le navigateur",
+  "gamesSimilar": "Jeux similaires",
+  "gamesSimilarTo": "Similaires à {name}",
+  "gamesEmpty": "Nous n'avons trouvé aucun jeu similaire."
+}

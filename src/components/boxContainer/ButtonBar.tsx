@@ -101,6 +101,8 @@ export default function ButtonBar({
         return t('video') || 'Video';
       case 'movies':
         return t('movies') || 'Movies';
+      case 'games':
+        return t('games') || 'Games';
       case 'character':
         return t('character') || 'Character';
       case 'avatar':

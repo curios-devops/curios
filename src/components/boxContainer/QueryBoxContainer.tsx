@@ -85,6 +85,8 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
       case 'movie':
       case 'movies':
         return '/movie-results';
+      case 'games':
+        return '/games-results';
       case 'character':
         return '/character';
       case 'avatar':

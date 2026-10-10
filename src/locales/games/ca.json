@@ -1,0 +1,7 @@
+{
+  "games": "Jocs",
+  "gamesPlayable": "Juga al navegador",
+  "gamesSimilar": "Jocs similars",
+  "gamesSimilarTo": "Similars a {name}",
+  "gamesEmpty": "No hem trobat jocs semblants."
+}

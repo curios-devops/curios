@@ -1,9 +1,9 @@
-import { BookOpen, Clapperboard, Search, Rocket, PersonStanding, Crown, Popcorn } from 'lucide-react';
+import { BookOpen, Clapperboard, Search, Rocket, PersonStanding, Crown, Popcorn, Gamepad2 } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
 // 'movies' = Movie 🍿 forced on (TEMPORARY test entry; normally Movie is auto-detected inside Video/Auto).
-export type ModeType = 'auto' | 'search' | 'stories' | 'movie' | 'movies' | 'character' | 'avatar' | 'fastsearch';
+export type ModeType = 'auto' | 'search' | 'stories' | 'movie' | 'movies' | 'games' | 'character' | 'avatar' | 'fastsearch';
 
 interface Mode {
   id: ModeType;
@@ -22,6 +22,8 @@ const modes: Mode[] = [
   { id: 'movie', label: 'video', icon: Clapperboard },
   // TEMPORARY (testing Movie 🍿): remove this entry to hide it again — detection keeps working.
   { id: 'movies', label: 'movies', icon: Popcorn },
+  // Games 🎮: browser games + similar commercial games for the query.
+  { id: 'games', label: 'games', icon: Gamepad2 },
   // Avatar was merged into Character (half-body option inside the page).
   { id: 'character', label: 'character', icon: PersonStanding, premium: true },
 ];
