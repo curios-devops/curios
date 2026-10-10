@@ -46,6 +46,16 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('rese
   window.location.replace(window.location.pathname);
 }
 
+// Dev only: #dev_session=… (from the local phone-frame server's "Dev login") signs in without
+// Google, which refuses to run inside the VS Code preview. Nothing changes in production auth.
+if (import.meta.env.DEV && window.location.hash.startsWith('#dev_session=')) {
+  try {
+    const { access_token, refresh_token } = JSON.parse(atob(decodeURIComponent(window.location.hash.slice('#dev_session='.length))));
+    history.replaceState(null, '', window.location.pathname);
+    void import('./lib/supabase.ts').then(({ supabase }) => supabase.auth.setSession({ access_token, refresh_token }));
+  } catch { /* malformed: ignore */ }
+}
+
 // Apply theme synchronously before React renders — prevents black flash on load
 (function applyInitialTheme() {
   const stored = localStorage.getItem('theme') || appSettings.theme.default;
