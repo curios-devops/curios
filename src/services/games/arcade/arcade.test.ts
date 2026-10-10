@@ -47,12 +47,15 @@ describe('arcade console page', () => {
     expect(safePalette(undefined)).toEqual(DEFAULT_PALETTE);
   });
   // The size is injected into the console page as code, and old games' code assumes 160.
-  it('only renders at 160 (first games) or 240 (new games)', () => {
+  it('renders between 128 and 512 (never HD), else 160', () => {
     const canvas = (res: unknown) => buildArcadeHtml('function init(){} function update(){}', null, { res: res as number }).match(/<canvas id="c" width="(\d+)"/)?.[1];
     expect(canvas(240)).toBe('240');
+    expect(canvas(320)).toBe('320');
+    expect(canvas(512)).toBe('512');
     expect(canvas(undefined)).toBe('160');
     expect(canvas('240;alert(1)')).toBe('160');
-    expect(canvas(4000)).toBe('160');
+    expect(canvas(1024)).toBe('160');
+    expect(canvas(250)).toBe('160');
   });
     // Button labels come from the model and are shown on the controls: text only, short.
   it('keeps button labels short and plain', () => {
@@ -74,6 +77,12 @@ describe('style categories follow the game genres', async () => {
   it('a farming sim gets cozy first', () => {
     expect(ids(['Simulation', 'RPG', 'Indie'])[0]).toBe('fantasy');
     expect(ids(['Simulation', 'Casual'])[0]).toBe('cozy');
+  });
+  // RAWG tags many games Casual / Family; those generic genres must not bury the one that
+  // defines the game (Pac-Man is Arcade first, not a party game).
+  it('Pac-Man (Arcade, Casual, Family) leads with Retro Arcade', () => {
+    expect(ids(['Arcade', 'Casual', 'Family'])[0]).toBe('retro_arcade');
+    expect(ids(['Casual', 'Family'])).toEqual(expect.arrayContaining(['cozy', 'party']));
   });
   it('unknown genres still offer two styles', () => {
     expect(ids(['Indie'])).toEqual(['retro_arcade', 'cyberpunk']);

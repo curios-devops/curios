@@ -126,14 +126,23 @@ addEventListener('message', function(e){ if (e.data && e.data.arcadeCmd === 'res
 var KEYS = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3, z: 4, Z: 4, ' ': 4, Enter: 4, x: 5, X: 5 };
 addEventListener('keydown', function(e){ if (e.key in KEYS) { held[KEYS[e.key]] = 1; e.preventDefault(); } });
 addEventListener('keyup', function(e){ if (e.key in KEYS) held[KEYS[e.key]] = 0; });
-// Buttons A / B (labels say what they do).
-document.getElementById('lA').textContent = LABELS.a;
-document.getElementById('lB').textContent = LABELS.b;
-if (!LABELS.b) document.getElementById('bB').style.display = 'none';
+// Controls drawn as pixel art in the game's own palette (tiny canvases scaled up, like the
+// game screen): joystick base + knob, buttons with a 1-pixel "3D" edge that sinks when
+// pressed, labels in the console's pixel font.
+function disc(g, cx, cy, r, color){ g.fillStyle = color; for (var y = 0; y < g.canvas.height; y++) for (var x = 0; x < g.canvas.width; x++) { var dx = x + .5 - cx, dy = y + .5 - cy; if (dx*dx + dy*dy <= r*r) g.fillRect(x, y, 1, 1); } }
+function drawBase(){ var g = document.getElementById('base').getContext('2d'); g.clearRect(0,0,24,24); disc(g, 12, 12, 12, P[1]); disc(g, 12, 12, 10, P[0]); g.fillStyle = P[1]; [[11,2],[11,20],[2,11],[20,11]].forEach(function(q){ g.fillRect(q[0], q[1], 2, 2); }); }
+function drawKnob(){ var g = document.getElementById('knob').getContext('2d'); g.clearRect(0,0,12,13); disc(g, 6, 7, 5.6, P[1]); disc(g, 6, 6, 5.6, P[2]); g.fillStyle = P[3]; g.fillRect(3, 3, 2, 1); g.fillRect(3, 4, 1, 1); }
+function drawBtn(id, face, shine, down){ var g = document.getElementById(id).getContext('2d'); g.clearRect(0,0,16,18); disc(g, 8, 9.5, 7.6, P[1]); disc(g, 8, down ? 9.5 : 8, 7.6, face); g.fillStyle = shine; var y = down ? 5 : 3.5; g.fillRect(4, y|0, 3, 1); g.fillRect(4, (y|0) + 1, 1, 1); }
+function drawLabel(id, s){ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); var c = document.getElementById(id), g = c.getContext('2d'); c.width = Math.max(1, s.length*4 - 1); c.height = 5; g.clearRect(0,0,c.width,5);
+  for (var i = 0; i < s.length; i++) { var f = FONT[s[i]]; if (f) for (var b = 0; b < 15; b++) if (f >> (14 - b) & 1) { g.fillStyle = P[3]; g.fillRect(i*4 + b%3, (b/3)|0, 1, 1); } } }
+var BTN = { bA: [P[2], P[3]], bB: [P[3], P[2]] };
+drawBase(); drawKnob(); drawBtn('bA', BTN.bA[0], BTN.bA[1], false); drawBtn('bB', BTN.bB[0], BTN.bB[1], false);
+drawLabel('lA', LABELS.a); drawLabel('lB', LABELS.b);
+if (!LABELS.b) document.getElementById('wB').style.display = 'none';
 document.querySelectorAll('[data-b]').forEach(function(el){
-  var b = +el.getAttribute('data-b');
-  function on(e){ held[b] = 1; el.classList.add('on'); e.preventDefault(); }
-  function off(){ held[b] = 0; el.classList.remove('on'); }
+  var b = +el.getAttribute('data-b'), id = el.id;
+  function on(e){ held[b] = 1; drawBtn(id, BTN[id][0], BTN[id][1], true); e.preventDefault(); }
+  function off(){ held[b] = 0; drawBtn(id, BTN[id][0], BTN[id][1], false); }
   el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off);
   el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
 });
@@ -144,11 +153,12 @@ document.querySelectorAll('[data-b]').forEach(function(el){
   function move(e){
     var r = stick.getBoundingClientRect(), dx = e.clientX - (r.left + r.width/2), dy = e.clientY - (r.top + r.height/2), m = Math.sqrt(dx*dx + dy*dy);
     if (m > R) { dx = dx/m*R; dy = dy/m*R; }
-    knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    // Snap to the 5px art grid so the knob moves in whole "pixels".
+    knob.style.transform = 'translate(' + Math.round(dx/5)*5 + 'px,' + Math.round(dy/5)*5 + 'px)';
     held[0] = dx < -R*0.35 ? 1 : 0; held[1] = dx > R*0.35 ? 1 : 0; held[2] = dy < -R*0.35 ? 1 : 0; held[3] = dy > R*0.35 ? 1 : 0;
   }
-  function end(e){ if (e.pointerId !== id) return; id = null; knob.style.transform = ''; stick.classList.remove('on'); held[0] = held[1] = held[2] = held[3] = 0; }
-  stick.addEventListener('pointerdown', function(e){ id = e.pointerId; stick.setPointerCapture(id); stick.classList.add('on'); move(e); e.preventDefault(); });
+  function end(e){ if (e.pointerId !== id) return; id = null; knob.style.transform = ''; held[0] = held[1] = held[2] = held[3] = 0; }
+  stick.addEventListener('pointerdown', function(e){ id = e.pointerId; stick.setPointerCapture(id); move(e); e.preventDefault(); });
   stick.addEventListener('pointermove', function(e){ if (e.pointerId === id) move(e); });
   stick.addEventListener('pointerup', end); stick.addEventListener('pointercancel', end);
 })();
@@ -167,54 +177,50 @@ export function safeLabels(buttons: unknown): { a: string; b: string } {
   return { a: clean(b.a, 'A'), b: buttons ? clean(b.b, '') : 'B' };
 }
 
-// Controls look: RETRO = chunky plastic, CYBERPUNK = neon outlines. Both "3D": a recessed
-// joystick base with a raised knob, and buttons with a bottom edge that sinks when pressed.
+// Cabinet look around the screen: RETRO = flat, Atari-like; CYBERPUNK = the same pixel art
+// with a neon glow and scanlines.
 const STYLE_CSS: Record<ArcadeStyle, string> = {
   retro: `
-body{background:#0b0b0b;font-family:'Pixelify Sans',ui-monospace,monospace}
-#stick{background:radial-gradient(circle at 50% 40%,#2c2c2c,#121212 70%);box-shadow:inset 0 6px 14px rgba(0,0,0,.8),0 0 0 2px #2e2e2e,0 3px 0 #3a3a3a}
-#knob{background:radial-gradient(circle at 35% 30%,#f2f2f2,#9a9a9a 55%,#4a4a4a);box-shadow:0 8px 12px rgba(0,0,0,.7),inset 0 -4px 6px rgba(0,0,0,.35)}
-.btn{background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 55%,#fff),var(--c) 55%,color-mix(in srgb,var(--c) 60%,#000));box-shadow:0 7px 0 color-mix(in srgb,var(--c) 45%,#000),0 10px 14px rgba(0,0,0,.6);color:var(--p0);text-shadow:0 1px 0 rgba(255,255,255,.25)}
-.btn.on{transform:translateY(5px);box-shadow:0 2px 0 color-mix(in srgb,var(--c) 45%,#000),0 3px 6px rgba(0,0,0,.6)}
-canvas{box-shadow:0 0 0 4px #222,0 0 0 6px #000}`,
+#screen canvas{box-shadow:0 0 0 4px var(--p1)}`,
   cyberpunk: `
-body{background:#05050a;font-family:'Orbitron','Pixelify Sans',ui-monospace,monospace}
-#stick{background:radial-gradient(circle,rgba(255,255,255,.04),rgba(0,0,0,.6) 70%);border:2px solid var(--p3);box-shadow:0 0 14px var(--p3),inset 0 0 18px color-mix(in srgb,var(--p3) 40%,transparent)}
-#knob{background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--p3) 70%,#fff),var(--p3) 45%,color-mix(in srgb,var(--p3) 40%,#000));box-shadow:0 0 18px var(--p3),0 6px 10px rgba(0,0,0,.8)}
-.btn{background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 35%,#000),#07070c 70%);border:2px solid var(--c);box-shadow:0 0 14px var(--c),0 6px 0 color-mix(in srgb,var(--c) 30%,#000);color:var(--c);text-shadow:0 0 6px var(--c)}
-.btn.on{transform:translateY(4px);background:color-mix(in srgb,var(--c) 45%,#000);box-shadow:0 0 22px var(--c),0 2px 0 color-mix(in srgb,var(--c) 30%,#000)}
-canvas{box-shadow:0 0 0 2px var(--p3),0 0 22px color-mix(in srgb,var(--p3) 60%,transparent)}
+#screen canvas{box-shadow:0 0 0 2px var(--p3),0 0 22px color-mix(in srgb,var(--p3) 60%,transparent)}
+#pad canvas{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--p3) 70%,transparent))}
 #scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(0,0,0,.28) 0 1px,transparent 1px 3px)}`,
 };
+
+/** Screen size: 128–512 in steps of 16 (set per game by its style); anything else → 160. */
+export function safeRes(res: unknown): number {
+  return typeof res === 'number' && Number.isInteger(res) && res >= 128 && res <= 512 && res % 16 === 0 ? res : 160;
+}
 
 /** Self-contained page for <iframe sandbox="allow-scripts" srcdoc=…>. */
 export function buildArcadeHtml(code: string, palette: unknown, opts: { style?: ArcadeStyle; buttons?: unknown; res?: number } = {}): string {
   const pal = safePalette(palette);
-  // Screen size: 240 for new games, 160 for the first ones (their code assumes it).
-  const res = opts.res === 240 ? 240 : 160;
+  const res = safeRes(opts.res);
   const style: ArcadeStyle = opts.style === 'cyberpunk' ? 'cyberpunk' : 'retro';
   const runtime = RUNTIME.replace('__RES__', String(res)).replace('__PALETTE__', JSON.stringify(pal)).replace('__LABELS__', JSON.stringify(safeLabels(opts.buttons)));
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@600&family=Orbitron:wght@700&display=swap">
 <style>
 :root{--p0:${pal[0]};--p1:${pal[1]};--p2:${pal[2]};--p3:${pal[3]}}
-html,body{margin:0;height:100%;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-#w{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--p0);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#w{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px}
 #screen{position:relative;width:min(100vw,56vh);height:min(100vw,56vh)}
-canvas{width:100%;height:100%;image-rendering:pixelated;display:block}
+canvas{display:block;image-rendering:pixelated}
+#screen canvas{width:100%;height:100%}
 #pad{width:min(100vw,56vh);display:flex;justify-content:space-between;align-items:center;padding:0 22px;box-sizing:border-box}
-#stick{position:relative;width:120px;height:120px;border-radius:50%;touch-action:none}
-#knob{position:absolute;left:30px;top:30px;width:60px;height:60px;border-radius:50%;transition:transform .06s ease-out;pointer-events:none}
-#stick.on #knob{transition:none}
-.ab{display:flex;gap:16px;align-items:flex-end}
-.btn{width:76px;height:76px;border-radius:50%;border:0;font-weight:700;font-size:11px;font-family:inherit;letter-spacing:.5px;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform .05s,box-shadow .05s;padding:0 4px;overflow:hidden}
-#bB{width:66px;height:66px;margin-bottom:22px;font-size:10px}
-/* A and B use the palette's bright colors; labels use the background color (max contrast). */
-#bA{--c:var(--p2)}#bB{--c:var(--p3)}
+#stick{position:relative;width:120px;height:120px;touch-action:none}
+#base{width:120px;height:120px}
+#knob{position:absolute;left:30px;top:27px;width:60px;height:65px;pointer-events:none}
+.ab{display:flex;gap:18px;align-items:flex-end}
+.bw{display:flex;flex-direction:column;align-items:center;gap:8px}
+.btn{width:80px;height:90px;touch-action:none;-webkit-tap-highlight-color:transparent}
+#bB{width:64px;height:72px}
+#wB{margin-bottom:20px}
+.lbl{height:10px}
 ${STYLE_CSS[style]}
 </style></head><body><div id="w"><div id="screen"><canvas id="c" width="${res}" height="${res}"></canvas>${style === 'cyberpunk' ? '<div id="scan"></div>' : ''}</div>
-<div id="pad"><div id="stick"><div id="knob"></div></div>
-<div class="ab"><button class="btn" id="bB" data-b="5"><span id="lB"></span></button><button class="btn" id="bA" data-b="4"><span id="lA"></span></button></div></div></div>
+<div id="pad"><div id="stick"><canvas id="base" width="24" height="24"></canvas><canvas id="knob" width="12" height="13"></canvas></div>
+<div class="ab"><div class="bw" id="wB"><canvas class="btn" id="bB" data-b="5" width="16" height="18"></canvas><canvas class="lbl" id="lB"></canvas></div><div class="bw" id="wA"><canvas class="btn" id="bA" data-b="4" width="16" height="18"></canvas><canvas class="lbl" id="lA"></canvas></div></div></div></div>
 <script>${runtime}</script>
 <script>
 try {

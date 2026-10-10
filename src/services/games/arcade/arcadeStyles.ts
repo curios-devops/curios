@@ -54,10 +54,14 @@ const BY_GENRE: Record<string, CategoryId[]> = {
   'Massively Multiplayer': ['fantasy', 'scifi'],
 };
 
+// Tags RAWG puts on many games; they only count when nothing more specific is there.
+const GENERIC_GENRES = new Set(['Casual', 'Family', 'Indie']);
+
 /** The three categories that best fit the genres (earlier = better fit); never fewer than two. */
 export function relevantCategories(genres: string[], max = 3): ArcadeCategory[] {
+  const specific = genres.filter((g) => !GENERIC_GENRES.has(g) && BY_GENRE[g]);
   const score = new Map<CategoryId, number>();
-  for (const g of genres) {
+  for (const g of specific.length ? specific : genres) {
     (BY_GENRE[g] ?? []).forEach((id, i) => score.set(id, (score.get(id) ?? 0) + (4 - Math.min(i, 3))));
   }
   const ranked = CATEGORIES

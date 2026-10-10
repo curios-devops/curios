@@ -68,15 +68,21 @@ const STYLE: Record<string, string> = {
 const OLD_STYLES: Record<string, string> = { retro: "retro_arcade", cyberpunk: "cyberpunk" };
 const styleId = (v: unknown) => (typeof v === "string" && STYLE[v] ? v : OLD_STYLES[String(v)] ?? "retro_arcade");
 
-// New games are 240×240; remakes and fixes keep their game's size.
-const RES = 240;
+// Screen size by style (and 3D): Atari-like 160 for retro arcade, more detail for richer
+// worlds, 320 for neon / sci-fi and first-person 3D. Never above 512. Remakes keep their size.
+const RES_BY_STYLE: Record<string, number> = {
+  retro_arcade: 160, platformer: 240, puzzle: 240, racing: 240, horror: 240, party: 240, roguelike: 240,
+  fantasy: 256, sandbox: 256, cozy: 256, cyberpunk: 320, scifi: 320,
+};
+const resFor = (style: string, mode: string) => Math.min(512, mode === "3d" ? Math.max(320, RES_BY_STYLE[style] ?? 240) : RES_BY_STYLE[style] ?? 240);
+const textScale = (res: number) => Math.max(1, Math.round(res / 120));
 
 interface Spec { language: string; mode: "2d" | "3d"; style: string; res: number }
 
 const SYSTEM = ({ language, mode, style, res }: Spec) => `You write tiny one-screen arcade games for the Curios Arcade fantasy console (like WASM-4), played on phones.
-Screen ${res}x${res} pixels, 4 colors (0 = background), 60 fps.${res > 160 ? ` Use the extra detail: sprites about 12-20 px with a few details (eyes, stripes, outlines).` : ""} Global API:
+Screen ${res}x${res} pixels, 4 colors (0 = background), 60 fps.${res > 160 ? ` Use the detail: sprites about ${Math.round(res / 16)}-${Math.round(res / 10)} px with a few details (eyes, stripes, outlines).` : ` Atari-like: chunky sprites about 8-12 px.`} Global API:
 cls(c) rect(x,y,w,h,c) rectb(x,y,w,h,c) circ(x,y,r,c) line(x0,y0,x1,y1,c)
-text(s,x,y,c,k) pixel font, uppercase, 4px per char and 5px tall at scale k=1${res > 160 ? " — use k=2 for normal text and k=3 for titles" : " (k=2 for titles)"}
+text(s,x,y,c,k) pixel font, uppercase, 4px per char and 5px tall at scale k=1 — use k=${textScale(res)} for normal text and k=${textScale(res) + 1} for titles
 btn(i) held / btnp(i) just pressed: 0 LEFT 1 RIGHT 2 UP 3 DOWN (an on-screen joystick) 4 A 5 B (two buttons)
 rnd(n) random float 0..n; over(score) ends the run (the console shows GAME OVER and restarts).
 ${mode === "3d" ? `3D (first person, like DOOM/Wolfenstein) — use it for this game:
@@ -90,10 +96,10 @@ Colors: start from the inspiration's own colors (the screenshot) and shift them 
 Write plain JavaScript (no imports, DOM, timers, storage, network, async or while loops) that defines:
 function init() — resets ALL game state (called at start and after every game over)
 function update() — called 60 times per second: input, logic, then draw the whole frame${mode === "3d" ? " (view3d first)" : " starting with cls(0)"}.
-Rules: one screen; no levels, saves or menus; difficulty rises with time; a run lasts 1-3 minutes; call over(score) when the player loses; draw the score with text(). Use only the buttons the game needs. Simple shapes, under ${mode === "3d" ? 180 : 150} lines, no comments.
+Rules: one screen; no levels, saves or menus; difficulty rises with time; a run lasts 1-3 minutes; call over(score) when the player loses; draw the score with text(). Use only the buttons the game needs. Simple shapes, under ${mode === "3d" ? 180 : 150} lines, no comments, readable (not minified). Use ONE coordinate system consistently (if the world is a tile grid, convert to pixels only when drawing) and make sure the player is on screen from the first frame.
 Stay true to the inspiration's spirit: keep its core mechanic, perspective, setting and kind of enemies (a DOOM-like stays a demon shooter; never turn it into a different classic such as Pac-Man).
 If the player gives an idea, build the game around it as long as it fits a one-screen arcade game.
-Return JSON: title (short and original, not the inspiration's name), howTo (one short sentence in language "${language}" naming the controls: the joystick and the button labels), buttons ({ a, b }: what each button does as ONE short uppercase word in language "${language}", max 7 letters, e.g. DISPARA / SALTA; b = "" when B is unused), palette (4 hex colors; index 0 = background, 3 = strongest contrast), code.`;
+Return JSON: title (short and original, not the inspiration's name), howTo (one short sentence in language "${language}" naming the controls: the joystick and the button labels), buttons ({ a, b }: what each button does as ONE short uppercase word in language "${language}", max 7 letters, e.g. DISPARA / SALTA; if the game only uses the joystick, a = the word for START; b = "" when B is unused), palette (4 hex colors; index 0 = background, 3 = strongest contrast), code.`;
 
 const SCHEMA = {
   type: "object",
@@ -120,7 +126,9 @@ function requestBody(model: string, user: unknown[], spec: Spec, stream: boolean
     model,
     input: [{ role: "system", content: SYSTEM(spec) }, { role: "user", content: user }],
     max_output_tokens: 9000,
-    reasoning: { effort: model.includes("luna") ? "none" : "low" },
+    // A little reasoning even on Luna: without it, it wrote 25 minified lines with the player
+    // spawning off-screen (pixel vs tile coordinates).
+    reasoning: { effort: "low" },
     text: { format: { type: "json_schema", name: "arcade_game", strict: true, schema: SCHEMA } },
     stream,
   });
@@ -214,7 +222,7 @@ const out = (row: any) => ({
 
 const specOf = (row: any, language: string): Spec => ({
   language,
-  res: row.res === 240 ? 240 : 160,
+  res: Number.isInteger(row.res) && row.res >= 128 && row.res <= 512 ? row.res : 160,
   mode: row.mode === "3d" ? "3d" : "2d",
   style: styleId(row.style),
 });
@@ -300,7 +308,8 @@ ${JSON.stringify(previous)}`,
     if (!inspiredBy) return json({ error: "Missing inspiredBy" }, 400);
     const genres = Array.isArray(body?.genres) ? body.genres.slice(0, 4).join(", ") : "";
     const description = String(body?.description ?? "").replace(/\s+/g, " ").slice(0, 600);
-    const spec: Spec = { language, mode: body?.mode === "3d" ? "3d" : "2d", style: styleId(body?.style), res: RES };
+    const mode = body?.mode === "3d" ? "3d" : "2d", style = styleId(body?.style);
+    const spec: Spec = { language, mode, style, res: resFor(style, mode) };
     const idea = String(body?.idea ?? "").replace(/\s+/g, " ").trim().slice(0, 140);
 
     const user: unknown[] = [{
