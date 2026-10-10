@@ -46,7 +46,7 @@ async function rawg(path: string): Promise<any> {
 }
 
 const toGame = (g: any): Game => ({
-  name: g.name,
+  name: displayName(g.name),
   slug: g.slug,
   imageUrl: g.background_image ?? null,
   year: (g.released ?? "").slice(0, 4),
@@ -58,7 +58,8 @@ const toGame = (g: any): Game => ({
 });
 
 // RAWG disambiguates remakes with a year: "God of War (2018)" is the game "God of War".
-const nameKey = (name: string) => norm(name.replace(/\s*\(\d{4}\)\s*$/, ""));
+const displayName = (name: string) => name.replace(/\s*\(\d{4}\)\s*$/, "");
+const nameKey = (name: string) => norm(displayName(name));
 
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
@@ -172,7 +173,7 @@ async function gameDetail(query: string): Promise<Record<string, unknown> | null
     .map((m: any) => ({ name: m.name, url: m.data.max ?? m.data["480"], preview: m.preview ?? null }));
   return {
     found: true,
-    name: d.name,
+    name: displayName(d.name),
     year: (d.released ?? "").slice(0, 4),
     esrb: d.esrb_rating ? { short: ESRB_SHORT[d.esrb_rating.slug] ?? d.esrb_rating.name, name: d.esrb_rating.name } : null,
     genres: (d.genres ?? []).map((g: any) => g.name),

@@ -181,6 +181,8 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
                       title={t('movieTrailer')}
                       className="w-full h-full"
                       allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                      // YouTube rejects embeds without a Referer (Error 153), e.g. in webviews.
+                      referrerPolicy="strict-origin-when-cross-origin"
                       allowFullScreen
                     />
                   ) : coverUrl ? (
