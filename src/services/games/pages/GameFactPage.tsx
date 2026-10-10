@@ -5,7 +5,7 @@
 // explanation with Listen. Queries that don't name a game get the games list instead.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Code2, Gamepad2, Image as ImageIcon, Link2, Loader2, Video, type LucideIcon } from 'lucide-react';
+import { Code2, Gamepad2, Play, Image as ImageIcon, Link2, Loader2, Video, type LucideIcon } from 'lucide-react';
 import TopBar from '../../../components/results/TopBar.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
@@ -51,6 +51,8 @@ export default function GameFactPage() {
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [trailer, setTrailer] = useState<MovieTrailer | null>(null);
   const [searchingTrailer, setSearchingTrailer] = useState(false);
+  // A finished trailer stays on its last (usually black) frame → show the cover instead.
+  const [trailerEnded, setTrailerEnded] = useState(false);
   const [playable, setPlayable] = useState<PlayableGame[]>([]);
   const [similar, setSimilar] = useState<Game[] | null>(null);
   const [sources, setSources] = useState<WebSearchResult[]>([]);
@@ -228,16 +230,37 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
               {/* Trailer (RAWG, else YouTube); without one, the screenshots carousel */}
               <div className="flex-1 min-w-0">
                 {info?.trailer ? (
-                  <div className="rounded-xl overflow-hidden bg-black aspect-video">
-                    <video
-                      src={info.trailer.url}
-                      poster={info.trailer.preview ?? undefined}
-                      className="w-full h-full"
-                      autoPlay
-                      muted
-                      playsInline
-                      controls
-                    />
+                  <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
+                    {trailerEnded ? (
+                      <>
+                        <img
+                          src={info.imageUrl ?? info.trailer.preview ?? info.screenshots[0]}
+                          alt={info.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setTrailerEnded(false)}
+                          aria-label={t('movieTrailer')}
+                          className="absolute inset-0 flex items-center justify-center"
+                        >
+                          <span className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
+                            <Play size={22} className="text-white ml-0.5" />
+                          </span>
+                        </button>
+                      </>
+                    ) : (
+                      <video
+                        src={info.trailer.url}
+                        poster={info.trailer.preview ?? undefined}
+                        className="w-full h-full"
+                        autoPlay
+                        muted
+                        playsInline
+                        controls
+                        onEnded={() => setTrailerEnded(true)}
+                      />
+                    )}
                   </div>
                 ) : trailer?.embedUrl ? (
                   <div className="rounded-xl overflow-hidden bg-black aspect-video">
