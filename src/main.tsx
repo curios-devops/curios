@@ -39,6 +39,13 @@ import './index.css';
 import { applyThemeColors, type AccentColor } from './config/themeColors';
 import { appSettings, VISITOR_THEMES } from './config/appSettings.ts';
 
+// Dev only: /?reset=1 wipes this browser's app data (guest credits, session, "known user")
+// and reloads clean — "start the day" in the VS Code preview. Never shipped to production.
+if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') === '1') {
+  try { localStorage.clear(); sessionStorage.clear(); } catch { /* storage blocked */ }
+  window.location.replace(window.location.pathname);
+}
+
 // Apply theme synchronously before React renders — prevents black flash on load
 (function applyInitialTheme() {
   const stored = localStorage.getItem('theme') || appSettings.theme.default;
