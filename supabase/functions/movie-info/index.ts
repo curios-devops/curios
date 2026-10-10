@@ -82,6 +82,17 @@ function parseAwardTotals(awards: string): { wins: number; nominations: number }
 // Keep well-known titles only: TMDB recommendations include obscure TV films.
 const MIN_RELATED_VOTES = 300;
 
+// "More to explore" lists. Popular / In theatres / Coming soon are what's on in the
+// user's region; Free / Top rated / Hidden gems follow the current film's genre.
+const LISTS: Record<string, (region: string, genre: string) => string> = {
+  popular: (r) => `/movie/popular?region=${r}`,
+  now_playing: (r) => `/movie/now_playing?region=${r}`,
+  upcoming: (r) => `/movie/upcoming?region=${r}`,
+  free: (r, g) => `/discover/movie?watch_region=${r}&with_watch_monetization_types=free|ads&sort_by=popularity.desc${g ? `&with_genres=${g}` : ""}`,
+  top_rated: (_r, g) => `/discover/movie?sort_by=vote_average.desc&vote_count.gte=2000${g ? `&with_genres=${g}` : ""}`,
+  hidden_gems: (_r, g) => `/discover/movie?sort_by=vote_average.desc&vote_average.gte=7.3&vote_count.gte=150&vote_count.lte=1500${g ? `&with_genres=${g}` : ""}`,
+};
+
 // @ts-ignore: Deno.serve is the entry point for Supabase Edge Functions
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -91,8 +102,24 @@ Deno.serve(async (req: Request) => {
     const query = typeof body?.query === "string" ? body.query.trim() : "";
     const language = typeof body?.language === "string" ? body.language : "en-US";
     const region = typeof body?.region === "string" ? body.region.toUpperCase() : "US";
-    if (!query) return json({ error: "Missing query" }, 400);
     if (!TMDB_API_KEY) return json({ error: "TMDB_API_KEY not configured" }, 500);
+
+    // Body { list, genreId?, language, region } → { related } for the "More to explore" dropdown.
+    if (typeof body?.list === "string") {
+      const build = LISTS[body.list];
+      if (!build) return json({ error: "Unknown list" }, 400);
+      const genre = typeof body?.genreId === "number" ? String(body.genreId) : "";
+      const path = build(region, genre);
+      const data = await tmdb(`${path}${path.includes("?") ? "&" : "?"}language=${language}&page=1`);
+      return json({
+        related: (data?.results ?? [])
+          .filter((r: any) => r.poster_path)
+          .slice(0, 12)
+          .map((r: any) => ({ title: r.title, year: (r.release_date ?? "").slice(0, 4), posterUrl: `${IMG}/w342${r.poster_path}` })),
+      });
+    }
+
+    if (!query) return json({ error: "Missing query" }, 400);
 
     let id = await searchMovie(query, language);
     if (!id) {
@@ -147,6 +174,7 @@ Deno.serve(async (req: Request) => {
       year: (m.release_date ?? "").slice(0, 4),
       certification,
       genres: (m.genres ?? []).map((g: any) => g.name),
+      genreId: m.genres?.[0]?.id ?? null,
       runtimeMinutes: m.runtime || null,
       overview: m.overview || omdb?.Plot || "",
       posterUrl: m.poster_path ? `${IMG}/w500${m.poster_path}` : null,

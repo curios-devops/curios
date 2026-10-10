@@ -13,5 +13,13 @@
   "movieAbout": "À propos du film",
   "movieMoreToExplore": "À découvrir aussi",
   "movieAwardTotals": "{wins} prix · {nominations} nominations",
-  "movieVideos": "Vidéos"
+  "movieVideos": "Vidéos",
+  "movieListen": "Écouter",
+  "explorePopular": "Populaires",
+  "exploreInTheatres": "Au cinéma",
+  "exploreComingSoon": "Prochainement",
+  "exploreFree": "Gratuits",
+  "exploreTopRated": "Les mieux notés",
+  "exploreHiddenGems": "Pépites cachées",
+  "movieAboutTitle": "À propos de {title}"
 }

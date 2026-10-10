@@ -5,5 +5,9 @@
   "settingsAccent": "Farbe",
   "settingsAccentDesc": "Die Farbe für Buttons und Hervorhebungen",
   "settingsLanguageDesc": "Sprache der Oberfläche",
-  "close": "Schließen"
+  "close": "Schließen",
+  "settingsNarrator": "Erzählerstimme",
+  "settingsNarratorDesc": "Liest Antworten vor, wenn du auf Anhören tippst",
+  "voiceFemale": "Weiblich",
+  "voiceMale": "Männlich"
 }

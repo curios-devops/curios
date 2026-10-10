@@ -5,5 +5,9 @@
   "settingsAccent": "カラー",
   "settingsAccentDesc": "ボタンやハイライトの色",
   "settingsLanguageDesc": "表示言語",
-  "close": "閉じる"
+  "close": "閉じる",
+  "settingsNarrator": "ナレーターの声",
+  "settingsNarratorDesc": "「聞く」をタップすると回答を読み上げます",
+  "voiceFemale": "女性",
+  "voiceMale": "男性"
 }

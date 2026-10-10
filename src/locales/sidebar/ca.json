@@ -5,5 +5,9 @@
   "settingsAccent": "Color",
   "settingsAccentDesc": "El color dels botons i destacats",
   "settingsLanguageDesc": "Idioma de la interfície",
-  "close": "Tanca"
+  "close": "Tanca",
+  "settingsNarrator": "Veu del narrador",
+  "settingsNarratorDesc": "Llegeix les respostes quan toques Escolta",
+  "voiceFemale": "Dona",
+  "voiceMale": "Home"
 }

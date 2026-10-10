@@ -5,5 +5,9 @@
   "settingsAccent": "Color",
   "settingsAccentDesc": "The color for buttons and highlights",
   "settingsLanguageDesc": "Interface language",
-  "close": "Close"
+  "close": "Close",
+  "settingsNarrator": "Narrator voice",
+  "settingsNarratorDesc": "Reads answers aloud when you tap Listen",
+  "voiceFemale": "Female",
+  "voiceMale": "Male"
 }

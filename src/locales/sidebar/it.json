@@ -5,5 +5,9 @@
   "settingsAccent": "Colore",
   "settingsAccentDesc": "Il colore di pulsanti ed evidenziazioni",
   "settingsLanguageDesc": "Lingua dell'interfaccia",
-  "close": "Chiudi"
+  "close": "Chiudi",
+  "settingsNarrator": "Voce del narratore",
+  "settingsNarratorDesc": "Legge le risposte quando tocchi Ascolta",
+  "voiceFemale": "Donna",
+  "voiceMale": "Uomo"
 }

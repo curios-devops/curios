@@ -5,5 +5,9 @@
   "settingsAccent": "Cor",
   "settingsAccentDesc": "A cor dos botões e destaques",
   "settingsLanguageDesc": "Idioma da interface",
-  "close": "Fechar"
+  "close": "Fechar",
+  "settingsNarrator": "Voz do narrador",
+  "settingsNarratorDesc": "Lê as respostas quando você toca em Ouvir",
+  "voiceFemale": "Mulher",
+  "voiceMale": "Homem"
 }

@@ -73,7 +73,10 @@ Deno.serve(async (req: Request) => {
       stability = 0.5,
       similarityBoost = 0.75,
       style = 0,
+      // Optional: 'eleven_v4_turbo' for low-latency reading (Movie narration). Default unchanged.
+      modelId,
     } = await req.json();
+    const model_id = modelId === 'eleven_v4_turbo' ? 'eleven_v4_turbo' : 'eleven_v4';
 
     if (!text) {
       return createJsonResponse({ error: 'Text is required' }, 400, corsHeaders);
@@ -96,7 +99,7 @@ Deno.serve(async (req: Request) => {
         },
         body: JSON.stringify({
           text,
-          model_id: 'eleven_v4', // Latest ElevenLabs model (85 languages)
+          model_id, // Latest ElevenLabs generation (85 languages); turbo only when asked
           output_format: 'mp3_44100_128',
           voice_settings: {
             stability,

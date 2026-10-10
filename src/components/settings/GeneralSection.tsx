@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Moon, Sun, Monitor, type LucideIcon } from 'lucide-react';
 import ToggleSwitch from './ToggleSwitch';
 import LanguageSelector from './LanguageSelector';
+import NarratorVoiceSelect from './NarratorVoiceSelect';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../theme/ThemeContext';
 import { useSession } from '../../hooks/useSession';
+import { useTranslation } from '../../hooks/useTranslation';
 import { accentColors } from '../../config/themeColors';
 import { VISITOR_THEMES } from '../../config/appSettings';
 
@@ -57,6 +59,7 @@ export default function GeneralSection() {
   const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor } = useTheme();
   const { currentLanguage } = useLanguage();
   const { session } = useSession();
+  const { t } = useTranslation();
   const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const [cookieChoice, setCookieChoice] = useState<CookieOption>(() => {
@@ -138,6 +141,17 @@ export default function GeneralSection() {
                 <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Interface language: {currentLanguage.name}</p>
               </div>
               <LanguageSelector />
+            </div>
+          </div>
+
+          {/* Narrator voice */}
+          <div className="py-6">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('settingsNarrator')}</h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsNarratorDesc')}</p>
+              </div>
+              <NarratorVoiceSelect />
             </div>
           </div>
 

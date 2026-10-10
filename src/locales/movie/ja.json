@@ -13,5 +13,13 @@
   "movieAbout": "この映画について",
   "movieMoreToExplore": "関連作品",
   "movieAwardTotals": "受賞{wins} · ノミネート{nominations}",
-  "movieVideos": "動画"
+  "movieVideos": "動画",
+  "movieListen": "聞く",
+  "explorePopular": "人気",
+  "exploreInTheatres": "上映中",
+  "exploreComingSoon": "近日公開",
+  "exploreFree": "無料で視聴",
+  "exploreTopRated": "高評価",
+  "exploreHiddenGems": "隠れた名作",
+  "movieAboutTitle": "{title}について"
 }

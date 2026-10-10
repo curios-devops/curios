@@ -8,6 +8,8 @@ export interface MovieInfo {
   year: string;
   certification: string;
   genres: string[];
+  /** First TMDB genre id — scopes the genre-based "More to explore" lists. */
+  genreId: number | null;
   runtimeMinutes: number | null;
   overview: string;
   posterUrl: string | null;
@@ -43,6 +45,22 @@ export async function fetchMovieInfo(query: string, uiLang: string): Promise<Mov
   } catch (error) {
     logger.warn('[MovieInfo] lookup failed', { error: error instanceof Error ? error.message : String(error) });
     return null;
+  }
+}
+
+export type ExploreList = 'related' | 'popular' | 'now_playing' | 'upcoming' | 'free' | 'top_rated' | 'hidden_gems';
+export type ExploreItem = MovieInfo['related'][number];
+
+/** One "More to explore" list (TMDB); empty on failure. */
+export async function fetchExploreList(list: Exclude<ExploreList, 'related'>, genreId: number | null, uiLang: string): Promise<ExploreItem[]> {
+  try {
+    const { data, error } = await supabase.functions.invoke('movie-info', {
+      body: { list, genreId: genreId ?? undefined, ...movieLocale(uiLang) },
+    });
+    if (error) throw error;
+    return (data?.related as ExploreItem[]) ?? [];
+  } catch {
+    return [];
   }
 }
 

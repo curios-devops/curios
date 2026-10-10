@@ -13,5 +13,13 @@
   "movieAbout": "About the movie",
   "movieMoreToExplore": "More to explore",
   "movieAwardTotals": "{wins} wins · {nominations} nominations",
-  "movieVideos": "Videos"
+  "movieVideos": "Videos",
+  "movieListen": "Listen",
+  "explorePopular": "Popular",
+  "exploreInTheatres": "In theatres",
+  "exploreComingSoon": "Coming soon",
+  "exploreFree": "Free to watch",
+  "exploreTopRated": "Top rated",
+  "exploreHiddenGems": "Hidden gems",
+  "movieAboutTitle": "About {title}"
 }

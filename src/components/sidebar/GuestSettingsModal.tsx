@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Monitor, Moon, Sun, X, type LucideIcon } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import LanguageSelector from '../settings/LanguageSelector.tsx';
+import NarratorVoiceSelect from '../settings/NarratorVoiceSelect.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { accentColors } from '../../config/themeColors.ts';
 import { VISITOR_THEMES } from '../../config/appSettings.ts';
@@ -150,6 +151,15 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
               <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsLanguageDesc')}</p>
             </div>
             <LanguageSelector openUp />
+          </div>
+
+          {/* Narrator voice */}
+          <div className="py-5 flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('settingsNarrator')}</h3>
+              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--ui-text-secondary)' }}>{t('settingsNarratorDesc')}</p>
+            </div>
+            <NarratorVoiceSelect />
           </div>
         </div>
       </div>
