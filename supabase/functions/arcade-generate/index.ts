@@ -266,7 +266,7 @@ ${JSON.stringify(previous)}`,
         body: JSON.stringify({
           title: game.title.slice(0, 60), inspired_by: row.inspired_by, how_to: game.howTo.slice(0, 200),
           palette: game.palette, code: game.code, model, mode: spec.mode, style: spec.style, idea: row.idea,
-          buttons: buttonLabels(game.buttons), parent_id: row.id,
+          buttons: buttonLabels(game.buttons), parent_id: row.id, genres: row.genres ?? [],
         }),
       }))[0]);
     }
@@ -293,6 +293,7 @@ ${JSON.stringify(previous)}`,
         title: game.title.slice(0, 60), inspired_by: inspiredBy, how_to: game.howTo.slice(0, 200),
         palette: game.palette, code: game.code, model, mode: spec.mode, style: spec.style, idea: idea || null,
         buttons: buttonLabels(game.buttons),
+        genres: Array.isArray(body?.genres) ? body.genres.slice(0, 6).map((g: unknown) => String(g).slice(0, 40)) : [],
       }),
     }))[0]);
   } catch (err) {

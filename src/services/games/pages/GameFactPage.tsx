@@ -332,6 +332,16 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
               </button>
             )}
 
+            {info && (
+              <button
+                type="button"
+                onClick={() => navigate('/arcade')}
+                className="mt-2 w-full text-center text-xs text-gray-500 dark:text-gray-400 hover:opacity-80"
+              >
+                {t('arcadeSeeCatalog')} →
+              </button>
+            )}
+
             {/* Games saved to play later (this device) */}
             {myGames.length > 0 && (
               <div className="mt-3">

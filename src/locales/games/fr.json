@@ -80,5 +80,11 @@
   "arcadeCat_scifi": "SF et espace",
   "arcadeCatDesc_scifi": "Piloter, explorer des planètes, extraterrestres.",
   "arcadeCat_party": "Fête",
-  "arcadeCatDesc_party": "Défis rapides et loufoques entre amis."
+  "arcadeCatDesc_party": "Défis rapides et loufoques entre amis.",
+  "arcadeCatalogTitle": "Fait avec l'IA",
+  "arcadeCatalogSubtitle": "Mini-jeux originaux créés par la communauté. Joue, vote et partage.",
+  "arcadeSortTop": "Top",
+  "arcadeSortNew": "Nouveaux",
+  "arcadeCatalogEmpty": "Pas encore de jeux. Crée le premier depuis la page d'un jeu !",
+  "arcadeSeeCatalog": "Voir les jeux faits avec l'IA"
 }

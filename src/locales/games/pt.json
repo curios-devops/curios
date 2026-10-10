@@ -80,5 +80,11 @@
   "arcadeCat_scifi": "Ficção científica e espaço",
   "arcadeCatDesc_scifi": "Pilotar naves, explorar planetas, alienígenas.",
   "arcadeCat_party": "Festa",
-  "arcadeCatDesc_party": "Desafios rápidos e malucos com amigos."
+  "arcadeCatDesc_party": "Desafios rápidos e malucos com amigos.",
+  "arcadeCatalogTitle": "Feito com IA",
+  "arcadeCatalogSubtitle": "Minijogos originais criados pela comunidade. Jogue, vote e compartilhe.",
+  "arcadeSortTop": "Top",
+  "arcadeSortNew": "Novos",
+  "arcadeCatalogEmpty": "Ainda não há jogos. Crie o primeiro na página de qualquer jogo!",
+  "arcadeSeeCatalog": "Ver jogos feitos com IA"
 }

@@ -80,5 +80,11 @@
   "arcadeCat_scifi": "Sci-Fi & Space",
   "arcadeCatDesc_scifi": "Pilot ships, explore planets, meet aliens.",
   "arcadeCat_party": "Party",
-  "arcadeCatDesc_party": "Fast, silly challenges for friends."
+  "arcadeCatDesc_party": "Fast, silly challenges for friends.",
+  "arcadeCatalogTitle": "Made with AI",
+  "arcadeCatalogSubtitle": "Original mini games created by the community. Play, vote and share.",
+  "arcadeSortTop": "Top",
+  "arcadeSortNew": "New",
+  "arcadeCatalogEmpty": "No games yet. Create the first one from any game page!",
+  "arcadeSeeCatalog": "See games made with AI"
 }

@@ -80,5 +80,11 @@
   "arcadeCat_scifi": "Fantascienza e spazio",
   "arcadeCatDesc_scifi": "Pilotare navi, esplorare pianeti, alieni.",
   "arcadeCat_party": "Party",
-  "arcadeCatDesc_party": "Sfide rapide e assurde tra amici."
+  "arcadeCatDesc_party": "Sfide rapide e assurde tra amici.",
+  "arcadeCatalogTitle": "Fatto con l'IA",
+  "arcadeCatalogSubtitle": "Minigiochi originali creati dalla community. Gioca, vota e condividi.",
+  "arcadeSortTop": "Top",
+  "arcadeSortNew": "Nuovi",
+  "arcadeCatalogEmpty": "Ancora nessun gioco. Crea il primo dalla pagina di un gioco!",
+  "arcadeSeeCatalog": "Vedi i giochi fatti con l'IA"
 }

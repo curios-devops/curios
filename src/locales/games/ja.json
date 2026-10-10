@@ -80,5 +80,11 @@
   "arcadeCat_scifi": "SF＆宇宙",
   "arcadeCatDesc_scifi": "宇宙船、惑星探査、エイリアン。",
   "arcadeCat_party": "パーティー",
-  "arcadeCatDesc_party": "友だちとのはちゃめちゃ勝負。"
+  "arcadeCatDesc_party": "友だちとのはちゃめちゃ勝負。",
+  "arcadeCatalogTitle": "AIで作成",
+  "arcadeCatalogSubtitle": "コミュニティが作ったオリジナルのミニゲーム。遊んで、投票して、共有しよう。",
+  "arcadeSortTop": "人気",
+  "arcadeSortNew": "新着",
+  "arcadeCatalogEmpty": "まだゲームがありません。ゲームページから最初の1本を作ろう！",
+  "arcadeSeeCatalog": "AIで作られたゲームを見る"
 }

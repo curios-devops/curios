@@ -7,7 +7,7 @@ import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { buildArcadeHtml, safePalette } from './arcadeRuntime.ts';
 import { lookOf } from './arcadeStyles.ts';
 import {
-  fetchBoards, isArcadeSaved, myVote, postScore, toggleSavedArcade, voteArcadeGame,
+  countArcadePlay, fetchBoards, isArcadeSaved, myVote, postScore, toggleSavedArcade, voteArcadeGame,
   type ArcadeGame, type ArcadeScore,
 } from './arcadeService.ts';
 
@@ -43,6 +43,8 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
   usePixelFont();
   const { t } = useTranslation();
   const frameRef = useRef<HTMLIFrameElement>(null);
+  // Plays are counted once per page view (the first run started).
+  const countedRef = useRef(false);
   const html = useMemo(() => (game ? buildArcadeHtml(game.code, game.palette, { style: lookOf(game.style), buttons: game.buttons }) : ''), [game]);
   const font = lookOf(game?.style) === 'cyberpunk' ? NEON_FONT : PIXEL_FONT;
   const [p0, p1, p2, p3] = safePalette(game?.palette);
@@ -60,6 +62,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
 
   useEffect(() => {
     setTested(false);
+    countedRef.current = false;
     setVotes({ up: game?.votesUp ?? 0, down: game?.votesDown ?? 0, mine: game ? myVote(game.id) : 0 });
     setSaved(game ? isArcadeSaved(game.id) : false);
   }, [game]);
@@ -70,6 +73,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
     const onMessage = (e: MessageEvent) => {
       if (e.source !== frameRef.current?.contentWindow || !e.data?.arcade) return;
       if (e.data.type === 'ready') setTested(true);
+      if (e.data.type === 'start' && game && !countedRef.current) { countedRef.current = true; countArcadePlay(game.id); }
       if (e.data.type === 'error') onError?.(String(e.data.message ?? ''));
       if (e.data.type === 'over') {
         setLastScore(Number(e.data.score) || 0);
@@ -177,7 +181,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
             {lastScore !== null && !scoreSaved && (
               <div className="mb-4">
                 <p className="text-xs" style={ui.dim}>{t('arcadeYourScore')}</p>
-                <p className="text-3xl font-semibold mb-3">{lastScore}</p>
+                <p className="text-3xl font-semibold mb-3" style={{ fontFamily: PIXEL_FONT }}>{lastScore}</p>
                 <div className="flex gap-2">
                   <input
                     value={name}
@@ -225,7 +229,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
                   <li key={`${r.player}-${r.score}-${i}`} className="flex items-center gap-3 text-sm py-1">
                     <span className="w-6 text-center">{i < 3 ? MEDALS[i] : <span style={ui.dim}>{i + 1}</span>}</span>
                     <span className="flex-1 truncate">{r.player}</span>
-                    <span className="tabular-nums">{r.score}</span>
+                    <span className="tabular-nums" style={{ fontFamily: PIXEL_FONT }}>{r.score}</span>
                   </li>
                 ))}
               </ol>
@@ -246,7 +250,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
                     style={active ? { ...ui.accent, borderColor: p2 } : ui.line}
                     aria-pressed={active}
                   >
-                    <Icon size={16} /> {v === 1 ? votes.up : votes.down}
+                    <Icon size={16} /> <span style={{ fontFamily: PIXEL_FONT }}>{v === 1 ? votes.up : votes.down}</span>
                   </button>
                 );
               })}

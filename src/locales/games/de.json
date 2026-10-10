@@ -80,5 +80,11 @@
   "arcadeCat_scifi": "Sci-Fi & Weltraum",
   "arcadeCatDesc_scifi": "Schiffe fliegen, Planeten erkunden, Aliens.",
   "arcadeCat_party": "Party",
-  "arcadeCatDesc_party": "Schnelle, verrückte Duelle mit Freunden."
+  "arcadeCatDesc_party": "Schnelle, verrückte Duelle mit Freunden.",
+  "arcadeCatalogTitle": "Mit KI gemacht",
+  "arcadeCatalogSubtitle": "Originelle Minispiele aus der Community. Spielen, bewerten, teilen.",
+  "arcadeSortTop": "Top",
+  "arcadeSortNew": "Neu",
+  "arcadeCatalogEmpty": "Noch keine Spiele. Erstelle das erste auf einer Spieleseite!",
+  "arcadeSeeCatalog": "Mit KI gemachte Spiele ansehen"
 }

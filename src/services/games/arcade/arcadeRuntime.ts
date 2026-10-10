@@ -6,7 +6,7 @@
 // a game can't save anything — every run starts from zero, like an arcade cabinet.
 //
 // Messages to the parent: { arcade: 'ready' } after the smoke test, { arcade: 'error', message },
-// { arcade: 'over', score } at each game over. From the parent: { arcadeCmd: 'restart' }.
+// { arcade: 'start' } when a run starts from the title, { arcade: 'over', score } at each game over. From the parent: { arcadeCmd: 'restart' }.
 
 export const DEFAULT_PALETTE = ['#e0f8cf', '#86c06c', '#306850', '#071821'];
 
@@ -104,7 +104,7 @@ function smoke(){
 
 function frame(){
   try {
-    if (state === 'title') { cls(0); box(['PRESS ' + LABELS.a, '', '']); if (btnp(4)) { game.init(); t = 0; state = 'play'; } }
+    if (state === 'title') { cls(0); box(['PRESS ' + LABELS.a, '', '']); if (btnp(4)) { game.init(); t = 0; state = 'play'; post({ type: 'start' }); } }
     else if (state === 'play') { game.update(); t++; if (state === 'over') { overAt = t; post({ type: 'over', score: score }); } }
     else if (state === 'over') { box(['GAME OVER', 'SCORE ' + score, LABELS.a + ': RETRY']); if (t - overAt > 30 && btnp(4)) { game.init(); state = 'play'; } t++; }
   } catch (e) { fail(e); }

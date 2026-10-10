@@ -96,6 +96,8 @@ function MovieRoute() {
 const GameFactPage = lazyRetry(() => import('./services/games/pages/GameFactPage.tsx'));
 // Curios Arcade: a shared AI-made mini game.
 const ArcadePage = lazyRetry(() => import('./services/games/arcade/ArcadePage.tsx'));
+// "Made with AI": the community's arcade games.
+const ArcadeCatalog = lazyRetry(() => import('./services/games/arcade/ArcadeCatalog.tsx'));
 const MovieSharePage = lazyRetry(() => import('./services/movie/pages/MovieSharePage.tsx'));
 const Explore = lazyRetry(() => import('./mainPages/Explore.tsx'));
 const ArticleDetail = lazyRetry(() => import('./mainPages/ArticleDetail.tsx'));
@@ -164,6 +166,7 @@ const router = createBrowserRouter(
         { path: '/cinematic-results', element: <ToVideo /> },
         { path: '/movie-results', element: <LazyPageWrapper><MovieRoute /></LazyPageWrapper> },
         { path: '/games-results', element: <LazyPageWrapper><GameFactPage /></LazyPageWrapper> },
+        { path: '/arcade', element: <LazyPageWrapper><ArcadeCatalog /></LazyPageWrapper> },
         { path: '/arcade/:id', element: <LazyPageWrapper><ArcadePage /></LazyPageWrapper> },
         { path: '/movie/share/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> },
         // Curiosity Engine routes

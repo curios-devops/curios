@@ -80,5 +80,11 @@
   "arcadeCat_scifi": "Ciència-ficció i espai",
   "arcadeCatDesc_scifi": "Pilotar naus, explorar planetes, alienígenes.",
   "arcadeCat_party": "Festa",
-  "arcadeCatDesc_party": "Reptes ràpids i absurds per a amics."
+  "arcadeCatDesc_party": "Reptes ràpids i absurds per a amics.",
+  "arcadeCatalogTitle": "Fet amb IA",
+  "arcadeCatalogSubtitle": "Minijocs originals creats per la comunitat. Juga, vota i comparteix.",
+  "arcadeSortTop": "Top",
+  "arcadeSortNew": "Nous",
+  "arcadeCatalogEmpty": "Encara no hi ha jocs. Crea el primer des de la pàgina de qualsevol joc!",
+  "arcadeSeeCatalog": "Veure jocs fets amb IA"
 }

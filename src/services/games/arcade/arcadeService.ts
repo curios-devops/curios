@@ -186,3 +186,36 @@ export function toggleSavedArcade(game: ArcadeGame): boolean {
   writeJson(SAVED_KEY, saved ? list.filter((g) => g.id !== game.id) : [{ id: game.id, title: game.title, inspiredBy: game.inspiredBy }, ...list].slice(0, 30));
   return !saved;
 }
+
+// ---- "Made with AI" catalog ---------------------------------------------------------
+
+export interface ArcadeCard {
+  id: string;
+  title: string;
+  inspiredBy: string;
+  palette: string[];
+  style: string;
+  mode: ArcadeMode;
+  votesUp: number;
+  plays: number;
+}
+
+export type CatalogSort = 'top' | 'new';
+
+export async function fetchArcadeCatalog(sort: CatalogSort, limit = 30): Promise<ArcadeCard[]> {
+  let q = supabase.from('arcade_games').select('id, title, inspired_by, palette, style, mode, votes_up, plays');
+  q = sort === 'top'
+    ? q.order('votes_up', { ascending: false }).order('plays', { ascending: false }).order('created_at', { ascending: false })
+    : q.order('created_at', { ascending: false });
+  const { data, error } = await q.limit(limit);
+  if (error) { logger.warn('[arcade] catalog failed', { error: error.message }); return []; }
+  return (data ?? []).map((g) => ({
+    id: g.id, title: g.title, inspiredBy: g.inspired_by ?? '', palette: g.palette ?? [], style: g.style ?? 'retro_arcade',
+    mode: g.mode === '3d' ? '3d' : '2d', votesUp: g.votes_up ?? 0, plays: g.plays ?? 0,
+  }));
+}
+
+/** One play, when a run starts (once per page view). */
+export function countArcadePlay(id: string) {
+  void supabase.rpc('arcade_play', { game: id }).then(undefined, () => undefined);
+}
