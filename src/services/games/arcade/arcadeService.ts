@@ -18,8 +18,10 @@ export interface ArcadeGame {
   /** What A / B do ("DISPARA"); b = '' when unused. */
   buttons?: { a: string; b: string } | null;
   idea?: string | null;
-  /** Screen size: 240 (new games) or 160 (the first ones). */
+  /** Screen size (128-512, set by style). */
   res?: number;
+  /** 'x' = left/right only (arrow pad shows ◀ ▶). */
+  axes?: 'x' | 'xy';
   votesUp?: number;
   votesDown?: number;
 }
@@ -118,7 +120,7 @@ export function repairArcadeGame(id: string, error: string, model: string, langu
 export async function fetchArcadeGame(id: string): Promise<ArcadeGame | null> {
   const { data, error } = await supabase
     .from('arcade_games')
-    .select('id, title, how_to, palette, code, inspired_by, mode, style, buttons, idea, votes_up, votes_down, res')
+    .select('id, title, how_to, palette, code, inspired_by, mode, style, buttons, idea, votes_up, votes_down, res, axes')
     .eq('id', id)
     .maybeSingle();
   if (error || !data) {
@@ -127,7 +129,7 @@ export async function fetchArcadeGame(id: string): Promise<ArcadeGame | null> {
   }
   return {
     id: data.id, title: data.title, howTo: data.how_to ?? '', palette: data.palette ?? [], code: data.code,
-    inspiredBy: data.inspired_by ?? '', mode: data.mode === '3d' ? '3d' : '2d', style: data.style, buttons: data.buttons, idea: data.idea, res: data.res, votesUp: data.votes_up, votesDown: data.votes_down,
+    inspiredBy: data.inspired_by ?? '', mode: data.mode === '3d' ? '3d' : '2d', style: data.style, buttons: data.buttons, idea: data.idea, res: data.res, axes: data.axes === 'x' ? 'x' : 'xy', votesUp: data.votes_up, votesDown: data.votes_down,
   };
 }
 
@@ -245,3 +247,13 @@ export function sortCatalog(games: ArcadeCard[], sort: CatalogSort, now = Date.n
 export function countArcadePlay(id: string) {
   void supabase.rpc('arcade_play', { game: id }).then(undefined, () => undefined);
 }
+
+// ---- Player preferences on this device: sound on/off, joystick or arrows ------------
+
+const MUTED_KEY = 'curios_arcade_muted';
+const CONTROLS_KEY = 'curios_arcade_controls';
+
+export const arcadeMuted = (): boolean => readJson<boolean>(MUTED_KEY, false) === true;
+export const setArcadeMuted = (on: boolean) => writeJson(MUTED_KEY, on);
+export const arcadeControls = (): 'stick' | 'pad' => (readJson<string>(CONTROLS_KEY, 'stick') === 'pad' ? 'pad' : 'stick');
+export const setArcadeControls = (mode: 'stick' | 'pad') => writeJson(CONTROLS_KEY, mode);

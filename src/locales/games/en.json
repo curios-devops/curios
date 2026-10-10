@@ -92,5 +92,6 @@
   "arcadeFilterType": "2D & 3D",
   "arcadeFilterStyle": "All styles",
   "arcadeByAuthor": "Games by {name}",
-  "arcadeAnonymous": "Anonymous"
+  "arcadeAnonymous": "Anonymous",
+  "arcadeSound": "Sound"
 }

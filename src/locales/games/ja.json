@@ -92,5 +92,6 @@
   "arcadeFilterType": "2D・3D",
   "arcadeFilterStyle": "すべてのスタイル",
   "arcadeByAuthor": "{name}のゲーム",
-  "arcadeAnonymous": "匿名"
+  "arcadeAnonymous": "匿名",
+  "arcadeSound": "サウンド"
 }

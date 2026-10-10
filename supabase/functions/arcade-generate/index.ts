@@ -80,14 +80,16 @@ const textScale = (res: number) => Math.max(1, Math.round(res / 120));
 interface Spec { language: string; mode: "2d" | "3d"; style: string; res: number }
 
 const SYSTEM = ({ language, mode, style, res }: Spec) => `You write tiny one-screen arcade games for the Curios Arcade fantasy console (like WASM-4), played on phones.
-Screen ${res}x${res} pixels, 4 colors (0 = background), 60 fps.${res > 160 ? ` Use the detail: sprites about ${Math.round(res / 16)}-${Math.round(res / 10)} px with a few details (eyes, stripes, outlines).` : ` Atari-like: chunky sprites about 8-12 px.`} Global API:
+Screen ${res}x${res} pixels, 8 colors, 60 fps.${res > 160 ? ` Use the detail: sprites about ${Math.round(res / 16)}-${Math.round(res / 10)} px with a few details (eyes, stripes, outlines).` : ` Atari-like: chunky sprites about 8-12 px.`} Global API:
 cls(c) rect(x,y,w,h,c) rectb(x,y,w,h,c) circ(x,y,r,c) line(x0,y0,x1,y1,c)
 text(s,x,y,c,k) pixel font, uppercase, 4px per char and 5px tall at scale k=1 — use k=${textScale(res)} for normal text and k=${textScale(res) + 1} for titles
 btn(i) held / btnp(i) just pressed: 0 LEFT 1 RIGHT 2 UP 3 DOWN (an on-screen joystick) 4 A 5 B (two buttons)
 rnd(n) random float 0..n; over(score) ends the run (the console shows GAME OVER and restarts).
+Colors c = 0..7: 0 background (darkest), 1 dark (ground, walls), 2-5 four clearly different strong colors (player, enemies, items, effects), 6 light, 7 brightest (text, highlights). Keep high contrast against 0.
+Sound (use it for every important event): sfx(name) with 'shoot','laser','hit','explode','coin','blip','jump','power','hurt','step','win'; tone(freq,ms,wave) for melodies or marches (wave 'square'|'triangle'|'sawtooth'), e.g. Space Invaders' march = a low tone(110,70) … cycling 4 descending notes as the aliens step, Pac-Man = sfx('blip') per dot.
 ${mode === "3d" ? `3D (first person, like DOOM/Wolfenstein) — use it for this game:
-var map = array of strings ('.' floor, '#' wall, '3' bright wall), at least 12x12 with corridors and rooms.
-view3d(map,x,y,angle) draws the 3D view (ceiling 0, floor 1, walls 2/3); call it first each frame instead of cls.
+var map = array of strings ('.' floor, '#' wall, a digit 2-7 = a wall of that color), at least 12x12 with corridors and rooms.
+view3d(map,x,y,angle) draws the 3D view (ceiling 0, floor 1, walls in their colors); call it first each frame instead of cls.
 sprite3d(x,y,c,size) draws an enemy/item standing on the floor (size 0.3-0.8), hidden by walls; returns its screen box {x,y,w,h} or null — draw eyes or details on that box with rect().
 wall(map,x,y) is true inside walls: use it for collisions (keep 0.2 from walls).
 Controls: joystick left/right turns (about 0.05 rad per frame), up/down walks (about 0.05 per frame), A shoots: an enemy is hit when it is within 0.15 rad of the view angle and nearer than the wall in that direction. Draw a crosshair and the HUD with rect/text after the 3D view.
@@ -99,12 +101,12 @@ function update() — called 60 times per second: input, logic, then draw the wh
 Rules: one screen; no levels, saves or menus; difficulty rises with time; a run lasts 1-3 minutes; call over(score) when the player loses; draw the score with text(). Use only the buttons the game needs. Simple shapes, under ${mode === "3d" ? 180 : 150} lines, no comments, readable (not minified). Use ONE coordinate system consistently (if the world is a tile grid, convert to pixels only when drawing) and make sure the player is on screen from the first frame.
 Stay true to the inspiration's spirit: keep its core mechanic, perspective, setting and kind of enemies (a DOOM-like stays a demon shooter; never turn it into a different classic such as Pac-Man).
 If the player gives an idea, build the game around it as long as it fits a one-screen arcade game.
-Return JSON: title (short and original, not the inspiration's name), howTo (one short sentence in language "${language}" naming the controls: the joystick and the button labels), buttons ({ a, b }: what each button does as ONE short uppercase word in language "${language}", max 7 letters, e.g. DISPARA / SALTA; if the game only uses the joystick, a = the word for START; b = "" when B is unused), palette (4 hex colors; index 0 = background, 3 = strongest contrast), code.`;
+Return JSON: title (short and original, not the inspiration's name), howTo (one short sentence in language "${language}" naming the controls: the joystick and the button labels), buttons ({ a, b }: what each button does as ONE short uppercase word in language "${language}", max 7 letters, e.g. DISPARA / SALTA; if the game only uses the joystick, a = the word for START; b = "" when B is unused), axes ("x" if the player only moves left/right, like Space Invaders, else "xy"), palette (8 hex colors in the roles above), code.`;
 
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["title", "howTo", "buttons", "palette", "code"],
+  required: ["title", "howTo", "buttons", "axes", "palette", "code"],
   properties: {
     title: { type: "string" },
     howTo: { type: "string" },
@@ -114,12 +116,13 @@ const SCHEMA = {
       required: ["a", "b"],
       properties: { a: { type: "string" }, b: { type: "string" } },
     },
-    palette: { type: "array", items: { type: "string" }, minItems: 4, maxItems: 4 },
+    axes: { type: "string", enum: ["x", "xy"] },
+    palette: { type: "array", items: { type: "string" }, minItems: 8, maxItems: 8 },
     code: { type: "string" },
   },
 };
 
-interface ArcadeGame { title: string; howTo: string; buttons: { a: string; b: string }; palette: string[]; code: string }
+interface ArcadeGame { title: string; howTo: string; buttons: { a: string; b: string }; axes: string; palette: string[]; code: string }
 
 function requestBody(model: string, user: unknown[], spec: Spec, stream: boolean) {
   return JSON.stringify({
@@ -217,7 +220,7 @@ const getRow = async (id: unknown) => (await db(`arcade_games?id=eq.${encodeURIC
 const out = (row: any) => ({
   id: row.id, title: row.title, howTo: row.how_to, palette: row.palette, code: row.code, inspiredBy: row.inspired_by,
   mode: row.mode, style: row.style, idea: row.idea, buttons: row.buttons, votesUp: row.votes_up, votesDown: row.votes_down,
-  creatorName: row.creator_name, res: row.res,
+  creatorName: row.creator_name, res: row.res, axes: row.axes,
 });
 
 const specOf = (row: any, language: string): Spec => ({
@@ -271,11 +274,11 @@ Deno.serve(async (req: Request) => {
       const row = await getRow(body.repair.id);
       if (!row) return json({ error: "Not found" }, 404);
       const spec = specOf(row, language);
-      const current = { title: row.title, howTo: row.how_to, buttons: row.buttons, palette: row.palette, code: row.code };
+      const current = { title: row.title, howTo: row.how_to, buttons: row.buttons, axes: row.axes, palette: row.palette, code: row.code };
       const fixed = await checked(await ask(model, fixRequest(current, String(body.repair.error ?? "").slice(0, 300)), spec), model, spec, () => {});
       const [updated] = await db(`arcade_games?id=eq.${row.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ code: fixed.code, palette: fixed.palette, buttons: buttonLabels(fixed.buttons) }),
+        body: JSON.stringify({ code: fixed.code, palette: fixed.palette, buttons: buttonLabels(fixed.buttons), axes: fixed.axes === "x" ? "x" : "xy" }),
       });
       return json(out(updated));
     }
@@ -286,7 +289,7 @@ Deno.serve(async (req: Request) => {
       if (!row) return json({ error: "Not found" }, 404);
       const spec = specOf(row, language);
       const feedback = String(body.improve.feedback ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
-      const previous = { title: row.title, howTo: row.how_to, buttons: row.buttons, palette: row.palette, code: row.code };
+      const previous = { title: row.title, howTo: row.how_to, buttons: row.buttons, axes: row.axes, palette: row.palette, code: row.code };
       const user = [{
         type: "input_text",
         text: `Inspiration: ${row.inspired_by}.${row.idea ? ` Player's idea: ${row.idea}.` : ""}
@@ -300,6 +303,7 @@ ${JSON.stringify(previous)}`,
           title: game.title.slice(0, 60), inspired_by: row.inspired_by, how_to: game.howTo.slice(0, 200),
           palette: game.palette, code: game.code, model, mode: spec.mode, style: spec.style, idea: row.idea,
           buttons: buttonLabels(game.buttons), parent_id: row.id, genres: row.genres ?? [], res: spec.res, ...creator,
+          axes: game.axes === "x" ? "x" : "xy",
         }),
       }))[0]);
     }
@@ -327,6 +331,7 @@ ${JSON.stringify(previous)}`,
         title: game.title.slice(0, 60), inspired_by: inspiredBy, how_to: game.howTo.slice(0, 200),
         palette: game.palette, code: game.code, model, mode: spec.mode, style: spec.style, idea: idea || null,
         buttons: buttonLabels(game.buttons),
+        axes: game.axes === "x" ? "x" : "xy",
         res: spec.res,
         genres: Array.isArray(body?.genres) ? body.genres.slice(0, 6).map((g: unknown) => String(g).slice(0, 40)) : [],
         ...creator,

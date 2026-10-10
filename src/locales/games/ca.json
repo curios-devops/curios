@@ -92,5 +92,6 @@
   "arcadeFilterType": "2D i 3D",
   "arcadeFilterStyle": "Tots els estils",
   "arcadeByAuthor": "Jocs de {name}",
-  "arcadeAnonymous": "Anònim"
+  "arcadeAnonymous": "Anònim",
+  "arcadeSound": "So"
 }

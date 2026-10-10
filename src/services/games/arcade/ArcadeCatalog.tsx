@@ -9,7 +9,7 @@ import { Play, ThumbsUp, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import { MenuSelect } from '../../../components/factSheet/FactSheet.tsx';
-import { safePalette } from './arcadeRuntime.ts';
+import { paletteRoles } from './arcadeRuntime.ts';
 import { CATEGORIES, lookOf } from './arcadeStyles.ts';
 import { fetchArcadeCatalog, sortCatalog, type ArcadeCard, type CatalogSort } from './arcadeService.ts';
 
@@ -19,7 +19,8 @@ const categoryOf = (style: string) => (style === 'retro' ? 'retro_arcade' : styl
 
 // Card art in the game's palette: ground, hero, enemy; neon looks get glowing outlines.
 function GameArt({ game }: { game: ArcadeCard }) {
-  const [bg, ground, enemy, hero] = safePalette(game.palette);
+  const r = paletteRoles(game.palette);
+  const [bg, ground, enemy, hero] = [r.bg, r.line, r.accent2, r.accent];
   const neon = lookOf(game.style) === 'cyberpunk';
   const shape = (color: string) => (neon ? { fill: 'none', stroke: color, strokeWidth: 1.2 } : { fill: color });
   return (

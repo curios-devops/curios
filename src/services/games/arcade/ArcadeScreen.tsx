@@ -2,12 +2,12 @@
 // game-over sheet in the game's own look (its palette + a pixel font): name + score, today's
 // podium and the Hall of Fame, 👍/👎, save for later, share, play again and remake.
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { Bookmark, BookmarkCheck, Loader2, RotateCcw, Share2, ThumbsDown, ThumbsUp, Trophy, Wand2, X } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Loader2, RotateCcw, Share2, ThumbsDown, ThumbsUp, Trophy, Volume2, VolumeX, Wand2, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
-import { buildArcadeHtml, safePalette } from './arcadeRuntime.ts';
+import { buildArcadeHtml, paletteRoles } from './arcadeRuntime.ts';
 import { lookOf } from './arcadeStyles.ts';
 import {
-  countArcadePlay, fetchBoards, isArcadeSaved, myVote, postScore, toggleSavedArcade, voteArcadeGame,
+  arcadeControls, arcadeMuted, countArcadePlay, fetchBoards, isArcadeSaved, setArcadeControls, setArcadeMuted, myVote, postScore, toggleSavedArcade, voteArcadeGame,
   type ArcadeGame, type ArcadeScore,
 } from './arcadeService.ts';
 
@@ -45,9 +45,14 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
   const frameRef = useRef<HTMLIFrameElement>(null);
   // Plays are counted once per page view (the first run started).
   const countedRef = useRef(false);
-  const html = useMemo(() => (game ? buildArcadeHtml(game.code, game.palette, { style: lookOf(game.style), buttons: game.buttons, res: game.res }) : ''), [game]);
+  const [muted, setMuted] = useState(arcadeMuted);
+  // Built once per game: muting and the joystick/arrows switch go to the console by message.
+  const html = useMemo(() => (game ? buildArcadeHtml(game.code, game.palette, {
+    style: lookOf(game.style), buttons: game.buttons, res: game.res, axes: game.axes, controls: arcadeControls(), muted: arcadeMuted(),
+  }) : ''), [game]);
   const font = lookOf(game?.style) === 'cyberpunk' ? NEON_FONT : PIXEL_FONT;
-  const [p0, p1, p2, p3] = safePalette(game?.palette);
+  const roles = paletteRoles(game?.palette);
+  const [p0, p1, p2, p3] = [roles.bg, roles.line, roles.accent, roles.text];
   const [tested, setTested] = useState(false);
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -73,6 +78,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
     const onMessage = (e: MessageEvent) => {
       if (e.source !== frameRef.current?.contentWindow || !e.data?.arcade) return;
       if (e.data.type === 'ready') setTested(true);
+      if (e.data.type === 'controls') setArcadeControls(e.data.mode === 'pad' ? 'pad' : 'stick');
       if (e.data.type === 'start' && game && !countedRef.current) { countedRef.current = true; countArcadePlay(game.id); }
       if (e.data.type === 'error') onError?.(String(e.data.message ?? ''));
       if (e.data.type === 'over') {
@@ -136,6 +142,15 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
         </div>
         {game && (
           <>
+            <button
+              type="button"
+              onClick={() => { const on = !muted; setMuted(on); setArcadeMuted(on); frameRef.current?.contentWindow?.postMessage({ arcadeCmd: 'mute', on }, '*'); }}
+              className={iconBtn}
+              aria-label={t('arcadeSound')}
+              aria-pressed={!muted}
+            >
+              {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </button>
             <button type="button" onClick={() => { setSheetOpen(true); loadBoards(); }} className={iconBtn} aria-label={t('arcadeRecords')}>
               <Trophy size={18} />
             </button>

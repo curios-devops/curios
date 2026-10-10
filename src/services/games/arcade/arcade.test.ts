@@ -45,6 +45,10 @@ describe('arcade console page', () => {
     expect(safePalette(['red', '#000', '#000', '#000'])).toEqual(DEFAULT_PALETTE);
     expect(safePalette(['#000', '#000', '#000', '#000"];alert(1);//'])).toEqual(DEFAULT_PALETTE);
     expect(safePalette(undefined)).toEqual(DEFAULT_PALETTE);
+    // New games use 8 colors (more contrast); the first ones keep 4.
+    const eight = ['#000', '#111', '#222', '#333', '#444', '#555', '#666', '#fff'];
+    expect(safePalette(eight)).toEqual(eight);
+    expect(safePalette(eight.slice(0, 6))).toEqual(DEFAULT_PALETTE);
   });
   // The size is injected into the console page as code, and old games' code assumes 160.
   it('renders between 128 and 512 (never HD), else 160', () => {
