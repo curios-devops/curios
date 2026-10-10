@@ -19,7 +19,6 @@ import { useTheme } from '../components/theme/ThemeContext.tsx';
 import type { ModeType } from '../components/boxContainerInput/ModeSelector.tsx';
 import ProCreditsBattery from '../components/ProCreditsBattery.tsx';
 import HomeDiscovery from '../services/space/components/HomeDiscovery.tsx';
-import { ArcadeShelf } from '../services/games/arcade/ArcadeCatalog.tsx';
 import EnhancedVideoCard from '../services/movie/components/EnhancedVideoCard.tsx';
 import AnimatedHomeTitle from '../components/AnimatedHomeTitle.tsx';
 import CuriosLogo from '../components/common/CuriosLogo.tsx';
@@ -320,7 +319,6 @@ export default function Home() {
       </div>
 
       {/* Finite "Discover" strip under the search box (Curiosity Launcher pattern). */}
-      <ArcadeShelf />
       <HomeDiscovery />
 
       {/* Cookie banner: bottom-right */}

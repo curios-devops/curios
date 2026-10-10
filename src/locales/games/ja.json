@@ -83,8 +83,14 @@
   "arcadeCatDesc_party": "友だちとのはちゃめちゃ勝負。",
   "arcadeCatalogTitle": "AIで作成",
   "arcadeCatalogSubtitle": "コミュニティが作ったオリジナルのミニゲーム。遊んで、投票して、共有しよう。",
-  "arcadeSortTop": "人気",
   "arcadeSortNew": "新着",
   "arcadeCatalogEmpty": "まだゲームがありません。ゲームページから最初の1本を作ろう！",
-  "arcadeSeeCatalog": "AIで作られたゲームを見る"
+  "arcadeSeeCatalog": "AIで作られたゲームを見る",
+  "arcadeSortBy": "並び替え:",
+  "arcadeSortRelevance": "関連度",
+  "arcadeFilterGenre": "すべてのジャンル",
+  "arcadeFilterType": "2D・3D",
+  "arcadeFilterStyle": "すべてのスタイル",
+  "arcadeByAuthor": "{name}のゲーム",
+  "arcadeAnonymous": "匿名"
 }

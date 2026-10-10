@@ -21,6 +21,25 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 // @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+// @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+
+// The signed-in creator (the app sends the user's access token); guests → anonymous.
+async function creatorOf(req: Request): Promise<{ creator_id: string | null; creator_name: string | null }> {
+  const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  if (!token || token === ANON_KEY) return { creator_id: null, creator_name: null };
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` } });
+    if (!res.ok) return { creator_id: null, creator_name: null };
+    const u = await res.json();
+    const m = u.user_metadata ?? {};
+    // Profile name only — never derived from the email (it would be public on the cards).
+    const name = m.full_name || m.name || m.user_name || null;
+    return { creator_id: u.id ?? null, creator_name: name ? String(name).slice(0, 40) : null };
+  } catch {
+    return { creator_id: null, creator_name: null };
+  }
+}
 
 // Luna / Sol / Astra (appSettings.models defaults). The client picks by perceived difficulty
 // and moves one step up on every remake.
@@ -187,6 +206,7 @@ const getRow = async (id: unknown) => (await db(`arcade_games?id=eq.${encodeURIC
 const out = (row: any) => ({
   id: row.id, title: row.title, howTo: row.how_to, palette: row.palette, code: row.code, inspiredBy: row.inspired_by,
   mode: row.mode, style: row.style, idea: row.idea, buttons: row.buttons, votesUp: row.votes_up, votesDown: row.votes_down,
+  creatorName: row.creator_name,
 });
 
 const specOf = (row: any, language: string): Spec => ({
@@ -232,6 +252,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const model = MODELS.has(body?.model) ? body.model : DEFAULT_MODEL;
     const language = typeof body?.language === "string" ? body.language.slice(0, 5) : "en";
+    const creator = body?.repair ? null : await creatorOf(req);
 
     // The client's smoke test threw at runtime → one fix of the stored game.
     if (body?.repair?.id) {
@@ -266,7 +287,7 @@ ${JSON.stringify(previous)}`,
         body: JSON.stringify({
           title: game.title.slice(0, 60), inspired_by: row.inspired_by, how_to: game.howTo.slice(0, 200),
           palette: game.palette, code: game.code, model, mode: spec.mode, style: spec.style, idea: row.idea,
-          buttons: buttonLabels(game.buttons), parent_id: row.id, genres: row.genres ?? [],
+          buttons: buttonLabels(game.buttons), parent_id: row.id, genres: row.genres ?? [], ...creator,
         }),
       }))[0]);
     }
@@ -294,6 +315,7 @@ ${JSON.stringify(previous)}`,
         palette: game.palette, code: game.code, model, mode: spec.mode, style: spec.style, idea: idea || null,
         buttons: buttonLabels(game.buttons),
         genres: Array.isArray(body?.genres) ? body.genres.slice(0, 6).map((g: unknown) => String(g).slice(0, 40)) : [],
+        ...creator,
       }),
     }))[0]);
   } catch (err) {

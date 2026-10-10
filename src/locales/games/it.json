@@ -83,8 +83,14 @@
   "arcadeCatDesc_party": "Sfide rapide e assurde tra amici.",
   "arcadeCatalogTitle": "Fatto con l'IA",
   "arcadeCatalogSubtitle": "Minigiochi originali creati dalla community. Gioca, vota e condividi.",
-  "arcadeSortTop": "Top",
   "arcadeSortNew": "Nuovi",
   "arcadeCatalogEmpty": "Ancora nessun gioco. Crea il primo dalla pagina di un gioco!",
-  "arcadeSeeCatalog": "Vedi i giochi fatti con l'IA"
+  "arcadeSeeCatalog": "Vedi i giochi fatti con l'IA",
+  "arcadeSortBy": "Ordina per:",
+  "arcadeSortRelevance": "Rilevanza",
+  "arcadeFilterGenre": "Tutti i generi",
+  "arcadeFilterType": "2D e 3D",
+  "arcadeFilterStyle": "Tutti gli stili",
+  "arcadeByAuthor": "Giochi di {name}",
+  "arcadeAnonymous": "Anonimo"
 }

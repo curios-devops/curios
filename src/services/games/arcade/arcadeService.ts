@@ -60,9 +60,15 @@ async function invokeArcade(body: object): Promise<ArcadeGame> {
 export type BuildEvent = { type: 'progress'; chars: number } | { type: 'fixing' };
 
 async function streamArcade(body: object, onEvent: (e: BuildEvent) => void): Promise<ArcadeGame> {
+  // The user's token when signed in, so the game is credited to them ("Made with AI" cards).
+  const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/arcade-generate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok || !res.body) throw new Error(`arcade-generate ${res.status}`);
@@ -196,23 +202,41 @@ export interface ArcadeCard {
   palette: string[];
   style: string;
   mode: ArcadeMode;
+  genres: string[];
   votesUp: number;
   plays: number;
+  creatorId: string | null;
+  creatorName: string | null;
+  createdAt: string;
 }
 
-export type CatalogSort = 'top' | 'new';
-
-export async function fetchArcadeCatalog(sort: CatalogSort, limit = 30): Promise<ArcadeCard[]> {
-  let q = supabase.from('arcade_games').select('id, title, inspired_by, palette, style, mode, votes_up, plays');
-  q = sort === 'top'
-    ? q.order('votes_up', { ascending: false }).order('plays', { ascending: false }).order('created_at', { ascending: false })
-    : q.order('created_at', { ascending: false });
-  const { data, error } = await q.limit(limit);
+/** The latest games (sorting and filtering happen on the page — the catalog is small). */
+export async function fetchArcadeCatalog(limit = 200): Promise<ArcadeCard[]> {
+  const { data, error } = await supabase
+    .from('arcade_games')
+    .select('id, title, inspired_by, palette, style, mode, genres, votes_up, plays, creator_id, creator_name, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit);
   if (error) { logger.warn('[arcade] catalog failed', { error: error.message }); return []; }
   return (data ?? []).map((g) => ({
     id: g.id, title: g.title, inspiredBy: g.inspired_by ?? '', palette: g.palette ?? [], style: g.style ?? 'retro_arcade',
-    mode: g.mode === '3d' ? '3d' : '2d', votesUp: g.votes_up ?? 0, plays: g.plays ?? 0,
+    mode: g.mode === '3d' ? '3d' : '2d', genres: g.genres ?? [], votesUp: g.votes_up ?? 0, plays: g.plays ?? 0,
+    creatorId: g.creator_id, creatorName: g.creator_name, createdAt: g.created_at,
   }));
+}
+
+export type CatalogSort = 'relevance' | 'popular' | 'new' | 'top_rated';
+
+// Relevance: votes weigh most, plays count, and newer games get a boost that fades in days.
+export function sortCatalog(games: ArcadeCard[], sort: CatalogSort, now = Date.now()): ArcadeCard[] {
+  const age = (g: ArcadeCard) => Math.max(0, (now - new Date(g.createdAt).getTime()) / 86_400_000);
+  const score: Record<CatalogSort, (g: ArcadeCard) => number> = {
+    relevance: (g) => (g.votesUp * 3 + g.plays + 1) / Math.pow(age(g) + 2, 0.8),
+    popular: (g) => g.plays,
+    new: (g) => -age(g),
+    top_rated: (g) => g.votesUp,
+  };
+  return [...games].sort((a, b) => score[sort](b) - score[sort](a) || age(a) - age(b));
 }
 
 /** One play, when a run starts (once per page view). */

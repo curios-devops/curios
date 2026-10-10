@@ -83,8 +83,14 @@
   "arcadeCatDesc_party": "Fast, silly challenges for friends.",
   "arcadeCatalogTitle": "Made with AI",
   "arcadeCatalogSubtitle": "Original mini games created by the community. Play, vote and share.",
-  "arcadeSortTop": "Top",
   "arcadeSortNew": "New",
   "arcadeCatalogEmpty": "No games yet. Create the first one from any game page!",
-  "arcadeSeeCatalog": "See games made with AI"
+  "arcadeSeeCatalog": "See games made with AI",
+  "arcadeSortBy": "Sort by:",
+  "arcadeSortRelevance": "Relevance",
+  "arcadeFilterGenre": "All genres",
+  "arcadeFilterType": "2D & 3D",
+  "arcadeFilterStyle": "All styles",
+  "arcadeByAuthor": "Games by {name}",
+  "arcadeAnonymous": "Anonymous"
 }

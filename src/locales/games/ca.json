@@ -83,8 +83,14 @@
   "arcadeCatDesc_party": "Reptes ràpids i absurds per a amics.",
   "arcadeCatalogTitle": "Fet amb IA",
   "arcadeCatalogSubtitle": "Minijocs originals creats per la comunitat. Juga, vota i comparteix.",
-  "arcadeSortTop": "Top",
   "arcadeSortNew": "Nous",
   "arcadeCatalogEmpty": "Encara no hi ha jocs. Crea el primer des de la pàgina de qualsevol joc!",
-  "arcadeSeeCatalog": "Veure jocs fets amb IA"
+  "arcadeSeeCatalog": "Veure jocs fets amb IA",
+  "arcadeSortBy": "Ordena per:",
+  "arcadeSortRelevance": "Rellevància",
+  "arcadeFilterGenre": "Tots els gèneres",
+  "arcadeFilterType": "2D i 3D",
+  "arcadeFilterStyle": "Tots els estils",
+  "arcadeByAuthor": "Jocs de {name}",
+  "arcadeAnonymous": "Anònim"
 }

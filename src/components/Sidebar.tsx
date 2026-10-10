@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Compass, FolderKanban, Globe2, History, HomeIcon, Library } from "lucide-react";
+import { Compass, FolderKanban, Gamepad2, Globe2, History, HomeIcon, Library } from "lucide-react";
 import * as ReactRouterDom from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation.ts";
 import { useSession } from "../hooks/useSession.ts";
@@ -90,6 +90,13 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, 
               icon={Compass}
               label="Discover"
               isActive={location.pathname === "/feed"}
+              isCollapsed={isCollapsed}
+            />
+            <NavItem
+              to="/arcade"
+              icon={Gamepad2}
+              label={t("arcadeCatalogTitle")}
+              isActive={location.pathname.startsWith("/arcade")}
               isCollapsed={isCollapsed}
             />
             <NavItem

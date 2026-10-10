@@ -1,117 +1,170 @@
-// "Made with AI": the community's Curios Arcade games — cartridge cards in each game's own
-// colors (generated games have no cover), sorted by 👍 and plays (Top) or by date (New).
-// ArcadeShelf is the compact row used on Home.
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Loader2, Play, ThumbsUp } from 'lucide-react';
+// "Made with AI" (/arcade, in the sidebar after Discover): the community's Curios Arcade games,
+// on the Discover page template. Sort (relevance / popular / new / top rated) and filter by
+// genre, 2D/3D and style; each card shows the inspiration, the creator (tap → their games),
+// the date and the votes. Generated games have no cover, so the card art is drawn with each
+// game's own palette.
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Play, ThumbsUp, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
-import TopBar from '../../../components/results/TopBar.tsx';
+import { useLanguage } from '../../../contexts/LanguageContext.tsx';
+import { MenuSelect } from '../../../components/factSheet/FactSheet.tsx';
 import { safePalette } from './arcadeRuntime.ts';
-import { lookOf } from './arcadeStyles.ts';
-import { PIXEL_FONT, usePixelFont } from './ArcadeScreen.tsx';
-import { fetchArcadeCatalog, type ArcadeCard, type CatalogSort } from './arcadeService.ts';
+import { CATEGORIES, lookOf } from './arcadeStyles.ts';
+import { fetchArcadeCatalog, sortCatalog, type ArcadeCard, type CatalogSort } from './arcadeService.ts';
 
-const NEON_FONT = "'Orbitron', 'Pixelify Sans', ui-monospace, monospace";
+const ALL = 'all';
+// Old rows stored 'retro' / 'cyberpunk' before the categories existed.
+const categoryOf = (style: string) => (style === 'retro' ? 'retro_arcade' : style);
 
-export function ArcadeCartridge({ game, className = '' }: { game: ArcadeCard; className?: string }) {
-  const { t } = useTranslation();
-  const [p0, p1, p2, p3] = safePalette(game.palette);
+// Card art in the game's palette: ground, hero, enemy; neon looks get glowing outlines.
+function GameArt({ game }: { game: ArcadeCard }) {
+  const [bg, ground, enemy, hero] = safePalette(game.palette);
   const neon = lookOf(game.style) === 'cyberpunk';
+  const shape = (color: string) => (neon ? { fill: 'none', stroke: color, strokeWidth: 1.2 } : { fill: color });
   return (
-    <Link
-      to={`/arcade/${game.id}`}
-      className={`block rounded-xl overflow-hidden border-2 ${className}`}
-      style={{ backgroundColor: p0, borderColor: neon ? p3 : p1, boxShadow: neon ? `0 0 12px ${p3}55` : undefined }}
-    >
-      {/* Label art: the game's four colors as pixel stripes */}
-      <div className="h-16 relative" style={{ background: `linear-gradient(180deg, ${p1} 0 50%, ${p0} 50%)` }}>
-        <span className="absolute left-3 bottom-3 w-4 h-6" style={{ backgroundColor: p3 }} />
-        <span className="absolute right-4 bottom-3 w-6 h-6" style={{ backgroundColor: p2 }} />
-        <span className="absolute left-0 right-0 bottom-0 h-2" style={{ backgroundColor: p2, opacity: 0.6 }} />
-        <span className="absolute right-2 top-2 text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: p0, color: p3, fontFamily: PIXEL_FONT }}>
-          {game.mode === '3d' ? '3D' : '2D'}
-        </span>
-      </div>
-      <div className="p-3" style={{ color: p3, fontFamily: neon ? NEON_FONT : PIXEL_FONT }}>
-        <p className="text-sm font-semibold leading-tight line-clamp-2 uppercase">{game.title}</p>
-        <p className="text-[11px] mt-1 truncate" style={{ opacity: 0.7 }}>
-          {t('arcadeInspiredBy').replace('{name}', game.inspiredBy)}
-        </p>
-        <p className="text-[11px] mt-2 flex items-center gap-3" style={{ opacity: 0.8 }}>
-          {/* Numbers in the pixel font: Orbitron's slashed zero reads like a "forbidden" sign */}
-          <span className="inline-flex items-center gap-1" style={{ fontFamily: PIXEL_FONT }}><ThumbsUp size={12} /> {game.votesUp}</span>
-          <span className="inline-flex items-center gap-1" style={{ fontFamily: PIXEL_FONT }}><Play size={12} /> {game.plays}</span>
-        </p>
-      </div>
-    </Link>
-  );
-}
-
-/** Home row: the top games, with "See all" → /arcade. Renders nothing until there are games. */
-export function ArcadeShelf() {
-  usePixelFont();
-  const { t } = useTranslation();
-  const [games, setGames] = useState<ArcadeCard[]>([]);
-  useEffect(() => { void fetchArcadeCatalog('top', 8).then(setGames); }, []);
-  if (!games.length) return null;
-  return (
-    <div className="max-w-[720px] mx-auto px-4 sm:px-8 mt-16">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="label-mono" style={{ color: 'var(--accent-primary)' }}>{t('arcadeCatalogTitle')}</h2>
-        <Link to="/arcade" className="inline-flex items-center gap-1 text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: 'var(--accent-primary)' }}>
-          {t('homeSeeAll')} <ArrowRight size={14} />
-        </Link>
-      </div>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-        {games.map((g) => <ArcadeCartridge key={g.id} game={g} className="w-40 flex-shrink-0" />)}
-      </div>
-    </div>
+    <svg viewBox="0 0 64 36" className="w-full h-full" preserveAspectRatio="xMidYMid slice" shapeRendering={neon ? undefined : 'crispEdges'}>
+      <rect width="64" height="36" fill={bg} />
+      {neon
+        ? <path d="M0 29 H64 M0 33 H64 M8 29 L2 36 M24 29 L21 36 M40 29 L43 36 M56 29 L62 36" stroke={ground} strokeWidth="1" />
+        : [0, 1, 2, 3, 4, 5, 6, 7].map((i) => <rect key={i} x={i * 8} y="29" width="7" height="7" fill={ground} />)}
+      <rect x="12" y="17" width="5" height="11" {...shape(hero)} />
+      <rect x="40" y="19" width="9" height="9" {...shape(enemy)} />
+      <rect x="42" y="22" width="2" height="2" fill={neon ? enemy : bg} /><rect x="45" y="22" width="2" height="2" fill={neon ? enemy : bg} />
+    </svg>
   );
 }
 
 export default function ArcadeCatalog() {
-  usePixelFont();
   const { t } = useTranslation();
-  const [sort, setSort] = useState<CatalogSort>('top');
+  const { currentLanguage } = useLanguage();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const author = params.get('author');
   const [games, setGames] = useState<ArcadeCard[] | null>(null);
+  const [sort, setSort] = useState<CatalogSort>('relevance');
+  const [genre, setGenre] = useState(ALL);
+  const [mode, setMode] = useState(ALL);
+  const [style, setStyle] = useState(ALL);
 
-  useEffect(() => {
-    let cancelled = false;
-    setGames(null);
-    void fetchArcadeCatalog(sort).then((g) => { if (!cancelled) setGames(g); });
-    return () => { cancelled = true; };
-  }, [sort]);
+  useEffect(() => { void fetchArcadeCatalog().then(setGames); }, []);
+
+  const styleName = (id: string) => t(`arcadeCat_${categoryOf(id)}` as never);
+  const authorKey = (g: ArcadeCard) => g.creatorId ?? g.creatorName ?? '';
+  const authorName = (g: ArcadeCard) => g.creatorName ?? t('arcadeAnonymous');
+
+  // Filter options come from the games that exist.
+  const genres = useMemo(() => [...new Set((games ?? []).flatMap((g) => g.genres))].sort(), [games]);
+  const styles = useMemo(() => CATEGORIES.map((c) => c.id).filter((id) => (games ?? []).some((g) => categoryOf(g.style) === id)), [games]);
+
+  const shown = useMemo(() => sortCatalog((games ?? []).filter((g) =>
+    (!author || authorKey(g) === author)
+    && (genre === ALL || g.genres.includes(genre))
+    && (mode === ALL || g.mode === mode)
+    && (style === ALL || categoryOf(g.style) === style)), sort), [games, author, genre, mode, style, sort]);
+  const authorLabel = author ? (games ?? []).find((g) => authorKey(g) === author) : undefined;
+
+  const filterByAuthor = (e: MouseEvent, g: ArcadeCard) => {
+    e.stopPropagation();
+    if (authorKey(g)) setParams({ author: authorKey(g) });
+  };
+  const date = (iso: string) => new Date(iso).toLocaleDateString(currentLanguage.code, { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
-      <TopBar query={t('arcadeCatalogTitle')} timeAgo="" />
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('arcadeCatalogSubtitle')}</p>
-        <div className="flex gap-4 border-b mb-5" style={{ borderColor: 'var(--ui-border-subtle)' }}>
-          {(['top', 'new'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setSort(s)}
-              className="pb-2 text-sm font-medium border-b-2 -mb-px"
-              style={sort === s
-                ? { borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }
-                : { borderColor: 'transparent', color: 'var(--ui-text-muted)' }}
-            >
-              {s === 'top' ? t('arcadeSortTop') : t('arcadeSortNew')}
-            </button>
-          ))}
-        </div>
-        {!games ? (
-          <Loader2 size={18} className="animate-spin text-gray-500 dark:text-gray-400" />
-        ) : games.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('arcadeCatalogEmpty')}</p>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {games.map((g) => <ArcadeCartridge key={g.id} game={g} />)}
-          </div>
+    <div className="min-h-screen px-4 py-8 max-w-6xl mx-auto">
+      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">{t('arcadeCatalogTitle')}</h1>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('arcadeCatalogSubtitle')}</p>
+
+      {/* Sort + filters */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6 text-sm">
+        <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+          {t('arcadeSortBy')}
+          <MenuSelect
+            variant="small"
+            value={sort}
+            onChange={setSort}
+            options={[
+              { id: 'relevance', label: t('arcadeSortRelevance') },
+              { id: 'popular', label: t('explorePopular') },
+              { id: 'new', label: t('arcadeSortNew') },
+              { id: 'top_rated', label: t('exploreTopRated') },
+            ]}
+          />
+        </span>
+        {genres.length > 0 && (
+          <MenuSelect variant="small" value={genre} onChange={setGenre}
+            options={[{ id: ALL, label: t('arcadeFilterGenre') }, ...genres.map((g) => ({ id: g, label: g }))]} />
+        )}
+        <MenuSelect variant="small" value={mode} onChange={setMode}
+          options={[{ id: ALL, label: t('arcadeFilterType') }, { id: '2d', label: '2D' }, { id: '3d', label: '3D' }]} />
+        {styles.length > 0 && (
+          <MenuSelect variant="small" value={style} onChange={setStyle}
+            options={[{ id: ALL, label: t('arcadeFilterStyle') }, ...styles.map((id) => ({ id, label: styleName(id) }))]} />
+        )}
+        {author && (
+          <button
+            type="button"
+            onClick={() => setParams({})}
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs"
+            style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-primary)' }}
+          >
+            {t('arcadeByAuthor').replace('{name}', authorLabel ? authorName(authorLabel) : '')} <X size={12} />
+          </button>
         )}
       </div>
+
+      {!games ? (
+        <div className="py-20 flex justify-center">
+          <div className="w-7 h-7 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent-primary)', borderTopColor: 'transparent' }} />
+        </div>
+      ) : shown.length === 0 ? (
+        <p className="text-gray-500 dark:text-gray-400">{t('arcadeCatalogEmpty')}</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {shown.map((g) => (
+            <div
+              key={g.id}
+              role="link"
+              tabIndex={0}
+              onClick={() => navigate(`/arcade/${g.id}`)}
+              onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/arcade/${g.id}`); }}
+              className="group cursor-pointer flex flex-col rounded-xl border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md transition-all overflow-hidden bg-white dark:bg-[#0a0a0a]"
+            >
+              <div className="relative aspect-video overflow-hidden">
+                <GameArt game={g} />
+                <span className="absolute right-2 top-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-black/60 text-white">{g.mode === '3d' ? '3D' : '2D'}</span>
+                <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="w-11 h-11 rounded-full flex items-center justify-center bg-black/55"><Play size={20} className="text-white ml-0.5" /></span>
+                </span>
+              </div>
+              <div className="p-4 flex-1 flex flex-col gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>
+                  {styleName(g.style)}
+                </span>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 group-hover:text-[var(--accent-primary)] transition-colors">
+                  {g.title}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{t('arcadeInspiredBy').replace('{name}', g.inspiredBy)}</p>
+                <div className="mt-auto pt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <button
+                    type="button"
+                    onClick={(e) => filterByAuthor(e, g)}
+                    disabled={!authorKey(g)}
+                    className="font-medium truncate max-w-[45%] hover:underline disabled:no-underline"
+                    style={{ color: 'var(--ui-text-primary)' }}
+                  >
+                    {authorName(g)}
+                  </button>
+                  <span>·</span>
+                  <span className="truncate">{date(g.createdAt)}</span>
+                  <span className="ml-auto inline-flex items-center gap-1"><ThumbsUp size={12} /> {g.votesUp}</span>
+                  <span className="inline-flex items-center gap-1"><Play size={12} /> {g.plays}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

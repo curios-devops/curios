@@ -83,8 +83,14 @@
   "arcadeCatDesc_party": "Schnelle, verrückte Duelle mit Freunden.",
   "arcadeCatalogTitle": "Mit KI gemacht",
   "arcadeCatalogSubtitle": "Originelle Minispiele aus der Community. Spielen, bewerten, teilen.",
-  "arcadeSortTop": "Top",
   "arcadeSortNew": "Neu",
   "arcadeCatalogEmpty": "Noch keine Spiele. Erstelle das erste auf einer Spieleseite!",
-  "arcadeSeeCatalog": "Mit KI gemachte Spiele ansehen"
+  "arcadeSeeCatalog": "Mit KI gemachte Spiele ansehen",
+  "arcadeSortBy": "Sortieren nach:",
+  "arcadeSortRelevance": "Relevanz",
+  "arcadeFilterGenre": "Alle Genres",
+  "arcadeFilterType": "2D & 3D",
+  "arcadeFilterStyle": "Alle Stile",
+  "arcadeByAuthor": "Spiele von {name}",
+  "arcadeAnonymous": "Anonym"
 }
