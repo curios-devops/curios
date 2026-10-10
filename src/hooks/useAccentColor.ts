@@ -23,34 +23,3 @@ export function useAccentColor() {
   
   return colors;
 }
-
-/**
- * Utility to generate Tailwind-compatible class strings using accent colors
- * Use this for dynamic styling based on accent color
- */
-export function useAccentClasses() {
-  const colors = useAccentColor();
-  
-  return {
-    // Button styles
-    primaryBtn: `bg-[${colors.primary}] hover:bg-[${colors.hover}] text-white`,
-    
-    // Border styles
-    primaryBorder: `border-[${colors.primary}]`,
-    hoverBorder: `hover:border-[${colors.primary}]`,
-    
-    // Text styles
-    primaryText: `text-[${colors.primary}]`,
-    darkText: `text-[${colors.dark}]`,
-    
-    // Background styles
-    lightBg: `bg-[${colors.light}]`,
-    primaryBg: `bg-[${colors.primary}]`,
-    
-    // Ring styles (for focus states)
-    primaryRing: `ring-[${colors.primary}]`,
-    
-    // Direct color values for inline styles
-    colors,
-  };
-}
