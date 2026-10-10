@@ -13,6 +13,7 @@ declare module 'react-router-dom' {
     createBrowserRouter,
     createHashRouter,
     RouterProvider,
+    useSearchParams,
   } from 'react-router-dom/dist/index';
   
   // Explicitly re-export useNavigate to fix cache issue

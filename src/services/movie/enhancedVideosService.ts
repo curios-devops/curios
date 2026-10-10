@@ -92,7 +92,8 @@ export async function latestUnseenEnhanced(userId: string): Promise<LatestEnhanc
     return null;
   }
   if (!data) return null;
-  const { movie_projects, ...row } = data as EnhancedVideo & { movie_projects: { description: string | null } | null };
+  // Many-to-one join: PostgREST returns an object, the untyped client infers an array.
+  const { movie_projects, ...row } = data as unknown as EnhancedVideo & { movie_projects: { description: string | null } | null };
   return { ...row, description: movie_projects?.description ?? null };
 }
 

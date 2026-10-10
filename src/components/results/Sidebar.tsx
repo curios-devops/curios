@@ -39,7 +39,6 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
               <CollapseButton
                 isCollapsed={isCollapsed}
                 onClick={toggleSidebar}
-                position="top"
               />
             )}
           </div>
@@ -90,7 +89,6 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                 <CollapseButton
                   isCollapsed={isCollapsed}
                   onClick={toggleSidebar}
-                  position="bottom"
                 />
               </div>
             )}

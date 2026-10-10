@@ -187,9 +187,10 @@ export async function listSavedNodes(userId: string): Promise<NodeRecord[]> {
     logger.error('[NodePersistence] listSavedNodes failed', { error: error.message });
     return [];
   }
-  // Each row is { curiosity_nodes: NodeRecord | null }
-  return (data ?? [])
-    .map((row: { curiosity_nodes: NodeRecord | null }) => row.curiosity_nodes)
+  // Each row is { curiosity_nodes: NodeRecord | null } (many-to-one join → object, though
+  // the untyped client infers an array).
+  return ((data ?? []) as unknown as { curiosity_nodes: NodeRecord | null }[])
+    .map((row) => row.curiosity_nodes)
     .filter((n): n is NodeRecord => !!n);
 }
 

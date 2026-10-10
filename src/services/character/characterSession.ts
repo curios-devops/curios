@@ -96,7 +96,7 @@ export async function startCharacterSession(
     onSoundResume(event.resume);
   });
   rtc.on(TRTC.EVENT.ERROR, (e: { message?: string }) => onStatus('error', e?.message));
-  rtc.on(TRTC.EVENT.REMOTE_VIDEO_AVAILABLE, ({ userId, streamType }: { userId: string; streamType: never }) => {
+  rtc.on(TRTC.EVENT.REMOTE_VIDEO_AVAILABLE, ({ userId, streamType }) => {
     if (userId === m.publisher_user_id) {
       rtc.startRemoteVideo({ userId, streamType, view: videoElementId }).catch((e: Error) => onStatus('error', e.message));
     }
