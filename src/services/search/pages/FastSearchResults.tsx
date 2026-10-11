@@ -21,6 +21,7 @@ import SaveButton from '../../space/components/SaveButton';
 import { resolveBuyIntent } from '../buyIntent';
 import { searchAmazonProducts, type AmazonProduct } from '../../amazon-api';
 import ProductCard from '../../../components/shopping/ProductCard';
+import ExploreFurther from '../components/ExploreFurther';
 
 // Sponsor/product carousel is capped here — legacy search capped at 4, this replaces
 // it with up to 10 so the carousel has enough tiles to actually scroll.
@@ -676,6 +677,11 @@ export default function FastSearchResults() {
                     </button>
                   )}
                 </div>
+
+                {/* Explore further — the recommended next experience (Video / Games / Stories) */}
+                {!isLoading && streamingAnswer && (
+                  <ExploreFurther query={query} answer={streamingAnswer} images={carouselImages.map((img) => img.url)} />
+                )}
 
                 {/* Quick Links Section - show first 4 sources */}
                 {!isLoading && foundSources.length > 0 && (

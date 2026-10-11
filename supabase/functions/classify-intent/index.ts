@@ -6,6 +6,8 @@
 // A third question rates difficulty (tier: easy|normal|complex) → the client answers with
 // Luna / Sol / Astra. Body { query, only: "tier" } asks just that (explicit modes skip routing).
 // Returns { mode, probabilities?, buyProbability (null when unknown), tier (null when unknown), backend }.
+// Body { query, answer, only: "explore" } picks the best way to keep exploring a Search answer
+// (Decisions: watch / play / read) while Luna drafts the one-line pitch of each option.
 // Orchestration layer only — does not call any downstream mode.
 import { decide } from "../_shared/decisions.ts";
 
@@ -100,6 +102,69 @@ ${MODE_CHOICES.map((c) => `- "${c.value}": ${c.description}`).join("\n")}
 
 Respond with strict JSON only: {"mode":"search|stories|movie|character"}.`;
 
+// "Explore further" under a Search answer. Listen (an original song) is not built yet, so it is
+// never recommended; its pitch is drafted anyway for the disabled button.
+type Explore = "watch" | "play" | "read";
+const EXPLORE_INSTRUCTIONS =
+  "The user read a short written answer to this question. Which Curios experience would make them understand or enjoy the topic more?";
+const EXPLORE_CHOICES: { value: Explore; description: string }[] = [
+  {
+    value: "watch",
+    description:
+      "A short explainer VIDEO: something visual, physical, spatial or a process — how or why things work or happen, nature, science, space, the body, history, places, machines.",
+  },
+  {
+    value: "play",
+    description:
+      "An interactive GAME: the topic is a video game, or has rules, strategy, goals, challenges, survival, building or exploring that would be fun to try hands-on.",
+  },
+  {
+    value: "read",
+    description:
+      "A multi-source STORY: news, a person, a company, a market, politics, culture, an ongoing or evolving situation best told with several sources.",
+  },
+];
+
+const EXPLORE_PROMPT = `For a question the user asked, write one short line (max 9 words) pitching each way to explore it further, in the same language as the question, specific to its topic:
+- watch: a short explainer video (e.g. "See how curved spacetime might work.")
+- play: discovering it through an interactive game
+- listen: an original song about it
+- read: a richer story from several sources
+Also name "game": one real, well-known video game closest to the topic (title only).
+Respond with strict JSON only: {"watch":"","play":"","listen":"","read":"","game":""}.`;
+
+async function draftExplore(query: string): Promise<Record<string, string> | null> {
+  const headers: Record<string, string> = { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` };
+  if (OPENAI_ORG_ID) headers["OpenAI-Organization"] = OPENAI_ORG_ID;
+  try {
+    const res = await fetch(OPENAI_RESPONSES_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: "gpt-6-luna",
+        input: [{ role: "system", content: EXPLORE_PROMPT }, { role: "user", content: query }],
+        max_output_tokens: 200,
+        reasoning: { effort: "none" },
+        text: { format: { type: "json_object" } },
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      console.error("explore draft error", res.status, (await res.text()).slice(0, 300));
+      return null;
+    }
+    const obj = JSON.parse(extractOutputText(await res.json()));
+    const out: Record<string, string> = {};
+    for (const k of ["watch", "play", "listen", "read", "game"]) {
+      if (typeof obj?.[k] === "string" && obj[k].trim()) out[k] = obj[k].trim().slice(0, 120);
+    }
+    return out;
+  } catch (err) {
+    console.error("explore draft failed", String(err));
+    return null;
+  }
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -119,6 +184,23 @@ Deno.serve(async (req: Request) => {
 
     if (!query) {
       return jsonResponse({ error: "Missing query" }, 400);
+    }
+
+    if (body?.only === "explore") {
+      const answer = typeof body?.answer === "string" ? body.answer.slice(0, 800) : "";
+      const [answers, lines] = await Promise.all([
+        decide(`Question: ${query}\n\nAnswer: ${answer}`, [
+          { type: "choice", name: "explore", instructions: EXPLORE_INSTRUCTIONS, choices: EXPLORE_CHOICES },
+        ], 3000),
+        draftExplore(query),
+      ]);
+      const probs = answers?.explore?.probabilities ?? [];
+      const top = probs.length ? probs.reduce((a, b) => (b.probability > a.probability ? b : a)).value : null;
+      return jsonResponse({
+        recommended: EXPLORE_CHOICES.some((c) => c.value === top) ? top : null,
+        lines: lines ?? {},
+        backend: answers ? "decisions" : "default",
+      });
     }
 
     if (body?.only === "tier") {

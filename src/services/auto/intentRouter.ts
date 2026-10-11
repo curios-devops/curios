@@ -49,3 +49,31 @@ export async function classifyIntent(query: string): Promise<AutoDecision> {
     return FALLBACK;
   }
 }
+
+export type ExploreWay = 'watch' | 'play' | 'listen' | 'read';
+
+export interface ExploreOptions {
+  /** Decisions API pick; null when it was unavailable. Never 'listen' (not built yet). */
+  recommended: Exclude<ExploreWay, 'listen'> | null;
+  /** One-line pitch per way, in the question's language, plus `game`: a related real game. */
+  lines: Partial<Record<ExploreWay | 'game', string>>;
+}
+
+// "Explore further" under a Search answer: which experience to recommend next.
+export async function fetchExploreOptions(query: string, answer: string): Promise<ExploreOptions> {
+  try {
+    const { data, error } = await supabase.functions.invoke('classify-intent', {
+      body: { query: query.trim(), answer: answer.slice(0, 800), only: 'explore' },
+    });
+    if (error) throw error;
+    const d = data as Partial<ExploreOptions> | null;
+    const rec = d?.recommended;
+    return {
+      recommended: rec === 'watch' || rec === 'play' || rec === 'read' ? rec : null,
+      lines: d?.lines ?? {},
+    };
+  } catch (error) {
+    logger.error('Explore options failed', { error });
+    return { recommended: null, lines: {} };
+  }
+}
