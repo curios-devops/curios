@@ -34,6 +34,7 @@
   "arcadeQIdea": "La teva idea en una línia",
   "arcadeIdeaHint": "Opcional",
   "arcadeIdeaExamples": "{name} però amb gats | tot passa sota l'aigua | un cap gegant al final | un sol botó, cada cop més ràpid | de nit, amb llanterna",
+  "arcadeIdeaPlaceholder": "Escriu aquí la teva idea",
   "arcadeBuild": "Crear joc",
   "arcadeStepThinking": "Pensant la idea…",
   "arcadeStepWorld": "Dissenyant el món…",
@@ -41,6 +42,7 @@
   "arcadeStepEnemies": "Programant enemics i obstacles…",
   "arcadeStepTuning": "Ajustant la dificultat…",
   "arcadeStepFixing": "Corregint un detall…",
+  "arcadeStepPainting": "Pintant l'art…",
   "arcadeStepTesting": "Provant el joc…",
   "arcadeSaveGame": "Desar joc",
   "arcadeSavedGame": "Desat",
@@ -94,6 +96,6 @@
   "arcadeFilterStyle": "Tots els estils",
   "arcadeByAuthor": "Jocs de {name}",
   "arcadeAnonymous": "Anònim",
-  "arcadeSound": "So",
+  "arcadeBack": "Tornar",
   "arcadeKeysHint": "Teclat: fletxes/WASD · Espai = {a}"
 }

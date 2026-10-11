@@ -34,6 +34,7 @@
   "arcadeQIdea": "Deine Idee in einer Zeile",
   "arcadeIdeaHint": "Optional",
   "arcadeIdeaExamples": "{name}, aber mit Katzen | alles spielt unter Wasser | ein riesiger Boss am Ende | nur ein Knopf, immer schneller | nachts, mit Taschenlampe",
+  "arcadeIdeaPlaceholder": "Schreib hier deine Idee",
   "arcadeBuild": "Spiel erstellen",
   "arcadeStepThinking": "Idee wird ausgedacht…",
   "arcadeStepWorld": "Welt wird gestaltet…",
@@ -41,6 +42,7 @@
   "arcadeStepEnemies": "Gegner und Hindernisse werden programmiert…",
   "arcadeStepTuning": "Schwierigkeit wird angepasst…",
   "arcadeStepFixing": "Ein Detail wird korrigiert…",
+  "arcadeStepPainting": "Die Grafik wird gemalt…",
   "arcadeStepTesting": "Spiel wird getestet…",
   "arcadeSaveGame": "Spiel speichern",
   "arcadeSavedGame": "Gespeichert",
@@ -94,6 +96,6 @@
   "arcadeFilterStyle": "Alle Stile",
   "arcadeByAuthor": "Spiele von {name}",
   "arcadeAnonymous": "Anonym",
-  "arcadeSound": "Ton",
+  "arcadeBack": "Zurück",
   "arcadeKeysHint": "Tastatur: Pfeile/WASD · Leertaste = {a}"
 }

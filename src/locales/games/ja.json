@@ -34,6 +34,7 @@
   "arcadeQIdea": "アイデアを一行で",
   "arcadeIdeaHint": "任意",
   "arcadeIdeaExamples": "ネコだらけの{name} | すべて水中で | 最後に巨大ボス | ボタンひとつ、どんどん速く | 夜、懐中電灯で",
+  "arcadeIdeaPlaceholder": "ここにアイデアを書いてね",
   "arcadeBuild": "ゲームを作成",
   "arcadeStepThinking": "アイデアを考え中…",
   "arcadeStepWorld": "世界をデザイン中…",
@@ -41,6 +42,7 @@
   "arcadeStepEnemies": "敵と障害物をプログラム中…",
   "arcadeStepTuning": "難易度を調整中…",
   "arcadeStepFixing": "細部を修正中…",
+  "arcadeStepPainting": "アートを描いています…",
   "arcadeStepTesting": "ゲームをテスト中…",
   "arcadeSaveGame": "ゲームを保存",
   "arcadeSavedGame": "保存済み",
@@ -94,6 +96,6 @@
   "arcadeFilterStyle": "すべてのスタイル",
   "arcadeByAuthor": "{name}のゲーム",
   "arcadeAnonymous": "匿名",
-  "arcadeSound": "サウンド",
+  "arcadeBack": "戻る",
   "arcadeKeysHint": "キーボード：矢印/WASD・スペース = {a}"
 }

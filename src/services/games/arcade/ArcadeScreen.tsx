@@ -2,12 +2,12 @@
 // game-over sheet in the game's own look (its palette + a pixel font): name + score, today's
 // podium and the Hall of Fame, 👍/👎, save for later, share, play again and remake.
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { Bookmark, BookmarkCheck, Loader2, RotateCcw, Share2, ThumbsDown, ThumbsUp, Trophy, Volume2, VolumeX, Wand2, X } from 'lucide-react';
+import { ArrowLeft, Bookmark, BookmarkCheck, Loader2, RotateCcw, Share2, ThumbsDown, ThumbsUp, Trophy, Wand2 } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { buildArcadeHtml, paletteRoles, safeLabels } from './arcadeRuntime.ts';
-import { lookOf } from './arcadeStyles.ts';
+import { lookOf, shapeOf } from './arcadeStyles.ts';
 import {
-  arcadeControls, arcadeMuted, countArcadePlay, fetchBoards, isArcadeSaved, setArcadeControls, setArcadeMuted, myVote, postScore, toggleSavedArcade, voteArcadeGame,
+  arcadeControls, arcadeVolume, countArcadePlay, fetchBoards, isArcadeSaved, setArcadeControls, setArcadeVolume, myVote, postScore, toggleSavedArcade, voteArcadeGame,
   type ArcadeGame, type ArcadeScore,
 } from './arcadeService.ts';
 
@@ -48,10 +48,9 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
   const frameRef = useRef<HTMLIFrameElement>(null);
   // Plays are counted once per page view (the first run started).
   const countedRef = useRef(false);
-  const [muted, setMuted] = useState(arcadeMuted);
   // Built once per game: muting and the joystick/arrows switch go to the console by message.
   const html = useMemo(() => (game ? buildArcadeHtml(game.code, game.palette, {
-    style: lookOf(game.style), buttons: game.buttons, res: game.res, axes: game.axes, controls: arcadeControls(), muted: arcadeMuted(),
+    style: lookOf(game.style), shape: shapeOf(game.style), buttons: game.buttons, res: game.res, axes: game.axes, art: game.art, controls: arcadeControls(), volume: arcadeVolume(),
   }) : ''), [game]);
   const font = lookOf(game?.style) === 'cyberpunk' ? NEON_FONT : PIXEL_FONT;
   const roles = paletteRoles(game?.palette);
@@ -98,6 +97,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
       if (e.source !== frameRef.current?.contentWindow || !e.data?.arcade) return;
       if (e.data.type === 'ready') setTested(true);
       if (e.data.type === 'controls') setArcadeControls(e.data.mode === 'pad' ? 'pad' : 'stick');
+      if (e.data.type === 'volume') setArcadeVolume(Number(e.data.level) || 0);
       if (e.data.type === 'start' && game && !countedRef.current) { countedRef.current = true; countArcadePlay(game.id); }
       if (e.data.type === 'error') onError?.(String(e.data.message ?? ''));
       if (e.data.type === 'over') {
@@ -153,7 +153,10 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={ui.bg}>
-      <div className="flex items-center gap-2 px-4 py-3 border-b-2" style={ui.line}>
+      <div className="flex items-center gap-2 px-2 py-3 border-b-2" style={ui.line}>
+        <button type="button" onClick={onClose} className={iconBtn} aria-label={t('arcadeBack')}>
+          <ArrowLeft size={20} />
+        </button>
         <div className="flex-1 min-w-0">
           <p className="text-base font-semibold truncate">{game?.title ?? ''}</p>
           <p className="text-[11px] truncate" style={ui.dim}>{game?.howTo ?? ''}</p>
@@ -164,27 +167,10 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
           )}
         </div>
         {game && (
-          <>
-            <button
-              type="button"
-              onClick={() => { const on = !muted; setMuted(on); setArcadeMuted(on); frameRef.current?.contentWindow?.postMessage({ arcadeCmd: 'mute', on }, '*'); }}
-              className={iconBtn}
-              aria-label={t('arcadeSound')}
-              aria-pressed={!muted}
-            >
-              {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-            </button>
-            <button type="button" onClick={() => { setSheetOpen(true); loadBoards(); }} className={iconBtn} aria-label={t('arcadeRecords')}>
-              <Trophy size={18} />
-            </button>
-            <button type="button" onClick={() => void share()} className={iconBtn} aria-label={t('arcadeShare')}>
-              <Share2 size={18} />
-            </button>
-          </>
+          <button type="button" onClick={() => { setSheetOpen(true); loadBoards(); }} className={iconBtn} aria-label={t('arcadeRecords')}>
+            <Trophy size={18} />
+          </button>
         )}
-        <button type="button" onClick={onClose} className={iconBtn} aria-label="Close">
-          <X size={20} />
-        </button>
       </div>
       {copied && <p className="text-center text-xs pt-1" style={ui.dim}>{t('arcadeLinkCopied')}</p>}
 

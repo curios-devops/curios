@@ -4,7 +4,9 @@
 // keeps output short (cheap) and the game runnable. The code is parsed (never executed)
 // here; the client smoke-tests it in a sandboxed iframe and sends { repair } if it throws.
 //
-// Body { inspiredBy, genres, description, screenshot?, model, language, mode: '2d'|'3d', style: category id, idea? }
+// Body { inspiredBy, genres, description, screenshot?, year?, platforms?, model, language, mode: '2d'|'3d', style: category id, idea? }
+//   The Decisions API picks the look: "code" (sprites drawn by code — old, low-res games) or
+//   "art" (an AI-painted background and sprite sheet — 16-bit era and newer).
 // Body { improve: { id, feedback }, model, language }  → a better version of that game (new row)
 //   Both answer with Server-Sent Events: { type: 'progress', chars } while the model writes,
 //   { type: 'fixing' }, then { type: 'done', game } or { type: 'error' }.
@@ -14,6 +16,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { decide } from "../_shared/decisions.ts";
 
 // @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
@@ -77,16 +80,80 @@ const RES_BY_STYLE: Record<string, number> = {
 };
 const resFor = (style: string, mode: string) => Math.min(512, mode === "3d" ? Math.max(320, RES_BY_STYLE[style] ?? 240) : RES_BY_STYLE[style] ?? 240);
 const textScale = (res: number) => Math.max(1, Math.round(res / 120));
+// Painted art needs room for detail.
+const ART_RES = 320;
 
-interface Spec { language: string; mode: "2d" | "3d"; style: string; res: number }
+// "plain" = clients from before spr()/img() (no v: 2 in the body): the old prompt.
+type Gfx = "plain" | "code" | "art";
+interface Spec { language: string; mode: "2d" | "3d"; style: string; res: number; gfx: Gfx }
 
-const SYSTEM = ({ language, mode, style, res }: Spec) => `You write tiny one-screen arcade games for the Curios Arcade fantasy console (like WASM-4), played on phones.
+// Code or painted art for this inspiration. The release year settles clear cases (8-bit era →
+// code, 16-bit era and newer → art); the Decisions API only answers the 8→16-bit transition
+// (1989-1992) or an unknown year. 3D always draws with code (the raycaster).
+async function gfxFor(o: { inspiredBy: string; year: string; platforms: string; genres: string; style: string; mode: string }): Promise<Gfx> {
+  const year = +o.year || 0;
+  if (o.mode === "3d" || o.style === "retro_arcade" || (year && year < 1989)) return "code";
+  if (year >= 1993) return "art";
+  const fallback: Gfx = year && year < 1991 ? "code" : "art";
+  const answers = await decide(
+    `Video game: ${o.inspiredBy}${o.year ? ` (${o.year})` : ""}. Platforms: ${o.platforms || "unknown"}. Genres: ${o.genres || "unknown"}. Chosen style: ${o.style}.`,
+    [{
+      type: "choice",
+      name: "gfx",
+      instructions: "How should a small 2D tribute game to this video game look to feel true to the original?",
+      choices: [
+        { value: "code", description: "Low-resolution early look: Atari, 80s arcade cabinets, NES / Game Boy era (before about 1990), or minimal abstract games like Tetris or Pong. Simple pixel sprites are the authentic look." },
+        { value: "art", description: "Detailed look: 16-bit era (SNES, Genesis) or newer — rich worlds and characters like Zelda, Hollow Knight, Celeste, Stardew Valley, or a modern game reimagined as detailed 16-bit pixel art." },
+      ],
+    }],
+    3000,
+  );
+  const pick = answers?.gfx?.choice;
+  return pick === "code" || pick === "art" ? pick : fallback;
+}
+
+// ---- Painted art (gfx "art"): Nano Banana 2 Lite via the gemini-image function ----
+const SLOTS = ["hero", "hero2", "enemy", "enemy2", "boss", "item", "shot", "tile", "decor"] as const;
+type ArtPlan = { scene: string } & Record<(typeof SLOTS)[number], string>;
+
+async function paint(prompt: string, aspectRatio: string, name: string, reference?: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
+      body: JSON.stringify({ prompt, aspectRatio, referenceImageUrl: reference, storageBucket: "movie-assets", storagePath: `arcade/${crypto.randomUUID()}-${name}.png` }),
+      signal: AbortSignal.timeout(90_000),
+    });
+    if (!res.ok) { console.error("arcade paint failed", name, res.status, (await res.text()).slice(0, 200)); return null; }
+    return (await res.json()).url ?? null;
+  } catch (err) {
+    console.error("arcade paint threw", name, String(err));
+    return null;
+  }
+}
+
+// Background and a 3x3 sprite sheet on magenta (the console cuts the sprites out), in parallel.
+async function paintArt(plan: ArtPlan, inspiredBy: string, style: string, screenshot?: string) {
+  const look = `detailed 16-bit pixel art (SNES era), rich colors and shading, crisp pixels, inspired by the look and mood of the video game "${inspiredBy}" (${STYLE[style].split(" — ")[0]})`;
+  const [bg, sheet] = await Promise.all([
+    paint(`Video game background, ${look}: ${plan.scene}. Side view, layered depth (sky, far scenery, near scenery), open readable ground area at the bottom. No characters, no text, no UI, no logos.${screenshot ? " Use the reference image only for colors and atmosphere." : ""}`, "16:9", "bg", screenshot),
+    paint(`Sprite sheet for a 2D video game, ${look}. Exactly 9 separate sprites in a 3x3 grid on a flat pure magenta (#FF00FF) background, each one centered in its own cell with plenty of magenta around it; no grid lines, no text, no shadows on the background, no magenta inside the sprites. Side view, characters facing right, dark outlines. Row 1: ${plan.hero}; ${plan.hero2}; ${plan.enemy}. Row 2: ${plan.enemy2}; ${plan.boss}; ${plan.item}. Row 3: ${plan.shot}; ${plan.tile}; ${plan.decor}.`, "1:1", "sheet"),
+  ]);
+  return { bg, sheet, plan };
+}
+
+const SYSTEM = ({ language, mode, style, res, gfx }: Spec) => `You write tiny one-screen arcade games for the Curios Arcade fantasy console (like WASM-4), played on phones.
 Screen ${res}x${res} pixels, 8 colors, 60 fps. Use the detail: sprites about ${Math.round(res / 16)}-${Math.round(res / 10)} px with a few details (eyes, stripes, outlines). Global API:
 cls(c) rect(x,y,w,h,c) rectb(x,y,w,h,c) circ(x,y,r,c) line(x0,y0,x1,y1,c)
 text(s,x,y,c,k) pixel font, uppercase, 4px per char and 5px tall at scale k=1 — use k=${textScale(res)} for normal text and k=${textScale(res) + 1} for titles
 btn(i) held / btnp(i) just pressed: 0 LEFT 1 RIGHT 2 UP 3 DOWN (an on-screen joystick) 4 A 5 B (two buttons)
 rnd(n) random float 0..n; over(score) ends the run (the console shows GAME OVER and restarts).
-Colors c = 0..7: 0 background (darkest), 1 dark (ground, walls), 2-5 four clearly different strong colors (player, enemies, items, effects), 6 light, 7 brightest (text, highlights). Keep high contrast against 0.
+${gfx === "art" ? `PAINTED ART: this game has a painted pixel-art background and 9 painted sprites. Describe them in "art": scene = the background setting in one sentence (no characters); then one short visual description per sprite slot, true to the inspiration: hero, hero2 (the same hero in an action pose: attack or jump), enemy, enemy2, boss, item (pickup), shot (projectile or effect), tile (one ground/platform block), decor (a scenery prop).
+bg(scrollX) draws the background (scroll it slowly with the camera for parallax) — call it first each frame instead of cls.
+img(slot,x,y,w,h,flip) draws a sprite fitted in that box, feet on its bottom edge; sprites face right, flip=true faces left. Use img for EVERY character, enemy, item and platform block (characters about ${Math.round(res / 9)}-${Math.round(res / 6)} px tall, tiles ${Math.round(res / 14)}-${Math.round(res / 10)} px; alternate hero/hero2 to animate). Use rect/circ/text only for the HUD, bars and small particles.
+` : gfx === "plain" ? "" : `PIXEL SPRITES: draw characters, enemies and items with spr(rows,x,y,k,flip) — rows = array of equal-length strings, one character per pixel: '0'-'7' a palette color, '.' transparent; drawn k times bigger, flip mirrors it. Design them 10-16 px wide with an outline, a highlight and eyes or other details, 2 frames for walking/animations (define the row arrays once, outside update), and draw them with k so characters are about ${Math.round(res / 9)} px tall on screen — never tiny.
+grad(x,y,w,h,[colors]) fills a dithered vertical gradient through those palette colors (skies, water, light).
+`}Colors c = 0..7: 0 background (darkest), 1 dark (ground, walls), 2-5 four clearly different strong colors (player, enemies, items, effects), 6 light, 7 brightest (text, highlights). Keep high contrast against 0.
 Sound (use it for every important event): sfx(name) with 'shoot','laser','hit','explode','coin','blip','jump','power','hurt','step','win'; tone(freq,ms,wave) for melodies or marches (wave 'square'|'triangle'|'sawtooth'), e.g. Space Invaders' march = a low tone(110,70) … cycling 4 descending notes as the aliens step, Pac-Man = sfx('blip') per dot.
 ${mode === "3d" ? `3D (first person, like DOOM/Wolfenstein) — use it for this game:
 var map = array of strings ('.' floor, '#' wall, a digit 2-7 = a wall of that color), at least 12x12 with corridors and rooms.
@@ -123,7 +190,22 @@ const SCHEMA = {
   },
 };
 
-interface ArcadeGame { title: string; howTo: string; buttons: { a: string; b: string }; axes: string; palette: string[]; code: string }
+// Painted-art games also describe their art.
+const ART_SCHEMA = {
+  ...SCHEMA,
+  required: [...SCHEMA.required, "art"],
+  properties: {
+    ...SCHEMA.properties,
+    art: {
+      type: "object",
+      additionalProperties: false,
+      required: ["scene", ...SLOTS],
+      properties: Object.fromEntries(["scene", ...SLOTS].map((k) => [k, { type: "string" }])),
+    },
+  },
+};
+
+interface ArcadeGame { title: string; howTo: string; buttons: { a: string; b: string }; axes: string; palette: string[]; code: string; art?: ArtPlan }
 
 function requestBody(model: string, user: unknown[], spec: Spec, stream: boolean) {
   return JSON.stringify({
@@ -133,7 +215,7 @@ function requestBody(model: string, user: unknown[], spec: Spec, stream: boolean
     // A little reasoning even on Luna: without it, it wrote 25 minified lines with the player
     // spawning off-screen (pixel vs tile coordinates).
     reasoning: { effort: "low" },
-    text: { format: { type: "json_schema", name: "arcade_game", strict: true, schema: SCHEMA } },
+    text: { format: { type: "json_schema", name: "arcade_game", strict: true, schema: spec.gfx === "art" ? ART_SCHEMA : SCHEMA } },
     stream,
   });
 }
@@ -221,11 +303,12 @@ const getRow = async (id: unknown) => (await db(`arcade_games?id=eq.${encodeURIC
 const out = (row: any) => ({
   id: row.id, title: row.title, howTo: row.how_to, palette: row.palette, code: row.code, inspiredBy: row.inspired_by,
   mode: row.mode, style: row.style, idea: row.idea, buttons: row.buttons, votesUp: row.votes_up, votesDown: row.votes_down,
-  creatorName: row.creator_name, res: row.res, axes: row.axes,
+  creatorName: row.creator_name, res: row.res, axes: row.axes, art: row.art ? { bg: row.art.bg, sheet: row.art.sheet } : null,
 });
 
-const specOf = (row: any, language: string): Spec => ({
+const specOf = (row: any, language: string, v2: boolean): Spec => ({
   language,
+  gfx: !v2 ? "plain" : row.art ? "art" : "code",
   res: Number.isInteger(row.res) && row.res >= 128 && row.res <= 512 ? row.res : 160,
   mode: row.mode === "3d" ? "3d" : "2d",
   style: styleId(row.style),
@@ -235,6 +318,7 @@ const specOf = (row: any, language: string): Spec => ({
 function streamGame(
   model: string, user: unknown[], spec: Spec,
   save: (game: ArcadeGame) => Promise<any>,
+  painter?: (plan: ArtPlan) => Promise<unknown>,
 ): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -243,6 +327,10 @@ function streamGame(
       try {
         const draft = await askStreaming(model, user, spec, (chars) => send({ type: "progress", chars }));
         const game = await checked(draft, model, spec, () => send({ type: "fixing" }));
+        if (painter && game.art) {
+          send({ type: "painting" });
+          (game as any).painted = await painter(game.art);
+        }
         send({ type: "done", game: out(await save(game)) });
       } catch (err) {
         console.error("arcade-generate stream error", err);
@@ -269,12 +357,13 @@ Deno.serve(async (req: Request) => {
     const model = MODELS.has(body?.model) ? body.model : DEFAULT_MODEL;
     const language = typeof body?.language === "string" ? body.language.slice(0, 5) : "en";
     const creator = body?.repair ? null : await creatorOf(req);
+    const v2 = body?.v === 2;
 
     // The client's smoke test threw at runtime → one fix of the stored game.
     if (body?.repair?.id) {
       const row = await getRow(body.repair.id);
       if (!row) return json({ error: "Not found" }, 404);
-      const spec = specOf(row, language);
+      const spec = specOf(row, language, v2);
       const current = { title: row.title, howTo: row.how_to, buttons: row.buttons, axes: row.axes, palette: row.palette, code: row.code };
       const fixed = await checked(await ask(model, fixRequest(current, String(body.repair.error ?? "").slice(0, 300)), spec), model, spec, () => {});
       const [updated] = await db(`arcade_games?id=eq.${row.id}`, {
@@ -288,14 +377,14 @@ Deno.serve(async (req: Request) => {
     if (body?.improve?.id) {
       const row = await getRow(body.improve.id);
       if (!row) return json({ error: "Not found" }, 404);
-      const spec = specOf(row, language);
+      const spec = specOf(row, language, v2);
       const feedback = String(body.improve.feedback ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
-      const previous = { title: row.title, howTo: row.how_to, buttons: row.buttons, axes: row.axes, palette: row.palette, code: row.code };
+      const previous = { title: row.title, howTo: row.how_to, buttons: row.buttons, axes: row.axes, palette: row.palette, code: row.code, ...(row.art ? { art: row.art.plan } : {}) };
       const user = [{
         type: "input_text",
         text: `Inspiration: ${row.inspired_by}.${row.idea ? ` Player's idea: ${row.idea}.` : ""}
 The player didn't like this version. What to improve: ${feedback || "make it more fun and closer to the inspiration"}.
-Rewrite the game to fix that, keeping what works. Return the full JSON.
+Rewrite the game to fix that, keeping what works${row.art ? " (the painted art stays: return the same art)" : ""}. Return the full JSON.
 ${JSON.stringify(previous)}`,
       }];
       return streamGame(model, user, spec, async (game) => (await db("arcade_games", {
@@ -304,7 +393,7 @@ ${JSON.stringify(previous)}`,
           title: game.title.slice(0, 60), inspired_by: row.inspired_by, how_to: game.howTo.slice(0, 200),
           palette: game.palette, code: game.code, model, mode: spec.mode, style: spec.style, idea: row.idea,
           buttons: buttonLabels(game.buttons), parent_id: row.id, genres: row.genres ?? [], res: spec.res, ...creator,
-          axes: game.axes === "x" ? "x" : "xy",
+          axes: game.axes === "x" ? "x" : "xy", art: row.art ?? null,
         }),
       }))[0]);
     }
@@ -314,7 +403,12 @@ ${JSON.stringify(previous)}`,
     const genres = Array.isArray(body?.genres) ? body.genres.slice(0, 4).join(", ") : "";
     const description = String(body?.description ?? "").replace(/\s+/g, " ").slice(0, 600);
     const mode = body?.mode === "3d" ? "3d" : "2d", style = styleId(body?.style);
-    const spec: Spec = { language, mode, style, res: resFor(style, mode) };
+    const gfx: Gfx = !v2 ? "plain" : await gfxFor({
+      inspiredBy, mode, style, genres,
+      year: String(body?.year ?? "").slice(0, 4),
+      platforms: Array.isArray(body?.platforms) ? body.platforms.slice(0, 6).join(", ") : "",
+    });
+    const spec: Spec = { language, mode, style, gfx, res: gfx === "art" ? ART_RES : resFor(style, mode) };
     const idea = String(body?.idea ?? "").replace(/\s+/g, " ").trim().slice(0, 140);
 
     const user: unknown[] = [{
@@ -322,9 +416,8 @@ ${JSON.stringify(previous)}`,
       text: `Inspiration: ${inspiredBy} (${genres}). ${description}${idea ? `\nPlayer's idea: ${idea}` : ""}`,
     }];
     // The inspiration's look (low detail, ~85 tokens): palette and mood.
-    if (typeof body?.screenshot === "string" && body.screenshot.startsWith("https://")) {
-      user.push({ type: "input_image", image_url: body.screenshot, detail: "low" });
-    }
+    const screenshot = typeof body?.screenshot === "string" && body.screenshot.startsWith("https://") ? body.screenshot : undefined;
+    if (screenshot) user.push({ type: "input_image", image_url: screenshot, detail: "low" });
 
     return streamGame(model, user, spec, async (game) => (await db("arcade_games", {
       method: "POST",
@@ -335,9 +428,10 @@ ${JSON.stringify(previous)}`,
         axes: game.axes === "x" ? "x" : "xy",
         res: spec.res,
         genres: Array.isArray(body?.genres) ? body.genres.slice(0, 6).map((g: unknown) => String(g).slice(0, 40)) : [],
+        art: (game as any).painted ?? null,
         ...creator,
       }),
-    }))[0]);
+    }))[0], gfx === "art" ? (plan) => paintArt(plan, inspiredBy, style, screenshot) : undefined);
   } catch (err) {
     console.error("arcade-generate error", err);
     return json({ error: "Could not create the game" }, 500);

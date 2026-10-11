@@ -34,6 +34,7 @@
   "arcadeQIdea": "Ton idée en une ligne",
   "arcadeIdeaHint": "Facultatif",
   "arcadeIdeaExamples": "{name} mais avec des chats | tout se passe sous l'eau | un boss géant à la fin | un seul bouton, de plus en plus vite | la nuit, avec une lampe torche",
+  "arcadeIdeaPlaceholder": "Écris ton idée ici",
   "arcadeBuild": "Créer le jeu",
   "arcadeStepThinking": "Réflexion sur l'idée…",
   "arcadeStepWorld": "Conception du monde…",
@@ -41,6 +42,7 @@
   "arcadeStepEnemies": "Programmation des ennemis et obstacles…",
   "arcadeStepTuning": "Réglage de la difficulté…",
   "arcadeStepFixing": "Correction d'un détail…",
+  "arcadeStepPainting": "Peinture des graphismes…",
   "arcadeStepTesting": "Test du jeu…",
   "arcadeSaveGame": "Enregistrer le jeu",
   "arcadeSavedGame": "Enregistré",
@@ -94,6 +96,6 @@
   "arcadeFilterStyle": "Tous les styles",
   "arcadeByAuthor": "Jeux de {name}",
   "arcadeAnonymous": "Anonyme",
-  "arcadeSound": "Son",
+  "arcadeBack": "Retour",
   "arcadeKeysHint": "Clavier : flèches/WASD · Espace = {a}"
 }

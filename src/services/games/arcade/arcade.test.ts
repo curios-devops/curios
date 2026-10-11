@@ -70,13 +70,14 @@ describe('arcade console page', () => {
 });
 
 describe('style categories follow the game genres', async () => {
-  const { relevantCategories, lookOf } = await import('./arcadeStyles');
+  const { relevantCategories, lookOf, shapeOf } = await import('./arcadeStyles');
   const ids = (genres: string[]) => relevantCategories(genres).map((c) => c.id);
   // The choice must keep the inspiration's spirit: a DOOM-like shooter is offered arcade,
   // sci-fi or horror moods — never cozy farming or party minigames.
   it('a shooter gets action moods, not cozy ones', () => {
-    expect(ids(['Action', 'Shooter'])).toEqual(['retro_arcade', 'cyberpunk', 'scifi']);
+    expect(ids(['Action', 'Shooter']).slice(0, 3)).toEqual(['retro_arcade', 'cyberpunk', 'scifi']);
     expect(ids(['Action', 'Shooter'])).not.toContain('cozy');
+    expect(ids(['Action', 'Shooter'])).not.toContain('party');
   });
   it('a farming sim gets cozy first', () => {
     expect(ids(['Simulation', 'RPG', 'Indie'])[0]).toBe('fantasy');
@@ -88,8 +89,19 @@ describe('style categories follow the game genres', async () => {
     expect(ids(['Arcade', 'Casual', 'Family'])[0]).toBe('retro_arcade');
     expect(ids(['Casual', 'Family'])).toEqual(expect.arrayContaining(['cozy', 'party']));
   });
-  it('unknown genres still offer two styles', () => {
-    expect(ids(['Indie'])).toEqual(['retro_arcade', 'cyberpunk']);
+  // The carousel always has five clearly different moods to choose from.
+  it('always five distinct styles, even for unknown genres', () => {
+    for (const g of [['Indie'], ['Puzzle'], ['Action', 'Shooter'], []]) {
+      expect(new Set(ids(g)).size).toBe(5);
+    }
+    expect(ids(['Indie'])).toEqual(['retro_arcade', 'scifi', 'cyberpunk', 'fantasy', 'platformer']);
+  });
+  // The controls follow the style too, so neon and retro games don't share the same buttons.
+  it('buttons take the style shape', () => {
+    expect(shapeOf('cyberpunk')).toBe('ring');
+    expect(shapeOf('scifi')).toBe('hex');
+    expect(shapeOf('retro_arcade')).not.toBe(shapeOf('cyberpunk'));
+    expect(shapeOf('retro')).toBe('round');
   });
   it('old rows keep their look', () => {
     expect(lookOf('cyberpunk')).toBe('cyberpunk');

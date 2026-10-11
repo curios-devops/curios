@@ -8,8 +8,8 @@
 //
 // Messages to the parent: { arcade: 'ready' } after the smoke test, { arcade: 'error', message },
 // { arcade: 'start' } when a run starts from the title, { arcade: 'over', score } at each game over,
-// { arcade: 'controls', mode } when the player switches joystick / arrows.
-// From the parent: { arcadeCmd: 'restart' }, { arcadeCmd: 'mute', on }, { arcadeCmd: 'key', key, down }.
+// { arcade: 'controls', mode } when the player switches joystick / arrows, { arcade: 'volume', level }.
+// From the parent: { arcadeCmd: 'restart' }, { arcadeCmd: 'key', key, down }.
 
 export const DEFAULT_PALETTE = ['#e0f8cf', '#86c06c', '#306850', '#071821'];
 
@@ -34,6 +34,7 @@ export function scriptSafe(code: string): string {
 
 const RUNTIME = String.raw`
 var W = __RES__, HALF = W/2, UI = W/160, P = __PALETTE__, LABELS = __LABELS__, OPTS = __OPTS__, C = document.getElementById('c').getContext('2d');
+C.imageSmoothingEnabled = false;
 var held = [0,0,0,0,0,0], prev = [0,0,0,0,0,0], t = 0, state = 'title', score = 0, overAt = 0, game = null;
 function col(c){ var n = P.length; return P[(((c|0)%n)+n)%n]; }
 function cls(c){ C.fillStyle = col(c||0); C.fillRect(0,0,W,W); }
@@ -42,17 +43,18 @@ function rectb(x,y,w,h,c){ C.strokeStyle = col(c); C.lineWidth = 1; C.strokeRect
 function circ(x,y,r,c){ C.fillStyle = col(c); C.beginPath(); C.arc(x,y,Math.max(0,r),0,7); C.fill(); }
 function line(a,b,x,y,c){ C.strokeStyle = col(c); C.lineWidth = 1; C.beginPath(); C.moveTo((a|0)+.5,(b|0)+.5); C.lineTo((x|0)+.5,(y|0)+.5); C.stroke(); }
 // 8-bit sound: a few synthesized effects and a tone() for melodies. Silent during the smoke
-// test and when muted; the AudioContext starts on the first touch / key (browser rule).
-var AC = null, MUTED = !!OPTS.muted, QUIET = true, LAST = {}, NOISE = null;
+// test and at volume 0; the AudioContext starts on the first touch / key (browser rule).
+// Volume: 0 off … 3 full, set with the console's speaker button.
+var AC = null, VOL = [0, 1, 2, 3].indexOf(OPTS.volume) >= 0 ? OPTS.volume : 3, GAIN = [0, .3, .6, 1], QUIET = true, LAST = {}, NOISE = null;
 function audio(){ if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === 'suspended') AC.resume(); }
 addEventListener('pointerdown', audio, true); addEventListener('keydown', audio, true);
-function live(){ return !QUIET && !MUTED && AC && AC.state === 'running'; }
+function live(){ return !QUIET && VOL > 0 && AC && AC.state === 'running'; }
 function tone(f, ms, wave, vol, f2){
   if (!live()) return;
   var t0 = AC.currentTime, d = Math.max(.02, (ms || 100)/1000), o = AC.createOscillator(), g = AC.createGain();
   o.type = wave || 'square'; o.frequency.setValueAtTime(Math.max(20, f), t0);
   if (f2) o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t0 + d);
-  g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol || .1, t0 + .005); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+  g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime((vol || .1)*GAIN[VOL], t0 + .005); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
   o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0 + d + .02);
 }
 function noise(ms, vol, from, to){
@@ -60,7 +62,7 @@ function noise(ms, vol, from, to){
   if (!NOISE) { NOISE = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); var ch = NOISE.getChannelData(0); for (var i = 0; i < ch.length; i++) ch[i] = Math.random()*2 - 1; }
   var t0 = AC.currentTime, d = ms/1000, s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
   s.buffer = NOISE; f.type = 'lowpass'; f.frequency.setValueAtTime(from, t0); f.frequency.exponentialRampToValueAtTime(to, t0 + d);
-  g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+  g.gain.setValueAtTime(vol*GAIN[VOL], t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
   s.connect(f); f.connect(g); g.connect(AC.destination); s.start(t0); s.stop(t0 + d);
 }
 var SFX = {
@@ -131,6 +133,83 @@ function sprite3d(sx,sy,c,s){
   for (var x = Math.max(0, x0); x < Math.min(W, x0 + w); x++) if (pd < ZB[x]) { C.fillRect(x, y0, 1, Math.ceil(h)); shown = true; }
   return shown ? { x: x0, y: y0, w: Math.round(w), h: Math.round(h), d: pd } : null;
 }
+// Pixel-art sprite: one string per row, one character per pixel — '0'-'9' and 'a'-'v' = palette
+// color 0-31, '.' = transparent. Drawn k times bigger, mirrored when flip. Cached per drawing.
+var SPR = {};
+function spr(rows,x,y,k,flip){
+  k = k || 1;
+  var key = rows.join('/'), c = SPR[key];
+  if (!c) {
+    c = SPR[key] = document.createElement('canvas'); c.height = rows.length; c.width = Math.max.apply(null, rows.map(function(r){ return r.length; }));
+    var g = c.getContext('2d');
+    for (var j = 0; j < rows.length; j++) for (var i = 0; i < rows[j].length; i++) { var n = parseInt(rows[j][i], 32); if (n >= 0) { g.fillStyle = col(n); g.fillRect(i, j, 1, 1); } }
+  }
+  if (flip) { C.save(); C.translate((x|0) + c.width*k, y|0); C.scale(-1, 1); C.drawImage(c, 0, 0, c.width*k, c.height*k); C.restore(); }
+  else C.drawImage(c, x|0, y|0, c.width*k, c.height*k);
+}
+// Vertical blend through palette colors with ordered dithering (skies, light, water). Cached.
+var BAYER = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5], GRAD = {};
+function grad(x,y,w,h,cols){
+  var key = [w, h].concat(cols).join(','), c = GRAD[key];
+  if (!c) {
+    c = GRAD[key] = document.createElement('canvas'); c.width = Math.max(1, w|0); c.height = Math.max(1, h|0);
+    var g = c.getContext('2d');
+    for (var j = 0; j < c.height; j++) for (var i = 0; i < c.width; i++) {
+      var p = j/c.height*(cols.length - 1), a = Math.floor(p), f = p - a;
+      g.fillStyle = col(f*16 > BAYER[(j & 3)*4 + (i & 3)] ? cols[Math.min(a + 1, cols.length - 1)] : cols[a]);
+      g.fillRect(i, j, 1, 1);
+    }
+  }
+  C.drawImage(c, x|0, y|0);
+}
+
+// AI-painted art (when the game has it): a background and a 3x3 sheet of sprites on magenta,
+// cut out once loaded. Until then (and in the smoke test) img() draws a plain box.
+var SLOTS = ['hero','hero2','enemy','enemy2','boss','item','shot','tile','decor'], ART = { bg: null, spr: {} };
+function loadArt(){
+  var a = OPTS.art; if (!a) return;
+  if (a.bg) { var b = new Image(); b.crossOrigin = 'anonymous'; b.onload = function(){
+    var h = W, w = Math.round(b.width*h/b.height), c = document.createElement('canvas'); c.width = w; c.height = h;
+    var g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(b, 0, 0, w, h); ART.bg = c; }; b.src = a.bg; }
+  if (a.sheet) { var s = new Image(); s.crossOrigin = 'anonymous'; s.onload = function(){ cutSheet(s); }; s.src = a.sheet; }
+}
+function cutSheet(im){
+  var cw = Math.floor(im.width/3), ch = Math.floor(im.height/3), big = document.createElement('canvas'); big.width = cw; big.height = ch;
+  var g = big.getContext('2d', { willReadFrequently: true }), max = Math.round(W/6);
+  SLOTS.forEach(function(name, n){
+    g.clearRect(0, 0, cw, ch); g.drawImage(im, (n%3)*cw, Math.floor(n/3)*ch, cw, ch, 0, 0, cw, ch);
+    var d = g.getImageData(0, 0, cw, ch), px = d.data, x0 = cw, y0 = ch, x1 = -1, y1 = -1;
+    for (var i = 0; i < px.length; i += 4) {
+      var r = px[i], gg = px[i+1], bb = px[i+2];
+      if (r - gg > 70 && bb - gg > 70 && Math.abs(r - bb) < 90) px[i+3] = 0;
+      else { var x = (i/4) % cw, y = Math.floor(i/4/cw); if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < 0) return;
+    g.putImageData(d, 0, 0);
+    var bw = x1 - x0 + 1, bh = y1 - y0 + 1, k = Math.min(1, max/Math.max(bw, bh)), out = document.createElement('canvas');
+    out.width = Math.max(1, Math.round(bw*k)); out.height = Math.max(1, Math.round(bh*k));
+    var o = out.getContext('2d'); o.imageSmoothingQuality = 'high'; o.drawImage(big, x0, y0, bw, bh, 0, 0, out.width, out.height);
+    // Hard pixel edges: no half-transparent fringe.
+    var od = o.getImageData(0, 0, out.width, out.height); for (var j = 3; j < od.data.length; j += 4) od.data[j] = od.data[j] < 140 ? 0 : 255; o.putImageData(od, 0, 0);
+    ART.spr[name] = out;
+  });
+}
+// Background scrolled by sx pixels (back and forth, no seam); cls() color until it loads.
+function bg(sx){
+  var b = ART.bg; if (!b) { cls(0); return; }
+  var span = Math.max(1, b.width - W), o = ((sx || 0) % (2*span) + 2*span) % (2*span);
+  C.drawImage(b, -(o > span ? 2*span - o : o)|0, 0);
+}
+// Sprite slot fitted in the w x h box (feet on the bottom edge), mirrored when flip.
+function img(name,x,y,w,h,flip){
+  var s = ART.spr[name];
+  if (!s) { rect(x, y, w, h, 2 + SLOTS.indexOf(name) % 4); return; }
+  var k = Math.min(w/s.width, h/s.height), dw = s.width*k, dh = s.height*k, dx = x + (w - dw)/2, dy = y + h - dh;
+  if (flip) { C.save(); C.translate((dx + dw)|0, dy|0); C.scale(-1, 1); C.drawImage(s, 0, 0, dw|0, dh|0); C.restore(); }
+  else C.drawImage(s, dx|0, dy|0, dw|0, dh|0);
+}
+loadArt();
+
 function btn(i){ return !!held[i]; }
 function btnp(i){ return !!held[i] && !prev[i]; }
 function rnd(n){ return Math.random()*(n===undefined?1:n); }
@@ -173,7 +252,6 @@ function loop(now){
 // The page's "Play again" button: restart right away from the GAME OVER screen.
 addEventListener('message', function(e){
   if (e.data && e.data.arcadeCmd === 'restart' && state === 'over') { game.init(); t = 0; state = 'play'; }
-  if (e.data && e.data.arcadeCmd === 'mute') MUTED = !!e.data.on;
   // Keys pressed while the page (not the game frame) has the focus, forwarded by the page.
   if (e.data && e.data.arcadeCmd === 'key' && e.data.key in KEYS) { held[KEYS[e.data.key]] = e.data.down ? 1 : 0; if (e.data.down) audio(); }
 });
@@ -187,10 +265,24 @@ addEventListener('keyup', function(e){ if (e.key in KEYS) held[KEYS[e.key]] = 0;
 // pressed, labels in the console's pixel font.
 var ROLE = P.length >= 8 ? { bg: 0, edge: 1, ring: 2, knob: 3, a: 3, b: 4, text: 7, shineA: 7, shineB: 7 }
                          : { bg: 0, edge: 1, ring: 1, knob: 2, a: 2, b: 3, text: 3, shineA: 3, shineB: 2 };
-function disc(g, cx, cy, r, color){ g.fillStyle = color; for (var y = 0; y < g.canvas.height; y++) for (var x = 0; x < g.canvas.width; x++) { var dx = x + .5 - cx, dy = y + .5 - cy; if (dx*dx + dy*dy <= r*r) g.fillRect(x, y, 1, 1); } }
-function drawBase(){ var g = document.getElementById('base').getContext('2d'); g.clearRect(0,0,24,24); disc(g, 12, 12, 12, P[ROLE.ring]); disc(g, 12, 12, 10, P[ROLE.bg]); g.fillStyle = P[ROLE.ring]; [[11,2],[11,20],[2,11],[20,11]].forEach(function(q){ g.fillRect(q[0], q[1], 2, 2); }); }
-function drawKnob(){ var g = document.getElementById('knob').getContext('2d'); g.clearRect(0,0,12,13); disc(g, 6, 7, 5.6, P[ROLE.edge]); disc(g, 6, 6, 5.6, P[ROLE.knob]); g.fillStyle = P[ROLE.shineA]; g.fillRect(3, 3, 2, 1); g.fillRect(3, 4, 1, 1); }
-function drawBtn(id, face, shine, down){ var g = document.getElementById(id).getContext('2d'); g.clearRect(0,0,16,18); disc(g, 8, 9.5, 7.6, P[ROLE.edge]); disc(g, 8, down ? 9.5 : 8, 7.6, face); g.fillStyle = shine; var y = down ? 5 : 3.5; g.fillRect(4, y|0, 3, 1); g.fillRect(4, (y|0) + 1, 1, 1); }
+// Button shape follows the style: round (classic arcade), ring (neon outline), hex (sci-fi),
+// gem (fantasy diamond), square (blocks).
+var SHAPE = OPTS.shape || 'round';
+function inside(dx, dy, r){
+  var ax = Math.abs(dx), ay = Math.abs(dy);
+  if (SHAPE === 'square') return ax <= r*.86 && ay <= r*.86;
+  if (SHAPE === 'gem') return ax + ay <= r*1.15;
+  if (SHAPE === 'hex') return ay <= r*.88 && ax*.88 + ay*.5 <= r*.9;
+  return dx*dx + dy*dy <= r*r;
+}
+function disc(g, cx, cy, r, color){ g.fillStyle = color; for (var y = 0; y < g.canvas.height; y++) for (var x = 0; x < g.canvas.width; x++) if (inside(x + .5 - cx, y + .5 - cy, r)) g.fillRect(x, y, 1, 1); }
+// Neon rings: the shape's outline only, dark inside.
+function face(g, cx, cy, r, color){ disc(g, cx, cy, r, color); if (SHAPE === 'ring') disc(g, cx, cy, r - 2, P[ROLE.bg]); }
+function drawBase(){ var g = document.getElementById('base').getContext('2d'); g.clearRect(0,0,24,24); disc(g, 12, 12, 12, P[ROLE.ring]); disc(g, 12, 12, SHAPE === 'ring' ? 11 : 10, P[ROLE.bg]); g.fillStyle = P[ROLE.ring]; [[11,2],[11,20],[2,11],[20,11]].forEach(function(q){ g.fillRect(q[0], q[1], 2, 2); }); }
+function drawKnob(){ var g = document.getElementById('knob').getContext('2d'); g.clearRect(0,0,12,13); if (SHAPE !== 'ring') disc(g, 6, 7, 5.6, P[ROLE.edge]); face(g, 6, 6, 5.6, P[ROLE.knob]); if (SHAPE !== 'ring') { g.fillStyle = P[ROLE.shineA]; g.fillRect(3, 3, 2, 1); g.fillRect(3, 4, 1, 1); } }
+function drawBtn(id, color, shine, down){ var g = document.getElementById(id).getContext('2d'); g.clearRect(0,0,16,18);
+  if (SHAPE === 'ring') { face(g, 8, down ? 9.5 : 8.5, 7.6, color); if (down) disc(g, 8, 9.5, 5.6, color); return; }
+  disc(g, 8, 9.5, 7.6, P[ROLE.edge]); disc(g, 8, down ? 9.5 : 8, 7.6, color); g.fillStyle = shine; var y = down ? 5 : 3.5; g.fillRect(4, y|0, 3, 1); g.fillRect(4, (y|0) + 1, 1, 1); }
 // Arrow key: a square key with a 1-pixel edge and a pixel triangle (dir 0 ◀ 1 ▶ 2 ▲ 3 ▼).
 // The triangle is drawn pointing right, then mirrored / rotated for the other directions.
 var TRI = []; for (var i = 0; i < 4; i++) for (var y = 4 + i; y <= 10 - i; y++) TRI.push([5 + i, y]);
@@ -243,6 +335,16 @@ var CONTROLS = OPTS.controls === 'pad' ? 'pad' : 'stick';
 setControls(CONTROLS);
 document.getElementById('sw').addEventListener('pointerdown', function(e){ e.preventDefault(); setControls(CONTROLS === 'pad' ? 'stick' : 'pad'); post({ type: 'controls', mode: CONTROLS }); held[0] = held[1] = held[2] = held[3] = 0; });
 
+// Speaker: tap to step the volume 3 → 2 → 1 → off → 3 (the page remembers it on this device).
+function drawVol(){
+  var g = document.getElementById('vol').getContext('2d'); g.clearRect(0,0,11,9); g.fillStyle = P[ROLE.text];
+  g.fillRect(0,3,2,3); g.fillRect(2,2,1,5); g.fillRect(3,1,1,7);
+  if (VOL === 0) { [[6,2],[7,3],[8,4],[9,5],[10,6],[10,2],[9,3],[7,5],[6,6]].forEach(function(q){ g.fillRect(q[0], q[1], 1, 1); }); return; }
+  for (var i = 0; i < VOL; i++) g.fillRect(5 + i*2, 5 - i*2, 1, 2 + i*2);
+}
+drawVol();
+document.getElementById('vol').addEventListener('pointerdown', function(e){ e.preventDefault(); audio(); VOL = VOL === 0 ? 3 : VOL - 1; drawVol(); post({ type: 'volume', level: VOL }); if (VOL) sfx('blip'); });
+
 // Joystick: drag the knob; 8 directions → LEFT/RIGHT/UP/DOWN held.
 (function(){
   var stick = document.getElementById('stick'), knob = document.getElementById('knob'), id = null, R = 40;
@@ -263,6 +365,9 @@ document.getElementById('sw').addEventListener('pointerdown', function(e){ e.pre
 
 /** Self-contained page for <iframe sandbox="allow-scripts" srcdoc=…>. */
 export type ArcadeStyle = 'retro' | 'cyberpunk';
+/** On-screen joystick and button shape, by style category. */
+export type ButtonShape = 'round' | 'ring' | 'hex' | 'gem' | 'square';
+const SHAPES: ButtonShape[] = ['round', 'ring', 'hex', 'gem', 'square'];
 
 /** Button labels from the model ("DISPARA"), plain uppercase text only. */
 export function safeLabels(buttons: unknown): { a: string; b: string } {
@@ -290,17 +395,25 @@ export function safeRes(res: unknown): number {
   return typeof res === 'number' && Number.isInteger(res) && res >= 128 && res <= 512 && res % 16 === 0 ? res : 160;
 }
 
+/** AI-painted art: https image URLs only ({ bg, sheet }), else none. */
+export function safeArt(art: unknown): { bg?: string; sheet?: string } | null {
+  const a = (art ?? {}) as { bg?: unknown; sheet?: unknown };
+  const url = (v: unknown) => (typeof v === 'string' && /^https:\/\/[^\s"'<>]+$/.test(v) ? v : undefined);
+  const out = { bg: url(a.bg), sheet: url(a.sheet) };
+  return out.bg || out.sheet ? out : null;
+}
+
 /** Self-contained page for <iframe sandbox="allow-scripts" srcdoc=…>. */
 export function buildArcadeHtml(
   code: string,
   palette: unknown,
-  opts: { style?: ArcadeStyle; buttons?: unknown; res?: number; axes?: 'x' | 'xy'; controls?: 'stick' | 'pad'; muted?: boolean } = {},
+  opts: { style?: ArcadeStyle; buttons?: unknown; res?: number; axes?: 'x' | 'xy'; controls?: 'stick' | 'pad'; volume?: number; art?: unknown; shape?: ButtonShape } = {},
 ): string {
   const pal = safePalette(palette);
   const res = safeRes(opts.res);
   const style: ArcadeStyle = opts.style === 'cyberpunk' ? 'cyberpunk' : 'retro';
   const runtime = RUNTIME.replace('__RES__', String(res)).replace('__PALETTE__', JSON.stringify(pal)).replace('__LABELS__', JSON.stringify(safeLabels(opts.buttons)))
-    .replace('__OPTS__', JSON.stringify({ axes: opts.axes === 'x' ? 'x' : 'xy', controls: opts.controls === 'pad' ? 'pad' : 'stick', muted: !!opts.muted }));
+    .replace('__OPTS__', JSON.stringify({ axes: opts.axes === 'x' ? 'x' : 'xy', controls: opts.controls === 'pad' ? 'pad' : 'stick', volume: opts.volume ?? 3, art: safeArt(opts.art), shape: SHAPES.includes(opts.shape as ButtonShape) ? opts.shape : 'round' }).replace(/</g, '\\u003c'));
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <style>
 :root{--p0:${pal[0]};--p1:${pal[1]};--p2:${pal[2]};--p3:${pal[3]}}
@@ -317,6 +430,8 @@ canvas{display:block;image-rendering:pixelated}
 #dpad.x #d2,#dpad.x #d3,#dpad.x .sp{display:none}
 #dpad canvas{width:100%;height:100%;touch-action:none}
 #sw{position:absolute;left:-4px;top:-10px;width:30px;height:30px;padding:6px;opacity:.85;z-index:2;touch-action:none}
+#vol{position:absolute;right:0;top:-40px;width:33px;height:27px;padding:6px;opacity:.85;z-index:2;touch-action:none}
+.ab{position:relative}
 #base{width:120px;height:120px}
 #knob{position:absolute;left:30px;top:27px;width:60px;height:65px;pointer-events:none}
 .ab{display:flex;gap:18px;align-items:flex-end}
@@ -329,7 +444,7 @@ ${STYLE_CSS[style]}
 </style></head><body><div id="w"><div id="screen"><canvas id="c" width="${res}" height="${res}"></canvas>${style === 'cyberpunk' ? '<div id="scan"></div>' : ''}</div>
 <div id="pad"><div id="left"><canvas id="sw" width="9" height="9"></canvas><div id="stick"><canvas id="base" width="24" height="24"></canvas><canvas id="knob" width="12" height="13"></canvas></div>
 <div id="dpad"><span class="sp"></span><canvas id="d2" data-d="2" width="14" height="15"></canvas><span class="sp"></span><canvas id="d0" data-d="0" width="14" height="15"></canvas><span class="sp"></span><canvas id="d1" data-d="1" width="14" height="15"></canvas><span class="sp"></span><canvas id="d3" data-d="3" width="14" height="15"></canvas><span class="sp"></span></div></div>
-<div class="ab"><div class="bw" id="wB"><canvas class="btn" id="bB" data-b="5" width="16" height="18"></canvas><canvas class="lbl" id="lB"></canvas></div><div class="bw" id="wA"><canvas class="btn" id="bA" data-b="4" width="16" height="18"></canvas><canvas class="lbl" id="lA"></canvas></div></div></div></div>
+<div class="ab"><canvas id="vol" width="11" height="9"></canvas><div class="bw" id="wB"><canvas class="btn" id="bB" data-b="5" width="16" height="18"></canvas><canvas class="lbl" id="lB"></canvas></div><div class="bw" id="wA"><canvas class="btn" id="bA" data-b="4" width="16" height="18"></canvas><canvas class="lbl" id="lA"></canvas></div></div></div></div>
 <script>${runtime}</script>
 <script>
 try {

@@ -34,6 +34,7 @@
   "arcadeQIdea": "Sua ideia em uma linha",
   "arcadeIdeaHint": "Opcional",
   "arcadeIdeaExamples": "{name} mas com gatos | tudo acontece debaixo d'água | um chefe gigante no final | um só botão, cada vez mais rápido | à noite, com lanterna",
+  "arcadeIdeaPlaceholder": "Escreva aqui sua ideia",
   "arcadeBuild": "Criar jogo",
   "arcadeStepThinking": "Pensando na ideia…",
   "arcadeStepWorld": "Desenhando o mundo…",
@@ -41,6 +42,7 @@
   "arcadeStepEnemies": "Programando inimigos e obstáculos…",
   "arcadeStepTuning": "Ajustando a dificuldade…",
   "arcadeStepFixing": "Corrigindo um detalhe…",
+  "arcadeStepPainting": "Pintando a arte…",
   "arcadeStepTesting": "Testando o jogo…",
   "arcadeSaveGame": "Salvar jogo",
   "arcadeSavedGame": "Salvo",
@@ -94,6 +96,6 @@
   "arcadeFilterStyle": "Todos os estilos",
   "arcadeByAuthor": "Jogos de {name}",
   "arcadeAnonymous": "Anônimo",
-  "arcadeSound": "Som",
+  "arcadeBack": "Voltar",
   "arcadeKeysHint": "Teclado: setas/WASD · Espaço = {a}"
 }

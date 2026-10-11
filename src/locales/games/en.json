@@ -34,6 +34,7 @@
   "arcadeQIdea": "Your idea in one line",
   "arcadeIdeaHint": "Optional",
   "arcadeIdeaExamples": "{name} but with cats | everything happens underwater | a giant boss at the end | one button, faster and faster | at night, with a flashlight",
+  "arcadeIdeaPlaceholder": "Type your idea here",
   "arcadeBuild": "Create game",
   "arcadeStepThinking": "Thinking up the idea…",
   "arcadeStepWorld": "Designing the world…",
@@ -41,6 +42,7 @@
   "arcadeStepEnemies": "Coding enemies and obstacles…",
   "arcadeStepTuning": "Tuning the difficulty…",
   "arcadeStepFixing": "Fixing a detail…",
+  "arcadeStepPainting": "Painting the art…",
   "arcadeStepTesting": "Testing the game…",
   "arcadeSaveGame": "Save game",
   "arcadeSavedGame": "Saved",
@@ -94,6 +96,6 @@
   "arcadeFilterStyle": "All styles",
   "arcadeByAuthor": "Games by {name}",
   "arcadeAnonymous": "Anonymous",
-  "arcadeSound": "Sound",
+  "arcadeBack": "Back",
   "arcadeKeysHint": "Keyboard: arrows/WASD · Space = {a}"
 }

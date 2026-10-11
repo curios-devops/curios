@@ -22,6 +22,8 @@ export interface ArcadeGame {
   res?: number;
   /** 'x' = left/right only (arrow pad shows ◀ ▶). */
   axes?: 'x' | 'xy';
+  /** AI-painted background and sprite sheet (16-bit era and newer); null = drawn by code. */
+  art?: { bg?: string | null; sheet?: string | null } | null;
   votesUp?: number;
   votesDown?: number;
 }
@@ -55,13 +57,14 @@ export function nextArcadeModel(model: string, models = appSettings.models): str
   return model === models.luna ? models.sol : models.astra;
 }
 
+// v: 2 = this console has spr() / grad() / painted art (older app versions get the old prompt).
 async function invokeArcade(body: object): Promise<ArcadeGame> {
-  const { data, error } = await supabase.functions.invoke('arcade-generate', { body });
+  const { data, error } = await supabase.functions.invoke('arcade-generate', { body: { ...body, v: 2 } });
   if (error || !data?.code) throw new Error(error?.message ?? data?.error ?? 'arcade-generate failed');
   return data as ArcadeGame;
 }
 
-export type BuildEvent = { type: 'progress'; chars: number } | { type: 'fixing' };
+export type BuildEvent = { type: 'progress'; chars: number } | { type: 'fixing' } | { type: 'painting' };
 
 async function streamArcade(body: object, onEvent: (e: BuildEvent) => void): Promise<ArcadeGame> {
   // The user's token when signed in, so the game is credited to them ("Creative" cards).
@@ -73,7 +76,7 @@ async function streamArcade(body: object, onEvent: (e: BuildEvent) => void): Pro
       apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
       Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, v: 2 }),
   });
   if (!res.ok || !res.body) throw new Error(`arcade-generate ${res.status}`);
   const reader = res.body.getReader();
@@ -100,7 +103,7 @@ async function streamArcade(body: object, onEvent: (e: BuildEvent) => void): Pro
 export function generateArcadeGame(
   input: {
     inspiredBy: string; genres: string[]; description: string; screenshot: string | null;
-    language: string; mode: ArcadeMode; style: string; idea: string; model: string;
+    year: string; platforms: string[]; language: string; mode: ArcadeMode; style: string; idea: string; model: string;
   },
   onEvent: (e: BuildEvent) => void,
 ): Promise<ArcadeGame> {
@@ -120,7 +123,7 @@ export function repairArcadeGame(id: string, error: string, model: string, langu
 export async function fetchArcadeGame(id: string): Promise<ArcadeGame | null> {
   const { data, error } = await supabase
     .from('arcade_games')
-    .select('id, title, how_to, palette, code, inspired_by, mode, style, buttons, idea, votes_up, votes_down, res, axes')
+    .select('id, title, how_to, palette, code, inspired_by, mode, style, buttons, idea, votes_up, votes_down, res, axes, art')
     .eq('id', id)
     .maybeSingle();
   if (error || !data) {
@@ -129,7 +132,7 @@ export async function fetchArcadeGame(id: string): Promise<ArcadeGame | null> {
   }
   return {
     id: data.id, title: data.title, howTo: data.how_to ?? '', palette: data.palette ?? [], code: data.code,
-    inspiredBy: data.inspired_by ?? '', mode: data.mode === '3d' ? '3d' : '2d', style: data.style, buttons: data.buttons, idea: data.idea, res: data.res, axes: data.axes === 'x' ? 'x' : 'xy', votesUp: data.votes_up, votesDown: data.votes_down,
+    inspiredBy: data.inspired_by ?? '', mode: data.mode === '3d' ? '3d' : '2d', style: data.style, buttons: data.buttons, idea: data.idea, res: data.res, axes: data.axes === 'x' ? 'x' : 'xy', art: data.art, votesUp: data.votes_up, votesDown: data.votes_down,
   };
 }
 
@@ -248,12 +251,17 @@ export function countArcadePlay(id: string) {
   void supabase.rpc('arcade_play', { game: id }).then(undefined, () => undefined);
 }
 
-// ---- Player preferences on this device: sound on/off, joystick or arrows ------------
+// ---- Player preferences on this device: volume, joystick or arrows -------------------
 
 const MUTED_KEY = 'curios_arcade_muted';
+const VOLUME_KEY = 'curios_arcade_volume';
 const CONTROLS_KEY = 'curios_arcade_controls';
 
-export const arcadeMuted = (): boolean => readJson<boolean>(MUTED_KEY, false) === true;
-export const setArcadeMuted = (on: boolean) => writeJson(MUTED_KEY, on);
+/** 0 (off) … 3 (full); players who had muted the old sound toggle start at 0. */
+export const arcadeVolume = (): number => {
+  const v = readJson<number>(VOLUME_KEY, readJson<boolean>(MUTED_KEY, false) === true ? 0 : 3);
+  return [0, 1, 2, 3].includes(v) ? v : 3;
+};
+export const setArcadeVolume = (level: number) => writeJson(VOLUME_KEY, level);
 export const arcadeControls = (): 'stick' | 'pad' => (readJson<string>(CONTROLS_KEY, 'stick') === 'pad' ? 'pad' : 'stick');
 export const setArcadeControls = (mode: 'stick' | 'pad') => writeJson(CONTROLS_KEY, mode);

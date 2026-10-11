@@ -5,7 +5,7 @@
 // progress (the model's output is streamed) and play. "Remake" asks what to improve and uses
 // the next model up (Luna → Sol → Astra). One Pro credit per build.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -22,8 +22,8 @@ const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,
 // Typical length of the model's answer, to turn streamed characters into a percentage.
 const EXPECTED_CHARS: Record<ArcadeMode, number> = { '2d': 3500, '3d': 4500 };
 
-// Best choice in the middle of a carousel, the rest around it.
-const centerFirst = <T,>(xs: T[]) => (xs.length > 1 ? [xs[1], xs[0], ...xs.slice(2)] : xs);
+// Best choice in the middle of a carousel, the next ones alternating around it.
+const centerFirst = <T,>(xs: T[]) => xs.reduce<T[]>((out, x, i) => (i % 2 ? [x, ...out] : [...out, x]), []);
 
 // Swipeable row that snaps to the middle; the item in the middle is the choice and is a bit
 // bigger. Tapping an item picks it and slides it to the middle.
@@ -104,21 +104,70 @@ function ModePreview({ mode }: { mode: ArcadeMode }) {
   );
 }
 
-// Mini scene in the category's mood colors; neon categories are drawn as glowing outlines.
+// Mini scene per category in its mood colors, so the styles read differently at a glance;
+// neon categories are drawn as glowing outlines.
 function CategoryPreview({ c }: { c: ArcadeCategory }) {
   const [bg, ground, enemy, hero] = c.mood;
   const neon = c.look === 'cyberpunk';
-  const shape = (color: string) => (neon ? { fill: 'none', stroke: color, strokeWidth: 1.2 } : { fill: color });
+  const paint = (color: string) => (neon ? { fill: 'none', stroke: color, strokeWidth: 1.2 } : { fill: color });
+  const blocks = (n: number, y: number, color: string) => Array.from({ length: n }, (_, i) => <rect key={`${y}-${i}`} x={i * 8} y={y} width="7" height="7" fill={color} />);
+  const scene: Record<CategoryId, ReactNode> = {
+    retro_arcade: <>
+      <path d="M4 6 H60 V42 H4 Z M14 16 H50 M14 32 H50" stroke={ground} strokeWidth="2" fill="none" />
+      {[20, 26, 32, 38, 44].map((x) => <rect key={x} x={x} y="23" width="2" height="2" fill={hero} />)}
+      <path d="M12 24 L18 20 A5 5 0 1 0 18 28 Z" fill={hero} />
+      <path d="M46 28 V22 A4 4 0 0 1 54 22 V28 L52 26 L50 28 L48 26 Z" fill={enemy} />
+    </>,
+    sandbox: <>{blocks(8, 41, enemy)}{blocks(8, 34, ground)}<rect x="40" y="27" width="7" height="7" fill={ground} /><rect x="48" y="20" width="7" height="14" fill={enemy} /><rect x="44" y="10" width="15" height="10" fill={ground} /><rect x="14" y="20" width="6" height="14" fill={hero} /></>,
+    cyberpunk: <>
+      <path d="M2 34 V18 H10 V26 H16 V12 H24 V34 M40 34 V20 H48 V8 H56 V34" stroke={ground} strokeWidth="1.2" fill="none" />
+      <circle cx="32" cy="16" r="7" fill="none" stroke={enemy} strokeWidth="1.2" />
+      <path d="M0 40 H64 M0 44 H64 M8 40 L0 48 M24 40 L20 48 M40 40 L44 48 M56 40 L64 48" stroke={ground} strokeWidth="1" />
+      <rect x="29" y="27" width="5" height="11" {...paint(hero)} />
+    </>,
+    fantasy: <>
+      <path d="M30 40 V18 L34 12 L38 18 V40 Z M22 40 V24 L26 19 L30 24 M38 24 L42 19 L46 24 V40" fill={ground} />
+      <path d="M6 40 L12 22 L18 40 Z" fill={enemy} /><rect x="0" y="40" width="64" height="8" fill={ground} />
+      <path d="M54 8 L56 12 L60 12 L57 15 L58 19 L54 16 L50 19 L51 15 L48 12 L52 12 Z" fill={hero} />
+    </>,
+    platformer: <>{blocks(8, 41, ground)}<rect x="8" y="28" width="20" height="5" fill={ground} /><rect x="38" y="18" width="20" height="5" fill={ground} />
+      {[42, 48, 54].map((x) => <circle key={x} cx={x} cy="12" r="2.5" fill={hero} />)}<rect x="14" y="19" width="6" height="9" fill={enemy} /></>,
+    roguelike: <>
+      {[[8, 8], [50, 10], [6, 36], [54, 34], [30, 4], [28, 40], [16, 22], [46, 22]].map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="5" height="5" fill={enemy} />)}
+      <circle cx="32" cy="24" r="11" fill="none" stroke={ground} strokeWidth="1.5" /><rect x="29" y="20" width="6" height="8" fill={hero} />
+    </>,
+    racing: <>
+      <path d="M24 0 H40 L60 48 H4 Z" fill={ground} />
+      {[4, 16, 28, 40].map((y) => <rect key={y} x="31" y={y} width="2" height="6" fill={hero} />)}
+      <rect x="18" y="32" width="9" height="12" fill={enemy} /><rect x="36" y="14" width="7" height="9" fill={hero} />
+    </>,
+    puzzle: <>
+      {[[16, 34, enemy], [24, 34, enemy], [32, 34, ground], [40, 34, hero], [16, 26, ground], [32, 26, ground], [40, 26, hero], [40, 18, hero], [24, 8, enemy], [32, 8, enemy], [32, 0, enemy]].map(([x, y, f]) => <rect key={`${x}-${y}`} x={x as number} y={y as number} width="7" height="7" fill={f as string} />)}
+      <path d="M15 42 H48" stroke={ground} strokeWidth="1" />
+    </>,
+    cozy: <>
+      <rect x="0" y="36" width="64" height="12" fill={ground} /><path d="M10 24 L22 14 L34 24 Z" fill={enemy} /><rect x="13" y="24" width="18" height="12" fill={hero} />
+      <rect x="20" y="29" width="4" height="7" fill={enemy} /><circle cx="52" cy="10" r="5" fill={enemy} />
+      {[42, 48, 54].map((x) => <path key={x} d={`M${x} 36 V31 M${x - 2} 32 L${x} 31 L${x + 2} 32`} stroke={hero} strokeWidth="1.2" />)}
+    </>,
+    horror: <>
+      <circle cx="22" cy="28" r="13" fill={ground} /><rect x="19" y="24" width="6" height="10" fill={hero} />
+      {[[44, 14], [52, 30], [40, 38]].map(([x, y]) => <g key={x}><rect x={x} y={y} width="2" height="2" fill={enemy} /><rect x={x + 4} y={y} width="2" height="2" fill={enemy} /></g>)}
+    </>,
+    scifi: <>
+      {[[6, 6], [20, 14], [44, 4], [58, 18], [10, 30], [36, 22], [52, 40], [26, 42]].map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill={hero} />)}
+      <circle cx="50" cy="12" r="8" fill="none" stroke={ground} strokeWidth="1.5" /><path d="M42 14 Q50 9 58 11" stroke={ground} strokeWidth="1" fill="none" />
+      <path d="M14 40 L20 28 L26 40 Z" fill="none" stroke={hero} strokeWidth="1.2" /><path d="M30 18 H38 V22 L36 20 L34 22 L32 20 L30 22 Z" fill="none" stroke={enemy} strokeWidth="1.2" />
+    </>,
+    party: <>
+      {[[6, 8, enemy], [52, 6, hero], [30, 4, ground], [14, 40, hero], [48, 38, ground], [40, 20, enemy]].map(([x, y, f], i) => <rect key={i} x={x as number} y={y as number} width="3" height="3" fill={f as string} transform={`rotate(20 ${x} ${y})`} />)}
+      <circle cx="22" cy="20" r="7" fill={enemy} /><circle cx="34" cy="16" r="6" fill={ground} /><path d="M22 27 V40 M34 22 V40" stroke={hero} strokeWidth="0.8" />
+    </>,
+  };
   return (
     <svg viewBox="0 0 64 48" className="w-full h-full" shapeRendering={neon ? undefined : 'crispEdges'}>
       <rect width="64" height="48" fill={bg} />
-      {neon
-        ? <path d="M0 40 H64 M0 44 H64 M8 40 L0 48 M24 40 L20 48 M40 40 L44 48 M56 40 L64 48" stroke={ground} strokeWidth="1" />
-        : [0, 1, 2, 3, 4, 5, 6, 7].map((i) => <rect key={i} x={i * 8} y="40" width="7" height="8" fill={ground} />)}
-      <rect x="8" y="6" width="22" height="3" fill={hero} />
-      <rect x="12" y="27" width="6" height="12" {...shape(hero)} />
-      <rect x="40" y="29" width="10" height="10" {...shape(enemy)} />
-      <rect x="42" y="32" width="2" height="2" fill={neon ? enemy : bg} /><rect x="46" y="32" width="2" height="2" fill={neon ? enemy : bg} />
+      {scene[c.id]}
     </svg>
   );
 }
@@ -129,33 +178,27 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
   const { currentLanguage } = useLanguage();
   const { requestProAccess, tier } = useProCredits();
 
-  // At most three questions: style, then 2D/3D when 3D fits (else the world), then the idea.
-  const second = offers3D(info.genres, query) ? 'mode' : info.screenshots.length >= 2 ? 'world' : null;
+  // Three questions: style, 2D or 3D, and the idea.
   // The original question may carry an intent for the game ("doom but with cats").
   const prefill = norm(query) !== norm(info.name) ? query : '';
 
   const [phase, setPhase] = useState<'ask' | 'improve' | 'build' | 'play' | 'error'>('ask');
   // Style categories that fit the inspiration's genres (a shooter never gets "cozy").
   const categories = centerFirst(relevantCategories(info.genres));
-  const worlds = centerFirst(info.screenshots.slice(0, 3));
   const [style, setStyle] = useState<CategoryId>(relevantCategories(info.genres)[0].id);
   // Starts by perceived difficulty; every remake moves one model up.
   const [model, setModel] = useState(() => arcadeModel(info.genres));
   const [fixes, setFixes] = useState<string[]>([]);
   const [feedback, setFeedback] = useState('');
-  const [mode, setMode] = useState<ArcadeMode>(/\b3d\b|first[- ]person|primera persona/i.test(query) ? '3d' : '2d');
-  const [world, setWorld] = useState<string | null>(info.screenshots[0] ?? info.imageUrl);
+  const [mode, setMode] = useState<ArcadeMode>(offers3D([], query) ? '3d' : '2d');
+  // The inspiration's look for the model (colors, mood).
+  const world = info.screenshots[0] ?? info.imageUrl;
   const [idea, setIdea] = useState(prefill);
-  // Examples that roll through the empty idea box.
+  // One-tap ideas under the box.
   const examples = t('arcadeIdeaExamples').split('|').map((x) => x.trim().replace('{name}', info.name));
-  const [example, setExample] = useState(0);
-  useEffect(() => {
-    if (idea || phase !== 'ask') return;
-    const id = setInterval(() => setExample((i) => (i + 1) % examples.length), 2600);
-    return () => clearInterval(id);
-  }, [idea, phase, examples.length]);
   const [pct, setPct] = useState(0);
   const [fixing, setFixing] = useState(false);
+  const [painting, setPainting] = useState(false);
   const [game, setGame] = useState<ArcadeGame | null>(null);
   const repairedRef = useRef(false);
 
@@ -168,6 +211,7 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
 
   const onBuildEvent = (e: BuildEvent) => {
     if (e.type === 'fixing') { setFixing(true); setPct(93); }
+    else if (e.type === 'painting') { setPainting(true); setPct(94); }
     else setPct((p) => Math.max(p, 12 + 80 * Math.min(1, e.chars / EXPECTED_CHARS[mode])));
   };
 
@@ -178,6 +222,7 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
     onAccess?.();
     repairedRef.current = false;
     setFixing(false);
+    setPainting(false);
     setPct(3);
     setPhase('build');
     try {
@@ -194,8 +239,10 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
       genres: info.genres,
       description: info.description,
       screenshot: world,
+      year: info.year,
+      platforms: info.platforms,
       language: currentLanguage.code,
-      mode: second === 'mode' ? mode : '2d',
+      mode,
       style,
       idea: idea.trim(),
       model,
@@ -235,7 +282,8 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
     return <ArcadeScreen game={game} failed={phase === 'error'} onClose={onClose} onError={onGameError} onRemake={remake} />;
   }
 
-  const stepMessage = fixing ? t('arcadeStepFixing')
+  const stepMessage = painting ? t('arcadeStepPainting')
+    : fixing ? t('arcadeStepFixing')
     : pct < 12 ? t('arcadeStepThinking')
     : pct < 30 ? t('arcadeStepWorld')
     : pct < 55 ? t('arcadeStepHero')
@@ -245,17 +293,17 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0d0d0d] text-[#eee]" style={{ fontFamily: PIXEL_FONT, fontVariantLigatures: 'none' }}>
-      <div className="flex items-center gap-2 px-4 py-3 border-b-2 border-[#222]">
+      <div className="flex items-center gap-2 px-2 py-3 border-b-2 border-[#222]">
+        <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center" aria-label={t('arcadeBack')}>
+          <ArrowLeft size={20} />
+        </button>
         <div className="flex-1 min-w-0">
           <p className="text-base font-semibold truncate">{t('arcadeStudioTitle')}</p>
           <p className="text-[11px] text-[#999] truncate">{t('arcadeInspiredBy').replace('{name}', info.name)}</p>
         </div>
-        <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center" aria-label="Close">
-          <X size={20} />
-        </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-5 py-4 flex flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-5 py-3 flex flex-col [&>*]:flex-shrink-0">
         {phase === 'ask' && (
           <>
             <h2 className="text-base font-semibold">{t('arcadeQStyle')}</h2>
@@ -263,7 +311,7 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
               count={categories.length}
               index={categories.findIndex((c) => c.id === style)}
               onIndex={(i) => setStyle(categories[i].id)}
-              width={150}
+              width={140}
             >
               {(i) => (
                 <>
@@ -275,52 +323,43 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
                 </>
               )}
             </Carousel>
-            <p className="text-xs text-[#bbb] text-center mb-5 truncate">{t(`arcadeCatDesc_${style}` as never)}</p>
+            <p className="text-xs text-[#bbb] text-center mb-3 truncate">{t(`arcadeCatDesc_${style}` as never)}</p>
 
-            {second === 'mode' && (
-              <>
-                <h2 className="text-base font-semibold">{t('arcadeQMode')}</h2>
-                <Carousel count={2} index={mode === '2d' ? 0 : 1} onIndex={(i) => setMode(i ? '3d' : '2d')} width={120}>
-                  {(i) => (
-                    <>
-                      <div className="aspect-[4/3] bg-black"><ModePreview mode={i ? '3d' : '2d'} /></div>
-                      <p className="px-2 py-1.5 text-xs text-center">{i ? t('arcade3D') : t('arcade2D')}</p>
-                    </>
-                  )}
-                </Carousel>
-              </>
-            )}
+            <h2 className="text-base font-semibold">{t('arcadeQMode')}</h2>
+            <Carousel count={2} index={mode === '2d' ? 0 : 1} onIndex={(i) => setMode(i ? '3d' : '2d')} width={108}>
+              {(i) => (
+                <>
+                  <div className="aspect-[4/3] bg-black"><ModePreview mode={i ? '3d' : '2d'} /></div>
+                  <p className="px-2 py-1.5 text-xs text-center">{i ? t('arcade3D') : t('arcade2D')}</p>
+                </>
+              )}
+            </Carousel>
 
-            {second === 'world' && (
-              <>
-                <h2 className="text-base font-semibold">{t('arcadeQWorld')}</h2>
-                <Carousel count={worlds.length} index={Math.max(0, worlds.indexOf(world ?? ''))} onIndex={(i) => setWorld(worlds[i])} width={140}>
-                  {(i) => <img src={worlds[i]} alt="" className="w-full aspect-[4/3] object-cover" style={{ imageRendering: 'pixelated' }} />}
-                </Carousel>
-              </>
-            )}
-
-            <h2 className="text-base font-semibold mt-4 mb-2">
+            <h2 className="text-base font-semibold mt-3 mb-2">
               {t('arcadeQIdea')} <span className="text-xs font-normal text-[#999]">· {t('arcadeIdeaHint')}</span>
             </h2>
-            <div className="relative">
-              <input
-                value={idea}
-                onChange={(e) => setIdea(e.target.value.slice(0, 140))}
-                onKeyDown={(e) => { if (e.key === 'Enter') void build(); }}
-                maxLength={140}
-                aria-label={t('arcadeQIdea')}
-                className="w-full h-11 px-3 rounded-md border-2 border-[#333] bg-transparent text-sm outline-none focus:border-[var(--accent-primary)]"
-                style={{ fontFamily: PIXEL_FONT, fontVariantLigatures: 'none' }}
-              />
-              {!idea && (
-                <span
-                  key={example}
-                  className="pointer-events-none absolute inset-y-0 left-3 right-3 flex items-center text-sm text-[#666] animate-fade-in-up"
+            <input
+              value={idea}
+              onChange={(e) => setIdea(e.target.value.slice(0, 140))}
+              onKeyDown={(e) => { if (e.key === 'Enter') void build(); }}
+              placeholder={t('arcadeIdeaPlaceholder')}
+              maxLength={140}
+              aria-label={t('arcadeQIdea')}
+              className="w-full h-11 px-3 rounded-md border-2 border-[#333] bg-transparent text-sm outline-none placeholder:text-[#666] focus:border-[var(--accent-primary)]"
+              style={{ fontFamily: PIXEL_FONT, fontVariantLigatures: 'none' }}
+            />
+            <div className="-mx-5 px-5 mt-2 flex gap-2 overflow-x-auto scrollbar-hide">
+              {examples.map((x) => (
+                <button
+                  key={x}
+                  type="button"
+                  onClick={() => setIdea(idea === x ? '' : x)}
+                  className="flex-shrink-0 px-2.5 py-1 rounded-md border text-[11px] whitespace-nowrap"
+                  style={{ borderColor: idea === x ? 'var(--accent-primary)' : '#333', color: idea === x ? '#eee' : '#999' }}
                 >
-                  <span className="truncate">{examples[example]}</span>
-                </span>
-              )}
+                  {x}
+                </button>
+              ))}
             </div>
             <button
               type="button"

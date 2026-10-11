@@ -34,6 +34,7 @@
   "arcadeQIdea": "La tua idea in una riga",
   "arcadeIdeaHint": "Facoltativo",
   "arcadeIdeaExamples": "{name} ma con i gatti | tutto succede sott'acqua | un boss gigante alla fine | un solo tasto, sempre più veloce | di notte, con una torcia",
+  "arcadeIdeaPlaceholder": "Scrivi qui la tua idea",
   "arcadeBuild": "Crea gioco",
   "arcadeStepThinking": "Pensando all'idea…",
   "arcadeStepWorld": "Progettando il mondo…",
@@ -41,6 +42,7 @@
   "arcadeStepEnemies": "Programmando nemici e ostacoli…",
   "arcadeStepTuning": "Regolando la difficoltà…",
   "arcadeStepFixing": "Correggendo un dettaglio…",
+  "arcadeStepPainting": "Dipingendo la grafica…",
   "arcadeStepTesting": "Testando il gioco…",
   "arcadeSaveGame": "Salva gioco",
   "arcadeSavedGame": "Salvato",
@@ -94,6 +96,6 @@
   "arcadeFilterStyle": "Tutti gli stili",
   "arcadeByAuthor": "Giochi di {name}",
   "arcadeAnonymous": "Anonimo",
-  "arcadeSound": "Suono",
+  "arcadeBack": "Indietro",
   "arcadeKeysHint": "Tastiera: frecce/WASD · Spazio = {a}"
 }
