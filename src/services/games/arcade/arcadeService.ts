@@ -110,6 +110,19 @@ export function generateArcadeGame(
   return streamArcade(input, onEvent);
 }
 
+/** One-tap idea suggestions for this game (Luna), cached for the session; [] on failure. */
+export async function fetchArcadeIdeas(inspiredBy: string, genres: string[], description: string, language: string): Promise<string[]> {
+  const key = `curios_arcade_ideas:${language}:${inspiredBy}`;
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(key) ?? 'null');
+    if (Array.isArray(cached)) return cached;
+  } catch { /* storage blocked */ }
+  const { data, error } = await supabase.functions.invoke('arcade-generate', { body: { ideas: { inspiredBy, genres, description }, language } });
+  const ideas = !error && Array.isArray(data?.ideas) ? (data.ideas as unknown[]).filter((x): x is string => typeof x === 'string' && !!x.trim()).slice(0, 5) : [];
+  try { if (ideas.length) sessionStorage.setItem(key, JSON.stringify(ideas)); } catch { /* storage blocked */ }
+  return ideas;
+}
+
 /** "Remake": a better version of the game from the player's feedback, with a stronger model. */
 export function improveArcadeGame(id: string, feedback: string, model: string, language: string, onEvent: (e: BuildEvent) => void): Promise<ArcadeGame> {
   return streamArcade({ improve: { id, feedback }, model, language }, onEvent);
@@ -215,20 +228,22 @@ export interface ArcadeCard {
   creatorId: string | null;
   creatorName: string | null;
   createdAt: string;
+  /** Painted background (art games), shown on the card. */
+  bg: string | null;
 }
 
 /** The latest games (sorting and filtering happen on the page — the catalog is small). */
 export async function fetchArcadeCatalog(limit = 200): Promise<ArcadeCard[]> {
   const { data, error } = await supabase
     .from('arcade_games')
-    .select('id, title, inspired_by, palette, style, mode, genres, votes_up, plays, creator_id, creator_name, created_at')
+    .select('id, title, inspired_by, palette, style, mode, genres, votes_up, plays, creator_id, creator_name, created_at, bg:art->>bg')
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) { logger.warn('[arcade] catalog failed', { error: error.message }); return []; }
   return (data ?? []).map((g) => ({
     id: g.id, title: g.title, inspiredBy: g.inspired_by ?? '', palette: g.palette ?? [], style: g.style ?? 'retro_arcade',
     mode: g.mode === '3d' ? '3d' : '2d', genres: g.genres ?? [], votesUp: g.votes_up ?? 0, plays: g.plays ?? 0,
-    creatorId: g.creator_id, creatorName: g.creator_name, createdAt: g.created_at,
+    creatorId: g.creator_id, creatorName: g.creator_name, createdAt: g.created_at, bg: g.bg ?? null,
   }));
 }
 

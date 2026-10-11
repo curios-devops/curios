@@ -17,8 +17,10 @@ const ALL = 'all';
 // Old rows stored 'retro' / 'cyberpunk' before the categories existed.
 const categoryOf = (style: string) => (style === 'retro' ? 'retro_arcade' : style);
 
-// Card art in the game's palette: ground, hero, enemy; neon looks get glowing outlines.
+// Card art: the painted background when the game has one, else a scene in the game's palette
+// (ground, hero, enemy; neon looks get glowing outlines).
 function GameArt({ game }: { game: ArcadeCard }) {
+  if (game.bg) return <img src={game.bg} alt="" loading="lazy" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />;
   const r = paletteRoles(game.palette);
   const [bg, ground, enemy, hero] = [r.bg, r.line, r.accent2, r.accent];
   const neon = lookOf(game.style) === 'cyberpunk';

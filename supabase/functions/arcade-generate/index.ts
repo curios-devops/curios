@@ -356,8 +356,27 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const model = MODELS.has(body?.model) ? body.model : DEFAULT_MODEL;
     const language = typeof body?.language === "string" ? body.language.slice(0, 5) : "en";
-    const creator = body?.repair ? null : await creatorOf(req);
+    const creator = body?.repair || body?.ideas ? null : await creatorOf(req);
     const v2 = body?.v === 2;
+
+    // Idea chips for the studio: short twists that fit this game (Luna, no credit).
+    if (body?.ideas?.inspiredBy) {
+      const i = body.ideas;
+      const data = await (await openai(JSON.stringify({
+        model: "gpt-6-luna",
+        input: [{
+          role: "user",
+          content: `Suggest 5 ideas a player could type to twist a tiny one-screen arcade game inspired by "${String(i.inspiredBy).slice(0, 80)}" (${Array.isArray(i.genres) ? i.genres.slice(0, 4).join(", ") : ""}). ${String(i.description ?? "").replace(/\s+/g, " ").slice(0, 300)}
+Each one: max 6 words, in language "${language}", playful and specific to this game (its characters, places, items or mechanics), all different (a setting swap, a character swap, a mechanic twist, a challenge, something funny). No numbering, no quotes.`,
+        }],
+        max_output_tokens: 600,
+        reasoning: { effort: "low" },
+        text: { format: { type: "json_schema", name: "ideas", strict: true, schema: { type: "object", additionalProperties: false, required: ["ideas"], properties: { ideas: { type: "array", items: { type: "string" } } } } } },
+      }))).json();
+      const text = data.output_text ?? data.output?.flatMap((o: any) => o.content ?? []).map((c: any) => c.text ?? "").join("") ?? "";
+      const ideas = (JSON.parse(text).ideas as unknown[]).map((x) => String(x).trim().slice(0, 60)).filter(Boolean).slice(0, 5);
+      return json({ ideas });
+    }
 
     // The client's smoke test threw at runtime → one fix of the stored game.
     if (body?.repair?.id) {

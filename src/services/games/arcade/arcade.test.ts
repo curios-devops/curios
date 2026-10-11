@@ -116,7 +116,7 @@ describe('"Creative" relevance', async () => {
   const now = Date.parse('2026-10-11T12:00:00Z');
   const game = (id: string, votesUp: number, plays: number, daysAgo: number) => ({
     id, title: id, inspiredBy: '', palette: [], style: 'retro_arcade', mode: '2d' as const, genres: [],
-    votesUp, plays, creatorId: null, creatorName: null, createdAt: new Date(now - daysAgo * 86_400_000).toISOString(),
+    votesUp, plays, creatorId: null, creatorName: null, createdAt: new Date(now - daysAgo * 86_400_000).toISOString(), bg: null,
   });
   // A vote is a stronger signal than a play, and a fresh game should surface over an old one
   // with the same numbers — otherwise new creations never get seen.

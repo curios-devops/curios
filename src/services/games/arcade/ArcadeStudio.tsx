@@ -12,7 +12,7 @@ import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import type { GameInfo } from '../gamesSearch.ts';
 import ArcadeScreen, { PIXEL_FONT, usePixelFont } from './ArcadeScreen.tsx';
 import {
-  arcadeModel, generateArcadeGame, improveArcadeGame, nextArcadeModel, offers3D, repairArcadeGame,
+  arcadeModel, fetchArcadeIdeas, generateArcadeGame, improveArcadeGame, nextArcadeModel, offers3D, repairArcadeGame,
   type ArcadeGame, type ArcadeMode, type BuildEvent,
 } from './arcadeService.ts';
 import { relevantCategories, type ArcadeCategory, type CategoryId } from './arcadeStyles.ts';
@@ -194,8 +194,16 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
   // The inspiration's look for the model (colors, mood).
   const world = info.screenshots[0] ?? info.imageUrl;
   const [idea, setIdea] = useState(prefill);
-  // One-tap ideas under the box.
-  const examples = t('arcadeIdeaExamples').split('|').map((x) => x.trim().replace('{name}', info.name));
+  // One-tap ideas under the box, written for this game by Luna; the fixed ones if that fails.
+  const [examples, setExamples] = useState<string[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    const fixed = () => t('arcadeIdeaExamples').split('|').map((x) => x.trim().replace('{name}', info.name));
+    fetchArcadeIdeas(info.name, info.genres, info.description, currentLanguage.code)
+      .then((ideas) => { if (live) setExamples(ideas.length >= 3 ? ideas : fixed()); })
+      .catch(() => { if (live) setExamples(fixed()); });
+    return () => { live = false; };
+  }, [info.name, currentLanguage.code]); // once per game and language
   const [pct, setPct] = useState(0);
   const [fixing, setFixing] = useState(false);
   const [painting, setPainting] = useState(false);
@@ -349,7 +357,8 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
               style={{ fontFamily: PIXEL_FONT, fontVariantLigatures: 'none' }}
             />
             <div className="-mx-5 px-5 mt-2 flex gap-2 overflow-x-auto scrollbar-hide">
-              {examples.map((x) => (
+              {!examples && [96, 128, 112].map((w) => <span key={w} className="flex-shrink-0 h-[26px] rounded-md bg-[#222] animate-pulse" style={{ width: w }} />)}
+              {examples?.map((x) => (
                 <button
                   key={x}
                   type="button"
