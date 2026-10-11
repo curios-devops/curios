@@ -1,4 +1,4 @@
-// "Made with AI" (/arcade, in the sidebar after Discover): the community's Curios Arcade games,
+// "Creative" (/arcade, in the sidebar after Discover): the community's Curios Arcade games,
 // on the Discover page template. Sort (relevance / popular / new / top rated) and filter by
 // genre, 2D/3D and style; each card shows the inspiration, the creator (tap → their games),
 // the date and the votes. Generated games have no cover, so the card art is drawn with each

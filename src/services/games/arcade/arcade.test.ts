@@ -99,7 +99,7 @@ describe('style categories follow the game genres', async () => {
   });
 });
 
-describe('"Made with AI" relevance', async () => {
+describe('"Creative" relevance', async () => {
   const { sortCatalog } = await import('./arcadeService');
   const now = Date.parse('2026-10-11T12:00:00Z');
   const game = (id: string, votesUp: number, plays: number, daysAgo: number) => ({

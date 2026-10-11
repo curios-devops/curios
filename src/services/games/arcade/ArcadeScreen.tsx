@@ -15,6 +15,9 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 
 // Arcade UI type: a pixel font (Minecraft-like) for RETRO, Orbitron for CYBERPUNK. Loaded
 // once, only when the arcade opens.
+// Keys the console understands (arrows/WASD move, Space/Enter/Z = A, X = B).
+const GAME_KEYS = /^(Arrow(Left|Right|Up|Down)|[wasdzxWASDZX ]|Enter)$/;
+
 export const PIXEL_FONT = "'Pixelify Sans', ui-monospace, monospace";
 const NEON_FONT = "'Orbitron', 'Pixelify Sans', ui-monospace, monospace";
 export function usePixelFont() {
@@ -75,7 +78,6 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
   const loadBoards = () => { if (game) void fetchBoards(game.id).then(setBoards); };
 
   // Desktop: keys pressed while the page has the focus go to the game (never while typing).
-  const GAME_KEYS = /^(Arrow(Left|Right|Up|Down)|[wasdzxWASDZX ]|Enter)$/;
   useEffect(() => {
     const forward = (down: boolean) => (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -87,7 +89,6 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game]);
   const finePointer = typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches;
   const labels = safeLabels(game?.buttons);
@@ -103,12 +104,11 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
         setLastScore(Number(e.data.score) || 0);
         setScoreSaved(false);
         setSheetOpen(true);
-        loadBoards();
+        if (game) void fetchBoards(game.id).then(setBoards);
       }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game, onError]);
 
   const saveScore = async () => {
@@ -142,7 +142,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
 
   // The game's own look for everything around the console.
   const ui = {
-    bg: { backgroundColor: p0, color: p3, fontFamily: font } as CSSProperties,
+    bg: { backgroundColor: p0, color: p3, fontFamily: font, fontVariantLigatures: 'none' } as CSSProperties,
     line: { borderColor: p1 } as CSSProperties,
     accent: { backgroundColor: p2, color: p0 } as CSSProperties,
     dim: { color: p3, opacity: 0.7 } as CSSProperties,
@@ -230,7 +230,7 @@ export default function ArcadeScreen({ game, failed = false, onClose, onError, o
                     placeholder={t('arcadeYourName')}
                     maxLength={16}
                     className="flex-1 min-w-0 h-10 px-3 rounded-md border-2 text-sm bg-transparent outline-none"
-                    style={{ ...ui.line, color: p3, fontFamily: font }}
+                    style={{ ...ui.line, color: p3, fontFamily: font, fontVariantLigatures: 'none' }}
                   />
                   <button
                     type="button"

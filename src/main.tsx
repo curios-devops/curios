@@ -96,7 +96,7 @@ function MovieRoute() {
 const GameFactPage = lazyRetry(() => import('./services/games/pages/GameFactPage.tsx'));
 // Curios Arcade: a shared AI-made mini game.
 const ArcadePage = lazyRetry(() => import('./services/games/arcade/ArcadePage.tsx'));
-// "Made with AI": the community's arcade games.
+// "Creative": the community's arcade games.
 const ArcadeCatalog = lazyRetry(() => import('./services/games/arcade/ArcadeCatalog.tsx'));
 const MovieSharePage = lazyRetry(() => import('./services/movie/pages/MovieSharePage.tsx'));
 const Explore = lazyRetry(() => import('./mainPages/Explore.tsx'));

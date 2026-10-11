@@ -64,7 +64,7 @@ async function invokeArcade(body: object): Promise<ArcadeGame> {
 export type BuildEvent = { type: 'progress'; chars: number } | { type: 'fixing' };
 
 async function streamArcade(body: object, onEvent: (e: BuildEvent) => void): Promise<ArcadeGame> {
-  // The user's token when signed in, so the game is credited to them ("Made with AI" cards).
+  // The user's token when signed in, so the game is credited to them ("Creative" cards).
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/arcade-generate`, {
     method: 'POST',
@@ -197,7 +197,7 @@ export function toggleSavedArcade(game: ArcadeGame): boolean {
   return !saved;
 }
 
-// ---- "Made with AI" catalog ---------------------------------------------------------
+// ---- "Creative" catalog ---------------------------------------------------------
 
 export interface ArcadeCard {
   id: string;

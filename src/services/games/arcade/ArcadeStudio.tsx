@@ -1,10 +1,10 @@
-// Curios Arcade co-creation: three quick questions with visual choices — the style category
-// that fits the game's genres (mood for the colors, type and controls), 2D or 3D when it fits
-// (else which world), and the
-// player's one-line idea, prefilled from their original query — then the build with real
+// Curios Arcade co-creation: three quick questions on one screen, each with a sensible default —
+// a carousel of the style categories that fit the game's genres (mood for the colors, type and
+// controls), a carousel for 2D or 3D when it fits (else which world), and the player's one-line
+// idea, prefilled from their original query — then the build with real
 // progress (the model's output is streamed) and play. "Remake" asks what to improve and uses
 // the next model up (Luna → Sol → Astra). One Pro credit per build.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
@@ -17,12 +17,69 @@ import {
 } from './arcadeService.ts';
 import { relevantCategories, type ArcadeCategory, type CategoryId } from './arcadeStyles.ts';
 
-type Step = 'style' | 'mode' | 'world' | 'idea';
-
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
 // Typical length of the model's answer, to turn streamed characters into a percentage.
 const EXPECTED_CHARS: Record<ArcadeMode, number> = { '2d': 3500, '3d': 4500 };
+
+// Best choice in the middle of a carousel, the rest around it.
+const centerFirst = <T,>(xs: T[]) => (xs.length > 1 ? [xs[1], xs[0], ...xs.slice(2)] : xs);
+
+// Swipeable row that snaps to the middle; the item in the middle is the choice and is a bit
+// bigger. Tapping an item picks it and slides it to the middle.
+function Carousel({ count, index, onIndex, width, children }: {
+  count: number; index: number; onIndex: (i: number) => void; width: number;
+  children: (i: number, on: boolean) => ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const settle = useRef<ReturnType<typeof setTimeout>>();
+  const center = (i: number, smooth = true) => {
+    const row = ref.current;
+    const el = row?.children[i] as HTMLElement | undefined;
+    if (row && el) row.scrollTo({ left: el.offsetLeft + el.offsetWidth / 2 - row.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
+  };
+  useEffect(() => center(index, false), []);
+  const onScroll = () => {
+    clearTimeout(settle.current);
+    settle.current = setTimeout(() => {
+      const row = ref.current;
+      if (!row) return;
+      const mid = row.scrollLeft + row.clientWidth / 2;
+      const off = (i: number) => {
+        const el = row.children[i] as HTMLElement;
+        return Math.abs(el.offsetLeft + el.offsetWidth / 2 - mid);
+      };
+      let best = 0;
+      for (let i = 1; i < count; i++) if (off(i) < off(best)) best = i;
+      if (best !== index) onIndex(best);
+    }, 120);
+  };
+  return (
+    <div
+      ref={ref}
+      onScroll={onScroll}
+      className="relative -mx-5 flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory py-2"
+      style={{ paddingInline: `calc(50% - ${width / 2}px)` }}
+    >
+      {Array.from({ length: count }, (_, i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={() => { onIndex(i); center(i); }}
+          className="snap-center flex-shrink-0 rounded-md overflow-hidden border-2 text-left transition-[transform,opacity] duration-200"
+          style={{
+            width,
+            borderColor: i === index ? 'var(--accent-primary)' : '#333',
+            transform: `scale(${i === index ? 1 : 0.84})`,
+            opacity: i === index ? 1 : 0.55,
+          }}
+        >
+          {children(i, i === index)}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // Small drawings for the 2D / 3D choice (no images to load).
 function ModePreview({ mode }: { mode: ArcadeMode }) {
@@ -73,26 +130,30 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
   const { requestProAccess, tier } = useProCredits();
 
   // At most three questions: style, then 2D/3D when 3D fits (else the world), then the idea.
-  const steps: Step[] = [
-    'style',
-    ...(offers3D(info.genres, query) ? ['mode' as const] : info.screenshots.length >= 2 ? ['world' as const] : []),
-    'idea',
-  ];
+  const second = offers3D(info.genres, query) ? 'mode' : info.screenshots.length >= 2 ? 'world' : null;
   // The original question may carry an intent for the game ("doom but with cats").
   const prefill = norm(query) !== norm(info.name) ? query : '';
 
   const [phase, setPhase] = useState<'ask' | 'improve' | 'build' | 'play' | 'error'>('ask');
   // Style categories that fit the inspiration's genres (a shooter never gets "cozy").
-  const categories = relevantCategories(info.genres);
-  const [style, setStyle] = useState<CategoryId>(categories[0].id);
+  const categories = centerFirst(relevantCategories(info.genres));
+  const worlds = centerFirst(info.screenshots.slice(0, 3));
+  const [style, setStyle] = useState<CategoryId>(relevantCategories(info.genres)[0].id);
   // Starts by perceived difficulty; every remake moves one model up.
   const [model, setModel] = useState(() => arcadeModel(info.genres));
   const [fixes, setFixes] = useState<string[]>([]);
   const [feedback, setFeedback] = useState('');
-  const [step, setStep] = useState(0);
   const [mode, setMode] = useState<ArcadeMode>(/\b3d\b|first[- ]person|primera persona/i.test(query) ? '3d' : '2d');
   const [world, setWorld] = useState<string | null>(info.screenshots[0] ?? info.imageUrl);
   const [idea, setIdea] = useState(prefill);
+  // Examples that roll through the empty idea box.
+  const examples = t('arcadeIdeaExamples').split('|').map((x) => x.trim().replace('{name}', info.name));
+  const [example, setExample] = useState(0);
+  useEffect(() => {
+    if (idea || phase !== 'ask') return;
+    const id = setInterval(() => setExample((i) => (i + 1) % examples.length), 2600);
+    return () => clearInterval(id);
+  }, [idea, phase, examples.length]);
   const [pct, setPct] = useState(0);
   const [fixing, setFixing] = useState(false);
   const [game, setGame] = useState<ArcadeGame | null>(null);
@@ -104,8 +165,6 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
     const id = setInterval(() => setPct((p) => (p < 12 ? p + 0.5 : p)), 400);
     return () => clearInterval(id);
   }, [phase]);
-
-  const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
 
   const onBuildEvent = (e: BuildEvent) => {
     if (e.type === 'fixing') { setFixing(true); setPct(93); }
@@ -136,7 +195,7 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
       description: info.description,
       screenshot: world,
       language: currentLanguage.code,
-      mode: steps.includes('mode') ? mode : '2d',
+      mode: second === 'mode' ? mode : '2d',
       style,
       idea: idea.trim(),
       model,
@@ -168,7 +227,7 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
   const remake = () => {
     setFixes([]);
     setFeedback('');
-    if (game) setPhase('improve'); else { setStep(0); setPhase('ask'); }
+    setPhase(game ? 'improve' : 'ask');
   };
   const FIXES = [t('arcadeFixFaithful'), t('arcadeFixHarder'), t('arcadeFixEasier'), t('arcadeFixGraphics'), t('arcadeFixControls')];
 
@@ -182,91 +241,91 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
     : pct < 55 ? t('arcadeStepHero')
     : pct < 80 ? t('arcadeStepEnemies')
     : t('arcadeStepTuning');
-  const current = steps[step];
-  const choice = 'flex-1 rounded-md overflow-hidden border-2 text-left';
   const chosen = (on: boolean) => ({ borderColor: on ? 'var(--accent-primary)' : '#333' });
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0d0d0d] text-[#eee]" style={{ fontFamily: PIXEL_FONT }}>
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#0d0d0d] text-[#eee]" style={{ fontFamily: PIXEL_FONT, fontVariantLigatures: 'none' }}>
       <div className="flex items-center gap-2 px-4 py-3 border-b-2 border-[#222]">
         <div className="flex-1 min-w-0">
           <p className="text-base font-semibold truncate">{t('arcadeStudioTitle')}</p>
           <p className="text-[11px] text-[#999] truncate">{t('arcadeInspiredBy').replace('{name}', info.name)}</p>
         </div>
-        {phase === 'ask' && <span className="text-xs text-[#999]">{step + 1}/{steps.length}</span>}
         <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center" aria-label="Close">
           <X size={20} />
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 flex flex-col">
-        {phase === 'ask' && current === 'style' && (
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-5 py-4 flex flex-col">
+        {phase === 'ask' && (
           <>
-            <h2 className="text-lg font-semibold mb-4">{t('arcadeQStyle')}</h2>
-            <div className="flex flex-col gap-3">
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => { setStyle(c.id); next(); }}
-                  className="flex items-stretch gap-3 rounded-md overflow-hidden border-2 text-left"
-                  style={chosen(style === c.id)}
-                >
-                  <div className="w-28 flex-shrink-0 aspect-[4/3]"><CategoryPreview c={c} /></div>
-                  <div className="py-2 pr-3 min-w-0">
-                    <p className="text-sm font-semibold uppercase">{t(`arcadeCat_${c.id}` as never)}</p>
-                    <p className="text-xs text-[#bbb] leading-snug">{t(`arcadeCatDesc_${c.id}` as never)}</p>
-                    <p className="text-[11px] text-[#888] mt-1 truncate">{c.examples}</p>
+            <h2 className="text-base font-semibold">{t('arcadeQStyle')}</h2>
+            <Carousel
+              count={categories.length}
+              index={categories.findIndex((c) => c.id === style)}
+              onIndex={(i) => setStyle(categories[i].id)}
+              width={150}
+            >
+              {(i) => (
+                <>
+                  <div className="aspect-[4/3]"><CategoryPreview c={categories[i]} /></div>
+                  <div className="px-2 py-1.5">
+                    <p className="text-xs font-semibold uppercase truncate">{t(`arcadeCat_${categories[i].id}` as never)}</p>
+                    <p className="text-[10px] text-[#888] truncate">{categories[i].examples}</p>
                   </div>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+                </>
+              )}
+            </Carousel>
+            <p className="text-xs text-[#bbb] text-center mb-5 truncate">{t(`arcadeCatDesc_${style}` as never)}</p>
 
-        {phase === 'ask' && current === 'mode' && (
-          <>
-            <h2 className="text-lg font-semibold mb-4">{t('arcadeQMode')}</h2>
-            <div className="flex gap-3">
-              {(['2d', '3d'] as const).map((m) => (
-                <button key={m} type="button" onClick={() => { setMode(m); next(); }} className={choice} style={chosen(mode === m)}>
-                  <div className="aspect-[4/3] bg-black"><ModePreview mode={m} /></div>
-                  <p className="p-2 text-sm">{m === '2d' ? t('arcade2D') : t('arcade3D')}</p>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+            {second === 'mode' && (
+              <>
+                <h2 className="text-base font-semibold">{t('arcadeQMode')}</h2>
+                <Carousel count={2} index={mode === '2d' ? 0 : 1} onIndex={(i) => setMode(i ? '3d' : '2d')} width={120}>
+                  {(i) => (
+                    <>
+                      <div className="aspect-[4/3] bg-black"><ModePreview mode={i ? '3d' : '2d'} /></div>
+                      <p className="px-2 py-1.5 text-xs text-center">{i ? t('arcade3D') : t('arcade2D')}</p>
+                    </>
+                  )}
+                </Carousel>
+              </>
+            )}
 
-        {phase === 'ask' && current === 'world' && (
-          <>
-            <h2 className="text-lg font-semibold mb-4">{t('arcadeQWorld')}</h2>
-            <div className="flex gap-3">
-              {info.screenshots.slice(0, 2).map((src) => (
-                <button key={src} type="button" onClick={() => { setWorld(src); next(); }} className={choice} style={chosen(world === src)}>
-                  <img src={src} alt="" className="w-full aspect-[4/3] object-cover" style={{ imageRendering: 'pixelated' }} />
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+            {second === 'world' && (
+              <>
+                <h2 className="text-base font-semibold">{t('arcadeQWorld')}</h2>
+                <Carousel count={worlds.length} index={Math.max(0, worlds.indexOf(world ?? ''))} onIndex={(i) => setWorld(worlds[i])} width={140}>
+                  {(i) => <img src={worlds[i]} alt="" className="w-full aspect-[4/3] object-cover" style={{ imageRendering: 'pixelated' }} />}
+                </Carousel>
+              </>
+            )}
 
-        {phase === 'ask' && current === 'idea' && (
-          <>
-            <h2 className="text-lg font-semibold mb-1">{t('arcadeQIdea')}</h2>
-            <p className="text-xs text-[#999] mb-4">{t('arcadeIdeaHint')}</p>
-            <input
-              value={idea}
-              onChange={(e) => setIdea(e.target.value.slice(0, 140))}
-              onKeyDown={(e) => { if (e.key === 'Enter') void build(); }}
-              maxLength={140}
-              className="h-11 px-3 rounded-md border-2 border-[#333] bg-transparent text-sm outline-none focus:border-[var(--accent-primary)]"
-              style={{ fontFamily: PIXEL_FONT }}
-            />
+            <h2 className="text-base font-semibold mt-4 mb-2">
+              {t('arcadeQIdea')} <span className="text-xs font-normal text-[#999]">· {t('arcadeIdeaHint')}</span>
+            </h2>
+            <div className="relative">
+              <input
+                value={idea}
+                onChange={(e) => setIdea(e.target.value.slice(0, 140))}
+                onKeyDown={(e) => { if (e.key === 'Enter') void build(); }}
+                maxLength={140}
+                aria-label={t('arcadeQIdea')}
+                className="w-full h-11 px-3 rounded-md border-2 border-[#333] bg-transparent text-sm outline-none focus:border-[var(--accent-primary)]"
+                style={{ fontFamily: PIXEL_FONT, fontVariantLigatures: 'none' }}
+              />
+              {!idea && (
+                <span
+                  key={example}
+                  className="pointer-events-none absolute inset-y-0 left-3 right-3 flex items-center text-sm text-[#666] animate-fade-in-up"
+                >
+                  <span className="truncate">{examples[example]}</span>
+                </span>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => void build()}
-              className="mt-4 h-12 rounded-md text-base font-semibold"
+              className="mt-4 h-12 flex-shrink-0 rounded-md text-base font-semibold"
               style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
             >
               {t('arcadeBuild')}
@@ -301,7 +360,7 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
               placeholder={t('arcadeImproveHint')}
               maxLength={140}
               className="h-11 px-3 rounded-md border-2 border-[#333] bg-transparent text-sm outline-none focus:border-[var(--accent-primary)]"
-              style={{ fontFamily: PIXEL_FONT }}
+              style={{ fontFamily: PIXEL_FONT, fontVariantLigatures: 'none' }}
             />
             <button
               type="button"
