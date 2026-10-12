@@ -1,17 +1,19 @@
-// "Creative" (/arcade, in the sidebar after Discover): the community's Curios Arcade games,
-// on the Discover page template. Sort (relevance / popular / new / top rated) and filter by
+// "Creative" (/arcade, in the sidebar after Discover): the community's Curios Arcade games
+// and songs from the song studio, on the Discover page template. Sort (relevance / popular / new / top rated) and filter by
 // genre, 2D/3D and style; each card shows the inspiration, the creator (tap → their games),
 // the date and the votes. Generated games have no cover, so the card art is drawn with each
 // game's own palette.
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Play, ThumbsUp, X } from 'lucide-react';
+import { Music, Play, ThumbsUp, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import { MenuSelect } from '../../../components/factSheet/FactSheet.tsx';
 import { paletteRoles } from './arcadeRuntime.ts';
 import { CATEGORIES, lookOf } from './arcadeStyles.ts';
 import { fetchArcadeCatalog, sortCatalog, type ArcadeCard, type CatalogSort } from './arcadeService.ts';
+import { fetchSongCatalog } from '../../music/song/songService.ts';
+import { FALLBACK_PALETTE } from '../../music/song/songRuntime.ts';
 
 const ALL = 'all';
 // Old rows stored 'retro' / 'cyberpunk' before the categories existed.
@@ -20,6 +22,19 @@ const categoryOf = (style: string) => (style === 'retro' ? 'retro_arcade' : styl
 // Card art: the painted background when the game has one, else a scene in the game's palette
 // (ground, hero, enemy; neon looks get glowing outlines).
 function GameArt({ game }: { game: ArcadeCard }) {
+  // Songs: sound bars in the song's palette.
+  if (game.kind === 'song') {
+    const P = game.palette.length === 5 ? game.palette : FALLBACK_PALETTE;
+    return (
+      <svg viewBox="0 0 64 36" className="w-full h-full" preserveAspectRatio="xMidYMid slice">
+        <rect width="64" height="36" fill={P[0]} />
+        {Array.from({ length: 16 }, (_, i) => {
+          const h = 6 + 22 * Math.abs(Math.sin(i * 1.7 + game.title.length));
+          return <rect key={i} x={4 + i * 3.6} y={(36 - h) / 2} width="2.2" height={h} rx="1.1" fill={P[1 + (i % 4)]} />;
+        })}
+      </svg>
+    );
+  }
   if (game.bg) return <img src={game.bg} alt="" loading="lazy" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />;
   const r = paletteRoles(game.palette);
   const [bg, ground, enemy, hero] = [r.bg, r.line, r.accent2, r.accent];
@@ -49,10 +64,22 @@ export default function ArcadeCatalog() {
   const [genre, setGenre] = useState(ALL);
   const [mode, setMode] = useState(ALL);
   const [style, setStyle] = useState(ALL);
+  const [type, setType] = useState(ALL);
 
-  useEffect(() => { void fetchArcadeCatalog().then(setGames); }, []);
+  // Games and songs in one list (each card knows what it opens).
+  useEffect(() => {
+    void Promise.all([fetchArcadeCatalog(), fetchSongCatalog()]).then(([g, s]) => setGames([
+      ...g,
+      ...s.map((r): ArcadeCard => ({
+        id: r.id, title: r.title, inspiredBy: r.inspired_by ?? '', palette: r.palette ?? [], style: 'song', mode: '2d',
+        genres: r.genres ?? [], votesUp: r.votes_up ?? 0, plays: r.plays ?? 0, creatorId: r.creator_id, creatorName: r.creator_name,
+        createdAt: r.created_at, bg: null, kind: 'song',
+      })),
+    ]));
+  }, []);
+  const open = (g: ArcadeCard) => navigate(g.kind === 'song' ? `/song/${g.id}` : `/arcade/${g.id}`);
 
-  const styleName = (id: string) => t(`arcadeCat_${categoryOf(id)}` as never);
+  const styleName = (g: ArcadeCard | string) => (typeof g !== 'string' && g.kind === 'song' ? t('songCardStyle') : t(`arcadeCat_${categoryOf(typeof g === 'string' ? g : g.style)}` as never));
   const authorKey = (g: ArcadeCard) => g.creatorId ?? g.creatorName ?? '';
   const authorName = (g: ArcadeCard) => g.creatorName ?? t('arcadeAnonymous');
 
@@ -63,8 +90,9 @@ export default function ArcadeCatalog() {
   const shown = useMemo(() => sortCatalog((games ?? []).filter((g) =>
     (!author || authorKey(g) === author)
     && (genre === ALL || g.genres.includes(genre))
-    && (mode === ALL || g.mode === mode)
-    && (style === ALL || categoryOf(g.style) === style)), sort), [games, author, genre, mode, style, sort]);
+    && (type === ALL || (type === 'songs') === (g.kind === 'song'))
+    && (mode === ALL || (g.kind !== 'song' && g.mode === mode))
+    && (style === ALL || (g.kind !== 'song' && categoryOf(g.style) === style))), sort), [games, author, genre, type, mode, style, sort]);
   const authorLabel = author ? (games ?? []).find((g) => authorKey(g) === author) : undefined;
 
   const filterByAuthor = (e: MouseEvent, g: ArcadeCard) => {
@@ -98,6 +126,8 @@ export default function ArcadeCatalog() {
           <MenuSelect variant="small" value={genre} onChange={setGenre}
             options={[{ id: ALL, label: t('arcadeFilterGenre') }, ...genres.map((g) => ({ id: g, label: g }))]} />
         )}
+        <MenuSelect variant="small" value={type} onChange={setType}
+          options={[{ id: ALL, label: t('creativeFilterKind') }, { id: 'games', label: t('gamesFilter') }, { id: 'songs', label: t('songsFilter') }]} />
         <MenuSelect variant="small" value={mode} onChange={setMode}
           options={[{ id: ALL, label: t('arcadeFilterType') }, { id: '2d', label: '2D' }, { id: '3d', label: '3D' }]} />
         {styles.length > 0 && (
@@ -129,25 +159,25 @@ export default function ArcadeCatalog() {
               key={g.id}
               role="link"
               tabIndex={0}
-              onClick={() => navigate(`/arcade/${g.id}`)}
-              onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/arcade/${g.id}`); }}
+              onClick={() => open(g)}
+              onKeyDown={(e) => { if (e.key === 'Enter') open(g); }}
               className="group cursor-pointer flex flex-col rounded-xl border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md transition-all overflow-hidden bg-white dark:bg-[#0a0a0a]"
             >
               <div className="relative aspect-video overflow-hidden">
                 <GameArt game={g} />
-                <span className="absolute right-2 top-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-black/60 text-white">{g.mode === '3d' ? '3D' : '2D'}</span>
+                <span className="absolute right-2 top-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-black/60 text-white">{g.kind === 'song' ? <Music size={10} className="my-0.5" /> : g.mode === '3d' ? '3D' : '2D'}</span>
                 <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <span className="w-11 h-11 rounded-full flex items-center justify-center bg-black/55"><Play size={20} className="text-white ml-0.5" /></span>
                 </span>
               </div>
               <div className="p-4 flex-1 flex flex-col gap-1.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>
-                  {styleName(g.style)}
+                  {styleName(g)}
                 </span>
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 group-hover:text-[var(--accent-primary)] transition-colors">
                   {g.title}
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{t('arcadeInspiredBy').replace('{name}', g.inspiredBy)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{t(g.kind === 'song' ? 'songInspiredBy' : 'arcadeInspiredBy').replace('{name}', g.inspiredBy)}</p>
                 <div className="mt-auto pt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                   <button
                     type="button"

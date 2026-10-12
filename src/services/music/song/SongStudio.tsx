@@ -3,12 +3,14 @@
 // carousel (moods, regenerate, guided edit), the style to perform it in, voice and length,
 // the idea in one line with suggestions, then Generate.
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { ArrowLeft, Check, Loader2, Music, Pencil, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import type { MusicInfo } from '../musicInfo.ts';
 import {
-  PARTS_BY_LENGTH, SONG_STYLES, checkLines, draftSong, fetchSongIdeas, replaceLastWord, rewritePart, songMusicReady, syllables,
+  PARTS_BY_LENGTH, SONG_STYLES, checkLines, draftSong, fetchSongIdeas, generateSong, replaceLastWord, rewritePart, songMusicReady, syllables,
   type LineCheck, type PartId, type SongDraft, type SongLength, type SongStyle,
 } from './songService.ts';
 
@@ -23,6 +25,12 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
   const { t } = useTranslation();
   const { currentLanguage } = useLanguage();
   const lang = currentLanguage.code;
+  const navigate = useNavigate();
+  const { requestProAccess, tier } = useProCredits();
+  // Generating (≈ 45 s): seconds elapsed drive the progress bar and its messages.
+  const [building, setBuilding] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [buildFailed, setBuildFailed] = useState(false);
 
   const [song, setSong] = useState<SongDraft | null>(null);
   const [drafting, setDrafting] = useState(true);
@@ -116,6 +124,33 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
     setEditLines((ls) => ls.map((l, j) => (j === i ? line : l)));
     setChecks((cs) => cs?.map((c, j) => (j === i ? { ok: true, words: [] } : c)) ?? null);
   };
+
+  useEffect(() => {
+    if (!building) return;
+    const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, [building]);
+
+  // One credit, then music + animations; the finished song opens on its own page.
+  const generate = async () => {
+    if (!song) return;
+    const outMessage = tier === 'guest' ? t('creditsOutSongGuest') : tier === 'free' ? t('creditsOutSongFree') : undefined;
+    if (!(await requestProAccess(outMessage))) return;
+    setBuildFailed(false);
+    setElapsed(0);
+    setBuilding(true);
+    try {
+      const id = await generateSong(info, lang, song, { style, voice: voice && !song.instrumental, length, idea: idea.trim() });
+      onClose();
+      navigate(`/song/${id}`);
+    } catch {
+      setBuildFailed(true);
+    } finally {
+      setBuilding(false);
+    }
+  };
+  const EXPECTED_SECONDS = 45;
+  const buildStep = elapsed < 12 ? t('songStepMusic') : elapsed < 22 ? (voice ? t('songStepVoice') : t('songStepMix')) : t('songStepAnimation');
 
   const partLabel = (id: PartId) => t(`songPart_${id}` as never);
   const sung = voice && !song?.instrumental;
@@ -317,15 +352,29 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
       {/* Generate (1 credit). Off until the music model is configured. */}
       <div className="border-t px-4 py-3" style={{ borderColor: 'var(--ui-border-subtle)', backgroundColor: 'var(--ui-bg-primary)' }}>
         <div className="max-w-2xl mx-auto">
-          <button
-            type="button"
-            disabled={!musicReady || drafting || !song}
-            className="w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-60"
-            style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
-          >
-            <Music size={18} /> {t('songGenerate')}
-          </button>
-          {!musicReady && <p className="text-center text-xs mt-2 text-gray-500 dark:text-gray-400">{t('songComingSoon')}</p>}
+          {building ? (
+            <div>
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" />{buildStep}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{Math.min(97, Math.round((elapsed / EXPECTED_SECONDS) * 100))}%</span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(97, (elapsed / EXPECTED_SECONDS) * 100)}%`, backgroundColor: 'var(--accent-primary)' }} />
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void generate()}
+              disabled={!musicReady || drafting || !song}
+              className="w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-60"
+              style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+            >
+              <Music size={18} /> {t('songGenerate')}
+            </button>
+          )}
+          {!musicReady && !building && <p className="text-center text-xs mt-2 text-gray-500 dark:text-gray-400">{t('songComingSoon')}</p>}
+          {buildFailed && <p className="text-center text-xs mt-2 text-gray-500 dark:text-gray-400">{t('songBuildFailed')}</p>}
         </div>
       </div>
     </div>
