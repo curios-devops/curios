@@ -313,7 +313,9 @@ export default function Home() {
             }}
           />
         </div>
-        <div className="home-rise home-rise-delay">
+        {/* relative z-30: the box's mode menu can open downward over the Discover cards (this
+            wrapper's animation transform would otherwise trap it below them). */}
+        <div className="home-rise home-rise-delay relative z-30">
           <InputContainer onModeChange={setCurrentMode} rotateHint={rotateHint} />
         </div>
       </div>

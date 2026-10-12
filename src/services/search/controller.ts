@@ -235,23 +235,27 @@ export async function executeFastSearchStreaming(
   const startTime = Date.now();
 
   try {
-    // Step 1: Execute all searches in parallel (web + media)
+    // Step 1: web + media searches in parallel, each reported as soon as it lands: the images
+    // reach the page on their own, and the answer only waits for the web sources it cites.
     logger.debug('FastSearch: Executing searches in parallel');
 
-    const [allWebResults, images, videos] = await Promise.all([
-      executeWebSearch(query),
-      searchImages(query, { skipSerpApi: skipSerpApiImages }),
-      searchVideos(query)
-    ]);
+    const imagesPromise = searchImages(query, { skipSerpApi: skipSerpApiImages })
+      .catch(() => [] as ImageResult[])
+      .then((found) => {
+        if (onImagesFound && found.length > 0) {
+          onImagesFound(found.map(img => ({ url: img.url, title: img.title, source: img.source })));
+        }
+        return found;
+      });
+    const videosPromise = searchVideos(query).catch(() => []);
+    const allWebResults = await executeWebSearch(query);
 
     // Default tier is the "snack": cap to the 5 most relevant sources.
     const webResults = allWebResults.slice(0, 5);
 
     const searchTime = Date.now() - startTime;
-    logger.info('FastSearch: Searches completed', {
+    logger.info('FastSearch: Web search completed', {
       webResultCount: webResults.length,
-      imageCount: images.length,
-      videoCount: videos.length,
       searchTimeMs: searchTime
     });
 
@@ -264,15 +268,6 @@ export async function executeFastSearchStreaming(
       })));
     }
 
-    // Notify that images have been found (parallel loading)
-    if (onImagesFound && images.length > 0) {
-      onImagesFound(images.map(img => ({
-        url: img.url,
-        title: img.title,
-        source: img.source
-      })));
-    }
-
     // Step 2: Generate answer with streaming LLM using search results
     logger.debug('FastSearch: Generating answer with streaming');
 
@@ -282,11 +277,12 @@ export async function executeFastSearchStreaming(
       query,
       model,
       webResults, // Pass real search results from Tavily/Brave
-      images,
-      videos,
+      images: [], // the answer doesn't use media; it streams without waiting for it
+      videos: [],
       date: new Date().toISOString().split('T')[0],
       locale
     }, onChunk);
+    const [images, videos] = await Promise.all([imagesPromise, videosPromise]);
 
     const llmTime = Date.now() - llmStartTime;
     const totalTime = Date.now() - startTime;
@@ -370,16 +366,24 @@ export async function executeDeepFastSearchStreaming(
   const startTime = Date.now();
 
   try {
+    // The ORIGINAL query's images start right away and show as soon as they land; Ask Deeper
+    // then expands the gallery (base images kept, expanded-angle ones added, deduped by URL).
+    const baseImagesPromise = searchImages(query, { skipSerpApi: skipSerpApiImages })
+      .catch(() => [] as ImageResult[])
+      .then((found) => {
+        if (onImagesFound && found.length > 0) {
+          onImagesFound(found.map(img => ({ url: img.url, title: img.title, source: img.source })));
+        }
+        return found;
+      });
+
     // Step A: expand the query into 3 complementary angles.
     const expanded = await expandQuery(query, locale);
 
-    // Step B: broad parallel retrieval + dedupe/rerank. In parallel, re-fetch the
-    // ORIGINAL query's images so Ask Deeper expands the gallery instead of
-    // replacing it: base images are kept and the expanded-angle ones are added,
-    // deduped by URL so nothing repeats or disappears.
+    // Step B: broad parallel retrieval + dedupe/rerank.
     const [{ webResults, images: deepImages, videos }, baseImages] = await Promise.all([
       executeDeepRetrieval(expanded, { skipSerpApiImages }),
-      searchImages(query, { skipSerpApi: skipSerpApiImages }).catch(() => [] as ImageResult[]),
+      baseImagesPromise,
     ]);
     const images = dedupeImagesByUrl([baseImages, deepImages]);
 

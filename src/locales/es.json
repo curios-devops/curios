@@ -174,5 +174,7 @@
   "movies": "Películas",
   "historySubtitle": "Todo lo que has creado, en un solo lugar.",
   "historySignedOut": "Inicia sesión para ver tu historial.",
-  "historyEmpty": "Aún no hay nada aquí."
+  "historyEmpty": "Aún no hay nada aquí.",
+  "moreModes": "Más",
+  "lessModes": "Menos"
 }

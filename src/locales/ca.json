@@ -170,5 +170,7 @@
   "historySubtitle": "Tot el que has creat, en un sol lloc.",
   "historySignedOut": "Inicia sessió per veure el teu historial.",
   "historyEmpty": "Encara no hi ha res aquí.",
-  "character": "Personatge"
+  "character": "Personatge",
+  "moreModes": "Més",
+  "lessModes": "Menys"
 }

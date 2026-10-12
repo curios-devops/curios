@@ -21,7 +21,7 @@ import SaveButton from '../../space/components/SaveButton';
 import { resolveBuyIntent } from '../buyIntent';
 import { searchAmazonProducts, type AmazonProduct } from '../../amazon-api';
 import ProductCard from '../../../components/shopping/ProductCard';
-import ExploreFurther from '../components/ExploreFurther';
+import ExploreFurther, { useExplorePrep } from '../components/ExploreFurther';
 
 // Sponsor/product carousel is capped here — legacy search capped at 4, this replaces
 // it with up to 10 so the carousel has enough tiles to actually scroll.
@@ -142,6 +142,8 @@ export default function FastSearchResults() {
   const [frozenSourcesForAnimation, setFrozenSourcesForAnimation] = useState<Array<{ title: string; url: string; snippet: string }>>([]);
   const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
   const [images, setImages] = useState<Array<{ url: string; title: string; source: string }>>([]);
+  // Explore further's pick + video frame: prepared from the start, in parallel with the answer.
+  const explorePrep = useExplorePrep(query);
   // Sponsor carousel: populated only when buy intent is detected (Auto's `&buy=1` flag,
   // or this page's own parallel detection for an explicitly-selected Search). Replaces
   // the image carousel in place — the underlying image search still runs regardless.
@@ -230,6 +232,7 @@ export default function FastSearchResults() {
         setFoundSources([]);
         setFrozenSourcesForAnimation([]);
         setHeaderImage(null);
+        setImages([]);
         setSponsorProducts([]);
 
         // Sponsor carousel (buy intent): fire-and-forget, never blocks the search/answer.
@@ -337,7 +340,6 @@ export default function FastSearchResults() {
     fetchResults();
     // Only re-run when the query or requested tier changes; other deps (navigate,
     // state setters) are stable/intentionally omitted.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, wantsDeep, forcedAstra]);
 
   // Toggle "Ask Deeper" (a Pro feature). This is the single gate: turning it ON
@@ -548,9 +550,9 @@ export default function FastSearchResults() {
           </div>
         )}
 
-        {/* Images at top - between tabs and content. Buy intent replaces it with the
-            sponsor products carousel (Amazon) — same slot, same tab. */}
-        {!isLoading && activeTab === 'answer' && (
+        {/* Images at top - between tabs and content, as soon as they arrive (they don't wait
+            for the answer). Buy intent replaces it with the sponsor products carousel (Amazon). */}
+        {activeTab === 'answer' && (
           sponsorProducts.length > 0 ? (
             <ProductsCarousel products={sponsorProducts} />
           ) : carouselImages.length > 0 && (
@@ -678,9 +680,10 @@ export default function FastSearchResults() {
                   )}
                 </div>
 
-                {/* Explore further — the recommended next experience (Video / Games / Stories) */}
-                {!isLoading && streamingAnswer && (
-                  <ExploreFurther query={query} answer={streamingAnswer} images={carouselImages.map((img) => img.url)} />
+                {/* Explore further — the recommended next experience (Video / Games / Music / Stories).
+                    Its pick and video frame are prepared from the start (useExplorePrep). */}
+                {streamingAnswer && (
+                  <ExploreFurther query={query} prep={explorePrep} images={carouselImages.map((img) => img.url)} />
                 )}
 
                 {/* Quick Links Section - show first 4 sources */}

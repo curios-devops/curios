@@ -170,5 +170,7 @@
   "historySubtitle": "Tudo o que você criou, em um só lugar.",
   "historySignedOut": "Entre para ver seu histórico.",
   "historyEmpty": "Ainda não há nada aqui.",
-  "character": "Personagem"
+  "character": "Personagem",
+  "moreModes": "Mais",
+  "lessModes": "Menos"
 }

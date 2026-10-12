@@ -5,7 +5,9 @@
 // (predicate). FALLBACK: gpt-5-nano → gpt-5-mini text classification (mode only).
 // A third question rates difficulty (tier: easy|normal|complex) → the client answers with
 // Luna / Sol / Astra. Body { query, only: "tier" } asks just that (explicit modes skip routing).
-// Returns { mode, probabilities?, buyProbability (null when unknown), tier (null when unknown), backend }.
+// Returns { mode, probabilities?, buyProbability, movieProbability, musicProbability, gameProbability
+// (each null when unknown), tier (null when unknown), backend }. The topic predicates send a film,
+// a song/artist/album or a video game to its own page.
 // Body { query, answer, only: "explore" } picks the best way to keep exploring a Search answer
 // (Decisions: watch / play / read) while Luna drafts the one-line pitch of each option.
 // Orchestration layer only — does not call any downstream mode.
@@ -98,6 +100,10 @@ const MOVIE_INSTRUCTIONS =
 // Music 🎵: same call. Routes questions about a song, an artist or an album to the Music page.
 const MUSIC_INSTRUCTIONS =
   "The request is about a specific song, singer, band, musician, rapper, DJ or album: who sings a song, what a song means, an artist's songs, albums, discography or career, or a record. Not news, latest updates, rumors or controversies about them, not playing an instrument, music theory lessons, buying audio gear, concert tickets, or a film.";
+
+// Games 🎮: same call. Routes questions about a video game to the Games page.
+const GAME_INSTRUCTIONS =
+  "The request is about a specific video game or game franchise, or wanting to play one: its gameplay, story, characters, levels, release, platforms, reviews, tips, walkthroughs or similar games. Not sports matches, board or card game rules, gambling, game theory, or gaming industry news.";
 
 const SYSTEM_PROMPT = `You are an intent router. ${MODE_INSTRUCTIONS}
 Classify the user's query into exactly ONE mode:
@@ -197,7 +203,7 @@ Deno.serve(async (req: Request) => {
     if (body?.only === "explore") {
       const answer = typeof body?.answer === "string" ? body.answer.slice(0, 800) : "";
       const [answers, lines] = await Promise.all([
-        decide(`Question: ${query}\n\nAnswer: ${answer}`, [
+        decide(answer ? `Question: ${query}\n\nAnswer: ${answer}` : `Question: ${query}`, [
           { type: "choice", name: "explore", instructions: EXPLORE_INSTRUCTIONS, choices: EXPLORE_CHOICES },
         ], 3000),
         draftExplore(query),
@@ -221,6 +227,7 @@ Deno.serve(async (req: Request) => {
       { type: "predicate", name: "buy", instructions: BUY_INSTRUCTIONS },
       { type: "predicate", name: "movie", instructions: MOVIE_INSTRUCTIONS },
       { type: "predicate", name: "music", instructions: MUSIC_INSTRUCTIONS },
+      { type: "predicate", name: "game", instructions: GAME_INSTRUCTIONS },
       tierQuestion,
     ], DECISIONS_TIMEOUT_MS);
 
@@ -231,12 +238,14 @@ Deno.serve(async (req: Request) => {
         const buy = answers?.buy?.probability;
         const movie = answers?.movie?.probability;
         const music = answers?.music?.probability;
+        const game = answers?.game?.probability;
         return jsonResponse({
           mode: top.value,
           probabilities,
           buyProbability: typeof buy === "number" ? buy : null,
           movieProbability: typeof movie === "number" ? movie : null,
           musicProbability: typeof music === "number" ? music : null,
+          gameProbability: typeof game === "number" ? game : null,
           tier: topTier(answers),
           backend: "decisions",
         });

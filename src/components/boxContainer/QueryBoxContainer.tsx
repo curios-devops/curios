@@ -20,6 +20,7 @@ import { isMovieQuery } from '../../services/auto/movieDetection.ts';
 const BUY_PROBABILITY_THRESHOLD = 0.5;
 const MOVIE_PROBABILITY_THRESHOLD = 0.5;
 const MUSIC_PROBABILITY_THRESHOLD = 0.5;
+const GAME_PROBABILITY_THRESHOLD = 0.5;
 import { warmMovieGpu } from '../../services/movie/warmupService.ts';
 
 interface QueryBoxContainerProps {
@@ -163,9 +164,12 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
         isMovie = !buyIntentDetected && (intent.movieProbability ?? 0) >= MOVIE_PROBABILITY_THRESHOLD;
         // Music 🎵 (a song, singer, band or album) — same call, after buying and films.
         const isMusic = !buyIntentDetected && !isMovie && (intent.musicProbability ?? 0) >= MUSIC_PROBABILITY_THRESHOLD;
+        // Games 🎮 (a video game or franchise) — same call, after music.
+        const isGame = !buyIntentDetected && !isMovie && !isMusic && (intent.gameProbability ?? 0) >= GAME_PROBABILITY_THRESHOLD;
         resolvedMode = buyIntentDetected ? 'fastsearch'
           : isMovie ? 'movie'
           : isMusic ? 'music'
+          : isGame ? 'games'
           : intent.mode === 'search' ? 'fastsearch'
           : intent.mode;
         setIsRouting(false);

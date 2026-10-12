@@ -17,10 +17,40 @@ const WAYS: { id: ExploreWay; icon: LucideIcon }[] = [
   { id: 'read', icon: BookOpen },
 ];
 
-export default function ExploreFurther({ query, answer, images }: { query: string; answer: string; images: string[] }) {
+/** Video's opening frame: undefined while painting, null if none (→ search images). */
+export interface ExplorePrep { options: ExploreOptions | null; frame: string | null | undefined; dropFrame: () => void }
+
+/**
+ * Called by the page as soon as the search starts (from the question alone), so the pick and
+ * the video frame are prepared in parallel with the answer and the images.
+ */
+export function useExplorePrep(query: string): ExplorePrep {
+  const [options, setOptions] = useState<ExploreOptions | null>(null);
+  const [frame, setFrame] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    let live = true;
+    setOptions(null);
+    setFrame(undefined);
+    if (!query.trim()) return;
+    void fetchExploreOptions(query, '').then((o) => {
+      if (!live) return;
+      setOptions(o);
+      if (o.recommended !== 'watch') return;
+      new NanoBananaProvider()
+        .generate(`Opening frame of a short explainer video answering: "${query}". One clear, striking subject, cinematic 16:9 composition. Absolutely no text, letters, labels, captions, diagrams or watermarks.`, { userId: 'curios-guest' })
+        .then((url) => { if (live) setFrame(url); }, () => { if (live) setFrame(null); });
+    });
+    return () => { live = false; };
+  }, [query]);
+
+  return { options, frame, dropFrame: () => setFrame(null) };
+}
+
+export default function ExploreFurther({ query, images, prep }: { query: string; images: string[]; prep: ExplorePrep }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [options, setOptions] = useState<ExploreOptions | null>(null);
+  const { options, frame } = prep;
   // Search images often block hotlinking: skip to the next one until one loads.
   const [imageIndex, setImageIndex] = useState(0);
   const image = images[imageIndex];
@@ -33,24 +63,6 @@ export default function ExploreFurther({ query, answer, images }: { query: strin
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [menuOpen]);
-
-  // Video's opening frame: undefined while painting, null if it failed (→ search images).
-  const [frame, setFrame] = useState<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    let live = true;
-    setFrame(undefined);
-    void fetchExploreOptions(query, answer).then((o) => {
-      if (!live) return;
-      setOptions(o);
-      if (o.recommended !== 'watch') return;
-      const gist = answer.replace(/\s+/g, ' ').slice(0, 300);
-      new NanoBananaProvider()
-        .generate(`Opening frame of a short explainer video answering: "${query}". Context: ${gist}. One clear, striking subject, cinematic 16:9 composition. Absolutely no text, letters, labels, captions, diagrams or watermarks.`, { userId: 'curios-guest' })
-        .then((url) => { if (live) setFrame(url); }, () => { if (live) setFrame(null); });
-    });
-    return () => { live = false; };
-  }, [query]); // once per question, when the answer is done
 
   const go = (way: ExploreWay) => {
     const q = encodeURIComponent(query);
@@ -120,7 +132,7 @@ export default function ExploreFurther({ query, answer, images }: { query: strin
           {pick === 'watch' && frame === undefined ? (
             <div className="w-full aspect-video bg-gray-100 dark:bg-gray-800 animate-pulse" />
           ) : pick === 'watch' && frame ? (
-            <img src={frame} alt="" onError={() => setFrame(null)} className="w-full aspect-video object-cover" />
+            <img src={frame} alt="" onError={prep.dropFrame} className="w-full aspect-video object-cover" />
           ) : image && (
             <img src={image} alt="" onError={() => setImageIndex((i) => i + 1)} className="w-full aspect-video object-cover" />
           )}

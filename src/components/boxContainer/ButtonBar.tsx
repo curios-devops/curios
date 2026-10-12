@@ -70,6 +70,16 @@ export default function ButtonBar({
   const accentColor = useAccentColor();
   const [showModeMenu, setShowModeMenu] = useState(false);
   const modeMenuRef = useRef<HTMLDivElement>(null);
+  // The menu opens toward the side with more room and scrolls inside it (it grows with "More").
+  const [menuPlacement, setMenuPlacement] = useState<{ up: boolean; maxHeight: number }>({ up: true, maxHeight: 480 });
+  const toggleModeMenu = () => {
+    const r = modeMenuRef.current?.getBoundingClientRect();
+    if (r) {
+      const above = r.top - 12, below = window.innerHeight - r.bottom - 12;
+      setMenuPlacement({ up: above >= below, maxHeight: Math.max(above, below) });
+    }
+    setShowModeMenu(!showModeMenu);
+  };
 
   // Close mode menu when clicking outside
   useEffect(() => {
@@ -165,7 +175,7 @@ export default function ButtonBar({
         <div className="relative" ref={modeMenuRef}>
           <button
             type="button"
-            onClick={() => setShowModeMenu(!showModeMenu)}
+            onClick={toggleModeMenu}
             className="h-8 px-3 rounded-full flex items-center gap-1.5 transition-colors duration-200 text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
             onMouseEnter={(e) => {
               e.currentTarget.style.color = accentColor.primary;
@@ -184,8 +194,9 @@ export default function ButtonBar({
           {/* Mode dropdown menu */}
           {showModeMenu && (
             <div
-              className="absolute bottom-full mb-2 left-0 rounded-lg shadow-lg border overflow-hidden min-w-[220px] z-50"
+              className={`absolute ${menuPlacement.up ? 'bottom-full mb-2' : 'top-full mt-2'} left-0 rounded-lg shadow-lg border overflow-x-hidden overflow-y-auto min-w-[220px] z-50`}
               style={{
+                maxHeight: menuPlacement.maxHeight,
                 backgroundColor: 'var(--ui-bg-elevated)',
                 borderColor: 'var(--ui-border-default)',
                 boxShadow: '0 14px 28px var(--ui-shadow-elevated)',

@@ -170,5 +170,7 @@
   "historySubtitle": "あなたが作成したすべてを一か所で。",
   "historySignedOut": "履歴を見るにはサインインしてください。",
   "historyEmpty": "まだ何もありません。",
-  "character": "キャラクター"
+  "character": "キャラクター",
+  "moreModes": "その他",
+  "lessModes": "閉じる"
 }
