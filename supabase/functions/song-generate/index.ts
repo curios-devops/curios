@@ -343,10 +343,16 @@ Deno.serve(async (req: Request) => {
     if (!insp?.artist) return json({ error: "Missing inspiration" }, 400);
 
     if (action === "ideas") {
+      // Twists on what the song is ABOUT (its story, feeling or message), not random settings:
+      // first name its intent, then bend it — so every idea is recognizably that song.
       const out = await luna(
-        `Suggest 5 playful one-line ideas (max 6 words each, language "${language}") for an original song inspired by ${describe(insp)}: genre swaps (e.g. as a symphony, as reggaeton), a twist on its story, a funny or unexpected setting. Specific to this inspiration, no artist or song names. Reply with strict JSON {"ideas":["..."]}.`,
+        `The user wants to write an original song that creatively twists ${describe(insp)}.
+First, from your knowledge and the description, state in one sentence the song's core intent: the story it tells, the feeling it carries or its message (for an artist or album: their signature themes).
+Then suggest 5 creative twists ON THAT INTENT as punchy, playful pitches (max 7 words, no final period) in language "${language}", for example: the same story told by another character, the situation moved to another era or everyday place, the ending reversed, the feeling flipped (tragic → comic), the message answered or continued years later. Every idea must be clearly about this song's story or message — never a random setting or a plain genre swap. No quotes from the lyrics, no artist or song names.
+Reply with strict JSON {"intent":"...","ideas":["..."]}.`,
         "Ideas",
-        200,
+        600,
+        "low",
       );
       return json({ ideas: strings(out?.ideas, 5) });
     }
