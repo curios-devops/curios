@@ -23,5 +23,11 @@
   "musicLyrics": "Songtext",
   "musicLyricsExcerpt": "Auszug",
   "musicLyricsFull": "Ganzen Songtext ansehen",
-  "musicLyricsMeaning": "Worum es im Song geht"
+  "musicLyricsMeaning": "Worum es im Song geht",
+  "musicArtists": "Künstler",
+  "musicGroup": "Band",
+  "musicGuest": "Gast",
+  "musicPresent": "heute",
+  "musicMembers": "Mitglieder",
+  "musicBands": "Bands"
 }

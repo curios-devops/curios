@@ -16,7 +16,7 @@ import { buildSourcesText, streamLLMText } from '../../search/providers/llmProvi
 import { searchVideos } from '../../search/providers/mediaSearchProvider.ts';
 import { AboutSection, FactCard as Card, FactTabs, LinksCard, SourcesList, VideosGrid, domain, type VideoItem } from '../../../components/factSheet/FactSheet.tsx';
 import { ImagesGrid } from '../../../components/results/ImageGallery.tsx';
-import { compact, fetchMusicInfo, findMusicVideo, formatDuration, listenOn, lyricsLink, type MusicInfo, type MusicKind, type MusicTarget, type MusicTrack } from '../musicInfo.ts';
+import { compact, fetchMusicInfo, fetchMusicLineup, findMusicVideo, formatDuration, listenOn, lyricsLink, type MusicInfo, type MusicKind, type MusicLineup, type MusicTarget, type MusicTrack } from '../musicInfo.ts';
 
 type Tab = 'music' | 'lyrics' | 'videos' | 'images' | 'sources';
 
@@ -77,6 +77,8 @@ export default function MusicFactPage() {
   const [explanation, setExplanation] = useState('');
   const [explanationDone, setExplanationDone] = useState(false);
   const [videos, setVideos] = useState<VideoItem[]>([]);
+  // Songs and artists: the band and its members (or the singer and their bands), asked after the sheet.
+  const [lineup, setLineup] = useState<MusicLineup | null>(null);
   // Lyrics tab: what the song says, written only when the tab is opened.
   const [meaning, setMeaning] = useState('');
   const [meaningDone, setMeaningDone] = useState(false);
@@ -102,13 +104,16 @@ export default function MusicFactPage() {
     let cancelled = false;
     setInfo(null); setLoadingInfo(true); setVideoUrl(null); setVideoSearched(false);
     setSources([]); setExplanation(''); setExplanationDone(false); setVideos([]); setTab('music');
-    setMeaning(''); setMeaningDone(false); meaningAsked.current = false;
+    setMeaning(''); setMeaningDone(false); meaningAsked.current = false; setLineup(null);
     audioRef.current?.pause(); setPlaying(null);
     void (async () => {
       const music = await fetchMusicInfo(query, currentLanguage.code, target);
       if (cancelled) return;
       setInfo(music);
       setLoadingInfo(false);
+      if (music && music.kind !== 'album') {
+        fetchMusicLineup(music.artist.name, music.artist.pictureUrl).then((l) => { if (!cancelled) setLineup(l); });
+      }
 
       // Artist / album pages show the video of their most popular song.
       const artist = music?.artist.name ?? '';
@@ -178,6 +183,12 @@ Write in language "${currentLanguage.code}", 90–120 words in 1–2 short parag
   };
 
   const lang = currentLanguage.code;
+  // Time in the band: "1970–1991", "1970–today"; founders without dates show none.
+  const years = (from: string, to: string) => (from ? `${from}–${to || t('musicPresent')}` : '');
+  const people = [
+    ...(lineup?.members ?? []).map((m) => ({ ...m, note: years(m.from, m.to) })),
+    ...(lineup?.groups ?? []).map((g) => ({ ...g, note: [t('musicGroup'), years(g.from, g.to)].filter(Boolean).join(' · ') })),
+  ];
   const kindLabel = info ? t(`musicKind_${info.kind}` as never) : '';
   const meta = info ? [
     kindLabel,
@@ -282,6 +293,33 @@ Write in language "${currentLanguage.code}", 90–120 words in 1–2 short parag
                 </div>
               )}
             </div>
+
+            {/* Who made it — a song: the band and its members (or the singer and their bands) plus
+                guests; a band's own page: its members; a singer's page: their bands. */}
+            {info && info.kind !== 'album' && (info.kind === 'track' || people.length > 0) && (
+              <section className="mt-8">
+                <h2 className="text-base font-semibold mb-3">
+                  {info.kind === 'track' ? t('musicArtists') : lineup?.group ? t('musicMembers') : t('musicBands')}
+                </h2>
+                <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+                  {[
+                    ...(info.kind === 'track' ? [lineup?.group
+                      ? { name: lineup.group.name, pictureUrl: lineup.group.pictureUrl, note: t('musicGroup') }
+                      : { name: info.artist.name, pictureUrl: info.artist.pictureUrl, note: t('musicKind_artist') }] : []),
+                    ...people,
+                    ...(info.featuringArtists ?? []).map((f) => ({ ...f, note: t('musicGuest') })),
+                  ].map((p) => (
+                    <button key={p.name} type="button" onClick={() => open('artist', p.name)} className="w-24 flex-shrink-0 text-left">
+                      <div className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
+                        {p.pictureUrl ? <img src={p.pictureUrl} alt={p.name} className="w-full h-full object-cover" loading="lazy" /> : <Users size={28} className="text-gray-400" />}
+                      </div>
+                      <p className="text-sm font-medium mt-2 leading-tight">{p.name}</p>
+                      {p.note && <p className="text-[11px] leading-tight text-gray-500 dark:text-gray-400">{p.note}</p>}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Top songs (artist / song) or the tracklist (album), with previews */}
             {songs.length > 0 && (

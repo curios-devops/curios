@@ -23,5 +23,11 @@
   "musicLyrics": "Letra",
   "musicLyricsExcerpt": "Trecho",
   "musicLyricsFull": "Ver letra completa",
-  "musicLyricsMeaning": "O que diz a música"
+  "musicLyricsMeaning": "O que diz a música",
+  "musicArtists": "Artistas",
+  "musicGroup": "Banda",
+  "musicGuest": "Convidado",
+  "musicPresent": "hoje",
+  "musicMembers": "Integrantes",
+  "musicBands": "Bandas"
 }

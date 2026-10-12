@@ -22,6 +22,7 @@ export interface MusicInfo {
   trackCount?: number;
   albumCount?: number | null;
   featuring?: string[];
+  featuringArtists?: { name: string; pictureUrl: string | null }[];
   previewUrl?: string | null;
   fans?: number | null;
   /** Last.fm (when its key is configured). */
@@ -80,6 +81,21 @@ export function formatDuration(sec: number | null | undefined): string {
 
 /** 1234567 → "1.2 M" (compact, in the UI language). */
 export const compact = (n: number, lang: string) => new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+
+export interface MusicPerson { name: string; pictureUrl: string | null; from: string; to: string }
+/** A band and its members (song by a band), or the bands a singer played in (song by a person). */
+export interface MusicLineup { group: { name: string; pictureUrl: string | null } | null; members: MusicPerson[]; groups: MusicPerson[] }
+
+/** Null when MusicBrainz has no members / bands for the artist. */
+export async function fetchMusicLineup(artist: string, pictureUrl: string | null): Promise<MusicLineup | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('music-info', { body: { lineup: { artist, pictureUrl } } });
+    if (error) throw error;
+    return (data?.lineup as MusicLineup | null) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /** The full lyrics on a licensed site (Musixmatch). */
 export const lyricsLink = (info: MusicInfo) => `https://www.musixmatch.com/search?query=${encodeURIComponent(`${info.title} ${info.artist.name}`)}`;

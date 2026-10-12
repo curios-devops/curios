@@ -23,5 +23,11 @@
   "musicLyrics": "Testo",
   "musicLyricsExcerpt": "Estratto",
   "musicLyricsFull": "Vedi il testo completo",
-  "musicLyricsMeaning": "Cosa dice la canzone"
+  "musicLyricsMeaning": "Cosa dice la canzone",
+  "musicArtists": "Artisti",
+  "musicGroup": "Gruppo",
+  "musicGuest": "Ospite",
+  "musicPresent": "oggi",
+  "musicMembers": "Membri",
+  "musicBands": "Gruppi"
 }

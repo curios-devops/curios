@@ -227,6 +227,7 @@ async function deezer(p: Parsed) {
     previewUrl: track.preview || null,
     link: track.link ?? null,
     featuring: (track.contributors ?? []).map((c: any) => c.name).filter((n: string) => n !== track.artist.name),
+    featuringArtists: (track.contributors ?? []).filter((c: any) => c.name !== track.artist.name).map((c: any) => ({ name: c.name, pictureUrl: c.picture_xl ?? null })),
     images: [track.album.cover_xl, track.artist.picture_xl, ...extras.albums.slice(0, 6).map((a: any) => a.coverUrl)].filter(Boolean),
     topTracks: extras.topTracks.filter((t: any) => norm(t.title) !== norm(track.title)),
     albums: extras.albums,
@@ -314,6 +315,66 @@ async function lyrics(artist: string, title: string, durationSec: number | null,
   return { text: [...new Set(lines)].slice(0, EXCERPT_LINES).join("\n"), full: false };
 }
 
+// ---------- Line-up (songs): the band and its members, or the singer and their bands ----------
+// MusicBrainz "member of band" relations (free; 1 request/s, so the two calls run in sequence).
+// Members who stayed less than a year (early bassists who left within weeks) are left out.
+// Photos: the member's Deezer artist page, else their Wikipedia picture.
+const MB = "https://musicbrainz.org/ws/2";
+const mbYear = (d?: string) => (d ?? "").slice(0, 4);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// MusicBrainz answers 503 when its 1 request/s limit is hit (shared by every function call): wait and retry.
+async function mbJson(url: string): Promise<any> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await getJson(url);
+    } catch (err) {
+      if (!String(err).includes("503") || attempt === 2) throw err;
+      await sleep(1100 * (attempt + 1));
+    }
+  }
+}
+
+async function photoOf(name: string, context: string): Promise<string | null> {
+  const dzHit = await quiet(findArtist(name), null);
+  if (dzHit && norm(dzHit.name) === norm(name) && (dzHit.nb_fan ?? 0) > 1000) return dzHit.picture_xl ?? null;
+  return (await wikipedia(`${name} ${context}`, "en"))?.imageUrl ?? null;
+}
+
+async function lineup(artistName: string, artistPicture: string | null) {
+  const found = await quiet(mbJson(`${MB}/artist/?query=${encodeURIComponent(`artist:"${artistName}"`)}&fmt=json&limit=5`), null);
+  const hit = (found?.artists ?? []).find((a: any) => norm(a.name) === norm(artistName));
+  if (!hit) return null;
+  await sleep(1000);
+  const full = await quiet(mbJson(`${MB}/artist/${hit.id}?inc=artist-rels&fmt=json`), null);
+  const rels = (full?.relations ?? []).filter((r: any) => r.type === "member of band");
+  const isGroup = hit.type !== "Person";
+  const lasted = (r: any) => {
+    if (!r.end) return true;
+    const days = (Date.parse(r.end.padEnd(10, "-01").replace(/-$/, "")) - Date.parse((r.begin ?? r.end).padEnd(10, "-01").replace(/-$/, ""))) / 86_400_000;
+    return days >= 365;
+  };
+  const seen = new Set<string>();
+  const people = rels
+    .filter((r: any) => r.direction === (isGroup ? "backward" : "forward") && lasted(r))
+    // A band's members without a start date are usually founders → first; a singer's bands
+    // without dates are side projects (charity supergroups) → last.
+    .sort((a: any, b: any) => (a.begin ?? (isGroup ? "0" : "9")).localeCompare(b.begin ?? (isGroup ? "0" : "9")))
+    .filter((r: any) => !seen.has(r.artist.name) && seen.add(r.artist.name))
+    .slice(0, 8);
+  if (!people.length) return null;
+  const photos = await Promise.all(people.map((r: any) => photoOf(r.artist.name, isGroup ? artistName : "band")));
+  const list = people.map((r: any, i: number) => ({
+    name: r.artist.name,
+    pictureUrl: photos[i],
+    from: mbYear(r.begin),
+    to: r.end ? mbYear(r.end) : "",
+  }));
+  // A band → its members; a person → the bands they played in.
+  return isGroup
+    ? { group: { name: artistName, pictureUrl: artistPicture }, members: list, groups: [] }
+    : { group: null, members: [], groups: list.filter((g: { pictureUrl: string | null }) => g.pictureUrl) };
+}
+
 // ---------- Fallback: MusicBrainz + Wikipedia ----------
 async function wikipedia(subject: string, lang: string) {
   const host = `https://${lang}.wikipedia.org`;
@@ -359,6 +420,13 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const lang = typeof body?.language === "string" ? body.language.slice(0, 2) : "en";
     const query = typeof body?.query === "string" ? body.query.trim() : "";
+
+    // Body { lineup: { artist, pictureUrl } } → { lineup }: asked after the sheet is shown
+    // (MusicBrainz's rate limit makes it the slowest part).
+    if (typeof body?.lineup?.artist === "string") {
+      const pic = typeof body.lineup.pictureUrl === "string" ? body.lineup.pictureUrl : null;
+      return json({ lineup: await quiet(lineup(body.lineup.artist, pic), null) });
+    }
 
     // Body { videos: [youtubeId…] } → { id }: the first one YouTube lets other sites embed
     // (label videos often block it and show "video unavailable" inside the player).

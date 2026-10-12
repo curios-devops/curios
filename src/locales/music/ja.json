@@ -23,5 +23,11 @@
   "musicLyrics": "歌詞",
   "musicLyricsExcerpt": "抜粋",
   "musicLyricsFull": "歌詞をすべて見る",
-  "musicLyricsMeaning": "この曲が伝えていること"
+  "musicLyricsMeaning": "この曲が伝えていること",
+  "musicArtists": "アーティスト",
+  "musicGroup": "グループ",
+  "musicGuest": "ゲスト",
+  "musicPresent": "現在",
+  "musicMembers": "メンバー",
+  "musicBands": "所属グループ"
 }
