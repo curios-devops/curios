@@ -13,6 +13,7 @@
 //   generate { inspiration, language, song, style, styleSound, voice, length, idea } → { id }
 //   stems    { id }  → { instrumentalUrl } (voice off; separated once, then cached on the row)
 import { unzipSync } from "npm:fflate@0.8.2";
+import { storeMedia } from "../_shared/cloudinary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,7 +31,6 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 // @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const ELEVEN = "https://api.elevenlabs.io/v1";
-const BUCKET = "movie-assets";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -150,15 +150,9 @@ function captionsFrom(lines: string[], words: Word[]) {
   return out;
 }
 
-async function upload(path: string, bytes: Uint8Array, type: string): Promise<string> {
-  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
-    method: "POST",
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": type, "x-upsert": "true" },
-    body: bytes,
-  });
-  if (!res.ok) throw new Error(`Storage ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
-}
+// Song files go to Cloudinary (Supabase Storage is kept small): "songs/<id>.mp3" → curios/creations/songs/<id>.
+const upload = (path: string, bytes: Uint8Array, type: string) =>
+  storeMedia(bytes, { folder: "songs", publicId: path.replace(/^songs\//, "").replace(/\.mp3$/, ""), resourceType: "video", contentType: type });
 
 const rest = (path: string, init: RequestInit = {}) =>
   fetch(`${SUPABASE_URL}/rest/v1/${path}`, {

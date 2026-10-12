@@ -1,6 +1,7 @@
 name: Storage Retention
 
-# Daily cleanup of guest Movie files older than 30 days in Supabase Storage
+# Daily cleanup of guest Movie files older than 30 days in Supabase Storage, and archive of
+# saved creations' media (movies, songs, game art) from Supabase Storage to Cloudinary
 # (see supabase/functions/storage-retention). Run manually with dry_run=true to
 # see what would be deleted without deleting anything.
 on:

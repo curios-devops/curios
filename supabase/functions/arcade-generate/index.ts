@@ -17,6 +17,7 @@ const corsHeaders = {
 };
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { decide } from "../_shared/decisions.ts";
+import { deleteSupabaseObjects, storeMedia } from "../_shared/cloudinary.ts";
 
 // @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
@@ -125,10 +126,24 @@ async function paint(prompt: string, aspectRatio: string, name: string, referenc
       signal: AbortSignal.timeout(90_000),
     });
     if (!res.ok) { console.error("arcade paint failed", name, res.status, (await res.text()).slice(0, 200)); return null; }
-    return (await res.json()).url ?? null;
+    const url: string | null = (await res.json()).url ?? null;
+    return url ? await moveToCloudinary(url, name) : null;
   } catch (err) {
     console.error("arcade paint threw", name, String(err));
     return null;
+  }
+}
+
+// gemini-image saves to Supabase Storage; the game keeps its art in Cloudinary instead.
+// If the copy fails the Supabase file stays (the game still works).
+async function moveToCloudinary(url: string, name: string): Promise<string> {
+  try {
+    const moved = await storeMedia(url, { folder: "games", publicId: `${crypto.randomUUID()}-${name}`, resourceType: "image" });
+    await deleteSupabaseObjects([url], SUPABASE_URL, SERVICE_KEY).catch((e) => console.error("arcade art delete failed", String(e)));
+    return moved;
+  } catch (err) {
+    console.error("arcade art to Cloudinary failed", name, String(err));
+    return url;
   }
 }
 
