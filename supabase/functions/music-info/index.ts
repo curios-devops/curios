@@ -245,7 +245,8 @@ async function lastfm(kind: Kind, artist: string, title: string, lang: string) {
   const node = d?.artist ?? d?.album ?? d?.track;
   if (!node) return null;
   const stats = node.stats ?? node;
-  const tags = (node.tags?.tag ?? node.toptags?.tag ?? []).map((t: any) => t.name).slice(0, 5);
+  // Listeners often tag a song with its artist ("Queen"): not a genre.
+  const tags = (node.tags?.tag ?? node.toptags?.tag ?? []).map((t: any) => t.name).filter((t: string) => norm(t) !== norm(artist)).slice(0, 5);
   const bio = stripHtml(node.bio?.summary ?? node.wiki?.summary ?? "");
   return {
     listeners: Number(stats.listeners) || null,

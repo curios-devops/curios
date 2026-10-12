@@ -18,5 +18,6 @@
   "musicTopSongs": "人気の曲",
   "musicDiscography": "ディスコグラフィー",
   "musicSimilar": "似ているアーティスト",
-  "musicAbout": "この音楽について"
+  "musicAbout": "この音楽について",
+  "musicPlays": "再生 {n}回"
 }

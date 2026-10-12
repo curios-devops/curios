@@ -18,5 +18,6 @@
   "musicTopSongs": "Top songs",
   "musicDiscography": "Discography",
   "musicSimilar": "Similar artists",
-  "musicAbout": "About the music"
+  "musicAbout": "About the music",
+  "musicPlays": "{n} plays"
 }

@@ -18,5 +18,6 @@
   "musicTopSongs": "Titres les plus écoutés",
   "musicDiscography": "Discographie",
   "musicSimilar": "Artistes similaires",
-  "musicAbout": "À propos de la musique"
+  "musicAbout": "À propos de la musique",
+  "musicPlays": "{n} écoutes"
 }

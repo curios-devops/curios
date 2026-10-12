@@ -1,7 +1,6 @@
 // "Explore further" (Search, before Quick Links): the Decisions API picks the experience that
-// best continues this question (Video, Games or Stories) and Luna writes its one-line pitch.
-// The other ways stay one tap away below; Listen (an original song) is shown disabled until
-// Music exists.
+// best continues this question (Video, Games, Music or Stories) and Luna writes its one-line
+// pitch. The other ways stay one tap away below.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, BookOpen, Gamepad2, Music, PlayCircle, type LucideIcon } from 'lucide-react';
@@ -34,6 +33,8 @@ export default function ExploreFurther({ query, answer, images }: { query: strin
     if (way === 'watch') navigate(`/movie-results?q=${q}`);
     // Games are looked up by title: open the real game closest to the topic, if Luna named one.
     if (way === 'play') navigate(`/games-results?q=${encodeURIComponent(options?.lines.game || query)}`);
+    // Same for Music: the real song closest to the topic (the question's own song, if it names one).
+    if (way === 'listen') navigate(`/music-results?q=${encodeURIComponent(options?.lines.song || query)}`);
     if (way === 'read') navigate(`/stories-results?q=${q}`);
   };
 
@@ -84,23 +85,18 @@ export default function ExploreFurther({ query, answer, images }: { query: strin
 
       <p className="text-sm text-gray-500 dark:text-gray-400 mt-5 mb-3">{t('exploreOther')}</p>
       <div className="grid grid-cols-4 gap-2 sm:gap-3">
-        {WAYS.map(({ id, icon: WayIcon }) => {
-          const soon = id === 'listen';
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => go(id)}
-              disabled={soon}
-              title={soon ? t('exploreSoon') : line(id)}
-              className={`flex flex-col items-center gap-1.5 py-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors text-sm text-gray-900 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed ${options && id === pick ? 'bg-gray-100 dark:bg-[#222222]' : ''}`}
-            >
-              <WayIcon size={18} />
-              <span>{t(`exploreWay_${id}` as never)}</span>
-              {soon && <span className="text-[10px] text-gray-500 dark:text-gray-400 -mt-1">{t('exploreSoon')}</span>}
-            </button>
-          );
-        })}
+        {WAYS.map(({ id, icon: WayIcon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => go(id)}
+            title={line(id)}
+            className={`flex flex-col items-center gap-1.5 py-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors text-sm text-gray-900 dark:text-white ${options && id === pick ? 'bg-gray-100 dark:bg-[#222222]' : ''}`}
+          >
+            <WayIcon size={18} />
+            <span>{t(`exploreWay_${id}` as never)}</span>
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -18,5 +18,6 @@
   "musicTopSongs": "Cançons més escoltades",
   "musicDiscography": "Discografia",
   "musicSimilar": "Artistes semblants",
-  "musicAbout": "Sobre la música"
+  "musicAbout": "Sobre la música",
+  "musicPlays": "{n} reproduccions"
 }

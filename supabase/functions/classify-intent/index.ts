@@ -106,9 +106,8 @@ ${MODE_CHOICES.map((c) => `- "${c.value}": ${c.description}`).join("\n")}
 
 Respond with strict JSON only: {"mode":"search|stories|movie|character"}.`;
 
-// "Explore further" under a Search answer. Listen (an original song) is not built yet, so it is
-// never recommended; its pitch is drafted anyway for the disabled button.
-type Explore = "watch" | "play" | "read";
+// "Explore further" under a Search answer: Video, Games, Music or Stories.
+type Explore = "watch" | "play" | "listen" | "read";
 const EXPLORE_INSTRUCTIONS =
   "The user read a short written answer to this question. Which Curios experience would make them understand or enjoy the topic more?";
 const EXPLORE_CHOICES: { value: Explore; description: string }[] = [
@@ -123,6 +122,11 @@ const EXPLORE_CHOICES: { value: Explore; description: string }[] = [
       "An interactive GAME: the topic is a video game, or has rules, strategy, goals, challenges, survival, building or exploring that would be fun to try hands-on.",
   },
   {
+    value: "listen",
+    description:
+      "MUSIC: the topic is a song, singer, band, album, music genre or music scene, best enjoyed by listening.",
+  },
+  {
     value: "read",
     description:
       "A multi-source STORY: news, a person, a company, a market, politics, culture, an ongoing or evolving situation best told with several sources.",
@@ -132,10 +136,10 @@ const EXPLORE_CHOICES: { value: Explore; description: string }[] = [
 const EXPLORE_PROMPT = `For a question the user asked, write one short line (max 9 words) pitching each way to explore it further, in the same language as the question, specific to its topic:
 - watch: a short explainer video (e.g. "See how curved spacetime might work.")
 - play: discovering it through an interactive game
-- listen: an original song about it
+- listen: listening to a real song that fits the topic
 - read: a richer story from several sources
-Also name "game": one real, well-known video game closest to the topic (title only).
-Respond with strict JSON only: {"watch":"","play":"","listen":"","read":"","game":""}.`;
+Also name "game": one real, well-known video game closest to the topic (title only), and "song": one real, well-known song closest to the topic ("Title Artist"; when the question is about a song, artist or album, that one).
+Respond with strict JSON only: {"watch":"","play":"","listen":"","read":"","game":"","song":""}.`;
 
 async function draftExplore(query: string): Promise<Record<string, string> | null> {
   const headers: Record<string, string> = { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` };
@@ -159,7 +163,7 @@ async function draftExplore(query: string): Promise<Record<string, string> | nul
     }
     const obj = JSON.parse(extractOutputText(await res.json()));
     const out: Record<string, string> = {};
-    for (const k of ["watch", "play", "listen", "read", "game"]) {
+    for (const k of ["watch", "play", "listen", "read", "game", "song"]) {
       if (typeof obj?.[k] === "string" && obj[k].trim()) out[k] = obj[k].trim().slice(0, 120);
     }
     return out;

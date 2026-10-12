@@ -56,10 +56,10 @@ export async function classifyIntent(query: string): Promise<AutoDecision> {
 export type ExploreWay = 'watch' | 'play' | 'listen' | 'read';
 
 export interface ExploreOptions {
-  /** Decisions API pick; null when it was unavailable. Never 'listen' (not built yet). */
-  recommended: Exclude<ExploreWay, 'listen'> | null;
-  /** One-line pitch per way, in the question's language, plus `game`: a related real game. */
-  lines: Partial<Record<ExploreWay | 'game', string>>;
+  /** Decisions API pick; null when it was unavailable. */
+  recommended: ExploreWay | null;
+  /** One-line pitch per way, in the question's language, plus a related real `game` and `song`. */
+  lines: Partial<Record<ExploreWay | 'game' | 'song', string>>;
 }
 
 // "Explore further" under a Search answer: which experience to recommend next.
@@ -72,7 +72,7 @@ export async function fetchExploreOptions(query: string, answer: string): Promis
     const d = data as Partial<ExploreOptions> | null;
     const rec = d?.recommended;
     return {
-      recommended: rec === 'watch' || rec === 'play' || rec === 'read' ? rec : null,
+      recommended: rec === 'watch' || rec === 'play' || rec === 'listen' || rec === 'read' ? rec : null,
       lines: d?.lines ?? {},
     };
   } catch (error) {

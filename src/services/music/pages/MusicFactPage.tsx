@@ -163,7 +163,7 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
     formatDuration(info.durationSec),
   ].filter(Boolean) : [];
   const popularity = info?.listeners
-    ? t('musicListeners').replace('{n}', compact(info.listeners, lang))
+    ? [t('musicListeners').replace('{n}', compact(info.listeners, lang)), info.playcount ? t('musicPlays').replace('{n}', compact(info.playcount, lang)) : ''].filter(Boolean).join(' · ')
     : info?.fans ? t('musicFans').replace('{n}', compact(info.fans, lang)) : '';
   const songs: MusicTrack[] = info?.kind === 'album' ? info.tracks ?? [] : info?.topTracks ?? [];
   const images = (info?.images ?? []).map((url) => ({ url, title: info?.title ?? '', source: info?.source === 'deezer' ? 'deezer.com' : 'wikipedia.org' }));
