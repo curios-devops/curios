@@ -1,9 +1,9 @@
 // "Explore further" (Search, before Quick Links): the Decisions API picks the experience that
 // best continues this question (Video, Games, Music or Stories) and Luna writes its one-line
-// pitch. The other ways stay one tap away below.
-import { useEffect, useState } from 'react';
+// pitch. The other ways are in the "More options" menu at the right of the title.
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, BookOpen, Gamepad2, Music, PlayCircle, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Gamepad2, Music, PlayCircle, Settings2, type LucideIcon } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { fetchExploreOptions, type ExploreOptions, type ExploreWay } from '../../auto/intentRouter.ts';
 
@@ -21,6 +21,15 @@ export default function ExploreFurther({ query, answer, images }: { query: strin
   // Search images often block hotlinking: skip to the next one until one loads.
   const [imageIndex, setImageIndex] = useState(0);
   const image = images[imageIndex];
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menu = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e: MouseEvent) => { if (!menu.current?.contains(e.target as Node)) setMenuOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [menuOpen]);
 
   useEffect(() => {
     let live = true;
@@ -44,8 +53,40 @@ export default function ExploreFurther({ query, answer, images }: { query: strin
 
   return (
     <div className="p-6 border-t border-gray-100 dark:border-gray-800">
-      <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('exploreFurther')}</h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('exploreRecommended')}</p>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('exploreFurther')}</h3>
+        <div ref={menu} className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            title={t('exploreMoreOptions')}
+            aria-label={t('exploreMoreOptions')}
+            aria-expanded={menuOpen}
+            className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#222222] transition-colors"
+          >
+            <Settings2 size={18} />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 z-20 w-64 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1">
+              <p className="px-3 pt-1.5 pb-1 text-xs text-gray-500 dark:text-gray-400">{t('exploreMoreOptions')}</p>
+              {WAYS.filter((w) => w.id !== pick).map(({ id, icon: WayIcon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => { setMenuOpen(false); go(id); }}
+                  className="w-full flex items-start gap-3 px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-[#222222] transition-colors"
+                >
+                  <WayIcon size={18} className="flex-shrink-0 mt-0.5 text-gray-900 dark:text-white" />
+                  <span className="min-w-0">
+                    <span className="block text-sm text-gray-900 dark:text-white">{t(`exploreWay_${id}` as never)}</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{line(id)}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {!options ? (
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse">
@@ -83,21 +124,6 @@ export default function ExploreFurther({ query, answer, images }: { query: strin
         </button>
       )}
 
-      <p className="text-sm text-gray-500 dark:text-gray-400 mt-5 mb-3">{t('exploreOther')}</p>
-      <div className="grid grid-cols-4 gap-2 sm:gap-3">
-        {WAYS.map(({ id, icon: WayIcon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => go(id)}
-            title={line(id)}
-            className={`flex flex-col items-center gap-1.5 py-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors text-sm text-gray-900 dark:text-white ${options && id === pick ? 'bg-gray-100 dark:bg-[#222222]' : ''}`}
-          >
-            <WayIcon size={18} />
-            <span>{t(`exploreWay_${id}` as never)}</span>
-          </button>
-        ))}
-      </div>
     </div>
   );
 }

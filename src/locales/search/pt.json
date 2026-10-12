@@ -1,8 +1,6 @@
 {
   "exploreFurther": "Explore mais",
-  "exploreRecommended": "Recomendado para esta pergunta",
   "exploreRecommendedBadge": "Recomendado",
-  "exploreOther": "Ou escolha outra forma de explorar",
   "exploreTitle_watch": "Assista a uma explicação visual",
   "exploreTitle_play": "Brinque com esta ideia",
   "exploreTitle_listen": "Ouça a música",
@@ -14,5 +12,6 @@
   "exploreLine_watch": "Veja explicado num vídeo curto.",
   "exploreLine_play": "Descubra com um jogo interativo.",
   "exploreLine_listen": "Uma música que combina com este tema.",
-  "exploreLine_read": "Aprofunde com várias fontes."
+  "exploreLine_read": "Aprofunde com várias fontes.",
+  "exploreMoreOptions": "Mais opções"
 }
