@@ -1,7 +1,8 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './components/theme/ThemeContext.tsx';
-import { LanguageProvider } from './contexts/LanguageContext.tsx';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext.tsx';
+import { trackVisit } from './services/telemetry/trackVisit.ts';
 import Sidebar from './components/Sidebar.tsx';
 import Logo from './components/sidebar/Logo.tsx';
 import { Menu, Crown, CircleUserRound } from 'lucide-react';
@@ -28,7 +29,14 @@ function AppContent() {
   const { subscription } = useSubscription(session);
   const isPro = !!session && !!subscription?.isActive;
   const isStandard = !!session && !subscription?.isActive; // Logged in but not pro
-  const isHome = useLocation().pathname === '/'; // Promo banner only shows on home
+  const location = useLocation();
+  const isHome = location.pathname === '/'; // Promo banner only shows on home
+  const { currentLanguage } = useLanguage();
+  // Telemetry (/tele): one page view per route or new search.
+  const visitQuery = new URLSearchParams(location.search).get('q');
+  useEffect(() => {
+    trackVisit(location.pathname, currentLanguage.code);
+  }, [location.pathname, visitQuery]);
   const showBanner = isHome && appSettings.banner.enabled; // operator toggle (appSettings)
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);

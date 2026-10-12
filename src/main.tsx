@@ -96,6 +96,7 @@ function MovieRoute() {
 const GameFactPage = lazyRetry(() => import('./services/games/pages/GameFactPage.tsx'));
 const MusicFactPage = lazyRetry(() => import('./services/music/pages/MusicFactPage.tsx'));
 const SongPage = lazyRetry(() => import('./services/music/song/SongPage.tsx'));
+const TelePage = lazyRetry(() => import('./services/telemetry/TelePage.tsx'));
 // Curios Arcade: a shared AI-made mini game.
 const ArcadePage = lazyRetry(() => import('./services/games/arcade/ArcadePage.tsx'));
 // "Creative": the community's arcade games.
@@ -191,7 +192,9 @@ const router = createBrowserRouter(
     ,{ path: '/anam-test', element: <LazyPageWrapper><AnamAvatarTest /></LazyPageWrapper> }
     // phase6-test route removed - obsolete chunk rendering test
       ]
-    }
+    },
+    // Internal telemetry: outside the app shell, not linked anywhere (see TelePage).
+    { path: '/tele', element: <LazyPageWrapper><TelePage /></LazyPageWrapper> }
   ]
 );
 
