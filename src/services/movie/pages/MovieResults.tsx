@@ -50,6 +50,11 @@ export default function MovieResults() {
   const modeParam = useMemo(() => normalizeMovieMode(new URLSearchParams(location.search).get('mode')), [location.search]);
   // Reopen a saved movie (Home "latest enhanced" card) — loads from Supabase, no regeneration.
   const projectIdParam = useMemo(() => new URLSearchParams(location.search).get('projectId') || '', [location.search]);
+  // Opening frame painted by Search's Explore further (only our own storage / Cloudinary URLs).
+  const frameParam = useMemo(() => {
+    const f = new URLSearchParams(location.search).get('frame') || '';
+    return /^https:\/\/([a-z0-9-]+\.supabase\.co|res\.cloudinary\.com)\//.test(f) ? f : undefined;
+  }, [location.search]);
 
   const [swipes, setSwipes] = useState<MovieSwipe[]>([]);
   const [experience, setExperience] = useState<MovieExperience | null>(null);
@@ -106,6 +111,8 @@ export default function MovieResults() {
       enableNarration: false,
       renderCoreVideo: false,
       mode: modeOverride,
+      // A mode change repaints every frame in the new style.
+      coreFrameUrl: modeOverride ? undefined : frameParam,
       // Mode regeneration keeps the existing Continue Exploring topics as-is.
       relatedTopics: relatedTopics.length > 0 ? relatedTopics : undefined,
       // A swipe with a queued Enhance skips its default image/video render — the

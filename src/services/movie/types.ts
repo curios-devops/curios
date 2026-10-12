@@ -121,6 +121,8 @@ export interface GenerateMovieOptions {
   relatedTopics?: MovieRelatedTopic[];
   /** When false, skip even the core video and stop at images (storyboard preview). */
   renderCoreVideo?: boolean;
+  /** A ready core frame (Search → Explore further already generated it): used as the core swipe's image. */
+  coreFrameUrl?: string;
   /**
    * Checked before each swipe's default image/video API call. Returns true when the
    * user already queued the premium Enhance for that swipe — the default render is

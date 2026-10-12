@@ -145,7 +145,11 @@ export async function generateMovie(
   const referenceImageUrl = await referenceImagePromise; // resolved during steps 2-4
   if (referenceImageUrl) logger.info('[MovieService] Grounding frames on real photo', { referenceImageUrl });
   if (coreSwipe) {
-    if (options.isEnhanceRequested?.(coreSwipe)) {
+    if (options.coreFrameUrl) {
+      // Explore further (Search) already painted the opening frame the user tapped.
+      coreSwipe.imageUrl = options.coreFrameUrl;
+      coreSwipe.status = 'image_ready';
+    } else if (options.isEnhanceRequested?.(coreSwipe)) {
       // User already queued the premium Enhance for this swipe — don't spend the default render.
       logger.info('[MovieService] Core frame skipped: Enhance queued', { swipeId: coreSwipe.id });
     } else {

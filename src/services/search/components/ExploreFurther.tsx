@@ -1,11 +1,14 @@
 // "Explore further" (Search, before Quick Links): the Decisions API picks the experience that
 // best continues this question (Video, Games, Music or Stories) and Luna writes its one-line
 // pitch. The other ways are in the "More options" menu at the right of the title.
+// When it recommends a video, the card shows its opening frame — painted here (no text) and
+// handed to the movie, which starts from that same image.
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, BookOpen, Gamepad2, Music, PlayCircle, Settings2, type LucideIcon } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { fetchExploreOptions, type ExploreOptions, type ExploreWay } from '../../auto/intentRouter.ts';
+import { NanoBananaProvider } from '../../movie/providers/NanoBananaProvider.ts';
 
 const WAYS: { id: ExploreWay; icon: LucideIcon }[] = [
   { id: 'watch', icon: PlayCircle },
@@ -31,15 +34,27 @@ export default function ExploreFurther({ query, answer, images }: { query: strin
     return () => document.removeEventListener('mousedown', close);
   }, [menuOpen]);
 
+  // Video's opening frame: undefined while painting, null if it failed (→ search images).
+  const [frame, setFrame] = useState<string | null | undefined>(undefined);
+
   useEffect(() => {
     let live = true;
-    void fetchExploreOptions(query, answer).then((o) => { if (live) setOptions(o); });
+    setFrame(undefined);
+    void fetchExploreOptions(query, answer).then((o) => {
+      if (!live) return;
+      setOptions(o);
+      if (o.recommended !== 'watch') return;
+      const gist = answer.replace(/\s+/g, ' ').slice(0, 300);
+      new NanoBananaProvider()
+        .generate(`Opening frame of a short explainer video answering: "${query}". Context: ${gist}. One clear, striking subject, cinematic 16:9 composition. Absolutely no text, letters, labels, captions, diagrams or watermarks.`, { userId: 'curios-guest' })
+        .then((url) => { if (live) setFrame(url); }, () => { if (live) setFrame(null); });
+    });
     return () => { live = false; };
   }, [query]); // once per question, when the answer is done
 
   const go = (way: ExploreWay) => {
     const q = encodeURIComponent(query);
-    if (way === 'watch') navigate(`/movie-results?q=${q}`);
+    if (way === 'watch') navigate(`/movie-results?q=${q}${frame ? `&frame=${encodeURIComponent(frame)}` : ''}`);
     // Games are looked up by title: open the real game closest to the topic, if Luna named one.
     if (way === 'play') navigate(`/games-results?q=${encodeURIComponent(options?.lines.game || query)}`);
     // Same for Music: the real song closest to the topic (the question's own song, if it names one).
@@ -102,7 +117,11 @@ export default function ExploreFurther({ query, answer, images }: { query: strin
           onClick={() => go(pick)}
           className="group w-full text-left rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all overflow-hidden bg-white dark:bg-gray-800"
         >
-          {image && (
+          {pick === 'watch' && frame === undefined ? (
+            <div className="w-full aspect-video bg-gray-100 dark:bg-gray-800 animate-pulse" />
+          ) : pick === 'watch' && frame ? (
+            <img src={frame} alt="" onError={() => setFrame(null)} className="w-full aspect-video object-cover" />
+          ) : image && (
             <img src={image} alt="" onError={() => setImageIndex((i) => i + 1)} className="w-full aspect-video object-cover" />
           )}
           <div className="p-4 flex items-start gap-3">
