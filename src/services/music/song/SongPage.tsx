@@ -1,15 +1,19 @@
 // A song made in the song studio (/song/:id, shared by link and listed in Creative): the
 // animation on top with captions over it, then the player and its controls — animation
 // style, captions (none / scrolling / appearing word by word) and voice on/off (the
-// accompaniment alone, separated on first use).
+// accompaniment alone, separated on first use). Karaoke: the accompaniment + the lyrics
+// word by word while the mic records the singer mixed with the music; then a sheet like
+// the games' game-over one (vote, sing again, share, download, listen).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Pause, Play, Share2, ThumbsDown, ThumbsUp, Wand2 } from 'lucide-react';
+import { ArrowLeft, Download, Headphones, Loader2, Mic, Pause, Play, RotateCcw, Share2, Square, ThumbsDown, ThumbsUp, Wand2, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { buildAnimationHtml, DEFAULT_ANIMATION } from './songRuntime.ts';
 import { countSongPlay, fetchSong, mySongVote, separateVoice, voteSong, type AnimationStyle, type Song } from './songService.ts';
 
 type CaptionMode = 'none' | 'scroll' | 'appear';
+type KaraokeState = 'off' | 'preparing' | 'countdown' | 'recording' | 'done';
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const ANIMATIONS: AnimationStyle[] = ['abstract', 'drawn', 'particles'];
 const CAPTIONS: CaptionMode[] = ['none', 'scroll', 'appear'];
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -39,6 +43,15 @@ export default function SongPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const analyser = useRef<AnalyserNode | null>(null);
+  const audioCtx = useRef<AudioContext | null>(null);
+  // Karaoke: mic + music mixed into one recording.
+  const [karaoke, setKaraoke] = useState<KaraokeState>('off');
+  const [countdown, setCountdown] = useState(3);
+  const [micDenied, setMicDenied] = useState(false);
+  const [take, setTake] = useState<{ blob: Blob; url: string } | null>(null);
+  const [takePlaying, setTakePlaying] = useState(false);
+  const takeAudio = useRef<HTMLAudioElement | null>(null);
+  const recording = useRef<{ rec: MediaRecorder; mic: MediaStream; src: MediaStreamAudioSourceNode; dest: MediaStreamAudioDestinationNode } | null>(null);
   const counted = useRef(false);
 
   useEffect(() => {
@@ -111,18 +124,25 @@ export default function SongPage() {
     return () => cancelAnimationFrame(raf);
   }, [song, lineSections]);
 
-  const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio || !song) return;
-    // The analyser needs a user gesture to start (and one source per element).
-    if (!analyser.current) {
+  // The analyser needs a user gesture to start (and one source per element).
+  const audioGraph = () => {
+    const audio = audioRef.current!;
+    if (!analyser.current || !audioCtx.current) {
       const ac = new AudioContext();
       const an = ac.createAnalyser();
       an.fftSize = 1024;
       ac.createMediaElementSource(audio).connect(an);
       an.connect(ac.destination);
       analyser.current = an;
+      audioCtx.current = ac;
     }
+    return { ac: audioCtx.current, an: analyser.current };
+  };
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio || !song || karaoke === 'recording' || karaoke === 'countdown') return;
+    audioGraph();
     if (audio.paused) {
       void audio.play();
       if (!counted.current) { counted.current = true; countSongPlay(song.id); }
@@ -151,6 +171,103 @@ export default function SongPage() {
     }
     switchTrack(url);
     setVoiceOn(false);
+  };
+
+  // Karaoke: the mic stops and the recording closes when the song ends or on Stop.
+  const stopKaraoke = () => {
+    const r = recording.current;
+    if (!r) return;
+    recording.current = null;
+    audioRef.current?.pause();
+    if (r.rec.state !== 'inactive') r.rec.stop();
+    r.mic.getTracks().forEach((track) => track.stop());
+    r.src.disconnect();
+    try { analyser.current?.disconnect(r.dest); } catch { /* already disconnected */ }
+  };
+  useEffect(() => () => stopKaraoke(), []);
+
+  const startKaraoke = async () => {
+    const audio = audioRef.current;
+    if (!song || !audio) return;
+    setMicDenied(false);
+    setTake(null);
+    setKaraoke('preparing');
+    let mic: MediaStream;
+    try {
+      mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch {
+      setMicDenied(true);
+      setKaraoke('off');
+      return;
+    }
+    try {
+      const { ac, an } = audioGraph();
+      await ac.resume();
+      let url = song.instrumentalUrl;
+      if (!url) {
+        url = await separateVoice(song.id);
+        setSong((s) => (s ? { ...s, instrumentalUrl: url } : s));
+      }
+      audio.pause();
+      if (!audio.src.includes('instrumental')) {
+        audio.src = url;
+        await new Promise((r) => audio.addEventListener('loadedmetadata', r, { once: true }));
+      }
+      audio.currentTime = 0;
+      setVoiceOn(false);
+      setCaptionMode('appear');
+      // The music (after the analyser) and the mic (never to the speakers: no feedback).
+      const dest = ac.createMediaStreamDestination();
+      an.connect(dest);
+      const src = ac.createMediaStreamSource(mic);
+      src.connect(dest);
+      const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find((x) => MediaRecorder.isTypeSupported(x));
+      const rec = new MediaRecorder(dest.stream, type ? { mimeType: type } : undefined);
+      const chunks: Blob[] = [];
+      rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+      rec.onstop = () => {
+        const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+        setTake({ blob, url: URL.createObjectURL(blob) });
+        setKaraoke('done');
+      };
+      recording.current = { rec, mic, src, dest };
+      setKaraoke('countdown');
+      for (let n = 3; n > 0; n--) { setCountdown(n); await sleep(1000); }
+      rec.start();
+      setKaraoke('recording');
+      audio.addEventListener('ended', stopKaraoke, { once: true });
+      await audio.play();
+    } catch {
+      mic.getTracks().forEach((track) => track.stop());
+      recording.current = null;
+      setKaraoke('off');
+    }
+  };
+
+  const takeName = () => `${song?.title ?? 'karaoke'} - karaoke.${take?.blob.type.includes('mp4') ? 'm4a' : 'webm'}`;
+  const downloadTake = () => {
+    if (!take) return;
+    const a = document.createElement('a');
+    a.href = take.url;
+    a.download = takeName();
+    a.click();
+  };
+  const shareTake = async () => {
+    if (!take) return;
+    const file = new File([take.blob], takeName(), { type: take.blob.type });
+    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: song?.title }).catch(() => {});
+    else downloadTake();
+  };
+  const toggleTake = () => {
+    const a = takeAudio.current;
+    if (!a) return;
+    if (a.paused) void a.play(); else a.pause();
+  };
+  const closeTake = () => {
+    takeAudio.current?.pause();
+    if (take) URL.revokeObjectURL(take.url);
+    setTake(null);
+    setKaraoke('off');
   };
 
   const vote = async (v: -1 | 1) => {
@@ -216,7 +333,17 @@ export default function SongPage() {
               )}
             </div>
           )}
-          {!playing && (
+          {karaoke === 'countdown' && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+              <span className="text-white text-7xl font-semibold tabular-nums">{countdown}</span>
+            </div>
+          )}
+          {karaoke === 'recording' && (
+            <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full bg-black/60 text-white">
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'var(--accent-primary)' }} /> {t('songKaraokeRecording')}
+            </span>
+          )}
+          {!playing && karaoke === 'off' && (
             <button type="button" onClick={togglePlay} aria-label="Play" className="absolute inset-0 flex items-center justify-center">
               <span className="w-16 h-16 rounded-full flex items-center justify-center bg-black/55"><Play size={30} className="text-white ml-1" /></span>
             </button>
@@ -289,6 +416,28 @@ export default function SongPage() {
           )}
         </div>
 
+        {/* Karaoke */}
+        {song.voice && caps.length > 0 && (
+          <div className="mt-6">
+            <p className="text-sm font-semibold mb-2">{t('songKaraoke')}</p>
+            {karaoke === 'recording' || karaoke === 'countdown' ? (
+              <button type="button" onClick={stopKaraoke} {...pill(true)}>
+                <span className="inline-flex items-center gap-1.5"><Square size={14} />{t('songKaraokeStop')}</span>
+              </button>
+            ) : (
+              <button type="button" onClick={() => void startKaraoke()} disabled={karaoke === 'preparing'} {...pill(false)}>
+                <span className="inline-flex items-center gap-1.5">
+                  {karaoke === 'preparing' ? <Loader2 size={14} className="animate-spin" /> : <Mic size={14} />}
+                  {karaoke === 'preparing' ? t('songKaraokePreparing') : t('songKaraokeStart')}
+                </span>
+              </button>
+            )}
+            <p className="text-xs mt-2 text-gray-500 dark:text-gray-400 inline-flex items-center gap-1.5">
+              <Headphones size={13} /> {micDenied ? t('songKaraokeMicDenied') : t('songKaraokeHint')}
+            </p>
+          </div>
+        )}
+
         {/* Votes, share, make your own */}
         <div className="flex items-center gap-2 mt-8">
           <button type="button" onClick={() => void vote(1)} aria-label="👍" {...pill(votes.mine === 1)}><span className="inline-flex items-center gap-1.5"><ThumbsUp size={14} />{votes.up}</span></button>
@@ -304,6 +453,43 @@ export default function SongPage() {
           </button>
         </div>
       </div>
+
+      {/* Karaoke done: like the games' game-over sheet */}
+      {karaoke === 'done' && take && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl border p-5" style={{ backgroundColor: 'var(--ui-bg-primary)', borderColor: 'var(--ui-border-subtle)' }}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">{t('songKaraokeDone')}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{song.title}</p>
+              </div>
+              <button type="button" onClick={closeTake} aria-label={t('songClose')} className="p-1 hover:opacity-80"><X size={20} /></button>
+            </div>
+            <audio ref={takeAudio} src={take.url} onPlay={() => setTakePlaying(true)} onPause={() => setTakePlaying(false)} onEnded={() => setTakePlaying(false)} />
+
+            <div className="mt-4 flex items-center gap-3">
+              <span className="text-sm flex-1 text-gray-500 dark:text-gray-400">{t('songVotePrompt')}</span>
+              <button type="button" onClick={() => void vote(1)} {...pill(votes.mine === 1)}><span className="inline-flex items-center gap-1.5"><ThumbsUp size={14} />{votes.up}</span></button>
+              <button type="button" onClick={() => void vote(-1)} {...pill(votes.mine === -1)}><span className="inline-flex items-center gap-1.5"><ThumbsDown size={14} />{votes.down}</span></button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => { closeTake(); void startKaraoke(); }} className="h-11 rounded-lg flex items-center justify-center gap-2 text-sm font-medium" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}>
+                <RotateCcw size={16} /> {t('songKaraokeAgain')}
+              </button>
+              <button type="button" onClick={toggleTake} className="h-11 rounded-lg border flex items-center justify-center gap-2 text-sm" style={{ borderColor: 'var(--ui-border-default)' }}>
+                {takePlaying ? <Pause size={16} /> : <Play size={16} />} {t('songKaraokeListen')}
+              </button>
+              <button type="button" onClick={() => void shareTake()} className="h-11 rounded-lg border flex items-center justify-center gap-2 text-sm" style={{ borderColor: 'var(--ui-border-default)' }}>
+                <Share2 size={16} /> {t('songShare')}
+              </button>
+              <button type="button" onClick={downloadTake} className="h-11 rounded-lg border flex items-center justify-center gap-2 text-sm" style={{ borderColor: 'var(--ui-border-default)' }}>
+                <Download size={16} /> {t('songKaraokeDownload')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

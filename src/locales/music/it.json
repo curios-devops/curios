@@ -93,5 +93,19 @@
   "songsFilter": "Canzoni",
   "gamesFilter": "Giochi",
   "songCardStyle": "Canzone",
-  "creativeFilterKind": "Giochi e canzoni"
+  "creativeFilterKind": "Giochi e canzoni",
+  "songLanguage": "Lingua del testo",
+  "songKaraoke": "Karaoke",
+  "songKaraokeStart": "Canta al karaoke",
+  "songKaraokeStop": "Ferma",
+  "songKaraokePreparing": "Preparo la traccia…",
+  "songKaraokeRecording": "Registrazione",
+  "songKaraokeHint": "Usa le cuffie: così si registra solo la tua voce sulla musica.",
+  "songKaraokeMicDenied": "Serve il microfono per registrare la tua voce. Consentilo nel browser.",
+  "songKaraokeDone": "Il tuo karaoke!",
+  "songKaraokeAgain": "Canta di nuovo",
+  "songKaraokeListen": "Ascolta",
+  "songKaraokeDownload": "Scarica",
+  "songVotePrompt": "Ti è piaciuta la canzone?",
+  "songClose": "Chiudi"
 }

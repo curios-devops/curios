@@ -93,5 +93,19 @@
   "songsFilter": "Songs",
   "gamesFilter": "Games",
   "songCardStyle": "Song",
-  "creativeFilterKind": "Games and songs"
+  "creativeFilterKind": "Games and songs",
+  "songLanguage": "Lyrics language",
+  "songKaraoke": "Karaoke",
+  "songKaraokeStart": "Sing karaoke",
+  "songKaraokeStop": "Stop",
+  "songKaraokePreparing": "Preparing the track…",
+  "songKaraokeRecording": "Recording",
+  "songKaraokeHint": "Use headphones so only your voice is recorded over the music.",
+  "songKaraokeMicDenied": "We need the microphone to record your voice. Allow it in the browser.",
+  "songKaraokeDone": "Your karaoke!",
+  "songKaraokeAgain": "Sing again",
+  "songKaraokeListen": "Listen",
+  "songKaraokeDownload": "Download",
+  "songVotePrompt": "Did you like the song?",
+  "songClose": "Close"
 }

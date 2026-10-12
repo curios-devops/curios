@@ -1,11 +1,12 @@
 // "Crea tu propia canción" (Music page): an original song inspired by the song, artist or
-// album on screen. One screen, like the game studio: the lyrics one part at a time in a
-// carousel (moods, regenerate, guided edit), the style to perform it in, voice and length,
-// the idea in one line with suggestions, then Generate.
+// album on screen. One screen, like the game studio: the idea in one line with suggestions,
+// the lyrics one part at a time in a carousel (moods, regenerate, guided edit), their
+// language (the app's or the inspiration's), the style to perform it in, voice and length
+// (long = Pro only), then Generate.
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
-import { ArrowLeft, Check, Loader2, Music, Pencil, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Loader2, Music, Pencil, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import type { MusicInfo } from '../musicInfo.ts';
@@ -26,7 +27,7 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
   const { currentLanguage } = useLanguage();
   const lang = currentLanguage.code;
   const navigate = useNavigate();
-  const { requestProAccess, tier } = useProCredits();
+  const { requestProAccess, promptUpgrade, tier } = useProCredits();
   // Generating (≈ 45 s): seconds elapsed drive the progress bar and its messages.
   const [building, setBuilding] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -43,6 +44,14 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
   const [draftIdea, setDraftIdea] = useState('');
   const [ideas, setIdeas] = useState<string[] | null>(null);
   const [musicReady, setMusicReady] = useState(false);
+  // Lyrics in the app's language or in the inspiration's own ("Original · English").
+  const [lyricsLang, setLyricsLang] = useState<'app' | 'original'>('app');
+  const [originalLang, setOriginalLang] = useState('');
+  const songLang = lyricsLang === 'original' && originalLang ? originalLang : lang;
+  const langName = (code: string) => {
+    const name = new Intl.DisplayNames([lang], { type: 'language' }).of(code) ?? code;
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
 
   // Carousel: one part at a time.
   const scroller = useRef<HTMLDivElement | null>(null);
@@ -54,14 +63,15 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
   const [checks, setChecks] = useState<LineCheck[] | null>(null);
   const [checking, setChecking] = useState(false);
 
-  const draft = (withIdea: string) => {
+  const draft = (withIdea: string, language = songLang) => {
     setDrafting(true);
     setFailed(false);
     setEditing(null);
-    draftSong(info, lang, withIdea, style)
+    draftSong(info, language, withIdea, style)
       .then((s) => {
         setSong(s);
         setDraftIdea(withIdea);
+        if (s.originalLanguage) setOriginalLang(s.originalLanguage);
         // An instrumental inspiration (a symphony, a sonata) starts without voice.
         if (s.instrumental) setVoice(false);
       })
@@ -70,7 +80,7 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
   };
 
   useEffect(() => {
-    draft('');
+    draft('', lang);
     fetchSongIdeas(info, lang).then(setIdeas).catch(() => setIdeas([]));
     void songMusicReady().then(setMusicReady);
   }, [info.title, info.artist.name, lang]); // once per inspiration and language
@@ -87,6 +97,19 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
     const el = scroller.current;
     if (el) el.scrollTo({ left: (el.scrollWidth / parts.length) * i, behavior: 'smooth' });
   };
+  // Changing the length changes the cards: back to the first one at once.
+  const pickLength = (l: SongLength) => {
+    if (l === 'long' && tier !== 'pro') { promptUpgrade(); return; }
+    setLength(l);
+    setActive(0);
+    setEditing(null);
+    scroller.current?.scrollTo({ left: 0 });
+  };
+  const pickLyricsLang = (l: 'app' | 'original') => {
+    if (l === lyricsLang) return;
+    setLyricsLang(l);
+    draft(draftIdea, l === 'original' && originalLang ? originalLang : lang);
+  };
 
   const setPartLines = (id: PartId, lines: string[]) =>
     setSong((s) => (s ? { ...s, parts: s.parts.map((p) => (p.id === id ? { ...p, lines } : p)) } : s));
@@ -94,7 +117,7 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
   const rewrite = (mood?: string) => {
     if (!song || !part) return;
     setBusyPart(part.id);
-    rewritePart(info, lang, song, part.id, mood)
+    rewritePart(info, songLang, song, part.id, mood)
       .then((lines) => setPartLines(part.id, lines))
       .catch(() => {})
       .finally(() => setBusyPart(null));
@@ -109,7 +132,7 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
   const review = () => {
     if (!part) return;
     setChecking(true);
-    checkLines(lang, part.type, editLines, part.lines)
+    checkLines(songLang, part.type, editLines, part.lines)
       .then(setChecks)
       .catch(() => setChecks(null))
       .finally(() => setChecking(false));
@@ -140,7 +163,7 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
     setElapsed(0);
     setBuilding(true);
     try {
-      const id = await generateSong(info, lang, song, { style, voice: voice && !song.instrumental, length, idea: idea.trim() });
+      const id = await generateSong(info, songLang, song, { style, voice: voice && !song.instrumental, length, idea: idea.trim() });
       onClose();
       navigate(`/song/${id}`);
     } catch {
@@ -172,6 +195,30 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-5 space-y-7">
+          {/* The idea in one line, with suggestions written for this inspiration */}
+          <section>
+            <h2 className="text-base font-semibold mb-3">{t('songIdea')}</h2>
+            <input
+              value={idea}
+              onChange={(e) => setIdea(e.target.value)}
+              placeholder={t('arcadeIdeaPlaceholder')}
+              className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+              style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-subtle)' }}
+            />
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 -mx-4 px-4">
+              {ideas === null
+                ? [0, 1, 2].map((i) => <span key={i} className="h-8 w-32 flex-shrink-0 rounded-full animate-pulse" style={{ backgroundColor: 'var(--ui-bg-elevated)' }} />)
+                : ideas.map((x) => (
+                  <button key={x} type="button" onClick={() => setIdea(idea === x ? '' : x)} {...pill(idea === x)}>{x}</button>
+                ))}
+            </div>
+            {ideaChanged && sung && (
+              <button type="button" onClick={() => draft(idea.trim())} disabled={drafting} className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium hover:opacity-80" style={{ color: 'var(--accent-primary)' }}>
+                <Wand2 size={15} /> {t('songRewriteWithIdea')}
+              </button>
+            )}
+          </section>
+
           {/* Lyrics: one part at a time */}
           <section>
             <div className="flex items-baseline justify-between gap-3 mb-3">
@@ -295,6 +342,19 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
             )}
           </section>
 
+          {/* Lyrics language: the app's or the inspiration's own */}
+          {sung && originalLang && originalLang !== lang && (
+            <section>
+              <h2 className="text-base font-semibold mb-3">{t('songLanguage')}</h2>
+              <div className="flex gap-2 flex-wrap">
+                <button type="button" disabled={drafting} onClick={() => pickLyricsLang('app')} {...pill(lyricsLang === 'app')}>{langName(lang)}</button>
+                <button type="button" disabled={drafting} onClick={() => pickLyricsLang('original')} {...pill(lyricsLang === 'original')}>
+                  {t('songStyle_original')} · {langName(originalLang)}
+                </button>
+              </div>
+            </section>
+          )}
+
           {/* Style: the original sound or a typical genre */}
           <section>
             <h2 className="text-base font-semibold mb-3">{t('songStyle')}</h2>
@@ -317,35 +377,15 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
             <div>
               <h2 className="text-sm font-semibold mb-2">{t('songLength')}</h2>
               <div className="flex gap-2 flex-wrap">
-                <button type="button" onClick={() => { setLength('short'); setActive(0); }} {...pill(length === 'short')}>{t('songShort')}</button>
-                <button type="button" onClick={() => setLength('long')} {...pill(length === 'long')}>{t('songLong')}</button>
+                <button type="button" onClick={() => pickLength('short')} {...pill(length === 'short')}>{t('songShort')}</button>
+                {/* Long songs are a Pro feature (crown, like the premium modes) */}
+                <button type="button" onClick={() => pickLength('long')} {...pill(length === 'long')}>
+                  <span className="inline-flex items-center gap-1.5"><Crown size={14} />{t('songLong')}</span>
+                </button>
               </div>
             </div>
           </section>
 
-          {/* The idea in one line, with suggestions written for this inspiration */}
-          <section>
-            <h2 className="text-base font-semibold mb-3">{t('songIdea')}</h2>
-            <input
-              value={idea}
-              onChange={(e) => setIdea(e.target.value)}
-              placeholder={t('arcadeIdeaPlaceholder')}
-              className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
-              style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-subtle)' }}
-            />
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 -mx-4 px-4">
-              {ideas === null
-                ? [0, 1, 2].map((i) => <span key={i} className="h-8 w-32 flex-shrink-0 rounded-full animate-pulse" style={{ backgroundColor: 'var(--ui-bg-elevated)' }} />)
-                : ideas.map((x) => (
-                  <button key={x} type="button" onClick={() => setIdea(idea === x ? '' : x)} {...pill(idea === x)}>{x}</button>
-                ))}
-            </div>
-            {ideaChanged && sung && (
-              <button type="button" onClick={() => draft(idea.trim())} disabled={drafting} className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium hover:opacity-80" style={{ color: 'var(--accent-primary)' }}>
-                <Wand2 size={15} /> {t('songRewriteWithIdea')}
-              </button>
-            )}
-          </section>
         </div>
       </div>
 

@@ -93,5 +93,19 @@
   "songsFilter": "Músicas",
   "gamesFilter": "Jogos",
   "songCardStyle": "Música",
-  "creativeFilterKind": "Jogos e músicas"
+  "creativeFilterKind": "Jogos e músicas",
+  "songLanguage": "Idioma da letra",
+  "songKaraoke": "Karaokê",
+  "songKaraokeStart": "Cantar karaokê",
+  "songKaraokeStop": "Parar",
+  "songKaraokePreparing": "Preparando a faixa…",
+  "songKaraokeRecording": "Gravando",
+  "songKaraokeHint": "Use fones: assim só sua voz é gravada sobre a música.",
+  "songKaraokeMicDenied": "Precisamos do microfone para gravar sua voz. Permita no navegador.",
+  "songKaraokeDone": "Seu karaokê!",
+  "songKaraokeAgain": "Gravar de novo",
+  "songKaraokeListen": "Ouvir",
+  "songKaraokeDownload": "Baixar",
+  "songVotePrompt": "Gostou da música?",
+  "songClose": "Fechar"
 }

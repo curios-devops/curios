@@ -93,5 +93,19 @@
   "songsFilter": "曲",
   "gamesFilter": "ゲーム",
   "songCardStyle": "曲",
-  "creativeFilterKind": "ゲームと曲"
+  "creativeFilterKind": "ゲームと曲",
+  "songLanguage": "歌詞の言語",
+  "songKaraoke": "カラオケ",
+  "songKaraokeStart": "カラオケで歌う",
+  "songKaraokeStop": "停止",
+  "songKaraokePreparing": "トラックを準備中…",
+  "songKaraokeRecording": "録音中",
+  "songKaraokeHint": "ヘッドホンを使うと、音楽の上にあなたの声だけが録音されます。",
+  "songKaraokeMicDenied": "声を録音するにはマイクが必要です。ブラウザで許可してください。",
+  "songKaraokeDone": "あなたのカラオケ！",
+  "songKaraokeAgain": "もう一度歌う",
+  "songKaraokeListen": "聴く",
+  "songKaraokeDownload": "ダウンロード",
+  "songVotePrompt": "この曲は気に入りましたか？",
+  "songClose": "閉じる"
 }

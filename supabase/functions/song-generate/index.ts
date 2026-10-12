@@ -362,8 +362,9 @@ Also give:
 - "title": a new title (not the inspiration's);
 - "sound": the inspiration's musical style in ENGLISH, 8–15 words for a music generator (era, genre, instruments, vocals, tempo) with NO artist or song names;
 - "instrumental": true only if the inspiration is an instrumental piece (no singing);
+- "originalLanguage": the ISO 639-1 code of the language the inspiration is sung in (e.g. "en"; "" if instrumental);
 - "moods": 3–5 one-to-three-word buttons (language "${language}") to rewrite a part with a different feeling, drawn from these lyrics and the inspiration (e.g. "Más alegre", "Más absurda", "Más bohemia").
-Reply with strict JSON {"title":"","sound":"","instrumental":false,"moods":[],"parts":[{"type":"verse","lines":[]},{"type":"chorus","lines":[]},{"type":"verse","lines":[]},{"type":"bridge","lines":[]}]}.`,
+Reply with strict JSON {"title":"","sound":"","instrumental":false,"originalLanguage":"","moods":[],"parts":[{"type":"verse","lines":[]},{"type":"chorus","lines":[]},{"type":"verse","lines":[]},{"type":"bridge","lines":[]}]}.`,
         `Inspiration: ${describe(insp)}`,
         1200,
       );
@@ -378,6 +379,7 @@ Reply with strict JSON {"title":"","sound":"","instrumental":false,"moods":[],"p
           title: typeof out?.title === "string" ? out.title.slice(0, 80) : insp.title,
           sound: typeof out?.sound === "string" ? out.sound.slice(0, 200) : "",
           instrumental: out?.instrumental === true,
+          originalLanguage: typeof out?.originalLanguage === "string" && /^[a-z]{2}$/.test(out.originalLanguage) ? out.originalLanguage : "",
           moods: strings(out?.moods, 5),
           parts,
         },

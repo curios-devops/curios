@@ -93,5 +93,19 @@
   "songsFilter": "Cançons",
   "gamesFilter": "Jocs",
   "songCardStyle": "Cançó",
-  "creativeFilterKind": "Jocs i cançons"
+  "creativeFilterKind": "Jocs i cançons",
+  "songLanguage": "Idioma de la lletra",
+  "songKaraoke": "Karaoke",
+  "songKaraokeStart": "Cantar karaoke",
+  "songKaraokeStop": "Atura",
+  "songKaraokePreparing": "Preparant la pista…",
+  "songKaraokeRecording": "Gravant",
+  "songKaraokeHint": "Fes servir auriculars: així només es grava la teva veu sobre la música.",
+  "songKaraokeMicDenied": "Necessitem el micròfon per gravar la teva veu. Activa’l al navegador.",
+  "songKaraokeDone": "El teu karaoke!",
+  "songKaraokeAgain": "Gravar de nou",
+  "songKaraokeListen": "Escoltar",
+  "songKaraokeDownload": "Descarregar",
+  "songVotePrompt": "T’ha agradat la cançó?",
+  "songClose": "Tancar"
 }

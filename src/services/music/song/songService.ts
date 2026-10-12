@@ -10,6 +10,8 @@ export interface SongDraft {
   /** The inspiration's sound for the music model (English, no artist names). */
   sound: string;
   instrumental: boolean;
+  /** ISO 639-1 language the inspiration is sung in ("" if instrumental) → the "Original" lyrics option. */
+  originalLanguage: string;
   /** 3–5 buttons to rewrite a part with another feeling ("Más alegre"). */
   moods: string[];
   parts: SongPart[];
