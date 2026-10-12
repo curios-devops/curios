@@ -6,7 +6,7 @@
 // explanation written by ONE LLM call grounded on the bio + web sources.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Disc3, ExternalLink, Image as ImageIcon, Link2, Loader2, Music, Pause, Play, Quote, Users, Video, type LucideIcon } from 'lucide-react';
+import { Disc3, ExternalLink, Wand2, Image as ImageIcon, Link2, Loader2, Music, Pause, Play, Quote, Users, Video, type LucideIcon } from 'lucide-react';
 import TopBar from '../../../components/results/TopBar.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
@@ -16,6 +16,8 @@ import { buildSourcesText, streamLLMText } from '../../search/providers/llmProvi
 import { searchVideos } from '../../search/providers/mediaSearchProvider.ts';
 import { AboutSection, FactCard as Card, FactTabs, LinksCard, SourcesList, VideosGrid, domain, type VideoItem } from '../../../components/factSheet/FactSheet.tsx';
 import { ImagesGrid } from '../../../components/results/ImageGallery.tsx';
+import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
+import SongStudio from '../song/SongStudio.tsx';
 import { compact, fetchMusicInfo, fetchMusicLineup, findMusicVideo, formatDuration, listenOn, lyricsLink, type MusicInfo, type MusicKind, type MusicLineup, type MusicTarget, type MusicTrack } from '../musicInfo.ts';
 
 type Tab = 'music' | 'lyrics' | 'videos' | 'images' | 'sources';
@@ -67,6 +69,13 @@ export default function MusicFactPage() {
     return kind && artist ? { kind, artist, title: params.get('title') ?? undefined } : null;
   }, [params]);
   const { getModel } = useAnswerModel(query);
+  const { canUseProFeature, requestProAccess, tier } = useProCredits();
+  const [studioOpen, setStudioOpen] = useState(false);
+  // Out of credits → the sign-up / upgrade modal right away (same as the game studio).
+  const openStudio = () => {
+    if (canUseProFeature) { setStudioOpen(true); return; }
+    void requestProAccess(tier === 'guest' ? t('creditsOutSongGuest') : tier === 'free' ? t('creditsOutSongFree') : undefined);
+  };
 
   const [tab, setTab] = useState<Tab>('music');
   const [info, setInfo] = useState<MusicInfo | null>(null);
@@ -294,6 +303,19 @@ Write in language "${currentLanguage.code}", 90–120 words in 1–2 short parag
               )}
             </div>
 
+            {/* Create your own song inspired by this one (1 Pro credit when generated) */}
+            {info && (
+              <button
+                type="button"
+                onClick={openStudio}
+                className="mt-4 w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium"
+                style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+              >
+                <Wand2 size={18} />
+                {t('songCreate').replace('{name}', info.kind === 'artist' ? info.artist.name : info.title)}
+              </button>
+            )}
+
             {/* Who made it — a song: the band and its members (or the singer and their bands) plus
                 guests; a band's own page: its members; a singer's page: their bands. */}
             {info && info.kind !== 'album' && (info.kind === 'track' || people.length > 0) && (
@@ -433,6 +455,7 @@ Write in language "${currentLanguage.code}", 90–120 words in 1–2 short parag
           />
         )}
       </div>
+      {studioOpen && info && <SongStudio info={info} onClose={() => setStudioOpen(false)} />}
     </div>
   );
 }
