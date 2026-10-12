@@ -230,8 +230,8 @@ export interface ArcadeCard {
   createdAt: string;
   /** Painted background (art games), shown on the card. */
   bg: string | null;
-  /** Songs from the song studio share the catalog (no 2D/3D or game style). */
-  kind?: 'song';
+  /** Made with AI also lists songs, movies and shared stories (no 2D/3D or game style). */
+  kind?: 'song' | 'movie' | 'story';
 }
 
 /** The latest games (sorting and filtering happen on the page — the catalog is small). */

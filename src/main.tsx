@@ -99,7 +99,7 @@ const SongPage = lazyRetry(() => import('./services/music/song/SongPage.tsx'));
 const TelePage = lazyRetry(() => import('./services/telemetry/TelePage.tsx'));
 // Curios Arcade: a shared AI-made mini game.
 const ArcadePage = lazyRetry(() => import('./services/games/arcade/ArcadePage.tsx'));
-// "Creative": the community's arcade games.
+// "Made with AI": the community's movies, songs, games and stories.
 const ArcadeCatalog = lazyRetry(() => import('./services/games/arcade/ArcadeCatalog.tsx'));
 const MovieSharePage = lazyRetry(() => import('./services/movie/pages/MovieSharePage.tsx'));
 const Explore = lazyRetry(() => import('./mainPages/Explore.tsx'));
