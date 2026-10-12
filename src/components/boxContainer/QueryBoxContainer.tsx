@@ -19,6 +19,7 @@ import { isMovieQuery } from '../../services/auto/movieDetection.ts';
 
 const BUY_PROBABILITY_THRESHOLD = 0.5;
 const MOVIE_PROBABILITY_THRESHOLD = 0.5;
+const MUSIC_PROBABILITY_THRESHOLD = 0.5;
 import { warmMovieGpu } from '../../services/movie/warmupService.ts';
 
 interface QueryBoxContainerProps {
@@ -87,6 +88,8 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
         return '/movie-results';
       case 'games':
         return '/games-results';
+      case 'music':
+        return '/music-results';
       case 'character':
         return '/character';
       case 'avatar':
@@ -158,8 +161,11 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
         // Movie 🍿 the local list missed (any title, actor, director, showtimes…).
         // Buying (e.g. merch, tickets deals) keeps priority for the sponsor carousel.
         isMovie = !buyIntentDetected && (intent.movieProbability ?? 0) >= MOVIE_PROBABILITY_THRESHOLD;
+        // Music 🎵 (a song, singer, band or album) — same call, after buying and films.
+        const isMusic = !buyIntentDetected && !isMovie && (intent.musicProbability ?? 0) >= MUSIC_PROBABILITY_THRESHOLD;
         resolvedMode = buyIntentDetected ? 'fastsearch'
           : isMovie ? 'movie'
+          : isMusic ? 'music'
           : intent.mode === 'search' ? 'fastsearch'
           : intent.mode;
         setIsRouting(false);

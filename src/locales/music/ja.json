@@ -1,0 +1,22 @@
+{
+  "music": "音楽",
+  "musicTab": "音楽",
+  "musicKind_track": "曲",
+  "musicKind_artist": "アーティスト",
+  "musicKind_album": "アルバム",
+  "musicTrackCount": "{n}曲",
+  "musicListeners": "リスナー {n}人",
+  "musicFans": "ファン {n}人",
+  "musicPreview": "試聴",
+  "musicPreviewHint": "30秒を聴く",
+  "musicLabel": "レーベル",
+  "musicPopularity": "人気",
+  "musicGenres": "ジャンル",
+  "musicListenOn": "で聴く",
+  "musicTracklist": "収録曲",
+  "musicMoreBy": "{name}のほかの曲",
+  "musicTopSongs": "人気の曲",
+  "musicDiscography": "ディスコグラフィー",
+  "musicSimilar": "似ているアーティスト",
+  "musicAbout": "この音楽について"
+}

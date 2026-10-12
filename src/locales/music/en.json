@@ -1,0 +1,22 @@
+{
+  "music": "Music",
+  "musicTab": "Music",
+  "musicKind_track": "Song",
+  "musicKind_artist": "Artist",
+  "musicKind_album": "Album",
+  "musicTrackCount": "{n} songs",
+  "musicListeners": "{n} listeners",
+  "musicFans": "{n} fans",
+  "musicPreview": "Preview",
+  "musicPreviewHint": "Listen to 30 seconds",
+  "musicLabel": "Label",
+  "musicPopularity": "Popularity",
+  "musicGenres": "Genres",
+  "musicListenOn": "Listen on",
+  "musicTracklist": "Tracklist",
+  "musicMoreBy": "More by {name}",
+  "musicTopSongs": "Top songs",
+  "musicDiscography": "Discography",
+  "musicSimilar": "Similar artists",
+  "musicAbout": "About the music"
+}

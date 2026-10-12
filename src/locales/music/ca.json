@@ -1,0 +1,22 @@
+{
+  "music": "Música",
+  "musicTab": "Música",
+  "musicKind_track": "Cançó",
+  "musicKind_artist": "Artista",
+  "musicKind_album": "Àlbum",
+  "musicTrackCount": "{n} cançons",
+  "musicListeners": "{n} oients",
+  "musicFans": "{n} fans",
+  "musicPreview": "Avançament",
+  "musicPreviewHint": "Escolta 30 segons",
+  "musicLabel": "Segell",
+  "musicPopularity": "Popularitat",
+  "musicGenres": "Gèneres",
+  "musicListenOn": "Escoltar a",
+  "musicTracklist": "Cançons de l’àlbum",
+  "musicMoreBy": "Més de {name}",
+  "musicTopSongs": "Cançons més escoltades",
+  "musicDiscography": "Discografia",
+  "musicSimilar": "Artistes semblants",
+  "musicAbout": "Sobre la música"
+}

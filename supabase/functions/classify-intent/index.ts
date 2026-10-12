@@ -95,6 +95,10 @@ const BUY_INSTRUCTIONS =
 const MOVIE_INSTRUCTIONS =
   "The request is about films or cinema: a movie title or franchise, an actor or director and their films, cast, plot, trailer, reviews, box office, release dates, showtimes, what is playing in cinemas or theaters, or where to watch a movie. Not a real historical event, place, person's life or science topic that merely shares a name with a film.";
 
+// Music 🎵: same call. Routes questions about a song, an artist or an album to the Music page.
+const MUSIC_INSTRUCTIONS =
+  "The request is about a specific song, singer, band, musician, rapper, DJ or album: who sings a song, what a song means, an artist's songs, albums, discography or career, or a record. Not news, latest updates, rumors or controversies about them, not playing an instrument, music theory lessons, buying audio gear, concert tickets, or a film.";
+
 const SYSTEM_PROMPT = `You are an intent router. ${MODE_INSTRUCTIONS}
 Classify the user's query into exactly ONE mode:
 
@@ -212,6 +216,7 @@ Deno.serve(async (req: Request) => {
       { type: "choice", name: "mode", instructions: MODE_INSTRUCTIONS, choices: MODE_CHOICES },
       { type: "predicate", name: "buy", instructions: BUY_INSTRUCTIONS },
       { type: "predicate", name: "movie", instructions: MOVIE_INSTRUCTIONS },
+      { type: "predicate", name: "music", instructions: MUSIC_INSTRUCTIONS },
       tierQuestion,
     ], DECISIONS_TIMEOUT_MS);
 
@@ -221,11 +226,13 @@ Deno.serve(async (req: Request) => {
       if (VALID_MODES.includes(top.value as Mode)) {
         const buy = answers?.buy?.probability;
         const movie = answers?.movie?.probability;
+        const music = answers?.music?.probability;
         return jsonResponse({
           mode: top.value,
           probabilities,
           buyProbability: typeof buy === "number" ? buy : null,
           movieProbability: typeof movie === "number" ? movie : null,
+          musicProbability: typeof music === "number" ? music : null,
           tier: topTier(answers),
           backend: "decisions",
         });

@@ -11,10 +11,12 @@ export interface AutoDecision {
   buyProbability: number | null;
   /** Decisions movie-topic probability (Movie 🍿); null when the server fell back. */
   movieProbability: number | null;
+  /** Decisions music-topic probability (Music 🎵); null when the server fell back. */
+  musicProbability: number | null;
 }
 
 const CLASSIFY_TIMEOUT_MS = 3000;
-const FALLBACK: AutoDecision = { mode: 'search', buyProbability: null, movieProbability: null };
+const FALLBACK: AutoDecision = { mode: 'search', buyProbability: null, movieProbability: null, musicProbability: null };
 
 // Classify a free-text query into a target mode for Auto mode (OpenAI Decisions API server-side).
 // Degrades gracefully to 'search' on any error or timeout — Auto must never block the user.
@@ -27,8 +29,8 @@ export async function classifyIntent(query: string): Promise<AutoDecision> {
       .invoke('classify-intent', { body: { query: trimmed } })
       .then(({ data, error }): AutoDecision => {
         if (error) throw error;
-        const d = data as { mode?: string; buyProbability?: number | null; movieProbability?: number | null; tier?: QuestionTier | null; backend?: string } | null;
-        logger.info('[Auto] intent', { mode: d?.mode, buy: d?.buyProbability, movie: d?.movieProbability, tier: d?.tier, backend: d?.backend });
+        const d = data as { mode?: string; buyProbability?: number | null; movieProbability?: number | null; musicProbability?: number | null; tier?: QuestionTier | null; backend?: string } | null;
+        logger.info('[Auto] intent', { mode: d?.mode, buy: d?.buyProbability, movie: d?.movieProbability, music: d?.musicProbability, tier: d?.tier, backend: d?.backend });
         // The same call rated difficulty — cache it so the destination page doesn't ask again.
         rememberTier(trimmed, d?.tier ?? null);
         const mode = d?.mode;
@@ -36,6 +38,7 @@ export async function classifyIntent(query: string): Promise<AutoDecision> {
           mode: mode === 'stories' || mode === 'movie' || mode === 'character' ? mode : 'search',
           buyProbability: typeof d?.buyProbability === 'number' ? d.buyProbability : null,
           movieProbability: typeof d?.movieProbability === 'number' ? d.movieProbability : null,
+          musicProbability: typeof d?.musicProbability === 'number' ? d.musicProbability : null,
         };
       });
 
