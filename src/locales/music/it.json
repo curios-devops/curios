@@ -19,5 +19,9 @@
   "musicDiscography": "Discografia",
   "musicSimilar": "Artisti simili",
   "musicAbout": "Sulla musica",
-  "musicPlays": "{n} ascolti"
+  "musicPlays": "{n} ascolti",
+  "musicLyrics": "Testo",
+  "musicLyricsExcerpt": "Estratto",
+  "musicLyricsFull": "Vedi il testo completo",
+  "musicLyricsMeaning": "Cosa dice la canzone"
 }

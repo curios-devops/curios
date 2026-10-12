@@ -32,6 +32,8 @@ export interface MusicInfo {
   link: string | null;
   lastfmUrl: string | null;
   wikipediaUrl?: string | null;
+  /** Songs only: the full text when public domain, else a short quotation; null → no Lyrics tab. */
+  lyrics?: { text: string; full: boolean } | null;
   /** Album tracklist (album pages). */
   tracks?: MusicTrack[];
   topTracks: MusicTrack[];
@@ -78,6 +80,9 @@ export function formatDuration(sec: number | null | undefined): string {
 
 /** 1234567 → "1.2 M" (compact, in the UI language). */
 export const compact = (n: number, lang: string) => new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+
+/** The full lyrics on a licensed site (Musixmatch). */
+export const lyricsLink = (info: MusicInfo) => `https://www.musixmatch.com/search?query=${encodeURIComponent(`${info.title} ${info.artist.name}`)}`;
 
 /** Where to listen: Deezer's own page, plus a search on the other services (no keys needed). */
 export function listenOn(info: MusicInfo): { name: string; url: string; logoUrl: string }[] {

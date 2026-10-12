@@ -19,5 +19,9 @@
   "musicDiscography": "ディスコグラフィー",
   "musicSimilar": "似ているアーティスト",
   "musicAbout": "この音楽について",
-  "musicPlays": "再生 {n}回"
+  "musicPlays": "再生 {n}回",
+  "musicLyrics": "歌詞",
+  "musicLyricsExcerpt": "抜粋",
+  "musicLyricsFull": "歌詞をすべて見る",
+  "musicLyricsMeaning": "この曲が伝えていること"
 }

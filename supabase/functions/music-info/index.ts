@@ -212,12 +212,14 @@ async function deezer(p: Parsed) {
   const hit = bestByTitle<any>(list, p.title, (t) => t.rank ?? 0);
   if (!hit) return null;
   const [track, album, extras] = await Promise.all([dz(`/track/${hit.id}`), originalAlbum(list, hit, p), artistExtras(hit.artist.id)]);
+  // Deezer often only has a later edition of the original album ("Deluxe", 2005).
+  const songYear = [p.year, year(album?.release_date ?? track.release_date)].filter(Boolean).sort()[0] ?? "";
   return {
     kind: "track" as const,
     title: track.title_short ?? track.title,
     artist: { name: track.artist.name, pictureUrl: track.artist.picture_xl ?? null },
-    album: { title: album?.title ?? track.album.title, coverUrl: album?.cover_xl ?? track.album.cover_xl ?? null, year: year(album?.release_date ?? track.release_date) },
-    year: [p.year, year(album?.release_date ?? track.release_date)].filter(Boolean).sort()[0] ?? "",
+    album: { title: album?.title ?? track.album.title, coverUrl: album?.cover_xl ?? track.album.cover_xl ?? null, year: songYear },
+    year: songYear,
     genres: (album?.genres?.data ?? []).map((g: any) => g.name),
     label: album?.label ?? null,
     durationSec: track.duration ?? null,
@@ -255,6 +257,61 @@ async function lastfm(kind: Kind, artist: string, title: string, lang: string) {
     bio: bio.length > 40 ? bio : "",
     lastfmUrl: node.url ?? null,
   };
+}
+
+// ---------- Lyrics (LRCLIB, no key) — licence-compliant ----------
+// Lyrics are copyrighted unless public domain in both the US (published more than 95 years
+// ago) and the EU (lyricist dead more than 70 years) → then the full text; otherwise a short quotation
+// (4 lines) to support the commentary, and the full lyrics stay a link to a licensed site.
+// Nothing (or instrumental) → null, and the page shows no Lyrics tab. The full protected
+// text never leaves this function.
+const EXCERPT_LINES = 4;
+
+async function lyricistDeath(artist: string, title: string): Promise<number | null> {
+  if (!OPENAI_API_KEY) return null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: "gpt-6-luna",
+        input: [
+          { role: "system", content: 'Who wrote the LYRICS of this song, and in which year did the last surviving lyricist die? Traditional/anonymous lyrics count as 1800. Reply with strict JSON {"died": year} or {"died": null} when any lyricist is alive or you are not sure.' },
+          { role: "user", content: `"${title}" as recorded by ${artist}` },
+        ],
+        max_output_tokens: 40,
+        reasoning: { effort: "none" },
+        text: { format: { type: "json_object" } },
+      }),
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data.output_text ?? data.output?.flatMap((o: any) => o.content ?? []).map((c: any) => c.text ?? "").join("") ?? "";
+    const died = Number(JSON.parse(text)?.died);
+    return died > 1000 ? died : null;
+  } catch {
+    return null;
+  }
+}
+async function lyrics(artist: string, title: string, durationSec: number | null, songYear: string) {
+  const params = new URLSearchParams({ artist_name: artist, track_name: title });
+  if (durationSec) params.set("duration", String(durationSec));
+  const d = await quiet(getJson(`https://lrclib.net/api/get?${params}`), null)
+    ?? (durationSec ? await quiet(getJson(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`), null) : null);
+  const text: string = d?.plainLyrics ?? "";
+  if (!text.trim() || d?.instrumental) return null;
+  const now = new Date().getFullYear();
+  const usFree = Number(songYear) > 0 && Number(songYear) <= now - 96;
+  // Rare case, so only then: when did the lyricist die? Unknown → treated as protected.
+  if (usFree) {
+    const died = await lyricistDeath(artist, title);
+    if (died && died <= now - 71) return { text: text.trim(), full: true };
+  }
+  // Opening lines with words, not ad-libs ("Ohhh, oh, no").
+  const realWords = (l: string) => new Set((l.toLowerCase().match(/\p{L}{3,}/gu) ?? [])).size;
+  const lines = text.split("\n").map((l) => l.trim()).filter((l) => !/^\[.*\]$/.test(l) && realWords(l) >= 3);
+  return { text: [...new Set(lines)].slice(0, EXCERPT_LINES).join("\n"), full: false };
 }
 
 // ---------- Fallback: MusicBrainz + Wikipedia ----------
@@ -323,7 +380,10 @@ Deno.serve(async (req: Request) => {
     const info = (await quiet(deezer(parsed), null)) ?? (await musicbrainz(parsed, lang));
     if (!info) return json({ found: false });
 
-    const fm = await lastfm(info.kind, info.artist.name, info.title, lang);
+    const [fm, words] = await Promise.all([
+      lastfm(info.kind, info.artist.name, info.title, lang),
+      info.kind === "track" ? lyrics(info.artist.name, info.title, (info as { durationSec?: number | null }).durationSec ?? null, (info as { year?: string }).year ?? "") : null,
+    ]);
     return json({
       found: true,
       source: info.link ? "deezer" : "musicbrainz",
@@ -333,6 +393,7 @@ Deno.serve(async (req: Request) => {
       tags: fm?.tags ?? [],
       bio: fm?.bio || (info as { bio?: string }).bio || "",
       lastfmUrl: fm?.lastfmUrl ?? null,
+      lyrics: words,
     });
   } catch (err) {
     console.error("music-info error", err);

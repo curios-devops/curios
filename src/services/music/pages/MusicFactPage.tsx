@@ -6,7 +6,7 @@
 // explanation written by ONE LLM call grounded on the bio + web sources.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Disc3, Image as ImageIcon, Link2, Loader2, Music, Pause, Play, Users, Video, type LucideIcon } from 'lucide-react';
+import { Disc3, ExternalLink, Image as ImageIcon, Link2, Loader2, Music, Pause, Play, Quote, Users, Video, type LucideIcon } from 'lucide-react';
 import TopBar from '../../../components/results/TopBar.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
@@ -16,9 +16,9 @@ import { buildSourcesText, streamLLMText } from '../../search/providers/llmProvi
 import { searchVideos } from '../../search/providers/mediaSearchProvider.ts';
 import { AboutSection, FactCard as Card, FactTabs, LinksCard, SourcesList, VideosGrid, domain, type VideoItem } from '../../../components/factSheet/FactSheet.tsx';
 import { ImagesGrid } from '../../../components/results/ImageGallery.tsx';
-import { compact, fetchMusicInfo, findMusicVideo, formatDuration, listenOn, type MusicInfo, type MusicKind, type MusicTarget, type MusicTrack } from '../musicInfo.ts';
+import { compact, fetchMusicInfo, findMusicVideo, formatDuration, listenOn, lyricsLink, type MusicInfo, type MusicKind, type MusicTarget, type MusicTrack } from '../musicInfo.ts';
 
-type Tab = 'music' | 'videos' | 'images' | 'sources';
+type Tab = 'music' | 'lyrics' | 'videos' | 'images' | 'sources';
 
 // No video: covers and artist photos fade one into the next (square covers sit on a blurred copy).
 function PhotoCarousel({ images, alt }: { images: string[]; alt: string }) {
@@ -77,6 +77,10 @@ export default function MusicFactPage() {
   const [explanation, setExplanation] = useState('');
   const [explanationDone, setExplanationDone] = useState(false);
   const [videos, setVideos] = useState<VideoItem[]>([]);
+  // Lyrics tab: what the song says, written only when the tab is opened.
+  const [meaning, setMeaning] = useState('');
+  const [meaningDone, setMeaningDone] = useState(false);
+  const meaningAsked = useRef(false);
 
   // One 30 s preview at a time, from any list on the page.
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -98,6 +102,7 @@ export default function MusicFactPage() {
     let cancelled = false;
     setInfo(null); setLoadingInfo(true); setVideoUrl(null); setVideoSearched(false);
     setSources([]); setExplanation(''); setExplanationDone(false); setVideos([]); setTab('music');
+    setMeaning(''); setMeaningDone(false); meaningAsked.current = false;
     audioRef.current?.pause(); setPlaying(null);
     void (async () => {
       const music = await fetchMusicInfo(query, currentLanguage.code, target);
@@ -146,6 +151,26 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
     return () => { cancelled = true; };
   }, [query, target, currentLanguage.code]);
 
+  const openLyrics = () => {
+    setTab('lyrics');
+    if (meaningAsked.current || !info?.lyrics) return;
+    meaningAsked.current = true;
+    const words = info.lyrics;
+    void (async () => {
+      const model = await getModel();
+      const prompt = `Explain what the song "${info.title}" by ${info.artist.name}${info.year ? ` (${info.year})` : ''} says and means.
+${words.full ? 'Lyrics' : 'Opening lines'}:
+${words.text}
+
+Search Results:
+${buildSourcesText(sources)}
+
+Write in language "${currentLanguage.code}", 90–120 words in 1–2 short paragraphs: the story or feeling the lyrics express and the main images they use. Ground it in the lines and sources; where the meaning is debated, say so. Never quote more than a few words of lyrics. No title heading, no URLs.`;
+      await streamLLMText(prompt, 600, (chunk) => setMeaning((prev) => prev + chunk), 60000, model.model);
+      setMeaningDone(true);
+    })();
+  };
+
   const open = (kind: MusicKind, artist: string, title?: string) => {
     const p = new URLSearchParams({ q: kind === 'artist' ? artist : `${title} ${artist}`, kind, artist });
     if (title) p.set('title', title);
@@ -170,6 +195,7 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
 
   const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: 'music', label: t('musicTab'), icon: Music },
+    ...(info?.lyrics ? [{ id: 'lyrics' as const, label: t('musicLyrics'), icon: Quote }] : []),
     ...(videos.length > 0 ? [{ id: 'videos' as const, label: t('movieVideos'), icon: Video }] : []),
     ...(images.length > 0 ? [{ id: 'images' as const, label: t('movieImages'), icon: ImageIcon }] : []),
     { id: 'sources', label: t('movieSources'), icon: Link2 },
@@ -192,7 +218,7 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
       <TopBar query={query} timeAgo="" />
-      <FactTabs tabs={TABS} active={tab} onChange={setTab} />
+      <FactTabs tabs={TABS} active={tab} onChange={(id) => (id === 'lyrics' ? openLyrics() : setTab(id))} />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {tab === 'music' && (
@@ -326,6 +352,32 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
               done={explanationDone}
             />
           </>
+        )}
+
+        {/* Public-domain songs show the full lyrics; protected ones a short quotation + a
+            licensed link (the full text never reaches the browser). */}
+        {tab === 'lyrics' && info?.lyrics && (
+          <div className="max-w-3xl">
+            <h1 className="text-lg font-semibold">{info.title}</h1>
+            <p className="text-sm mt-1 mb-4 text-gray-500 dark:text-gray-400">
+              {info.artist.name}{!info.lyrics.full && ` · ${t('musicLyricsExcerpt')}`}
+            </p>
+            <blockquote className="whitespace-pre-line text-base leading-relaxed pl-4 border-l-2" style={{ borderColor: 'var(--accent-primary)' }}>
+              {info.lyrics.text}{!info.lyrics.full && ' …'}
+            </blockquote>
+            {!info.lyrics.full && (
+              <a
+                href={lyricsLink(info)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-90"
+                style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+              >
+                {t('musicLyricsFull')} <ExternalLink size={14} />
+              </a>
+            )}
+            <AboutSection title={t('musicLyricsMeaning')} text={meaning} done={meaningDone} />
+          </div>
         )}
 
         {tab === 'videos' && <VideosGrid videos={videos} />}
