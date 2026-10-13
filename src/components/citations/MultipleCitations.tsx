@@ -104,6 +104,24 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
             style={{ left: place.arrow - 4, backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
           />
 
+          {/* Several sources: an accent bar on top flips through them. */}
+          {many && (
+            <span
+              className="flex items-center justify-between px-2 py-1 rounded-t-[10px]"
+              style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+            >
+              <button type="button" onClick={step(-1)} className="p-1.5 rounded-full hover:bg-black/10" aria-label="Previous source">
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-xs font-semibold tabular-nums">
+                {index + 1} / {uniqueCitations.length}
+              </span>
+              <button type="button" onClick={step(1)} className="p-1.5 rounded-full hover:bg-black/10" aria-label="Next source">
+                <ChevronRight size={16} />
+              </button>
+            </span>
+          )}
+
           <a
             href={citation.url}
             target="_blank"
@@ -137,19 +155,6 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
             )}
           </a>
 
-          {many && (
-            <span className="flex items-center justify-between px-2 py-1.5 border-t" style={{ borderColor: 'var(--ui-border-default)' }}>
-              <button type="button" onClick={step(-1)} className="p-1.5 rounded-full hover:bg-[var(--ui-bg-secondary)]" aria-label="Previous source">
-                <ChevronLeft size={16} style={{ color: 'var(--ui-text-secondary)' }} />
-              </button>
-              <span className="text-xs font-medium tabular-nums" style={{ color: 'var(--ui-text-secondary)' }}>
-                {index + 1} / {uniqueCitations.length}
-              </span>
-              <button type="button" onClick={step(1)} className="p-1.5 rounded-full hover:bg-[var(--ui-bg-secondary)]" aria-label="Next source">
-                <ChevronRight size={16} style={{ color: 'var(--ui-text-secondary)' }} />
-              </button>
-            </span>
-          )}
         </span>
       )}
     </span>

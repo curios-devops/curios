@@ -114,7 +114,7 @@ export default function NodeSharePage() {
   if (!node) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center" style={{ backgroundColor: 'var(--background)' }}>
-        <h1 className="text-2xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>This page isn't available</h1>
+        <h1 className="text-2xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>This page isn&apos;t available</h1>
         <p style={{ color: 'var(--ui-text-muted)' }}>The shared answer may have been removed or made private.</p>
         <Link to="/" className="px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}>
           Go home
