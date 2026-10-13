@@ -48,9 +48,11 @@ export default function CuriosLogo({ size = 16, className = "", colorOverride, f
           <circle cx="380" cy="380" r="20" fill="black" />
           <circle cx="420" cy="420" r="20" fill="black" />
         </mask>
-        <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="10" />
-        </filter>
+        {/* Solid at the square's own edge, fading toward the halo's rim. */}
+        <radialGradient id={glowId} r="0.71">
+          <stop offset="0.6" stopColor={centerColor} stopOpacity="1" />
+          <stop offset="1" stopColor={centerColor} stopOpacity="0" />
+        </radialGradient>
       </defs>
       <g mask={`url(#${maskId})`} fill={frameColor}>
         <rect x="100" y="0" width="300" height="100" rx="20" />
@@ -63,8 +65,9 @@ export default function CuriosLogo({ size = 16, className = "", colorOverride, f
         <polygon points="80,400 100,380 120,400 100,420" />
         <polygon points="380,400 400,380 420,400 400,420" />
       </g>
-      {/* The beat: the square keeps its size; a blurred copy grows out of it and fades. */}
-      {pulse && <rect x="200" y="200" width="100" height="100" rx="20" fill={centerColor} filter={`url(#${glowId})`} className="logo-dot-pulse" />}
+      {/* The beat: the square keeps its size; a copy in its color grows out of it, turning
+          more transparent the farther it goes. */}
+      {pulse && <rect x="200" y="200" width="100" height="100" rx="20" fill={`url(#${glowId})`} className="logo-dot-pulse" />}
       <rect x="200" y="200" width="100" height="100" rx="20" fill={centerColor} />
     </svg>
   );

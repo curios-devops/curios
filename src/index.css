@@ -309,16 +309,17 @@ html[data-theme="dark"] .dark\:border-gray-800 {
 }
 /* Logo center square: a slow, subtle breath (brighter ↔ softer) so the site
    feels alive without drawing attention. app-settings.md → LOGO_DOT_PULSE. */
-/* Center square beats: it keeps its size while a blurred halo of the same color grows out
-   of it and fades as it grows (a heartbeat, not the whole shape expanding). Previous looks:
-   size breathing 1→1.25 (a924a44), opacity fade (tag pre-logo-pulse). */
+/* Center square beats: it keeps its size while a halo leaves it in the very same color and
+   turns more transparent the farther it goes (a heartbeat, not the whole shape expanding).
+   Previous looks: blurred halo (e140136), size breathing 1→1.25 (a924a44), opacity fade
+   (tag pre-logo-pulse). */
 .logo-dot-pulse {
   transform-box: fill-box;
   transform-origin: center;
   animation: logoDotPulse 2s ease-out infinite;
 }
 @keyframes logoDotPulse {
-  0% { transform: scale(1); opacity: 0.9; }
+  0% { transform: scale(1); opacity: 1; }
   100% { transform: scale(2); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
