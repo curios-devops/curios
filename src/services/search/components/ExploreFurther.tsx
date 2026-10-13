@@ -9,6 +9,7 @@ import { ArrowUpRight, BookOpen, Gamepad2, Music, PlayCircle, Settings2, Sparkle
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { fetchExploreOptions, type ExploreOptions, type ExploreWay } from '../../auto/intentRouter.ts';
 import { NanoBananaProvider } from '../../movie/providers/NanoBananaProvider.ts';
+import { getCached, setCached } from '../searchCache.ts';
 
 const WAYS: { id: ExploreWay; icon: LucideIcon }[] = [
   { id: 'watch', icon: PlayCircle },
@@ -19,6 +20,27 @@ const WAYS: { id: ExploreWay; icon: LucideIcon }[] = [
 
 /** Video's opening frame: undefined while painting, null if none (→ search images). */
 export interface ExplorePrep { options: ExploreOptions | null; frame: string | null | undefined; dropFrame: () => void }
+
+// One preparation per question for the whole visit: leaving the search while the frame is
+// still painting and coming back reuses the same work (and a reload reuses the cache).
+type ExploreJob = { options: Promise<ExploreOptions>; frame: Promise<string | null> };
+const jobs = new Map<string, ExploreJob>();
+
+function exploreJob(query: string): ExploreJob {
+  const running = jobs.get(query);
+  if (running) return running;
+  const key = `explore|${query}`;
+  const cached = getCached<{ options: ExploreOptions; frame: string | null }>(key)?.value;
+  const options = cached ? Promise.resolve(cached.options) : fetchExploreOptions(query, '');
+  const frame = cached ? Promise.resolve(cached.frame) : options.then((o) => o.recommended !== 'watch' ? null
+    : new NanoBananaProvider()
+      .generate(`Opening frame of a short explainer video answering: "${query}". One clear, striking subject, cinematic 16:9 composition. Absolutely no text, letters, labels, captions, diagrams or watermarks.`, { userId: 'curios-guest' })
+      .catch(() => null));
+  if (!cached) void Promise.all([options, frame]).then(([o, f]) => setCached(key, { options: o, frame: f }));
+  const job = { options, frame };
+  jobs.set(query, job);
+  return job;
+}
 
 /**
  * Called by the page as soon as the search starts (from the question alone), so the pick and
@@ -33,14 +55,9 @@ export function useExplorePrep(query: string): ExplorePrep {
     setOptions(null);
     setFrame(undefined);
     if (!query.trim()) return;
-    void fetchExploreOptions(query, '').then((o) => {
-      if (!live) return;
-      setOptions(o);
-      if (o.recommended !== 'watch') return;
-      new NanoBananaProvider()
-        .generate(`Opening frame of a short explainer video answering: "${query}". One clear, striking subject, cinematic 16:9 composition. Absolutely no text, letters, labels, captions, diagrams or watermarks.`, { userId: 'curios-guest' })
-        .then((url) => { if (live) setFrame(url); }, () => { if (live) setFrame(null); });
-    });
+    const job = exploreJob(query);
+    void job.options.then((o) => { if (live) setOptions(o); });
+    void job.frame.then((f) => { if (live) setFrame(f); });
     return () => { live = false; };
   }, [query]);
 

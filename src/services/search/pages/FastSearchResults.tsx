@@ -21,6 +21,7 @@ import { resolveBuyIntent } from '../buyIntent';
 import { searchAmazonProducts, type AmazonProduct } from '../../amazon-api';
 import ProductCard from '../../../components/shopping/ProductCard';
 import ExploreFurther, { useExplorePrep } from '../components/ExploreFurther';
+import { getCached, setCached } from '../searchCache.ts';
 
 // Sponsor/product carousel is capped here — legacy search capped at 4, this replaces
 // it with up to 10 so the carousel has enough tiles to actually scroll.
@@ -105,6 +106,20 @@ function articleForSave(main: string, expansions: string[]): string {
   return [body, ...expansions.map(strip), followUps].filter(Boolean).join('\n\n');
 }
 
+interface CachedSearch {
+  deep: boolean;
+  answer: string;
+  expansions: string[];
+  knowMoreLabel: string | null;
+  sources: Array<{ title: string; url: string; snippet: string }>;
+  images: Array<{ url: string; title: string; source: string }>;
+  headerImage: string | null;
+  sponsorProducts: AmazonProduct[];
+  followUps: string[];
+  results: FastSearchResponse | null;
+  savedNode: SavedNodeRef | null;
+}
+
 export default function FastSearchResults() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -124,8 +139,10 @@ export default function FastSearchResults() {
   const [isExporting, setIsExporting] = useState(false);
   const answerCardRef = useRef<HTMLDivElement | null>(null);
   const runKeyRef = useRef<string>('');
+  // This search, as cached for the visit (see the restore at the top of the search effect).
+  const cacheKey = `${query}|${wantsDeep}|${forcedAstra}`;
 
-  const [searchStartTime] = useState(Date.now());
+  const [searchStartTime] = useState(() => getCached(cacheKey)?.at ?? Date.now());
   const [timeAgo, setTimeAgo] = useState('just now');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -218,6 +235,27 @@ export default function FastSearchResults() {
     const runKey = `${query}|${wantsDeep}|${forcedAstra}`;
     if (runKeyRef.current === runKey) return;
     runKeyRef.current = runKey;
+
+    // Back to a search already made this visit: show it as it was, without calling anything.
+    const cached = getCached<CachedSearch>(runKey)?.value;
+    if (cached) {
+      setEffectiveDeep(cached.deep);
+      setStreamingAnswer(cached.answer);
+      setExpansions(cached.expansions);
+      setKnowMoreLabel(cached.knowMoreLabel);
+      setFoundSources(cached.sources);
+      setFrozenSourcesForAnimation(cached.sources);
+      setImages(cached.images);
+      setHeaderImage(cached.headerImage);
+      setSponsorProducts(cached.sponsorProducts);
+      setFollowUpQuestions(cached.followUps);
+      setResults(cached.results);
+      setSavedNode(cached.savedNode);
+      setShowSearching(false);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
 
     const fetchResults = async () => {
       try {
@@ -339,6 +377,16 @@ export default function FastSearchResults() {
     // Only re-run when the query or requested tier changes; other deps (navigate,
     // state setters) are stable/intentionally omitted.
   }, [query, wantsDeep, forcedAstra]);
+
+  // Keep the finished search (and each "Know more" section, header image, saved node…) for
+  // the visit, so coming back to it doesn't search again.
+  useEffect(() => {
+    if (isLoading || isExpanding || error || !streamingAnswer) return;
+    setCached<CachedSearch>(cacheKey, {
+      deep: effectiveDeep, answer: streamingAnswer, expansions, knowMoreLabel, sources: foundSources, images, headerImage,
+      sponsorProducts, followUps: followUpQuestions, results, savedNode,
+    }, searchStartTime);
+  }, [isLoading, isExpanding, error, streamingAnswer, expansions, knowMoreLabel, foundSources, images, headerImage, sponsorProducts, followUpQuestions, results, savedNode]);
 
   // Toggle "Ask Deeper": free for everyone (no Pro credit, no sign-in).
   const handleToggleDeep = () => {

@@ -1,6 +1,6 @@
 import { Clock, Search, Image, Video, Newspaper, ArrowLeft, User } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useGoBack } from '../../hooks/useGoBack.ts';
 import ShareMenu from '../ShareMenu';
 
 interface TopBarProps {
@@ -28,7 +28,7 @@ export default function TopBar({
   images,
   rightSlot
 }: TopBarProps) {
-  const navigate = useNavigate();
+  const goBack = useGoBack();
   
   const tabs = [
     { id: 'avatar', label: 'Avatar', icon: User },
@@ -45,7 +45,7 @@ export default function TopBar({
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 mr-2">
             <button 
-              onClick={() => navigate('/')}
+              onClick={goBack}
               className="transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex-shrink-0"
               style={{ color: 'var(--accent-primary)' }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}

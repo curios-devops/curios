@@ -1,12 +1,13 @@
 // Stories Results page with multi-agent workflow integration
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import { ArrowLeft, Search, Brain, Sparkles, CheckCircle2, ChevronDown, Crown } from 'lucide-react';
 import { storiesService, StoryProgressCallback } from '../agents/storiesService';
 import { SearchResult } from '../types.ts';
 import ResearchProgress from '../../../components/ResearchProgress';
 import TabSystem from '../../../components/TabSystem';
 import { useAccentColor } from '../../../hooks/useAccentColor';
+import { useGoBack } from '../../../hooks/useGoBack.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider';
 import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
 import AstraNotice from '../../../components/AstraNotice.tsx';
@@ -37,8 +38,8 @@ interface ProgressState {
 }
 
 export default function StoriesResults() {
+  const goBack = useGoBack();
   const location = useLocation();
-  const navigate = useNavigate();
   const accent = useAccentColor();
   const { requestProAccess } = useProCredits();
   const searchParams = new URLSearchParams(location.search);
@@ -193,7 +194,7 @@ export default function StoriesResults() {
       <header className="flex items-center gap-4 px-6 py-6">
         <button 
           type="button"
-          onClick={() => navigate('/')}
+          onClick={goBack}
           style={{ color: accent.primary }}
           className="hover:opacity-80 transition-opacity flex-shrink-0"
         >
