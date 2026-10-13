@@ -1,3 +1,4 @@
+import { useLocation } from "react-router-dom";
 import { useAccentColor } from "../../hooks/useAccentColor.ts";
 import { useTheme } from "../theme/ThemeContext.tsx";
 import CuriosLogo from "../common/CuriosLogo.tsx";
@@ -29,15 +30,19 @@ export default function Logo({ isCollapsed, variant = 'sidebar' }: { isCollapsed
   const pamba = appSettings.wordmarkColor === 'pamba';
   // DARK: "Curios" in the header ink, "AI" in the accent color (icon keeps its gray).
   const dark = appSettings.wordmarkColor === 'dark';
+  // Home shows the big logo mark: the small icon fades out there and back in on other pages.
+  const onHome = useLocation().pathname === '/';
 
   return (
     <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'gap-2'}`}>
-      <CuriosLogo
-        size={iconPx}
-        frameColor={appSettings.logoMark.iconColor}
-        colorOverride={appSettings.logoMark.dotColor === 'accent' ? logoAccentColor : appSettings.logoMark.dotColor}
-        pulse={appSettings.logoMark.dotPulse}
-      />
+      <span className={`flex transition-opacity duration-500 ${onHome ? 'opacity-0' : 'opacity-100'}`} aria-hidden={onHome}>
+        <CuriosLogo
+          size={iconPx}
+          frameColor={appSettings.logoMark.iconColor}
+          colorOverride={appSettings.logoMark.dotColor === 'accent' ? logoAccentColor : appSettings.logoMark.dotColor}
+          pulse={appSettings.logoMark.dotPulse}
+        />
+      </span>
       {!isCollapsed && (
         <div className="flex items-center">
           <span
