@@ -104,5 +104,7 @@
   "songKaraokeListen": "聴く",
   "songKaraokeDownload": "ダウンロード",
   "songVotePrompt": "この曲は気に入りましたか？",
-  "songClose": "閉じる"
+  "songClose": "閉じる",
+  "songExplains": "{topic}を説明",
+  "songStyle_auto": "おまかせ"
 }

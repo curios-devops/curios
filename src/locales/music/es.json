@@ -104,5 +104,7 @@
   "songKaraokeListen": "Escuchar",
   "songKaraokeDownload": "Descargar",
   "songVotePrompt": "¿Te gustó la canción?",
-  "songClose": "Cerrar"
+  "songClose": "Cerrar",
+  "songExplains": "Explica {topic}",
+  "songStyle_auto": "Automático"
 }

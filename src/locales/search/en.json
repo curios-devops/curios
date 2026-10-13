@@ -16,6 +16,5 @@
   "exploreMoreOptions": "More options",
   "exploreRealSong": "A real song",
   "exploreExplainSong": "A song that explains it",
-  "exploreExplainLine": "Written to understand {topic}",
-  "exploreExplainIdea": "A song that explains {topic}, clear and catchy"
+  "exploreExplainLine": "Written to understand {topic}"
 }

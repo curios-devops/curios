@@ -96,6 +96,7 @@ function MovieRoute() {
 const GameFactPage = lazyRetry(() => import('./services/games/pages/GameFactPage.tsx'));
 const MusicFactPage = lazyRetry(() => import('./services/music/pages/MusicFactPage.tsx'));
 const SongPage = lazyRetry(() => import('./services/music/song/SongPage.tsx'));
+const ExplainSongPage = lazyRetry(() => import('./services/music/song/ExplainSongPage.tsx'));
 const TelePage = lazyRetry(() => import('./services/telemetry/TelePage.tsx'));
 // Curios Arcade: a shared AI-made mini game.
 const ArcadePage = lazyRetry(() => import('./services/games/arcade/ArcadePage.tsx'));
@@ -171,6 +172,7 @@ const router = createBrowserRouter(
         { path: '/games-results', element: <LazyPageWrapper><GameFactPage /></LazyPageWrapper> },
         { path: '/music-results', element: <LazyPageWrapper><MusicFactPage /></LazyPageWrapper> },
         { path: '/song/:id', element: <LazyPageWrapper><SongPage /></LazyPageWrapper> },
+        { path: '/song-explain', element: <LazyPageWrapper><ExplainSongPage /></LazyPageWrapper> },
         { path: '/arcade', element: <LazyPageWrapper><ArcadeCatalog /></LazyPageWrapper> },
         { path: '/arcade/:id', element: <LazyPageWrapper><ArcadePage /></LazyPageWrapper> },
         { path: '/movie/share/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> },
@@ -334,7 +336,7 @@ function ErrorBoundary({ children }: ErrorBoundaryProps) {
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
         <div className="text-center">
           <h1 className="text-2xl font-medium mb-4" style={{ color: 'var(--ui-text-primary)' }}>Something went wrong</h1>
-          <p className="mb-4" style={{ color: 'var(--ui-text-muted)' }}>We're sorry, but something went wrong. Please try refreshing the page.</p>
+          <p className="mb-4" style={{ color: 'var(--ui-text-muted)' }}>We&apos;re sorry, but something went wrong. Please try refreshing the page.</p>
           <button
             onClick={() => globalThis.location.reload()}
             className="px-4 py-2 rounded-lg transition-colors"

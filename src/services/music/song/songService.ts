@@ -39,8 +39,14 @@ export const SONG_STYLES = [
 ] as const;
 export type SongStyle = typeof SONG_STYLES[number]['id'];
 
+/** No real song: a song that explains a subject (Search → Explore further). */
+export interface SongTopic { kind: 'topic'; title: string; about: string }
+/** What a studio song starts from: a song / artist / album page, or a subject to explain. */
+export type SongSource = MusicInfo | SongTopic;
+
 /** What the song is inspired by, as the edge function expects it. */
-export function inspirationOf(info: MusicInfo) {
+export function inspirationOf(info: SongSource) {
+  if (info.kind === 'topic') return { kind: 'topic', title: info.title, artist: '', genres: [], about: info.about.slice(0, 1500) };
   return {
     kind: info.kind,
     title: info.title,
@@ -57,14 +63,14 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
-export const fetchSongIdeas = (info: MusicInfo, language: string) =>
+export const fetchSongIdeas = (info: SongSource, language: string) =>
   call<{ ideas: string[] }>({ action: 'ideas', inspiration: inspirationOf(info), language }).then((d) => d.ideas ?? []);
 
-export const draftSong = (info: MusicInfo, language: string, idea: string, style: SongStyle) =>
+export const draftSong = (info: SongSource, language: string, idea: string, style: SongStyle) =>
   call<{ song: SongDraft }>({ action: 'draft', inspiration: inspirationOf(info), language, idea, style }).then((d) => d.song);
 
 /** A new version of one part: with a feeling (mood) or just another take. */
-export const rewritePart = (info: MusicInfo, language: string, song: SongDraft, part: PartId, mood?: string) =>
+export const rewritePart = (info: SongSource, language: string, song: SongDraft, part: PartId, mood?: string) =>
   call<{ lines: string[] }>({ action: 'rewrite', inspiration: inspirationOf(info), language, song, part, mood }).then((d) => d.lines);
 
 /** Guided edit: which edited lines break the part's rhyme or length, with fixes. */
@@ -117,7 +123,7 @@ const toSong = (r: any): Song => ({
 });
 
 /** Music + animations for the studio's song (≈ 40 s). Returns the new song's id. */
-export function generateSong(info: MusicInfo, language: string, song: SongDraft, opts: { style: SongStyle; voice: boolean; length: SongLength; idea: string }) {
+export function generateSong(info: SongSource, language: string, song: SongDraft, opts: { style: SongStyle; voice: boolean; length: SongLength; idea: string }) {
   const styleSound = SONG_STYLES.find((s) => s.id === opts.style)?.sound ?? '';
   return call<{ id: string }>({ action: 'generate', inspiration: inspirationOf(info), language, song, styleSound, ...opts }).then((d) => d.id);
 }

@@ -90,12 +90,9 @@ export default function ExploreFurther({ query, images, prep }: { query: string;
     if (way === 'listen') navigate(`/music-results?q=${encodeURIComponent(options?.lines.song || query)}`);
     if (way === 'read') navigate(`/stories-results?q=${q}`);
   };
-  // "A song that explains it": the song studio opens on the related song with this idea.
+  // "A song that explains it": the song studio with no real song, written from this answer.
   const topic = options?.lines.topic || query;
-  const goExplain = () => {
-    const idea = t('exploreExplainIdea').replace('{topic}', topic);
-    navigate(`/music-results?q=${encodeURIComponent(options?.lines.song || query)}&explain=${encodeURIComponent(idea)}`);
-  };
+  const goExplain = () => navigate(`/song-explain?topic=${encodeURIComponent(topic)}&q=${encodeURIComponent(query)}`);
 
   const pick = options?.recommended ?? 'watch';
   const line = (way: ExploreWay) => options?.lines[way] || t(`exploreLine_${way}` as never);

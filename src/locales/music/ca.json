@@ -104,5 +104,7 @@
   "songKaraokeListen": "Escoltar",
   "songKaraokeDownload": "Descarregar",
   "songVotePrompt": "T’ha agradat la cançó?",
-  "songClose": "Tancar"
+  "songClose": "Tancar",
+  "songExplains": "Explica {topic}",
+  "songStyle_auto": "Automàtic"
 }

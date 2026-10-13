@@ -9,10 +9,9 @@ import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { ArrowLeft, Check, Crown, Loader2, Music, Pencil, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
-import type { MusicInfo } from '../musicInfo.ts';
 import {
   PARTS_BY_LENGTH, SONG_STYLES, checkLines, draftSong, fetchSongIdeas, generateSong, replaceLastWord, rewritePart, songMusicReady, syllables,
-  type LineCheck, type PartId, type SongDraft, type SongLength, type SongStyle,
+  type LineCheck, type PartId, type SongDraft, type SongLength, type SongSource, type SongStyle,
 } from './songService.ts';
 
 const pill = (on: boolean) => ({
@@ -22,8 +21,7 @@ const pill = (on: boolean) => ({
     : { backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-primary)', borderColor: 'var(--ui-border-subtle)' },
 });
 
-/** `initialIdea`: the studio opens with this idea already written (Search → "a song that explains it"). */
-export default function SongStudio({ info, onClose, initialIdea = '' }: { info: MusicInfo; onClose: () => void; initialIdea?: string }) {
+export default function SongStudio({ info, onClose }: { info: SongSource; onClose: () => void }) {
   const { t } = useTranslation();
   const { currentLanguage } = useLanguage();
   const lang = currentLanguage.code;
@@ -40,7 +38,7 @@ export default function SongStudio({ info, onClose, initialIdea = '' }: { info: 
   const [style, setStyle] = useState<SongStyle>('original');
   const [length, setLength] = useState<SongLength>('short');
   const [voice, setVoice] = useState(true);
-  const [idea, setIdea] = useState(initialIdea);
+  const [idea, setIdea] = useState('');
   // The idea the current lyrics were written with (a new one offers a rewrite).
   const [draftIdea, setDraftIdea] = useState('');
   const [ideas, setIdeas] = useState<string[] | null>(null);
@@ -81,10 +79,10 @@ export default function SongStudio({ info, onClose, initialIdea = '' }: { info: 
   };
 
   useEffect(() => {
-    draft(initialIdea, lang);
+    draft('', lang);
     fetchSongIdeas(info, lang).then(setIdeas).catch(() => setIdeas([]));
     void songMusicReady().then(setMusicReady);
-  }, [info.title, info.artist.name, lang]); // once per inspiration and language
+  }, [info.title, info.kind === 'topic' ? '' : info.artist.name, lang]); // once per inspiration and language
 
   const parts = song ? PARTS_BY_LENGTH[length].map((id) => song.parts.find((p) => p.id === id)).filter((p) => !!p) : [];
   const part = parts[Math.min(active, parts.length - 1)];
@@ -189,7 +187,9 @@ export default function SongStudio({ info, onClose, initialIdea = '' }: { info: 
         <div className="min-w-0">
           <h1 className="text-base font-semibold leading-tight">{t('songStudioTitle')}</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-            {t('songInspiredBy').replace('{name}', info.kind === 'artist' ? info.artist.name : `${info.title} · ${info.artist.name}`)}
+            {info.kind === 'topic'
+              ? t('songExplains').replace('{topic}', info.title)
+              : t('songInspiredBy').replace('{name}', info.kind === 'artist' ? info.artist.name : `${info.title} · ${info.artist.name}`)}
           </p>
         </div>
       </header>
@@ -361,7 +361,7 @@ export default function SongStudio({ info, onClose, initialIdea = '' }: { info: 
             <h2 className="text-base font-semibold mb-3">{t('songStyle')}</h2>
             <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4">
               {SONG_STYLES.map((s) => (
-                <button key={s.id} type="button" onClick={() => setStyle(s.id)} {...pill(style === s.id)}>{t(`songStyle_${s.id}` as never)}</button>
+                <button key={s.id} type="button" onClick={() => setStyle(s.id)} {...pill(style === s.id)}>{t(info.kind === 'topic' && s.id === 'original' ? 'songStyle_auto' : `songStyle_${s.id}` as never)}</button>
               ))}
             </div>
           </section>
