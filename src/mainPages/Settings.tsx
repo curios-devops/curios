@@ -131,40 +131,6 @@ export default function Settings() {
                     )}
                   </div>
                 </div>
-                <div className="py-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>AI Model</h3>
-                      <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>gpt-5o-mini</p>
-                    </div>
-                    <button
-                      type="button"
-                      className="transition-colors text-sm"
-                      style={{ color: 'var(--accent-primary)' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-hover)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--accent-primary)'; }}
-                    >
-                      Change
-                    </button>
-                  </div>
-                </div>
-                <div className="py-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Image Generation Model</h3>
-                      <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>GPT Image 2 (gpt-image-2)</p>
-                    </div>
-                    <button
-                      type="button"
-                      className="transition-colors text-sm"
-                      style={{ color: 'var(--accent-primary)' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-hover)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--accent-primary)'; }}
-                    >
-                      Change
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

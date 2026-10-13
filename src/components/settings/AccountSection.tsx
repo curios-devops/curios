@@ -1,5 +1,3 @@
-import ToggleSwitch from './ToggleSwitch';
-
 interface AccountSectionProps {
   username: string;
   email: string;
@@ -53,17 +51,6 @@ export default function AccountSection({ username, email, onSignOut }: AccountSe
               >
                 Edit
               </button>
-            </div>
-          </div>
-
-          {/* AI Data Retention */}
-          <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>AI Data Retention</h3>
-                <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>AI Data Retention allows CuriosAI to use your searches to improve AI models</p>
-              </div>
-              <ToggleSwitch checked={true} onChange={() => {}} />
             </div>
           </div>
 
