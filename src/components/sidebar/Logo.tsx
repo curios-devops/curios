@@ -1,5 +1,5 @@
-import { useLocation } from "react-router-dom";
 import { useAccentColor } from "../../hooks/useAccentColor.ts";
+import { useWelcomeScreen } from "../../hooks/useWelcomeScreen.ts";
 import { useTheme } from "../theme/ThemeContext.tsx";
 import CuriosLogo from "../common/CuriosLogo.tsx";
 import { appSettings, LOGO_GRAY, LOGO_ICON_PX } from "../../config/appSettings.ts";
@@ -30,12 +30,13 @@ export default function Logo({ isCollapsed, variant = 'sidebar' }: { isCollapsed
   const pamba = appSettings.wordmarkColor === 'pamba';
   // DARK: "Curios" in the header ink, "AI" in the accent color (icon keeps its gray).
   const dark = appSettings.wordmarkColor === 'dark';
-  // Home shows the big logo mark: the small icon fades out there and back in on other pages.
-  const onHome = useLocation().pathname === '/';
+  // The welcome screen shows the big logo mark: the small icon folds away there and comes back
+  // for the rest of the visit (Home included) once the user goes to another page.
+  const onHome = useWelcomeScreen();
 
   return (
     <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : ''}`}>
-      {/* On Home the icon folds away (width → 0) so "Curios AI" slides left; elsewhere it opens back. */}
+      {/* On the welcome screen the icon folds away (width → 0) so "Curios AI" slides left. */}
       <span
         className={`flex shrink-0 overflow-hidden transition-all duration-500 ${onHome ? 'opacity-0' : 'opacity-100'}`}
         style={{ width: onHome ? 0 : iconPx, marginRight: onHome || isCollapsed ? 0 : 8 }}

@@ -23,6 +23,7 @@ import EnhancedVideoCard from '../services/movie/components/EnhancedVideoCard.ts
 import AnimatedHomeTitle from '../components/AnimatedHomeTitle.tsx';
 import CuriosLogo from '../components/common/CuriosLogo.tsx';
 import { getUserFirstName } from '../utils/userName.ts';
+import { useWelcomeScreen } from '../hooks/useWelcomeScreen.ts';
 
 // Lazy load ProModal to avoid loading Stripe unnecessarily
 const ProModal = lazy(() => import('../components/subscription/ProModal.tsx'));
@@ -53,6 +54,7 @@ export default function Home() {
       ? '#E5E7EB'
       : '#1F2937'
     : accentColors.hover;
+  const isWelcome = useWelcomeScreen();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
@@ -287,15 +289,18 @@ export default function Home() {
 
       <div className="max-w-[720px] mx-auto px-6 sm:px-8">
         <div className="relative flex flex-col items-center justify-center mb-10 home-rise">
-          {/* Big logo mark above the title — absolute so the title/input keep their position. */}
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6">
-            <CuriosLogo
-              size={56}
-              frameColor={appSettings.logoMark.iconColor}
-              colorOverride={appSettings.logoMark.dotColor === 'accent' ? undefined : appSettings.logoMark.dotColor}
-              pulse={appSettings.logoMark.dotPulse}
-            />
-          </div>
+          {/* Big logo mark above the title, only on the welcome screen (first time on Home this
+              visit) — absolute so the title/input keep their position. */}
+          {isWelcome && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6">
+              <CuriosLogo
+                size={56}
+                frameColor={appSettings.logoMark.iconColor}
+                colorOverride={appSettings.logoMark.dotColor === 'accent' ? undefined : appSettings.logoMark.dotColor}
+                pulse={appSettings.logoMark.dotPulse}
+              />
+            </div>
+          )}
           <AnimatedHomeTitle
             name={getUserFirstName(session?.user)}
             onDone={() => setTitleDone(true)}
