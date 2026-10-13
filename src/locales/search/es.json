@@ -4,14 +4,18 @@
   "exploreTitle_watch": "Mira una explicación visual",
   "exploreTitle_play": "Juega con esta idea",
   "exploreTitle_listen": "Escucha la música",
-  "exploreTitle_read": "Lee la historia completa",
+  "exploreTitle_read": "Léelo como reportaje de revista",
   "exploreWay_watch": "Ver",
   "exploreWay_play": "Jugar",
   "exploreWay_listen": "Música",
-  "exploreWay_read": "Leer",
+  "exploreWay_read": "Revista",
   "exploreLine_watch": "Míralo explicado en un video corto.",
   "exploreLine_play": "Descúbrelo con un juego interactivo.",
   "exploreLine_listen": "Una canción que va con este tema.",
   "exploreLine_read": "Profundiza con varias fuentes.",
-  "exploreMoreOptions": "Más opciones"
+  "exploreMoreOptions": "Más opciones",
+  "exploreRealSong": "Una canción real",
+  "exploreExplainSong": "Una canción que me lo explique",
+  "exploreExplainLine": "Creada para entender {topic}",
+  "exploreExplainIdea": "Una canción que explique {topic}, clara y pegadiza"
 }

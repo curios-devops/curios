@@ -4,14 +4,18 @@
   "exploreTitle_watch": "Mira una explicació visual",
   "exploreTitle_play": "Juga amb aquesta idea",
   "exploreTitle_listen": "Escolta la música",
-  "exploreTitle_read": "Llegeix la història completa",
+  "exploreTitle_read": "Llegeix-ho com un reportatge de revista",
   "exploreWay_watch": "Veure",
   "exploreWay_play": "Jugar",
   "exploreWay_listen": "Música",
-  "exploreWay_read": "Llegir",
+  "exploreWay_read": "Revista",
   "exploreLine_watch": "Mira-ho explicat en un vídeo curt.",
   "exploreLine_play": "Descobreix-ho amb un joc interactiu.",
   "exploreLine_listen": "Una cançó que va amb aquest tema.",
   "exploreLine_read": "Aprofundeix amb diverses fonts.",
-  "exploreMoreOptions": "Més opcions"
+  "exploreMoreOptions": "Més opcions",
+  "exploreRealSong": "Una cançó real",
+  "exploreExplainSong": "Una cançó que m'ho expliqui",
+  "exploreExplainLine": "Creada per entendre {topic}",
+  "exploreExplainIdea": "Una cançó que expliqui {topic}, clara i enganxosa"
 }

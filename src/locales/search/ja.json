@@ -4,14 +4,18 @@
   "exploreTitle_watch": "ビジュアル解説を見る",
   "exploreTitle_play": "このアイデアで遊ぶ",
   "exploreTitle_listen": "音楽を聴く",
-  "exploreTitle_read": "ストーリーを読む",
+  "exploreTitle_read": "雑誌記事として読む",
   "exploreWay_watch": "見る",
   "exploreWay_play": "遊ぶ",
   "exploreWay_listen": "音楽",
-  "exploreWay_read": "読む",
+  "exploreWay_read": "マガジン",
   "exploreLine_watch": "短い動画でわかりやすく解説。",
   "exploreLine_play": "インタラクティブなゲームで発見しよう。",
   "exploreLine_listen": "このテーマに合う曲。",
   "exploreLine_read": "複数の情報源で深掘り。",
-  "exploreMoreOptions": "その他のオプション"
+  "exploreMoreOptions": "その他のオプション",
+  "exploreRealSong": "実在の曲",
+  "exploreExplainSong": "説明してくれる曲",
+  "exploreExplainLine": "{topic}を理解するための曲",
+  "exploreExplainIdea": "{topic}をわかりやすく、口ずさめるように説明する曲"
 }

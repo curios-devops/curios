@@ -24,7 +24,7 @@ const WINDOWS: [keyof Stats['visits'], string][] = [
 ];
 const FEATURE_NAMES: Record<string, string> = {
   home: 'Inicio', search: 'Search', movies: 'Películas', music: 'Música', games: 'Juegos', 'made-with-ai': 'Made with AI',
-  stories: 'Historias', character: 'Personajes', discover: 'Descubrir', library: 'Biblioteca', other: 'Otros',
+  stories: 'Revista', character: 'Personajes', discover: 'Descubrir', library: 'Biblioteca', other: 'Otros',
 };
 const REGION_NAMES: Record<string, string> = {
   America: 'América', Europe: 'Europa', Asia: 'Asia', Africa: 'África', Australia: 'Oceanía', Pacific: 'Pacífico',

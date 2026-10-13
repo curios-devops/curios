@@ -5,7 +5,7 @@
 // handed to the movie, which starts from that same image.
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, BookOpen, Gamepad2, Music, PlayCircle, Settings2, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Gamepad2, Music, PlayCircle, Settings2, Sparkles, type LucideIcon } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { fetchExploreOptions, type ExploreOptions, type ExploreWay } from '../../auto/intentRouter.ts';
 import { NanoBananaProvider } from '../../movie/providers/NanoBananaProvider.ts';
@@ -73,6 +73,12 @@ export default function ExploreFurther({ query, images, prep }: { query: string;
     if (way === 'listen') navigate(`/music-results?q=${encodeURIComponent(options?.lines.song || query)}`);
     if (way === 'read') navigate(`/stories-results?q=${q}`);
   };
+  // "A song that explains it": the song studio opens on the related song with this idea.
+  const topic = options?.lines.topic || query;
+  const goExplain = () => {
+    const idea = t('exploreExplainIdea').replace('{topic}', topic);
+    navigate(`/music-results?q=${encodeURIComponent(options?.lines.song || query)}&explain=${encodeURIComponent(idea)}`);
+  };
 
   const pick = options?.recommended ?? 'watch';
   const line = (way: ExploreWay) => options?.lines[way] || t(`exploreLine_${way}` as never);
@@ -96,7 +102,39 @@ export default function ExploreFurther({ query, images, prep }: { query: string;
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 z-20 w-64 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1">
               <p className="px-3 pt-1.5 pb-1 text-xs text-gray-500 dark:text-gray-400">{t('exploreMoreOptions')}</p>
-              {WAYS.filter((w) => w.id !== pick).map(({ id, icon: WayIcon }) => (
+              {/* Music stays in the menu even when it's the pick: it holds the explainer song. */}
+              {WAYS.filter((w) => w.id !== pick || w.id === 'listen').map(({ id, icon: WayIcon }) => id === 'listen' ? (
+                <div key={id} className="px-3 py-2">
+                  <span className="flex items-center gap-3 text-sm text-gray-900 dark:text-white">
+                    <WayIcon size={18} className="flex-shrink-0" />
+                    {t('exploreWay_listen')}
+                  </span>
+                  {/* Mini selector: the real song, or one written to explain the topic. */}
+                  <div className="mt-1.5 ml-[30px] flex flex-col gap-1">
+                    {pick !== 'listen' && (
+                      <button
+                        type="button"
+                        onClick={() => { setMenuOpen(false); go('listen'); }}
+                        className="w-full text-left rounded-lg px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-[#222222] transition-colors"
+                      >
+                        <span className="block text-xs font-medium text-gray-900 dark:text-white">{t('exploreRealSong')}</span>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{line('listen')}</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { setMenuOpen(false); goExplain(); }}
+                      className="w-full text-left rounded-lg px-2.5 py-1.5 border transition-colors hover:bg-gray-50 dark:hover:bg-[#222222]"
+                      style={{ borderColor: 'var(--accent-primary)' }}
+                    >
+                      <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: 'var(--accent-primary)' }}>
+                        <Sparkles size={12} className="flex-shrink-0" /> {t('exploreExplainSong')}
+                      </span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{t('exploreExplainLine').replace('{topic}', topic)}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
                 <button
                   key={id}
                   type="button"

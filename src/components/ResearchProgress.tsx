@@ -53,7 +53,7 @@ export const ResearchProgress: React.FC<ResearchProgressProps> = ({
       {/* Title */}
       <div className="flex items-center gap-3 mb-6">
         <Brain style={{ color: accentColors.primary }} size={24} />
-        <h3 className="text-lg font-medium">Curios AI Stories</h3>
+        <h3 className="text-lg font-medium">Curios AI Magazine</h3>
       </div>
       
       {/* Vertical Timeline Progress */}

@@ -22,7 +22,8 @@ const pill = (on: boolean) => ({
     : { backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-primary)', borderColor: 'var(--ui-border-subtle)' },
 });
 
-export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose: () => void }) {
+/** `initialIdea`: the studio opens with this idea already written (Search → "a song that explains it"). */
+export default function SongStudio({ info, onClose, initialIdea = '' }: { info: MusicInfo; onClose: () => void; initialIdea?: string }) {
   const { t } = useTranslation();
   const { currentLanguage } = useLanguage();
   const lang = currentLanguage.code;
@@ -39,7 +40,7 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
   const [style, setStyle] = useState<SongStyle>('original');
   const [length, setLength] = useState<SongLength>('short');
   const [voice, setVoice] = useState(true);
-  const [idea, setIdea] = useState('');
+  const [idea, setIdea] = useState(initialIdea);
   // The idea the current lyrics were written with (a new one offers a rewrite).
   const [draftIdea, setDraftIdea] = useState('');
   const [ideas, setIdeas] = useState<string[] | null>(null);
@@ -80,7 +81,7 @@ export default function SongStudio({ info, onClose }: { info: MusicInfo; onClose
   };
 
   useEffect(() => {
-    draft('', lang);
+    draft(initialIdea, lang);
     fetchSongIdeas(info, lang).then(setIdeas).catch(() => setIdeas([]));
     void songMusicReady().then(setMusicReady);
   }, [info.title, info.artist.name, lang]); // once per inspiration and language

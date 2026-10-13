@@ -144,8 +144,8 @@ const EXPLORE_PROMPT = `For a question the user asked, write one short line (max
 - play: discovering it through an interactive game
 - listen: listening to a real song that fits the topic
 - read: a richer story from several sources
-Also name "game": one real, well-known video game closest to the topic (title only), and "song": one real, well-known song closest to the topic ("Title Artist"; when the question is about a song, artist or album, that one).
-Respond with strict JSON only: {"watch":"","play":"","listen":"","read":"","game":"","song":""}.`;
+Also name "game": one real, well-known video game closest to the topic (title only), "song": one real, well-known song closest to the topic ("Title Artist"; when the question is about a song, artist or album, that one), and "topic": the question's subject as a short noun phrase with its article, in the question's language (2-5 words, e.g. "los agujeros de gusano", "black holes").
+Respond with strict JSON only: {"watch":"","play":"","listen":"","read":"","game":"","song":"","topic":""}.`;
 
 async function draftExplore(query: string): Promise<Record<string, string> | null> {
   const headers: Record<string, string> = { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` };
@@ -169,7 +169,7 @@ async function draftExplore(query: string): Promise<Record<string, string> | nul
     }
     const obj = JSON.parse(extractOutputText(await res.json()));
     const out: Record<string, string> = {};
-    for (const k of ["watch", "play", "listen", "read", "game", "song"]) {
+    for (const k of ["watch", "play", "listen", "read", "game", "song", "topic"]) {
       if (typeof obj?.[k] === "string" && obj[k].trim()) out[k] = obj[k].trim().slice(0, 120);
     }
     return out;

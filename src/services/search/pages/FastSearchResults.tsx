@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, ChevronLeft, ChevronRight, Plus, Link2, FileText } from 'lucide-react';
+import { Sparkles, ChevronLeft, ChevronRight, Plus, Link2, FileText, ArrowRight } from 'lucide-react';
 import { ImagesCarousel, ImagesGrid } from '../../../components/results/ImageGallery.tsx';
 import { executeFastSearchStreaming, executeDeepFastSearchStreaming } from '../controller';
 import { generateExpansionStreaming, extractKnowMoreLabel } from '../providers/llmProvider';
@@ -661,10 +661,11 @@ export default function FastSearchResults() {
                       type="button"
                       onClick={handleKnowMore}
                       disabled={isExpanding}
-                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
+                      className="group mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
                       style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
                     >
-                      <span>{isExpanding ? 'Writing…' : `${knowMoreLabel || 'Know more'} →`}</span>
+                      <span>{isExpanding ? 'Writing…' : knowMoreLabel || 'Know more'}</span>
+                      {!isExpanding && <ArrowRight size={16} className="flex-shrink-0 transition-transform group-hover:translate-x-0.5" />}
                     </button>
                   )}
                 </div>

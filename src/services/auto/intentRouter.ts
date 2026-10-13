@@ -61,8 +61,9 @@ export type ExploreWay = 'watch' | 'play' | 'listen' | 'read';
 export interface ExploreOptions {
   /** Decisions API pick; null when it was unavailable. */
   recommended: ExploreWay | null;
-  /** One-line pitch per way, in the question's language, plus a related real `game` and `song`. */
-  lines: Partial<Record<ExploreWay | 'game' | 'song', string>>;
+  /** One-line pitch per way, in the question's language, plus a related real `game` and `song`,
+   *  and the question's `topic` as a short noun phrase ("los agujeros de gusano"). */
+  lines: Partial<Record<ExploreWay | 'game' | 'song' | 'topic', string>>;
 }
 
 // "Explore further" under a Search answer: which experience to recommend next.

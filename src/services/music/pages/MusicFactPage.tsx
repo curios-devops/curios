@@ -71,6 +71,8 @@ export default function MusicFactPage() {
   const { getModel } = useAnswerModel(query);
   const { canUseProFeature, requestProAccess, tier } = useProCredits();
   const [studioOpen, setStudioOpen] = useState(false);
+  // Search → Explore further → "a song that explains it": open the studio with that idea.
+  const explainIdea = params.get('explain')?.slice(0, 200) ?? '';
   // Out of credits → the sign-up / upgrade modal right away (same as the game studio).
   const openStudio = () => {
     if (canUseProFeature) { setStudioOpen(true); return; }
@@ -106,6 +108,14 @@ export default function MusicFactPage() {
     void audio.play().catch(() => setPlaying(null));
   };
   useEffect(() => () => audioRef.current?.pause(), []);
+
+  // Arrived for an explainer song: open the studio once the fact sheet (the inspiration) loads.
+  const explainOpened = useRef(false);
+  useEffect(() => {
+    if (!info || !explainIdea || explainOpened.current) return;
+    explainOpened.current = true;
+    openStudio();
+  }, [info, explainIdea]); // openStudio is re-created each render; this runs once per arrival
 
   // 1) Fact sheet; 2) the song's video + Videos tab; 3) sources → explanation.
   useEffect(() => {
@@ -455,7 +465,7 @@ Write in language "${currentLanguage.code}", 90–120 words in 1–2 short parag
           />
         )}
       </div>
-      {studioOpen && info && <SongStudio info={info} onClose={() => setStudioOpen(false)} />}
+      {studioOpen && info && <SongStudio info={info} initialIdea={explainIdea} onClose={() => setStudioOpen(false)} />}
     </div>
   );
 }
