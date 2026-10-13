@@ -8,9 +8,10 @@ interface CuriosLogoProps {
   colorOverride?: string;
   frameColor?: string; // outer frame fill (app-settings.md → LOGO_ICON_COLOR)
   pulse?: boolean; // center square slowly breathes (LOGO_DOT_PULSE)
+  ping?: boolean; // radar ping like Search's "sources" dot: a 40% copy grows ×2 and fades (big Home mark)
 }
 
-export default function CuriosLogo({ size = 16, className = "", colorOverride, frameColor = "#9A9A9A", pulse = false }: CuriosLogoProps) {
+export default function CuriosLogo({ size = 16, className = "", colorOverride, frameColor = "#9A9A9A", pulse = false, ping = false }: CuriosLogoProps) {
   const accentColor = useAccentColor();
   const { theme, accentColor: selectedAccentColor } = useTheme();
   const maskId = useId();
@@ -59,7 +60,8 @@ export default function CuriosLogo({ size = 16, className = "", colorOverride, f
         <polygon points="80,400 100,380 120,400 100,420" />
         <polygon points="380,400 400,380 420,400 400,420" />
       </g>
-      <rect x="200" y="200" width="100" height="100" rx="20" fill={centerColor} className={pulse ? "logo-dot-pulse" : undefined} />
+      {ping && <rect x="200" y="200" width="100" height="100" rx="20" fill={centerColor} className="logo-dot-ping" />}
+      <rect x="200" y="200" width="100" height="100" rx="20" fill={centerColor} className={pulse && !ping ? "logo-dot-pulse" : undefined} />
     </svg>
   );
 }

@@ -316,8 +316,20 @@ html[data-theme="dark"] .dark\:border-gray-800 {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
 }
+/* Big Home mark: the same radar ping as Search's sources dot (Tailwind animate-ping on a 40%
+   copy): the square stays solid, a copy grows to 2× and fades, every second. */
+.logo-dot-ping {
+  opacity: 0.4;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: logoDotPing 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes logoDotPing {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
   .logo-dot-pulse { animation: none; }
+  .logo-dot-ping { animation: none; opacity: 0; }
 }
 
 /* Home search box — 2026 redesign (light mode only; dark keeps its look).

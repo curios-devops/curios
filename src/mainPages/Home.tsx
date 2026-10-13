@@ -298,6 +298,7 @@ export default function Home() {
                 frameColor={appSettings.logoMark.iconColor}
                 colorOverride={appSettings.logoMark.dotColor === 'accent' ? undefined : appSettings.logoMark.dotColor}
                 pulse={appSettings.logoMark.dotPulse}
+                ping={appSettings.logoMark.dotPulse}
               />
             </div>
           )}
