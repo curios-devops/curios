@@ -15,18 +15,19 @@ interface Mode {
 
 // 'fastsearch' is the new primary "Search" (default). Legacy 'search' is kept in
 // the type for old routes but is no longer offered in the dropdown.
-// The menu shows Auto, Search, Video and Character; "More" opens the rest. Auto reaches
-// every mode by itself (stories, movies, games, music included).
+// The menu shows Auto, Search, Video, Magazine and Character; "More" opens the rest. Auto
+// reaches every mode by itself (movies, games and music included).
 const modes: Mode[] = [
   { id: 'auto', label: 'auto', icon: Rocket },
   { id: 'fastsearch', label: 'search', icon: Search },
   // Video = Movie mode (question → explainer video); Cinematic was merged into it.
   { id: 'movie', label: 'video', icon: Clapperboard },
+  // Magazine (route 'stories'): the answer as a magazine story.
+  { id: 'stories', label: 'stories', icon: BookOpen },
   // Avatar was merged into Character (half-body option inside the page).
   { id: 'character', label: 'character', icon: PersonStanding, premium: true },
 ];
 const moreModes: Mode[] = [
-  { id: 'stories', label: 'stories', icon: BookOpen },
   // Movie 🍿: film fact sheet (Auto/Video also detect films by themselves).
   { id: 'movies', label: 'movies', icon: Popcorn },
   // Games 🎮: browser games + similar commercial games for the query.
