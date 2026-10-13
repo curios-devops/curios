@@ -38,14 +38,17 @@ function buildSalutations(name: string | null, t: (key: TranslationKey) => strin
 
 type Phase = 'sal-typing' | 'sal-pausing' | 'sal-deleting' | 'q-typing' | 'done';
 
+const HOME_PROMPTS = 9; // homePrompt_1 … homePrompt_9 in locales/home
+
 /**
  * Two-beat headline: types a random time-based greeting, deletes it, then types
- * "What are you curious about?" and stops. (The blinking accent dot was removed
+ * one of the open prompts ("Where should we begin?", "What should we explore?"…) and stops. (The blinking accent dot was removed
  * in the 2026 redesign — too distracting.)
  */
 export default function AnimatedHomeTitle({ name, className, style, onDone }: AnimatedHomeTitleProps) {
   const { t } = useTranslation();
-  const QUESTION = t('homeTitle');
+  // Second beat: one of a few open prompts ("Where should we begin?"), picked per visit.
+  const QUESTION = useMemo(() => t(`homePrompt_${1 + Math.floor(Math.random() * HOME_PROMPTS)}` as never), [t]);
   const salutation = useMemo(() => {
     const all = buildSalutations(name, t);
     return all[Math.floor(Math.random() * all.length)];
