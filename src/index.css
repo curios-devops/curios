@@ -309,16 +309,17 @@ html[data-theme="dark"] .dark\:border-gray-800 {
 }
 /* Logo center square: a slow, subtle breath (brighter ↔ softer) so the site
    feels alive without drawing attention. app-settings.md → LOGO_DOT_PULSE. */
-/* Center square "breathes" like ChatGPT's thinking dot: rests at its own size, grows and
-   shrinks back (size, not color). Previous look: opacity 1 → 0.55, 3.6s (tag pre-logo-pulse). */
+/* Center square beats: it keeps its size while a blurred halo of the same color grows out
+   of it and fades as it grows (a heartbeat, not the whole shape expanding). Previous looks:
+   size breathing 1→1.25 (a924a44), opacity fade (tag pre-logo-pulse). */
 .logo-dot-pulse {
   transform-box: fill-box;
   transform-origin: center;
-  animation: logoDotPulse 2s ease-in-out infinite;
+  animation: logoDotPulse 2s ease-out infinite;
 }
 @keyframes logoDotPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.25); }
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(2); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .logo-dot-pulse { animation: none; }

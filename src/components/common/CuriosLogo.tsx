@@ -7,13 +7,14 @@ interface CuriosLogoProps {
   className?: string;
   colorOverride?: string;
   frameColor?: string; // outer frame fill (app-settings.md → LOGO_ICON_COLOR)
-  pulse?: boolean; // center square slowly breathes (LOGO_DOT_PULSE)
+  pulse?: boolean; // center square beats: a soft halo grows from it and fades (LOGO_DOT_PULSE)
 }
 
 export default function CuriosLogo({ size = 16, className = "", colorOverride, frameColor = "#9A9A9A", pulse = false }: CuriosLogoProps) {
   const accentColor = useAccentColor();
   const { theme, accentColor: selectedAccentColor } = useTheme();
   const maskId = useId();
+  const glowId = useId();
   const isDarkMode =
     theme === "dark" ||
     (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -47,6 +48,9 @@ export default function CuriosLogo({ size = 16, className = "", colorOverride, f
           <circle cx="380" cy="380" r="20" fill="black" />
           <circle cx="420" cy="420" r="20" fill="black" />
         </mask>
+        <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="10" />
+        </filter>
       </defs>
       <g mask={`url(#${maskId})`} fill={frameColor}>
         <rect x="100" y="0" width="300" height="100" rx="20" />
@@ -59,7 +63,9 @@ export default function CuriosLogo({ size = 16, className = "", colorOverride, f
         <polygon points="80,400 100,380 120,400 100,420" />
         <polygon points="380,400 400,380 420,400 400,420" />
       </g>
-      <rect x="200" y="200" width="100" height="100" rx="20" fill={centerColor} className={pulse ? "logo-dot-pulse" : undefined} />
+      {/* The beat: the square keeps its size; a blurred copy grows out of it and fades. */}
+      {pulse && <rect x="200" y="200" width="100" height="100" rx="20" fill={centerColor} filter={`url(#${glowId})`} className="logo-dot-pulse" />}
+      <rect x="200" y="200" width="100" height="100" rx="20" fill={centerColor} />
     </svg>
   );
 }

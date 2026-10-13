@@ -34,8 +34,13 @@ export default function Logo({ isCollapsed, variant = 'sidebar' }: { isCollapsed
   const onHome = useLocation().pathname === '/';
 
   return (
-    <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'gap-2'}`}>
-      <span className={`flex transition-opacity duration-500 ${onHome ? 'opacity-0' : 'opacity-100'}`} aria-hidden={onHome}>
+    <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : ''}`}>
+      {/* On Home the icon folds away (width → 0) so "Curios AI" slides left; elsewhere it opens back. */}
+      <span
+        className={`flex shrink-0 overflow-hidden transition-all duration-500 ${onHome ? 'opacity-0' : 'opacity-100'}`}
+        style={{ width: onHome ? 0 : iconPx, marginRight: onHome || isCollapsed ? 0 : 8 }}
+        aria-hidden={onHome}
+      >
         <CuriosLogo
           size={iconPx}
           frameColor={appSettings.logoMark.iconColor}
