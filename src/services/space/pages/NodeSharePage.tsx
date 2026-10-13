@@ -174,7 +174,7 @@ export default function NodeSharePage() {
         <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="flex items-center gap-3 p-6 border-b border-gray-200 dark:border-gray-800">
             <Sparkles className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
-            <h2 className="text-xl font-medium text-gray-900 dark:text-white">AI Overview</h2>
+            <h2 className="text-xl font-medium text-gray-900 dark:text-white">Overview</h2>
           </div>
           <div className="px-4 py-5 sm:p-6">
             <div className="prose dark:prose-invert max-w-none break-words">

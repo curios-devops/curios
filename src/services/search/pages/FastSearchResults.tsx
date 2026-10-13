@@ -3,13 +3,12 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, ChevronLeft, ChevronRight, Plus, Link2, Crown, FileText } from 'lucide-react';
+import { Sparkles, ChevronLeft, ChevronRight, Plus, Link2, FileText } from 'lucide-react';
 import { ImagesCarousel, ImagesGrid } from '../../../components/results/ImageGallery.tsx';
 import { executeFastSearchStreaming, executeDeepFastSearchStreaming } from '../controller';
 import { generateExpansionStreaming, extractKnowMoreLabel } from '../providers/llmProvider';
 import type { FastSearchResponse } from '../controller';
 import { exportDeepSearchPdf } from '../utils/exportPdf';
-import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
 import AstraNotice from '../../../components/AstraNotice.tsx';
 import CustomMarkdown from '../../../components/CustomMarkdown';
@@ -117,7 +116,6 @@ export default function FastSearchResults() {
   // which self-detects below, in parallel with the main search workflow.
   const buyIntentConfirmed = searchParams.get('buy') === '1';
 
-  const { requestProAccess } = useProCredits();
   const { getModel, answerModel, continueWithAstra } = useAnswerModel(query);
   const forcedAstra = searchParams.get('tier') === 'astra';
 
@@ -342,18 +340,10 @@ export default function FastSearchResults() {
     // state setters) are stable/intentionally omitted.
   }, [query, wantsDeep, forcedAstra]);
 
-  // Toggle "Ask Deeper" (a Pro feature). This is the single gate: turning it ON
-  // consumes a Pro Credit via requestProAccess; if the user is out of access it
-  // raises the subscription modal (register/upgrade/quota) and we don't navigate.
-  const handleToggleDeep = async () => {
+  // Toggle "Ask Deeper": free for everyone (no Pro credit, no sign-in).
+  const handleToggleDeep = () => {
     const q = encodeURIComponent(query);
-    if (wantsDeep) {
-      navigate(`/fast-search?q=${q}`);
-      return;
-    }
-    const allowed = await requestProAccess();
-    if (!allowed) return;
-    navigate(`/fast-search?q=${q}&deep=1`);
+    navigate(wantsDeep ? `/fast-search?q=${q}` : `/fast-search?q=${q}&deep=1`);
   };
 
   // "Know more": free for everyone — continue the article one level deeper,
@@ -467,7 +457,6 @@ export default function FastSearchResults() {
                 : undefined,
             }}
           >
-            <Crown size={16} />
             <span>Ask Deeper</span>
           </button>
         }
@@ -599,16 +588,16 @@ export default function FastSearchResults() {
           />
         )}
 
-        {/* Overview Tab - AI Overview with follow-ups */}
+        {/* Overview Tab - Overview with follow-ups */}
         {activeTab === 'answer' && (
           <>
-            {/* AI Overview - appears when streaming starts */}
+            {/* Overview - appears when streaming starts */}
             {!showSearching && (
               <div ref={answerCardRef} className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                 <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
                   <div className="flex items-center gap-3">
                     <Sparkles className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
-                    <h2 className="text-xl font-medium text-gray-900 dark:text-white">AI Overview</h2>
+                    <h2 className="text-xl font-medium text-gray-900 dark:text-white">Overview</h2>
                   </div>
 
                   {/* Source count with icons */}
