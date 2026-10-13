@@ -55,8 +55,13 @@ export default function Home() {
       : '#1F2937'
     : accentColors.hover;
   const isWelcome = useWelcomeScreen();
-  // The big mark's effect rotates: Search's radar ping or the classic pulse, picked per visit.
-  const [logoPing] = useState(() => Math.random() < 0.5);
+  // The big mark's effect rotates per visit: Search's radar ping, the classic pulse, or eyes
+  // that follow the pointer. ?logo=ping|pulse|eyes forces one (to preview it).
+  const [logoEffect] = useState<'ping' | 'pulse' | 'eyes'>(() => {
+    const forced = new URLSearchParams(window.location.search).get('logo');
+    if (forced === 'ping' || forced === 'pulse' || forced === 'eyes') return forced;
+    return (['ping', 'pulse', 'eyes'] as const)[Math.floor(Math.random() * 3)];
+  });
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
@@ -300,7 +305,8 @@ export default function Home() {
                 frameColor={appSettings.logoMark.iconColor}
                 colorOverride={appSettings.logoMark.dotColor === 'accent' ? undefined : appSettings.logoMark.dotColor}
                 pulse={appSettings.logoMark.dotPulse}
-                ping={appSettings.logoMark.dotPulse && logoPing}
+                ping={appSettings.logoMark.dotPulse && logoEffect === 'ping'}
+                eyes={logoEffect === 'eyes'}
               />
             </div>
           )}

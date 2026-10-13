@@ -327,9 +327,20 @@ html[data-theme="dark"] .dark\:border-gray-800 {
 @keyframes logoDotPing {
   75%, 100% { transform: scale(2); opacity: 0; }
 }
+/* Big Home mark, "eyes" look: a quick blink every few seconds (the eyes follow the pointer in JS). */
+.logo-eyes-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: logoEyesBlink 4.2s ease-in-out infinite;
+}
+@keyframes logoEyesBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
 @media (prefers-reduced-motion: reduce) {
   .logo-dot-pulse { animation: none; }
   .logo-dot-ping { animation: none; opacity: 0; }
+  .logo-eyes-blink { animation: none; }
 }
 
 /* Home search box — 2026 redesign (light mode only; dark keeps its look).
