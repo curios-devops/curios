@@ -77,7 +77,7 @@ export default function GeneralSection() {
     { key: 'dark', label: 'Dark', icon: Moon },
     { key: 'system', label: 'System', icon: Monitor },
   ];
-  // DAY / NIGHT themes (Terra): Auto switches at sunrise / sunset.
+  // Auto (every theme): light at sunrise, dark at sunset.
   const autoSwitch = (
     <label className="flex items-center gap-2 text-sm font-medium cursor-pointer" style={{ color: 'var(--ui-text-secondary)' }}>
       Auto
@@ -116,7 +116,10 @@ export default function GeneralSection() {
                   {!session && autoSwitch}
                 </div>
               ) : (
-                <Segmented options={themeOptions} value={theme} onChange={setTheme} />
+                <div className="flex items-center gap-4">
+                  <Segmented options={themeOptions} value={theme} onChange={setTheme} />
+                  {!session && autoSwitch}
+                </div>
               )}
             </div>
           </div>
@@ -151,7 +154,7 @@ export default function GeneralSection() {
                     );
                   })}
                 </div>
-                {hasDayNight && autoSwitch}
+                {autoSwitch}
                 </div>
               </div>
             </div>

@@ -8,6 +8,7 @@ import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import { useTheme } from '../theme/ThemeContext.tsx';
 import { getUserDisplayName } from '../../utils/userName.ts';
 import SidebarHelpMenu from './SidebarHelpMenu.tsx';
+import SidebarAutoRow from './SidebarAutoRow.tsx';
 import { sidebarRowClass, sidebarRowStyle, sidebarRowEnter, sidebarRowLeave } from './sidebarMenuRow.ts';
 import type { Session } from '@supabase/supabase-js';
 
@@ -117,6 +118,8 @@ export default function SidebarUserSection({ session, isPro, subLoading, isColla
       </button>
 
       {/* Help */}
+      <SidebarAutoRow isCollapsed={isCollapsed} />
+
       <SidebarHelpMenu isCollapsed={isCollapsed} />
 
       {/* Account card */}

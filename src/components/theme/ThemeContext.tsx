@@ -13,9 +13,9 @@ interface ThemeContextType {
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
   setAccentColor: (color: AccentColor) => void;
-  /** The theme has DAY / NIGHT that can follow the sun (Terra). */
+  /** The theme names its modes DAY / NIGHT (Terra) instead of light / dark. */
   hasDayNight: boolean;
-  /** Auto: DAY at sunrise, NIGHT at sunset (on by default; picking Day or Night turns it off). */
+  /** Auto (every theme): light at sunrise, dark at sunset. On by default; picking a mode turns it off. */
   dayNightAuto: boolean;
   setDayNightAuto: (on: boolean) => void;
 }
@@ -28,7 +28,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = 'accentTheme';
 const PROFILE_PREFIX = 'theme:';
 const validThemes: AccentColor[] = [...VISITOR_THEMES, 'classic_blue'];
-// Themes whose DAY / NIGHT follow the sun by default (DESIGN.md → Themes).
+// Themes whose modes are called DAY / NIGHT (DESIGN.md → Themes).
 const DAY_NIGHT_THEMES: AccentColor[] = ['terra'];
 const AUTO_KEY = 'dayNightAuto';
 
@@ -52,7 +52,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [accentColor, setAccentColorState] = useState<AccentColor>(getInitialAccentColor);
   const [dayNightAuto, setDayNightAutoState] = useState(() => localStorage.getItem(AUTO_KEY) !== 'off');
   const hasDayNight = DAY_NIGHT_THEMES.includes(accentColor);
-  const followSun = hasDayNight && dayNightAuto;
+  const followSun = dayNightAuto;
   // Store only userId (stable string) — not the full session object.
   // This means Supabase TOKEN_REFRESHED events won't cascade through context.
   const [userId, setUserId] = useState<string | null>(null);
@@ -126,11 +126,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(AUTO_KEY, on ? 'on' : 'off');
   }, []);
 
-  // Picking Day or Night yourself on a DAY / NIGHT theme turns Auto off.
+  // Picking a mode yourself turns Auto off.
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
-    if (hasDayNight) setDayNightAuto(false);
-  }, [hasDayNight, setDayNightAuto]);
+    setDayNightAuto(false);
+  }, [setDayNightAuto]);
 
   const toggleTheme = useCallback(() => {
     setThemeState(c => c === 'dark' ? 'light' : c === 'light' ? 'system' : 'dark');

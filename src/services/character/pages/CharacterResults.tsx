@@ -3,8 +3,9 @@
 //     full-body action (walk, gesture, dance, pick up a product).
 //   • Half body (Anam): a talking upper body; no director — the spoken answer is
 //     streamed straight into the avatar as it is written.
-// The first answer is prepared in parallel with the connection. Free for everyone;
-// cost guards: 3-minute sessions and 30 s idle → freeze the last frame and close.
+// The first answer is prepared in parallel with the connection. Billed by the minute:
+// 1 Pro Credit on connecting and 1 more each minute; out of credits → close and the
+// sign-up (guests) / Pro modal. 30 s idle → freeze the last frame and close.
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -26,6 +27,8 @@ import { startCharacterSession, type LiveCharacter } from '../characterSession';
 import { startAnamSession, SpeechQueue, type LiveAnam } from '../anamSession';
 import { speakAnswer } from '../speechAnswer';
 import { decideTier } from '../../auto/modelTier';
+import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
+import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { appSettings } from '../../../config/appSettings';
 import CharacterPicker from '../components/CharacterPicker';
 import { mark } from '../timing';
@@ -49,7 +52,8 @@ type Prepared =
 const STAGE_ID = 'character-stage';
 const VIVIX_VIEW_ID = 'character-stage-video';
 const ANAM_VIDEO_ID = 'character-stage-anam';
-const SESSION_SECONDS = 180;
+// One credit buys this much live time.
+const MINUTE_SECONDS = 60;
 // No input for this long (and the presenter not speaking) → freeze the last
 // frame and close the billable session; the page and conversation stay.
 const IDLE_PAUSE_MS = 30_000;
@@ -98,6 +102,12 @@ export default function CharacterResults() {
   const initialQuery = params.get('q') || '';
   const openMic = params.get('mic') === '1';
 
+  const { requestProAccess, tier, loading: creditsLoading } = useProCredits();
+  const { t } = useTranslation();
+  // Out of minutes: guests are invited to sign up, signed-in users to go Pro.
+  const minutesMessage = (who: string) =>
+    t((tier === 'guest' ? 'charMoreMinutesGuest' : 'charMoreMinutesFree') as never).replace('{name}', who);
+  const chargingRef = useRef(false);
   // Answer model for the whole conversation, rated on its first question: Luna if easy, else Sol.
   const modelRef = useRef<Promise<string> | undefined>(undefined);
   const { session } = useSession();
@@ -119,7 +129,7 @@ export default function CharacterResults() {
   const [thinking, setThinking] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(SESSION_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(MINUTE_SECONDS);
   const [savedNode, setSavedNode] = useState<SavedNodeRef | null>(null);
   const [liked, setLiked] = useState(false);
   const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
@@ -192,15 +202,21 @@ export default function CharacterResults() {
     await engine?.live.close();
   }, []);
 
-  // 3-minute cap (Vivix also enforces it server-side; Anam relies on this).
+  // Minute meter: each minute that starts costs one credit; none left → close + the modal.
   useEffect(() => {
     if (!isLive) return;
     const id = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(id);
   }, [isLive]);
   useEffect(() => {
-    if (isLive && secondsLeft === 0) void closeEngine().then(() => setStatus('closed'));
-  }, [isLive, secondsLeft, closeEngine]);
+    if (!isLive || secondsLeft > 0 || chargingRef.current) return;
+    chargingRef.current = true;
+    void requestProAccess(minutesMessage(name)).then(async (ok) => {
+      if (ok) setSecondsLeft(MINUTE_SECONDS);
+      else { await closeEngine(); setStatus('closed'); }
+      chargingRef.current = false;
+    });
+  }, [isLive, secondsLeft]);
 
   // Idle watcher: freeze + close after 30 s without input or speech.
   useEffect(() => {
@@ -300,7 +316,7 @@ export default function CharacterResults() {
 
   const start = useCallback(async (who: Presenter, firstQ: string) => {
     setStatusDetail(null);
-    setSecondsLeft(SESSION_SECONDS);
+    setSecondsLeft(MINUTE_SECONDS);
     setFrozenFrame(null);
     setAspect(null);
     setCaptionText('');
@@ -351,6 +367,13 @@ export default function CharacterResults() {
         live.onSpokenText((chunk) => { if (chunk) setCaptionText((t) => t + chunk); });
         engine = { kind: 'half', live };
       }
+      // The first minute is charged once the presenter is live (connecting is free).
+      if (!(await requestProAccess(minutesMessage(who.preset.name)))) {
+        await engine.live.close();
+        setStatus('closed');
+        setThinking(false);
+        return;
+      }
       engineRef.current = engine;
       touch();
       if (prepared) {
@@ -366,12 +389,12 @@ export default function CharacterResults() {
       setStatus('error');
       setStatusDetail(`${who.preset.name} couldn't get on stage right now. Please try again in a moment.`);
     }
-  }, [deliver, maybeRecordLoop, openMic, prepare, startRecording]);
+  }, [deliver, maybeRecordLoop, openMic, prepare, requestProAccess, startRecording]);
 
-  // Start on arrival.
+  // Start once credits are known (checking earlier reads an empty balance).
   useEffect(() => {
-    if (startedRef.current) return;
-    mark('start');
+    if (creditsLoading || startedRef.current) return;
+    mark('credits loaded → start');
     startedRef.current = true;
     // Signed-in users: their saved setup (any device) — unless the URL says otherwise.
     void fetchPrefs(session?.user).then((prefs) => {
@@ -383,7 +406,7 @@ export default function CharacterResults() {
       void start(who, initialQuery);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [creditsLoading]);
 
   // Always release the billable session when leaving.
   useEffect(() => {
@@ -426,7 +449,7 @@ export default function CharacterResults() {
     remember({ captions: next });
   };
 
-  // While paused, any new question resumes with a fresh session (free).
+  // While paused, any new question resumes with a fresh session (a new minute).
   const send = (q: string) => {
     if (!q.trim()) return;
     if (paused) void start(presenter, q);
