@@ -6,7 +6,7 @@
 import type { FC } from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Share2, Download } from 'lucide-react';
-import { CinematicVideo } from '../../services/cinematic/types';
+import { CinematicVideo } from '../../services/legacy-cinematic/types';
 import { SceneProgressBar } from './SceneProgressBar';
 
 interface CinematicPlayerProps {

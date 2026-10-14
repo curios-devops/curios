@@ -2,11 +2,6 @@
 
 // Export all services
 
-// Explicitly re-export only unique symbols to avoid ambiguity
-export { WriterAgent as SearchWriterAgent, RetrieverAgent } from './legacy-search/regular/searchRegularIndex';
-export { ProSearchResultsPage, SwarmController, PerspectiveAgent } from './legacy-search/pro/searchProIndex';
-export { default as SearchResultsPage } from './legacy-search/regular/pages/SearchResults.tsx';
-
 export type {
 	Artifact,
 	ArtifactStep,

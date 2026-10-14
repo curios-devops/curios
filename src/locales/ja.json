@@ -173,5 +173,6 @@
   "character": "キャラクター",
   "moreModes": "その他",
   "lessModes": "閉じる",
-  "themeDesc": "アプリ全体の色・書体・形"
+  "themeDesc": "アプリ全体の色・書体・形",
+  "appearance": "外観"
 }

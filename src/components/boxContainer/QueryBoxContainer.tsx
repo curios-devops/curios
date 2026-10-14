@@ -79,7 +79,7 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
       case 'auto':
         return '/fast-search';
       case 'search':
-        return '/search';
+        return '/fast-search';
       case 'fastsearch':
         return '/fast-search';
       case 'stories':
@@ -96,7 +96,7 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
       case 'avatar':
         return '/character?body=half'; // Avatar merged into Character (half body)
       default:
-        return '/search';
+        return '/fast-search';
     }
   };
 

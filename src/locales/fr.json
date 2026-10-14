@@ -173,5 +173,6 @@
   "character": "Personnage",
   "moreModes": "Plus",
   "lessModes": "Moins",
-  "themeDesc": "Couleurs, typographie et formes de toute l'app"
+  "themeDesc": "Couleurs, typographie et formes de toute l'app",
+  "appearance": "Apparence"
 }

@@ -74,14 +74,9 @@ if (import.meta.env.DEV && window.location.hash.startsWith('#dev_session=')) {
 })();
 
 // Lazy load page components from their respective service directories
-// Legacy search (hidden from the dropdown, slated for removal) now lives under services/legacy-search.
-const SearchResults = lazyRetry(() => import('./services/legacy-search/regular/pages/SearchResults.tsx'));
 // Fast Search is now the primary "Search" and lives under services/search.
 const FastSearchResults = lazyRetry(() => import('./services/search/pages/FastSearchResults.tsx'));
 const CharacterResults = lazyRetry(() => import('./services/character/pages/CharacterResults.tsx'));
-const AvatarSearchResults = lazyRetry(() => import('./services/legacy-search/avatar/pages/AvatarSearchResults.tsx'));
-const ProSearchResults = lazyRetry(() => import('./services/legacy-search/pro/pages/ProSearchResults.tsx'));
-const ProSearchTest = lazyRetry(() => import('./services/legacy-search/pro/pages/ProSearchTest.tsx'));
 // Stories — regular workflow. Pro research was removed.
 const StoriesResults = lazyRetry(() => import('./services/stories/pages/StoriesResults.tsx'));
 const MovieResults = lazyRetry(() => import('./services/movie/pages/MovieResults.tsx'));
@@ -117,7 +112,6 @@ const TestPage = lazyRetry(() => import('./pages/test.tsx'));
 const ImageTest = lazyRetry(() => import('./pages/ImageTest.tsx'));
 const SerpApiTest = lazyRetry(() => import('./pages/SerpApiTest'));
 const ReverseImageVsTest = lazyRetry(() => import('./pages/ReverseImageVsTest'));
-const AnamAvatarTest = lazyRetry(() => import('./services/legacy-search/avatar/components/AnamAvatarTest.tsx'));
 // Phase6TestPage removed - obsolete chunk rendering test
 const Policies = lazyRetry(() => import('./mainPages/Policies.tsx'));
 const AuthCallback = lazyRetry(() => import('./components/auth/AuthCallback.tsx'));
@@ -147,6 +141,16 @@ function ToVideo() {
   return <Navigate to={`/movie-results${search}`} replace />;
 }
 
+// The legacy search pages were deleted (tag pre-legacy-cleanup): old links land on today's
+// equivalent, keeping their query string.
+function Redirect({ to, extra = '' }: { to: string; extra?: string }) {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  new URLSearchParams(extra).forEach((v, k) => params.set(k, v));
+  const qs = params.toString();
+  return <Navigate to={`${to}${qs ? `?${qs}` : ''}`} replace />;
+}
+
 const router = createBrowserRouter(
   [
     {
@@ -156,12 +160,11 @@ const router = createBrowserRouter(
         { path: '/', element: <Home /> },
         { path: '/explore', element: <LazyPageWrapper><Explore /></LazyPageWrapper> },
         { path: '/explore/:articleId', element: <LazyPageWrapper><ArticleDetail /></LazyPageWrapper> },
-        { path: '/search', element: <LazyPageWrapper><SearchResults /></LazyPageWrapper> },
+        { path: '/search', element: <Redirect to="/fast-search" /> },
         { path: '/fast-search', element: <LazyPageWrapper><FastSearchResults /></LazyPageWrapper> },
-        { path: '/avatar-search', element: <LazyPageWrapper><AvatarSearchResults /></LazyPageWrapper> },
+        { path: '/avatar-search', element: <Redirect to="/character" extra="body=half" /> },
         { path: '/character', element: <LazyPageWrapper><CharacterResults /></LazyPageWrapper> },
-        { path: '/pro-search', element: <LazyPageWrapper><ProSearchResults /></LazyPageWrapper> },
-        { path: '/pro-search-test', element: <LazyPageWrapper><ProSearchTest /></LazyPageWrapper> },
+        { path: '/pro-search', element: <Redirect to="/fast-search" extra="deep=1" /> },
         { path: '/stories-results', element: <LazyPageWrapper><StoriesResults /></LazyPageWrapper> },
         // Pro research routes removed (legacy code deleted).
         // Cinematic was merged into Video (Movie) — old links keep their ?q= and land there.
@@ -191,7 +194,6 @@ const router = createBrowserRouter(
     ,{ path: '/image-test', element: <LazyPageWrapper><ImageTest /></LazyPageWrapper> }
     ,{ path: '/serp-test', element: <LazyPageWrapper><SerpApiTest /></LazyPageWrapper> }
     ,{ path: '/reverse-image-vs', element: <LazyPageWrapper><ReverseImageVsTest /></LazyPageWrapper> }
-    ,{ path: '/anam-test', element: <LazyPageWrapper><AnamAvatarTest /></LazyPageWrapper> }
     // phase6-test route removed - obsolete chunk rendering test
       ]
     },

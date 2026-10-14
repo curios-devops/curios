@@ -7,8 +7,8 @@ import React, { useState, useEffect } from 'react';
 import { FullVideoPlayer } from './FullVideoPlayer';
 import { ScenePreviewCard } from './ScenePreviewCard';
 import { EngagementBar } from './EngagementBar';
-import type { CinematicExperience } from '../../services/cinematic/cinematicService';
-import { VideoPersistenceService } from '../../services/cinematic/video/VideoPersistenceService';
+import type { CinematicExperience } from '../../services/legacy-cinematic/cinematicService';
+import { VideoPersistenceService } from '../../services/legacy-cinematic/video/VideoPersistenceService';
 import { logger } from '../../utils/logger';
 
 interface CinematicPlayerRefactoredProps {

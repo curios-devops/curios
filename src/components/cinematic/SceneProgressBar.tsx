@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { CinematicScene } from '../../services/cinematic/types';
+import { CinematicScene } from '../../services/legacy-cinematic/types';
 
 interface SceneProgressBarProps {
   scenes: CinematicScene[];

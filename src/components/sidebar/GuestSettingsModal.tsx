@@ -75,20 +75,18 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
         </div>
 
         <div className="divide-y px-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
-          {/* Theme */}
-          <div className="py-5 flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <div className="flex items-center gap-3">
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('theme')}</h3>
-                {/* Auto: light at sunrise, dark at sunset (on by default; picking a mode turns it off). */}
-                <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer" style={{ color: 'var(--ui-text-secondary)' }}>
-                  Auto
-                  <ToggleSwitch checked={dayNightAuto} onChange={setDayNightAuto} />
-                  <span className="w-6">{dayNightAuto ? 'On' : 'Off'}</span>
-                </label>
-              </div>
+          {/* Appearance: light / system / dark, and Auto (light at sunrise, dark at sunset). */}
+          <div className="py-5 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('appearance')}</h3>
               <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsThemeDesc')}</p>
             </div>
+            <div className="flex items-center gap-3 flex-shrink-0">
+            <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer" style={{ color: 'var(--ui-text-secondary)' }}>
+              Auto
+              <ToggleSwitch checked={dayNightAuto} onChange={setDayNightAuto} />
+              <span className="w-6">{dayNightAuto ? 'On' : 'Off'}</span>
+            </label>
             <div
               className="flex items-center gap-1 rounded-lg p-1 border"
               style={{ backgroundColor: 'var(--ui-bg-secondary)', borderColor: 'var(--ui-border-default)' }}
@@ -114,15 +112,16 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
                 );
               })}
             </div>
+            </div>
           </div>
 
-          {/* Accent */}
-          <div className="py-5 flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('settingsAccent')}</h3>
-              <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsAccentDesc')}</p>
+          {/* Themes (the accent color) */}
+          <div className="py-5 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('theme')}</h3>
+              <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('themeDesc')}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               {ACCENT_OPTIONS.map((color) => {
                 const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
                 const isSelected = selectedAccentColor === color;

@@ -64,13 +64,8 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
             'vendor-utils': ['axios', 'zod'],
             
             // Service chunks - separate by domain
-            'services-search': [
-              './src/services/legacy-search/searchService.ts',
-              './src/services/legacy-search/pro/agents/swarmController.ts',
-              './src/services/legacy-search/regular/agents/searchRetrieverAgent.ts',
-              './src/services/legacy-search/regular/agents/searchWriterAgent.ts'
-            ],
-            // 'services-research' and 'services-lab' chunks removed — those services were deleted.
+            // 'services-search' (legacy search), 'services-research' and 'services-lab' chunks
+            // removed — those services were deleted.
 
             // Common service chunks - reduced to avoid circular dependencies
             'common-service': [
@@ -85,10 +80,7 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
             ],
             
             // Component chunks - separate heavy components
-            // (research pages removed — temporarily disabled)
-            'components-results': [
-              './src/services/legacy-search/pro/pages/ProSearchResults.tsx'
-            ],
+            // ('components-results' removed with the legacy Pro search page.)
             'components-auth': [
               './src/components/auth/AuthModal.tsx',
               './src/components/auth/EmailForm.tsx',

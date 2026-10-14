@@ -5,7 +5,7 @@ Cinematic video generation using OpenAI Sora and GPT-4.
 ## Quick Start
 
 ```typescript
-import { CinematicOrchestrator } from '@/services/cinematic';
+import { CinematicOrchestrator } from '@/services/legacy-cinematic';
 
 const orchestrator = new CinematicOrchestrator();
 

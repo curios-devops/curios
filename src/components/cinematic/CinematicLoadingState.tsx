@@ -5,7 +5,7 @@
 
 import type { FC } from 'react';
 import { Loader, CheckCircle, AlertCircle, Clock } from 'lucide-react';
-import { CinematicProgress } from '../../services/cinematic/types';
+import { CinematicProgress } from '../../services/legacy-cinematic/types';
 
 interface CinematicLoadingStateProps {
   progress: CinematicProgress;

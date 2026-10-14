@@ -177,5 +177,6 @@
   "historyEmpty": "Aún no hay nada aquí.",
   "moreModes": "Más",
   "lessModes": "Menos",
-  "themeDesc": "Colores, tipografía y formas de toda la app"
+  "themeDesc": "Colores, tipografía y formas de toda la app",
+  "appearance": "Apariencia"
 }
