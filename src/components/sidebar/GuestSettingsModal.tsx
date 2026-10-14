@@ -76,19 +76,19 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
 
         <div className="divide-y px-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
           {/* Appearance: light / system / dark, and Auto (light at sunrise, dark at sunset). */}
-          <div className="py-5 flex items-center justify-between gap-4">
-            <div className="min-w-0">
+          {/* One line: Appearance · Auto … selector; the description below. */}
+          <div className="py-5">
+            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('appearance')}</h3>
-              <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsThemeDesc')}</p>
+              <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer" style={{ color: 'var(--ui-text-secondary)' }}>
+                Auto
+                <ToggleSwitch checked={dayNightAuto} onChange={setDayNightAuto} />
+                <span className="w-6">{dayNightAuto ? 'On' : 'Off'}</span>
+              </label>
             </div>
-            <div className="flex items-center gap-3 flex-shrink-0">
-            <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer" style={{ color: 'var(--ui-text-secondary)' }}>
-              Auto
-              <ToggleSwitch checked={dayNightAuto} onChange={setDayNightAuto} />
-              <span className="w-6">{dayNightAuto ? 'On' : 'Off'}</span>
-            </label>
             <div
-              className="flex items-center gap-1 rounded-lg p-1 border"
+              className="flex items-center gap-1 rounded-lg p-1 border flex-shrink-0"
               style={{ backgroundColor: 'var(--ui-bg-secondary)', borderColor: 'var(--ui-border-default)' }}
             >
               {THEME_OPTIONS.map(({ key, icon: Icon }) => {
@@ -102,17 +102,18 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
                     title={label}
                     aria-label={label}
                     aria-pressed={selected}
-                    className="px-3 py-1.5 rounded-md transition-colors flex items-center justify-center"
+                    className="px-2.5 py-1 rounded-md transition-colors flex items-center justify-center"
                     style={selected
                       ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }
                       : { backgroundColor: 'transparent', color: 'var(--ui-text-secondary)' }}
                   >
-                    <Icon size={16} />
+                    <Icon size={15} />
                   </button>
                 );
               })}
             </div>
             </div>
+            <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsThemeDesc')}</p>
           </div>
 
           {/* Themes (the accent color) */}
