@@ -13,8 +13,6 @@ interface ThemeContextType {
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
   setAccentColor: (color: AccentColor) => void;
-  /** The theme names its modes DAY / NIGHT (Terra) instead of light / dark. */
-  hasDayNight: boolean;
   /** Auto (every theme): light at sunrise, dark at sunset. On by default; picking a mode turns it off. */
   dayNightAuto: boolean;
   setDayNightAuto: (on: boolean) => void;
@@ -28,8 +26,6 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = 'accentTheme';
 const PROFILE_PREFIX = 'theme:';
 const validThemes: AccentColor[] = [...VISITOR_THEMES, 'classic_blue'];
-// Themes whose modes are called DAY / NIGHT (DESIGN.md → Themes).
-const DAY_NIGHT_THEMES: AccentColor[] = ['terra'];
 const AUTO_KEY = 'dayNightAuto';
 
 function normalizeAccentColor(value: string | null | undefined): AccentColor | null {
@@ -51,7 +47,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const [accentColor, setAccentColorState] = useState<AccentColor>(getInitialAccentColor);
   const [dayNightAuto, setDayNightAutoState] = useState(() => localStorage.getItem(AUTO_KEY) !== 'off');
-  const hasDayNight = DAY_NIGHT_THEMES.includes(accentColor);
   const followSun = dayNightAuto;
   // Store only userId (stable string) — not the full session object.
   // This means Supabase TOKEN_REFRESHED events won't cascade through context.
@@ -147,8 +142,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Memoize context value so consumers only re-render when theme/accent change,
   // not when Supabase fires TOKEN_REFRESHED and userId is the same string.
   const value = useMemo(
-    () => ({ theme, accentColor, toggleTheme, setTheme, setAccentColor, hasDayNight, dayNightAuto, setDayNightAuto }),
-    [theme, accentColor, toggleTheme, setTheme, setAccentColor, hasDayNight, dayNightAuto, setDayNightAuto]
+    () => ({ theme, accentColor, toggleTheme, setTheme, setAccentColor, dayNightAuto, setDayNightAuto }),
+    [theme, accentColor, toggleTheme, setTheme, setAccentColor, dayNightAuto, setDayNightAuto]
   );
 
   return (

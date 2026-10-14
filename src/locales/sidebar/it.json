@@ -9,5 +9,6 @@
   "settingsNarrator": "Voce del narratore",
   "settingsNarratorDesc": "Legge le risposte quando tocchi Ascolta",
   "voiceFemale": "Donna",
-  "voiceMale": "Uomo"
+  "voiceMale": "Uomo",
+  "languageAutoTip": "Curios rileva la lingua della tua domanda e cambia l'app in quella lingua per te."
 }

@@ -85,7 +85,7 @@ export default function MultipleCitations({ citations, primarySiteName }: Multip
         type="button"
         onClick={toggle}
         aria-expanded={open}
-        className="inline-flex items-center px-2 py-0.5 mx-0.5 text-xs font-medium rounded-md cursor-pointer hover:opacity-90 active:opacity-75"
+        className="inline-flex items-center px-2 py-0.5 mx-0.5 text-xs font-medium rounded-full cursor-pointer hover:opacity-90 active:opacity-75"
         style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
       >
         {many ? `${primarySiteName} +${uniqueCitations.length - 1}` : primarySiteName}

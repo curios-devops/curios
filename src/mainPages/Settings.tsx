@@ -7,7 +7,7 @@ import { signOut } from '../lib/auth';
 import GeneralSection from '../components/settings/GeneralSection';
 import AccountSection from '../components/settings/AccountSection';
 import { getUserDisplayName } from '../utils/userName';
-import { X, Crown } from 'lucide-react';
+import { X } from 'lucide-react';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -96,7 +96,6 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>CuriosAI</h2>
-              <Crown size={20} style={{ color: 'var(--accent-primary)' }} aria-label="Pro" />
             </div>
             <div
               className="rounded-xl border"

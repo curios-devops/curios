@@ -5,7 +5,6 @@ import LanguageSelector from './LanguageSelector';
 import NarratorVoiceSelect from './NarratorVoiceSelect';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../theme/ThemeContext';
-import { useSession } from '../../hooks/useSession';
 import { useTranslation } from '../../hooks/useTranslation';
 import { accentColors } from '../../config/themeColors';
 import { THEME_NAMES, VISITOR_THEMES } from '../../config/appSettings';
@@ -56,9 +55,8 @@ function Segmented<T extends string>({ options, value, onChange }: {
 }
 
 export default function GeneralSection() {
-  const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor, hasDayNight, dayNightAuto, setDayNightAuto } = useTheme();
-  const { currentLanguage } = useLanguage();
-  const { session } = useSession();
+  const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor, dayNightAuto, setDayNightAuto } = useTheme();
+  const { autoDetect, setAutoDetect } = useLanguage();
   const { t } = useTranslation();
   const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
@@ -85,11 +83,6 @@ export default function GeneralSection() {
       <span className="w-6 text-xs">{dayNightAuto ? 'On' : 'Off'}</span>
     </label>
   );
-  // DAY / NIGHT themes (Terra): no System — Auto follows the sun instead.
-  const dayNightOptions: SegmentedOption<'light' | 'dark'>[] = [
-    { key: 'light', label: 'Day', icon: Sun },
-    { key: 'dark', label: 'Night', icon: Moon },
-  ];
 
   const cookieOptions: SegmentedOption<CookieOption>[] = [
     { key: 'all', label: 'All' },
@@ -102,71 +95,62 @@ export default function GeneralSection() {
       <h2 className="text-xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>General</h2>
       <div className="rounded-xl border" style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}>
         <div className="divide-y mx-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
-          {/* Appearance */}
+          {/* Same rows as the Settings window, for every theme (a theme changes looks, not controls). */}
+          {/* Appearance … Auto (right); the description; then light / dark / system. */}
           <div className="py-6">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div>
-                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Appearance</h3>
-                <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">How CuriosAI looks on your device</p>
-              </div>
-              {hasDayNight ? (
-                <div className="flex items-center gap-4">
-                  <Segmented options={dayNightOptions} value={isDarkMode ? 'dark' : 'light'} onChange={setTheme} />
-                  {/* Guests have no Theme row, so their Auto lives here. */}
-                  {!session && autoSwitch}
-                </div>
-              ) : (
-                <div className="flex items-center gap-4">
-                  <Segmented options={themeOptions} value={theme} onChange={setTheme} />
-                  {!session && autoSwitch}
-                </div>
-              )}
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('appearance')}</h3>
+              {autoSwitch}
+            </div>
+            <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">{t('settingsThemeDesc')}</p>
+            <div className="mt-3 flex">
+              <Segmented options={themeOptions} value={theme} onChange={setTheme} />
             </div>
           </div>
 
-          {/* Theme — signed-in users only (guests keep the default theme). */}
-          {session && (
-            <div className="py-6">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('accentColor')}</h3>
-                  <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">{t('themeDesc')}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                <div className="flex gap-2">
-                  {ACCENT_OPTIONS.map((color) => {
-                    const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
-                    const isSelected = selectedAccentColor === color;
-                    return (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setAccentColor(color)}
-                        className={`w-6 h-6 rounded-full transition-transform ${isSelected ? 'border-2 border-gray-400 scale-110' : 'border border-transparent hover:scale-110'}`}
-                        style={{
-                          backgroundColor: colorConfig.primary,
-                          boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
-                        }}
-                        title={THEME_NAMES[color]}
-                        aria-label={color}
-                        aria-pressed={isSelected}
-                      />
-                    );
-                  })}
-                </div>
-                {autoSwitch}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Language */}
+          {/* Themes: title, description, then the dots. */}
           <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Language</h3>
-                <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">Interface language: {currentLanguage.name}</p>
-              </div>
+            <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('accentColor')}</h3>
+            <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">{t('themeDesc')}</p>
+            <div className="flex gap-2 mt-3">
+              {ACCENT_OPTIONS.map((color) => {
+                const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
+                const isSelected = selectedAccentColor === color;
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setAccentColor(color)}
+                    className={`w-6 h-6 rounded-full transition-transform ${isSelected ? 'border-2 border-gray-400 scale-110' : 'border border-transparent hover:scale-110'}`}
+                    style={{
+                      backgroundColor: colorConfig.primary,
+                      boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
+                    }}
+                    title={THEME_NAMES[color]}
+                    aria-label={THEME_NAMES[color]}
+                    aria-pressed={isSelected}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Language … Auto Detect (right): follows each question's language; off keeps the one picked here. */}
+          <div className="py-6">
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('language')}</h3>
+              <label
+                className="flex items-center gap-2 text-sm font-medium cursor-pointer"
+                style={{ color: 'var(--ui-text-secondary)' }}
+                title={t('languageAutoTip')}
+              >
+                Auto Detect
+                <ToggleSwitch checked={autoDetect} onChange={setAutoDetect} />
+                <span className="w-6 text-xs">{autoDetect ? 'On' : 'Off'}</span>
+              </label>
+            </div>
+            <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">{t('settingsLanguageDesc')}</p>
+            <div className="mt-3">
               <LanguageSelector />
             </div>
           </div>

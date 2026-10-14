@@ -13,7 +13,8 @@ import { uploadMultipleImages } from '../../utils/imageUpload.ts';
 import { logger } from '../../utils/logger.ts';
 import { useVoiceRecording } from '../../hooks/useVoiceRecording.ts';
 import { transcribeAudioWithFallback } from '../../services/stt/transcriptionService.ts';
-import { classifyIntent } from '../../services/auto/intentRouter.ts';
+import { classifyIntent, detectLanguage } from '../../services/auto/intentRouter.ts';
+import { useLanguage } from '../../contexts/LanguageContext.tsx';
 import { resolveBuyIntent } from '../../services/search/buyIntent.ts';
 import { isMovieQuery } from '../../services/auto/movieDetection.ts';
 
@@ -45,6 +46,7 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const reverseImageRef = useRef<ReverseImageSearchHandle>(null);
   const { session } = useSession();
+  const { autoDetect, followQuestion } = useLanguage();
   const accentColor = useAccentColor();
   const { isRecording, startRecording, stopRecording } = useVoiceRecording();
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -119,6 +121,12 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
 
     // Regular search is free and open for all users — no quota gating.
 
+    // Auto Detect: the question's language. Auto mode's routing call answers it; any other
+    // route asks Decisions now, in parallel with the work below.
+    const routedByDecisions = selectedMode === 'auto' && !hasImages && !isMovieQuery(trimmedQuery);
+    const languageCheck = autoDetect && trimmedQuery && !routedByDecisions ? detectLanguage(trimmedQuery) : null;
+    let questionLanguage: string | null = null;
+
     // Upload images to get public URLs (if any)
     let imageUrls: string[] = [];
     if (hasImages) {
@@ -156,6 +164,7 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
         // (buyProbability null) do we run the local heuristic resolver. For now the sponsor
         // carousel only lives in Search, so a confirmed buy intent always wins the route.
         const intent = await classifyIntent(trimmedQuery);
+        questionLanguage = intent.language;
         buyIntentDetected = intent.buyProbability !== null
           ? intent.buyProbability >= BUY_PROBABILITY_THRESHOLD
           : (await resolveBuyIntent(trimmedQuery)).isBuyIntent;
@@ -177,6 +186,10 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
         if (resolvedMode === 'movie') warmMovieGpu();
       }
     }
+
+    // The interface switches to the question's language before the results page opens.
+    if (languageCheck) questionLanguage = await languageCheck;
+    followQuestion(questionLanguage);
 
     const route = getModeRoute(resolvedMode);
 

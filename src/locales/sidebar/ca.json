@@ -9,5 +9,6 @@
   "settingsNarrator": "Veu del narrador",
   "settingsNarratorDesc": "Llegeix les respostes quan toques Escolta",
   "voiceFemale": "Dona",
-  "voiceMale": "Home"
+  "voiceMale": "Home",
+  "languageAutoTip": "Curios detecta l'idioma de la teva pregunta i canvia l'app a aquest idioma per tu."
 }

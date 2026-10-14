@@ -5,7 +5,7 @@
 // for "go deeper", which continues the story. Free for everyone. Finished stories are cached for the visit (per question + section).
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
 import { storiesService, StoryProgressCallback } from '../agents/storiesService';
 import type { StoryResult } from '../agents/storyAgent.ts';
 import { SearchResult } from '../types.ts';
@@ -189,21 +189,58 @@ export default function StoriesResults() {
   };
   const sectionName = (id: MagazineSection) => (id === 'local' && city ? `${t('magSection_local')} · ${city}` : t(`magSection_${id}` as never));
 
+  // Section picker (under the tabs, in the story's kicker): the current section; it opens the
+  // three other sections Decisions suggested, to rewrite the story from.
+  const sectionPicker = plan && section ? (
+    <div className="relative" ref={focusRef}>
+      <button
+        type="button"
+        onClick={() => setFocusOpen((o) => !o)}
+        aria-expanded={focusOpen}
+        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border bg-transparent text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-opacity hover:opacity-80"
+        style={{ color: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
+      >
+        {t(`magSection_${section}` as never)}
+        <ChevronDown size={14} className={`transition-transform ${focusOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {focusOpen && (
+        <div
+          className="absolute left-0 top-full mt-2 rounded-lg shadow-lg border overflow-hidden min-w-[200px] z-20"
+          style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
+        >
+          {plan.sections.filter((id) => id !== section).map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => pickSection(id)}
+              className="w-full px-4 py-2.5 text-sm text-left transition-colors hover:bg-[var(--ui-bg-secondary)]"
+              style={{ color: 'var(--ui-text-primary)' }}
+            >
+              {sectionName(id)}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  ) : (
+    <span className="font-semibold uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>{section && sectionName(section)}</span>
+  );
+
   return (
     <div className="stories-result-page min-h-screen bg-white dark:bg-night-900 text-gray-900 dark:text-white transition-colors duration-200">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-3 px-6 pt-6 pb-3">
-        <button type="button" onClick={goBack} style={{ color: accent.primary }} className="hover:opacity-80 transition-opacity flex-shrink-0">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex items-center gap-4 flex-1 min-w-[70%] sm:min-w-0">
+      {/* One row, like Search's top bar: back arrow, the question, Long Read at the end. */}
+      <header className="flex items-center justify-between gap-2 px-4 sm:px-6 pt-6 pb-3">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+          <button type="button" onClick={goBack} style={{ color: accent.primary }} className="p-1 hover:opacity-80 transition-opacity flex-shrink-0">
+            <ArrowLeft size={20} />
+          </button>
           <h1 className="text-base sm:text-lg font-medium break-words max-h-24 overflow-y-auto pr-1">{query}</h1>
         </div>
-        <div className="flex items-center gap-2 ml-auto">
         <button
           type="button"
           onClick={toggleLongRead}
           aria-pressed={longRead}
-          className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium text-[var(--ui-text-on-accent)] whitespace-nowrap transition-all hover:opacity-90"
+          className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium text-[var(--ui-text-on-accent)] whitespace-nowrap transition-all hover:opacity-90"
           style={{
             backgroundColor: 'var(--accent-primary)',
             boxShadow: longRead ? '0 0 0 3px color-mix(in srgb, var(--accent-primary) 30%, transparent)' : undefined,
@@ -211,38 +248,6 @@ export default function StoriesResults() {
         >
           {t('magLongRead')}
         </button>
-        {/* Change focus: the three other sections Decisions suggested, to rewrite the story from. */}
-        {plan && section && (
-          <div className="relative flex-shrink-0" ref={focusRef}>
-            <button
-              type="button"
-              onClick={() => setFocusOpen((o) => !o)}
-              aria-expanded={focusOpen}
-              className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-xs font-medium text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors whitespace-nowrap"
-            >
-              {t('magChangeFocus')}
-            </button>
-            {focusOpen && (
-              <div
-                className="absolute right-0 top-full mt-2 rounded-lg shadow-lg border overflow-hidden min-w-[200px] z-20"
-                style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
-              >
-                {plan.sections.filter((id) => id !== section).map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => pickSection(id)}
-                    className="w-full px-4 py-2.5 text-sm text-left transition-colors hover:bg-[var(--ui-bg-secondary)]"
-                    style={{ color: 'var(--ui-text-primary)' }}
-                  >
-                    {sectionName(id)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-0 sm:px-6 py-6">
@@ -265,7 +270,7 @@ export default function StoriesResults() {
           <TabSystem
             result={result}
             loading={loading}
-            sectionLabel={sectionName(section)}
+            sectionLabel={sectionPicker}
             isNews={(plan?.news ?? 0) >= 0.5}
             cacheKey={storyKey}
             onDeepen={deepen}

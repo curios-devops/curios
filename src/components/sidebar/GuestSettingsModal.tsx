@@ -6,6 +6,7 @@ import ToggleSwitch from '../settings/ToggleSwitch.tsx';
 import LanguageSelector from '../settings/LanguageSelector.tsx';
 import NarratorVoiceSelect from '../settings/NarratorVoiceSelect.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
+import { useLanguage } from '../../contexts/LanguageContext.tsx';
 import { accentColors } from '../../config/themeColors.ts';
 import { THEME_NAMES, VISITOR_THEMES } from '../../config/appSettings.ts';
 
@@ -29,6 +30,7 @@ interface GuestSettingsModalProps {
 export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsModalProps) {
   const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor, dayNightAuto, setDayNightAuto } = useTheme();
   const { t } = useTranslation();
+  const { autoDetect, setAutoDetect } = useLanguage();
   const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   // Theme name bubble over a dot: on hover (desktop) or briefly after a tap (mobile has no hover).
   const [labelFor, setLabelFor] = useState<string | null>(null);
@@ -144,13 +146,24 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
             </div>
           </div>
 
-          {/* Language */}
-          <div className="py-5 flex items-center justify-between gap-4">
-            <div>
+          {/* Language … Auto Detect (right); the description; then the selector. */}
+          <div className="py-5">
+            <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('language')}</h3>
-              <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsLanguageDesc')}</p>
+              <label
+                className="flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+                style={{ color: 'var(--ui-text-secondary)' }}
+                title={t('languageAutoTip')}
+              >
+                Auto Detect
+                <ToggleSwitch checked={autoDetect} onChange={setAutoDetect} />
+                <span className="w-6">{autoDetect ? 'On' : 'Off'}</span>
+              </label>
             </div>
-            <LanguageSelector openUp />
+            <div className="mt-1.5 flex flex-col items-start gap-3">
+              <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsLanguageDesc')}</p>
+              <LanguageSelector openUp />
+            </div>
           </div>
 
           {/* Narrator voice */}

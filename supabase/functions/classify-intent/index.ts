@@ -9,6 +9,9 @@
 // (each null when unknown), tier (null when unknown), backend }. The topic predicates send a film,
 // a song/artist/album or a video game to its own page.
 // Body { query, location?, only: "magazine" } → { sections: [main, …3 more], news, tier } for Magazine.
+// Every routing answer also carries `language`: the question's language when it's one the app
+// speaks (else "other"); Body { query, only: "language" } asks just that. With Auto Detect on, the
+// client switches the interface to it.
 // Body { query, answer, only: "explore" } picks the best way to keep exploring a Search answer
 // (Decisions: watch / play / read) while Luna drafts the one-line pitch of each option.
 // Orchestration layer only — does not call any downstream mode.
@@ -81,6 +84,35 @@ const TIER_CHOICES: { value: Tier; description: string }[] = [
 ];
 
 const tierQuestion = { type: "choice" as const, name: "tier", instructions: TIER_INSTRUCTIONS, choices: TIER_CHOICES };
+
+// The app's interface languages (src/types/language.ts) + "other".
+const LANGUAGE_CHOICES: { value: string; description: string }[] = [
+  { value: "en", description: "English" },
+  { value: "es", description: "Spanish (español)" },
+  { value: "de", description: "German (Deutsch)" },
+  { value: "fr", description: "French (français)" },
+  { value: "ca", description: "Catalan (català)" },
+  { value: "it", description: "Italian (italiano)" },
+  { value: "pt", description: "Portuguese (português)" },
+  { value: "ru", description: "Russian (русский)" },
+  { value: "zh", description: "Chinese (中文)" },
+  { value: "ko", description: "Korean (한국어)" },
+  { value: "ja", description: "Japanese (日本語)" },
+  { value: "other", description: "Any other language" },
+];
+const languageQuestion = {
+  type: "choice" as const,
+  name: "language",
+  instructions: "Which language is the user's text written in? Judge the words the user wrote, not names of places, people or brands.",
+  choices: LANGUAGE_CHOICES,
+};
+
+function topLanguage(answers: Awaited<ReturnType<typeof decide>>): string | null {
+  const probs = answers?.language?.probabilities;
+  if (!probs?.length) return null;
+  const top = probs.reduce((a, b) => (b.probability > a.probability ? b : a));
+  return LANGUAGE_CHOICES.some((c) => c.value === top.value) ? top.value : null;
+}
 
 function topTier(answers: Awaited<ReturnType<typeof decide>>): Tier | null {
   const probs = answers?.tier?.probabilities;
@@ -260,6 +292,7 @@ Deno.serve(async (req: Request) => {
           { type: "choice", name: "section", instructions: MAGAZINE_INSTRUCTIONS, choices: MAGAZINE_SECTIONS },
           { type: "predicate", name: "news", instructions: NEWS_INSTRUCTIONS },
           tierQuestion,
+          languageQuestion,
         ], 3000),
         draftSections(query, location),
       ]);
@@ -268,7 +301,7 @@ Deno.serve(async (req: Request) => {
       // Main = Decisions' pick; the other three = Luna's angles, topped up from Decisions' ranking.
       const sections = [...new Set([...ranked.slice(0, 1), ...angles, ...ranked])].slice(0, 4);
       const news = answers?.news?.probability;
-      return jsonResponse({ sections, news: typeof news === "number" ? news : null, tier: topTier(answers), backend: answers ? "decisions" : "default" });
+      return jsonResponse({ sections, news: typeof news === "number" ? news : null, tier: topTier(answers), language: topLanguage(answers), backend: answers ? "decisions" : "default" });
     }
 
     if (body?.only === "explore") {
@@ -288,6 +321,11 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (body?.only === "language") {
+      const answers = await decide(query, [languageQuestion], DECISIONS_TIMEOUT_MS);
+      return jsonResponse({ language: topLanguage(answers), backend: answers ? "decisions" : "default" });
+    }
+
     if (body?.only === "tier") {
       const answers = await decide(query, [tierQuestion], DECISIONS_TIMEOUT_MS);
       return jsonResponse({ tier: topTier(answers), backend: answers ? "decisions" : "default" });
@@ -300,6 +338,7 @@ Deno.serve(async (req: Request) => {
       { type: "predicate", name: "music", instructions: MUSIC_INSTRUCTIONS },
       { type: "predicate", name: "game", instructions: GAME_INSTRUCTIONS },
       tierQuestion,
+      languageQuestion,
     ], DECISIONS_TIMEOUT_MS);
 
     const probabilities = answers?.mode?.probabilities;
@@ -318,6 +357,7 @@ Deno.serve(async (req: Request) => {
           musicProbability: typeof music === "number" ? music : null,
           gameProbability: typeof game === "number" ? game : null,
           tier: topTier(answers),
+          language: topLanguage(answers),
           backend: "decisions",
         });
       }

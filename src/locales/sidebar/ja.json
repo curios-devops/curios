@@ -9,5 +9,6 @@
   "settingsNarrator": "ナレーターの声",
   "settingsNarratorDesc": "「聞く」をタップすると回答を読み上げます",
   "voiceFemale": "女性",
-  "voiceMale": "男性"
+  "voiceMale": "男性",
+  "languageAutoTip": "Curiosが質問の言語を検出し、アプリをその言語に自動で切り替えます。"
 }

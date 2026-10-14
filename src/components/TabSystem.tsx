@@ -2,7 +2,7 @@
 // The cover is a news photo for current events or an AI image for general topics (the reader
 // can switch Photo / AI); AI covers carry a subtle Curios watermark. Listening is free.
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Image, Video, Globe, ChevronDown, Loader2, Headphones, Pause, Newspaper } from 'lucide-react';
+import { Image, Video, ChevronDown, Loader2, Headphones, Pause, Newspaper, Rss, ArrowRight } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useTranslation } from '../hooks/useTranslation';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -66,8 +66,8 @@ const calculateReadingTime = (text: string) => {
 interface TabSystemProps {
   result: StoryResult;
   loading: boolean;
-  /** The section the story was written for ("Science", "Local · Santiago"). */
-  sectionLabel: string;
+  /** The section the story was written for — the page's section picker ("Local ▾"). */
+  sectionLabel: React.ReactNode;
   /** Current news → the cover defaults to a news photo; otherwise to an AI image. */
   isNews: boolean;
   /** The story's cache key (the AI cover is kept with it). */
@@ -80,41 +80,34 @@ type Tab = 'curios' | 'images' | 'videos' | 'news' | 'sources';
 
 interface SourceItemProps {
   source: StoryResult['sources'][number];
-  index: number;
 }
 
-const SourceItem: React.FC<SourceItemProps> = ({ source, index }) => (
-  <div className="flex gap-4 p-6 border-b border-gray-200 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-    <div className="flex-1">
-      <div className="flex items-start gap-4">
-        <span className="text-[#0095FF] font-semibold text-base bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-full min-w-[32px] text-center">
-          {index + 1}
-        </span>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-xl font-medium text-[#0095FF] dark:text-[#0095FF] mb-1 hover:underline cursor-pointer line-clamp-2">
-            {source.title}
-          </h3>
-          <div className="text-sm text-green-700 dark:text-green-400 mb-3 truncate">
-            {source.url}
-          </div>
-          <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-            {source.snippet}
-          </p>
-        </div>
-      </div>
+const domainOf = (url: string) => {
+  try { return new URL(url).hostname.replace('www.', ''); } catch { return ''; }
+};
+
+// Same card as Search's Sources tab: the site's favicon, title, domain and snippet.
+const SourceItem: React.FC<SourceItemProps> = ({ source }) => (
+  <a
+    href={source.url}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-night-950"
+  >
+    <div className="flex-shrink-0 w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${domainOf(source.url)}&sz=32`}
+        alt=""
+        className="w-4 h-4"
+        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+      />
     </div>
-    
-    {/* Image on the right */}
-    {source.image && (
-      <div className="flex-shrink-0 ml-4">
-        <img 
-          src={source.image} 
-          alt=""
-          className="w-24 h-18 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
-        />
-      </div>
-    )}
-  </div>
+    <div className="flex-1 min-w-0">
+      <h4 className="font-medium text-gray-900 dark:text-white mb-1 line-clamp-2">{source.title}</h4>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{domainOf(source.url)}</p>
+      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{source.snippet}</p>
+    </div>
+  </a>
 );
 
 export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLabel, isNews, cacheKey, onDeepen }) => {
@@ -261,8 +254,8 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
     { id: 'curios', label: t('magTab_story') },
     ...(hasPhoto ? [{ id: 'images' as Tab, label: `${t('magTab_images')} · ${validImageIndices.length}`, icon: <Image size={16} /> }] : []),
     ...(result?.videos?.length ? [{ id: 'videos' as Tab, label: `${t('magTab_videos')} · ${result.videos.length}`, icon: <Video size={16} /> }] : []),
-    ...(news.length ? [{ id: 'news' as Tab, label: `${t('magTab_news')} · ${news.length}`, icon: <Newspaper size={16} /> }] : []),
-    { id: 'sources', label: `${t('magTab_sources')}${result?.sources ? ` · ${result.sources.length}` : ''}`, icon: <Globe size={16} /> },
+    ...(news.length ? [{ id: 'news' as Tab, label: `${t('magTab_news')} · ${news.length}`, icon: <Rss size={16} /> }] : []),
+    { id: 'sources', label: `${t('magTab_sources')}${result?.sources ? ` · ${result.sources.length}` : ''}`, icon: <Newspaper size={16} /> },
   ];
 
   const pillStyle = (on: boolean) => on
@@ -302,15 +295,15 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
                 {/* Magazine header: section kicker, headline, dek */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="font-semibold uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>{sectionLabel}</span>
+                    {sectionLabel}
                     <span className="text-gray-400">·</span>
                     <span className="text-gray-500 dark:text-gray-400 font-medium">{new Date().toLocaleDateString(currentLanguage.code, { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                   </div>
-                  <h1 className="font-bricolage text-2xl sm:text-4xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white">
+                  <h1 className="pt-2 font-bricolage text-2xl sm:text-4xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white">
                     {result.headline}
                   </h1>
                   {result.subtitle && (
-                    <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 leading-relaxed">{result.subtitle}</p>
+                    <p className="text-base sm:text-lg italic text-gray-600 dark:text-gray-300 leading-relaxed">{result.subtitle}</p>
                   )}
 
                   {/* Cover: AI image (watermarked) or news photo */}
@@ -320,8 +313,9 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
                         aiImageUrl ? (
                           <>
                             <img src={aiImageUrl} alt={result.headline} className="w-full h-full object-cover" onError={() => setAiFailed(true)} />
-                            {/* Subtle Curios watermark on generated images */}
-                            <span className="absolute bottom-3 right-3 opacity-60 drop-shadow" aria-hidden>
+                            {/* Curios watermark on generated images: almost invisible, like a water drop
+                                (white blended into the picture, so it only bends the light under it). */}
+                            <span className="absolute bottom-3 right-3 opacity-40 mix-blend-overlay pointer-events-none" aria-hidden>
                               <CuriosLogo size={22} frameColor="#FFFFFF" colorOverride="#FFFFFF" />
                             </span>
                           </>
@@ -441,11 +435,13 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
                       type="button"
                       onClick={handleDeepen}
                       disabled={deepening}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-left hover:opacity-80 transition-opacity disabled:cursor-wait"
-                      style={{ color: 'var(--accent-primary)' }}
+                      className="group inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-left transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-wait"
+                      style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
                     >
                       <span>{result.deeper}</span>
-                      {deepening ? <Loader2 size={15} className="animate-spin flex-shrink-0" /> : <ChevronDown size={15} className="flex-shrink-0" />}
+                      {deepening
+                        ? <Loader2 size={16} className="animate-spin flex-shrink-0" />
+                        : <ArrowRight size={16} className="flex-shrink-0 transition-transform group-hover:translate-x-0.5" />}
                     </button>
                     {deepenFailed && <p className="mt-1 text-xs text-red-500">{t('magDeeperError')}</p>}
                   </div>
@@ -462,9 +458,9 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
         )}
 
         {activeTab === 'sources' && (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="grid grid-cols-1 gap-3">
             {(result?.sources ?? []).map((source, index) => (
-              <SourceItem key={index} source={source} index={index} />
+              <SourceItem key={index} source={source} />
             ))}
           </div>
         )}

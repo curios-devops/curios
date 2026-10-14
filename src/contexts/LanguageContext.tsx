@@ -6,7 +6,14 @@ import { supabase } from '../lib/supabase.ts';
 type LanguageContextType = {
   currentLanguage: Language;
   setLanguage: (lang: Language) => void;
+  /** Auto Detect (default on): the interface follows the language of each question. */
+  autoDetect: boolean;
+  setAutoDetect: (on: boolean) => void;
+  /** A question's detected language: switches the interface to it when Auto Detect is on. */
+  followQuestion: (code: string | null) => void;
 };
+
+const AUTO_DETECT_KEY = 'languageAutoDetect';
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
@@ -24,6 +31,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [languageLoading, setLanguageLoading] = useState(true);
   // Track if we just loaded from Supabase to avoid race with localStorage
   const [justLoadedFromSupabase, setJustLoadedFromSupabase] = useState(false);
+  const [autoDetect, setAutoDetectState] = useState(() => {
+    try { return localStorage.getItem(AUTO_DETECT_KEY) !== 'off'; } catch { return true; }
+  });
 
   useEffect(() => {
     const fetchLanguage = async () => {
@@ -117,11 +127,22 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setCurrentLanguage(lang);
   };
 
+  const setAutoDetect = (on: boolean) => {
+    setAutoDetectState(on);
+    try { localStorage.setItem(AUTO_DETECT_KEY, on ? 'on' : 'off'); } catch { /* storage blocked */ }
+  };
+
+  const followQuestion = (code: string | null) => {
+    if (!autoDetect || !code || code === currentLanguage.code) return;
+    const lang = languages.find((l) => l.code === code);
+    if (lang) setCurrentLanguage(lang);
+  };
+
   // Optionally, show a loading spinner or fallback while language is loading
   if (languageLoading) return null;
 
   return (
-    <LanguageContext.Provider value={{ currentLanguage, setLanguage }}>
+    <LanguageContext.Provider value={{ currentLanguage, setLanguage, autoDetect, setAutoDetect, followQuestion }}>
       {children}
     </LanguageContext.Provider>
   );

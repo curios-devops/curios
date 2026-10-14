@@ -85,6 +85,9 @@ themes. Read it before writing any UI. Every line here should change what you bu
 ## Themes
 A **theme** sits on top of this design and wins over it; whatever it doesn't set is
 inherited from the general tokens above.
+A theme changes **looks only** — colors, fonts, shapes. Controls and settings are the
+same for every theme: Settings (Appearance + Auto, Themes, Language + Auto Detect) and
+the Home `DAY · NIGHT` switch never appear, disappear or change with the theme.
 
 **Which theme a person sees**
 1. Signed-in and picked one in Settings → Themes → that theme (saved in their profile as

@@ -1,10 +1,9 @@
-// xerj-style "DAY · NIGHT" on the desktop Home. Shown only for themes with DAY / NIGHT
-// (Terra); picking one turns Auto off — the Auto switch lives in Settings.
+// xerj-style "DAY · NIGHT" on the desktop Home, for every theme (themes change looks, not
+// controls). Picking one turns Auto off — the Auto switch lives in Settings.
 import { useTheme } from './ThemeContext';
 
 export default function DayNightToggle() {
-  const { theme, setTheme, hasDayNight } = useTheme();
-  if (!hasDayNight) return null;
+  const { theme, setTheme } = useTheme();
   const night = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const tone = (active: boolean) => ({ color: active ? 'var(--accent-primary)' : 'var(--ui-text-muted)' });
 
