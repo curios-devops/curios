@@ -52,6 +52,9 @@ type Prepared =
 const STAGE_ID = 'character-stage';
 const VIVIX_VIEW_ID = 'character-stage-video';
 const ANAM_VIDEO_ID = 'character-stage-anam';
+// Full body: the presenter images are 2:3 (1024×1536) and Vivix squeezes that frame into
+// 672×1280 — the stage stays 2:3 and the video fills it, which undoes the squeeze.
+const FULL_BODY_RATIO = 2 / 3;
 // One credit buys this much live time.
 const MINUTE_SECONDS = 60;
 // No input for this long (and the presenter not speaking) → freeze the last
@@ -133,7 +136,7 @@ export default function CharacterResults() {
   const [savedNode, setSavedNode] = useState<SavedNodeRef | null>(null);
   const [liked, setLiked] = useState(false);
   const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
-  // Stage takes the real video's aspect ratio (no stretching); 9:16 / 3:4 until known.
+  // Half body: the stage takes the real video's aspect ratio (3:4 until known).
   const [aspect, setAspect] = useState<number | null>(null);
   const [startedAt] = useState(Date.now());
   const [timeAgo, setTimeAgo] = useState('just now');
@@ -232,15 +235,15 @@ export default function CharacterResults() {
     return () => clearInterval(id);
   }, [isLive, thinking, isRecording, closeEngine]);
 
-  // Read the live video's real size so the stage never distorts it.
+  // Half body: read the live video's real size so the stage never distorts it.
   useEffect(() => {
-    if (!isLive) return;
+    if (!isLive || presenter.body === 'full') return;
     const id = setInterval(() => {
       const v = document.querySelector<HTMLVideoElement>(`#${STAGE_ID} video`);
       if (v?.videoWidth && v.videoHeight) { setAspect(v.videoWidth / v.videoHeight); clearInterval(id); }
     }, 300);
     return () => clearInterval(id);
-  }, [isLive]);
+  }, [isLive, presenter.body]);
 
   const persist = useCallback(async (all: Turn[]) => {
     const answer = all.map((t) => (t.role === 'user' ? `**You:** ${t.text}` : `**${name}:** ${t.text}`)).join('\n\n');
@@ -476,7 +479,7 @@ export default function CharacterResults() {
     try { setLiked(await toggleNodeLike(savedNode.id, session.user.id)); } catch { /* best effort */ }
   };
 
-  const ratio = aspect ?? (presenter.body === 'full' ? 9 / 16 : 3 / 4);
+  const ratio = presenter.body === 'full' ? FULL_BODY_RATIO : aspect ?? 3 / 4;
   const maxWidth = ratio < 1 ? 420 : 640;
   const stageStyle = {
     aspectRatio: String(ratio),
@@ -538,7 +541,7 @@ export default function CharacterResults() {
               />
             ))}
             {presenter.body === 'full' ? (
-              <div id={VIVIX_VIEW_ID} className="absolute inset-0 [&_video]:!object-contain [&_video]:!w-full [&_video]:!h-full" />
+              <div id={VIVIX_VIEW_ID} className="absolute inset-0 [&_video]:!object-fill [&_video]:!w-full [&_video]:!h-full" />
             ) : (
               <video
                 id={ANAM_VIDEO_ID}

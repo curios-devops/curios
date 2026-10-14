@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Monitor, Moon, Sun, X, type LucideIcon } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext.tsx';
+import ToggleSwitch from '../settings/ToggleSwitch.tsx';
 import LanguageSelector from '../settings/LanguageSelector.tsx';
 import NarratorVoiceSelect from '../settings/NarratorVoiceSelect.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
@@ -35,7 +36,7 @@ interface GuestSettingsModalProps {
 // Compact settings for guests: Theme, Accent and Language only. Signed-in
 // users get the full /settings page (this mirrors its General section).
 export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsModalProps) {
-  const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor } = useTheme();
+  const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor, dayNightAuto, setDayNightAuto } = useTheme();
   const { t } = useTranslation();
   const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   // Theme name bubble over a dot: on hover (desktop) or briefly after a tap (mobile has no hover).
@@ -77,7 +78,15 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
           {/* Theme */}
           <div className="py-5 flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('theme')}</h3>
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('theme')}</h3>
+                {/* Auto: light at sunrise, dark at sunset (on by default; picking a mode turns it off). */}
+                <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer" style={{ color: 'var(--ui-text-secondary)' }}>
+                  Auto
+                  <ToggleSwitch checked={dayNightAuto} onChange={setDayNightAuto} />
+                  <span className="w-6">{dayNightAuto ? 'On' : 'Off'}</span>
+                </label>
+              </div>
               <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsThemeDesc')}</p>
             </div>
             <div

@@ -5,7 +5,6 @@ import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 import GuestSettingsModal from './GuestSettingsModal.tsx';
 import SidebarHelpMenu from './SidebarHelpMenu.tsx';
-import SidebarAutoRow from './SidebarAutoRow.tsx';
 import { sidebarRowClass, sidebarRowStyle, sidebarRowEnter, sidebarRowLeave } from './sidebarMenuRow.ts';
 
 // Lazy so guests don't pull in Stripe unless they open the pricing modal.
@@ -41,8 +40,6 @@ export default function SidebarGuestSection({ isCollapsed, onSignInClick }: Side
       </button>
 
       {/* Help */}
-      <SidebarAutoRow isCollapsed={isCollapsed} />
-
       <SidebarHelpMenu isCollapsed={isCollapsed} />
 
       {/* Sign-in card */}
