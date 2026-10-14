@@ -19,6 +19,15 @@ export type WordmarkColor = 'pamba' | 'default' | 'gray' | 'dark';
 // classic_blue (our original blue) is only selectable here, to revert.
 export type ThemeColorName = 'terra' | 'ocean' | 'fire' | 'sky' | 'borealis' | 'classic_blue';
 export const VISITOR_THEMES: ThemeColorName[] = ['terra', 'ocean', 'fire', 'sky', 'borealis'];
+// Display names for the theme dots in Settings (brand names, not translated).
+export const THEME_NAMES: Record<ThemeColorName, string> = {
+  terra: 'Terra',
+  ocean: 'Aqua',
+  fire: 'Fire',
+  sky: 'Space',
+  borealis: 'Boreal',
+  classic_blue: 'Classic Blue',
+};
 
 // The logo icon's own gray (see CuriosLogo.tsx frame fill) — offered as a
 // wordmark color option.

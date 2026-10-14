@@ -75,15 +75,12 @@ export default defineConfig((_: ConfigEnv): UserConfig => {
             
             // Search tools in separate chunk to prevent initialization issues
             'search-tools': [
-              './src/commonService/searchTools/tavily.ts',
-              './src/commonService/searchTools/searxng.ts'
+              './src/commonService/searchTools/tavily.ts'
             ],
             
             // Component chunks - separate heavy components
             // ('components-results' removed with the legacy Pro search page.)
             'components-auth': [
-              './src/components/auth/AuthModal.tsx',
-              './src/components/auth/EmailForm.tsx',
               './src/components/auth/buttons/GoogleButton.tsx'
             ]
           }

@@ -7,20 +7,11 @@ import LanguageSelector from '../settings/LanguageSelector.tsx';
 import NarratorVoiceSelect from '../settings/NarratorVoiceSelect.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { accentColors } from '../../config/themeColors.ts';
-import { VISITOR_THEMES } from '../../config/appSettings.ts';
+import { THEME_NAMES, VISITOR_THEMES } from '../../config/appSettings.ts';
 
 // Themes offered to visitors (app-settings.md → THEMES).
 const ACCENT_OPTIONS = VISITOR_THEMES;
 
-// Display names for the theme dots (brand names, not translated).
-const THEME_NAMES: Record<string, string> = {
-  terra: 'Terra',
-  ocean: 'Ocean',
-  fire: 'Fire',
-  sky: 'Space',
-  borealis: 'Boreal',
-  classic_blue: 'Classic Blue',
-};
 
 const THEME_OPTIONS: { key: 'light' | 'system' | 'dark'; icon: LucideIcon }[] = [
   { key: 'light', icon: Sun },
@@ -76,10 +67,9 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
 
         <div className="divide-y px-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
           {/* Appearance: light / system / dark, and Auto (light at sunrise, dark at sunset). */}
-          {/* One line: Appearance · Auto … selector; the description below. */}
+          {/* Line 1: Appearance … Auto (right). Line 2: description … light / system / dark. */}
           <div className="py-5">
             <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('appearance')}</h3>
               <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer" style={{ color: 'var(--ui-text-secondary)' }}>
                 Auto
@@ -87,6 +77,8 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
                 <span className="w-6">{dayNightAuto ? 'On' : 'Off'}</span>
               </label>
             </div>
+            <div className="flex items-center justify-between gap-3 mt-2">
+            <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400 min-w-0">{t('settingsThemeDesc')}</p>
             <div
               className="flex items-center gap-1 rounded-lg p-1 border flex-shrink-0"
               style={{ backgroundColor: 'var(--ui-bg-secondary)', borderColor: 'var(--ui-border-default)' }}
@@ -113,7 +105,6 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
               })}
             </div>
             </div>
-            <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsThemeDesc')}</p>
           </div>
 
           {/* Themes (the accent color) */}

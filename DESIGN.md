@@ -93,7 +93,7 @@ inherited from the general tokens above.
 3. Light / dark: their choice in Settings → Appearance, else `app-settings.md` `THEME`
    (LIGHT / DARK / AUTO = the device). A theme may define its own light/dark variants.
 
-**Accent-only themes** — Ocean `#1C8BFD`, Fire `#D97757`, Sky `#7C55D6`, Borealis `#12A88C`
+**Accent-only themes** — Aqua (`ocean`) `#1C8BFD`, Fire `#D97757`, Sky `#7C55D6`, Borealis `#12A88C`
 (Classic Blue `#4F6FE0` kept to revert). One base color each (`app-settings.md`); hover and
 tints are derived; everything else is the general design.
 

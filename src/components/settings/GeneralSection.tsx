@@ -8,7 +8,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useSession } from '../../hooks/useSession';
 import { useTranslation } from '../../hooks/useTranslation';
 import { accentColors } from '../../config/themeColors';
-import { VISITOR_THEMES } from '../../config/appSettings';
+import { THEME_NAMES, VISITOR_THEMES } from '../../config/appSettings';
 
 // Themes offered to visitors (app-settings.md → THEMES).
 const ACCENT_OPTIONS = VISITOR_THEMES;
@@ -147,7 +147,7 @@ export default function GeneralSection() {
                           backgroundColor: colorConfig.primary,
                           boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
                         }}
-                        title={color.charAt(0).toUpperCase() + color.slice(1)}
+                        title={THEME_NAMES[color]}
                         aria-label={color}
                         aria-pressed={isSelected}
                       />
