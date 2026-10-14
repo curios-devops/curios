@@ -16,7 +16,7 @@ import { useAccentColor } from '../../../hooks/useAccentColor';
 import { useGoBack } from '../../../hooks/useGoBack.ts';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
-import { saveNode } from '../../space/nodePersistenceService';
+import { saveNode, updateNodeAnswer, type SavedNodeRef } from '../../space/nodePersistenceService';
 import { fetchMagazinePlan, MAGAZINE_SECTIONS, type MagazinePlan, type MagazineSection } from '../../auto/intentRouter.ts';
 import { stepUp } from '../../auto/modelTier.ts';
 import { getCached, setCached } from '../../search/searchCache.ts';
@@ -69,6 +69,8 @@ export default function StoriesResults() {
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<StoryResult | null>(null);
+  // The saved node (signed-in only): its /s/ short link is what Share sends, like Search.
+  const [savedNode, setSavedNode] = useState<SavedNodeRef | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progressState, setProgressState] = useState<ProgressState>(INITIAL_PROGRESS);
   const runKey = useRef('');
@@ -106,6 +108,20 @@ export default function StoriesResults() {
     return () => { live = false; };
   }, [query]);
 
+  // Save the story as a curiosity node (guests: null) — the same node Search uses for its
+  // Space, its /s/ short link and Discover (once shared), shown there as "Magazine".
+  const persist = (story: StoryResult) => saveNode({
+    mode: 'stories',
+    query,
+    answer: story.markdown_report,
+    shortSummary: story.short_summary,
+    sources: (story.sources || []).map((s) => ({ title: s.title, url: s.url, snippet: s.snippet })),
+    images: (story.images || []).map((i) => ({ url: i.url, title: i.title || i.alt || '', source: i.source_url })),
+    videos: (story.videos || []).map((v) => ({ url: v.url, title: v.title, thumbnail: v.thumbnail || '' })),
+    followUps: story.follow_up_questions,
+    coverImage: story.images?.[0]?.url,
+  });
+
   // 2) The story for the active section (cached per question + section + language).
   useEffect(() => {
     if (!query || !section || !plan || runKey.current === storyKey) return;
@@ -115,6 +131,7 @@ export default function StoriesResults() {
       setResult(cached);
       setError(null);
       setLoading(false);
+      void persist(cached).then(setSavedNode); // saveNode reuses the existing node
       return;
     }
     let live = true;
@@ -137,17 +154,7 @@ export default function StoriesResults() {
         setResult(story);
         setLoading(false);
         // Auto-save as a curiosity node (authenticated only; no-op for guests).
-        saveNode({
-          mode: 'stories',
-          query,
-          answer: story.markdown_report,
-          shortSummary: story.short_summary,
-          sources: (story.sources || []).map((s) => ({ title: s.title, url: s.url, snippet: s.snippet })),
-          images: (story.images || []).map((i) => ({ url: i.url, title: i.title || i.alt || '', source: i.source_url })),
-          videos: (story.videos || []).map((v) => ({ url: v.url, title: v.title, thumbnail: v.thumbnail || '' })),
-          followUps: story.follow_up_questions,
-          coverImage: story.images?.[0]?.url,
-        });
+        void persist(story).then((ref) => { if (live) setSavedNode(ref); });
       })
       .catch((err: Error) => {
         if (!live) return;
@@ -171,6 +178,7 @@ export default function StoriesResults() {
     const next = { ...result, markdown_report: `${result.markdown_report}\n\n${more}`, deeper: undefined };
     setCached(storyKey, next);
     setResult(next);
+    if (savedNode) void updateNodeAnswer(savedNode.id, next.markdown_report);
   };
 
   // "Long Read" (Magazine's Ask Deeper): free; same question and section, longer and deeper.
@@ -274,6 +282,7 @@ export default function StoriesResults() {
             isNews={(plan?.news ?? 0) >= 0.5}
             cacheKey={storyKey}
             onDeepen={deepen}
+            savedNode={savedNode}
           />
         )}
       </main>

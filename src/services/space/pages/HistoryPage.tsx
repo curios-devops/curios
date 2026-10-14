@@ -9,7 +9,7 @@ import ContentCard from '../components/ContentCard';
 
 const BADGE: Record<HistoryType, string> = {
   fast_search: 'Search',
-  stories: 'Story',
+  stories: 'Magazine',
   explore: 'Article',
   avatar: 'Avatar',
   movie: 'Movie',

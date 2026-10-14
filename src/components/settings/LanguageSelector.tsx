@@ -76,7 +76,7 @@ export default function LanguageSelector({ openUp = false }: { openUp?: boolean 
       </button>
       {isOpen && (
         <div
-          className={`absolute right-0 ${openUp ? 'bottom-full mb-2' : 'mt-2'} p-2 border shadow-lg z-50 w-max min-w-[200px] flex flex-col rounded-lg`}
+          className={`absolute left-0 ${openUp ? 'bottom-full mb-2' : 'mt-2'} p-2 border shadow-lg z-50 w-max min-w-[200px] flex flex-col rounded-lg`}
           style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
         >
           {languages.map((lang: Language) => (

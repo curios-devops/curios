@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { toParagraphs } from './paragraphNarrator';
+import { toParagraphs, toSentences } from './paragraphNarrator';
 
 describe('toParagraphs (narration chunks)', () => {
   // The first audio must be short so playback starts fast; the rest streams per paragraph.
@@ -43,5 +43,28 @@ describe('ParagraphNarrator audio session (iOS silent switch)', () => {
     n.stop();
     expect(played[0].paused).toBe(true);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('toSentences (Magazine narration: quick start, little waste when the reader leaves)', () => {
+  it('cuts a paragraph into sentences so the first audio is short', () => {
+    const md = 'La regulación frena algunas subidas en la ciudad. Pero la oferta limitada sigue apretando el mercado.';
+    expect(toSentences(md)).toEqual(['La regulación frena algunas subidas en la ciudad.', 'Pero la oferta limitada sigue apretando el mercado.']);
+  });
+
+  it('keeps numbers like 1.153,11 whole — a sentence ends only at punctuation + space', () => {
+    expect(toSentences('El alquiler medio llegó a 1.153,11 euros al mes en Barcelona este año.')).toEqual(['El alquiler medio llegó a 1.153,11 euros al mes en Barcelona este año.']);
+  });
+
+  it('does not read citation markers aloud', () => {
+    expect(toSentences('El precio subió un 3,63% en el último trimestre del año [elpais +1].')).toEqual(['El precio subió un 3,63% en el último trimestre del año.']);
+  });
+
+  it('lets tiny sentences ride with the next one instead of a separate TTS call', () => {
+    expect(toSentences('Sí. Los precios suben aunque exista un tope legal en la ciudad.')).toEqual(['Sí. Los precios suben aunque exista un tope legal en la ciudad.']);
+  });
+
+  it('reads a heading on its own, never glued to the next paragraph', () => {
+    expect(toSentences('## Pocos pisos\n\nLa demanda supera a la oferta en casi todos los barrios.')).toEqual(['Pocos pisos', 'La demanda supera a la oferta en casi todos los barrios.']);
   });
 });

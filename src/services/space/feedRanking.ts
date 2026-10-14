@@ -39,8 +39,8 @@ export function feedItemHref(item: FeedItem): string {
 
 export const FEED_TYPE_BADGE: Record<string, string> = {
   fast_search: 'Search',
-  stories: 'Story',
+  stories: 'Magazine',
   explore: 'Article',
-  movie: 'Movie',
-  cinematic: 'Cinematic',
+  movie: 'Video',
+  cinematic: 'Video',
 };

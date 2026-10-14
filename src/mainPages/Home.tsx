@@ -173,14 +173,11 @@ export default function Home() {
           sidebar (icons next to the logo); accent color moved to Settings
           (signed-in only) — see Sidebar.tsx / GeneralSection.tsx. */}
       {/* On desktop, show in current position. On mobile, these are hidden and shown in the header */}
-      {/* Pro Credits battery — centered at the top, separated from the right cluster.
-          top offset clears the fixed promo banner (~36px) that overlays the top edge. */}
-      <div className="absolute left-1/2 -translate-x-1/2 h-10 flex items-center mobile:hidden" style={{ top: appSettings.banner.enabled ? 52 : 16 }}>
-        <ProCreditsBattery />
-      </div>
-
+      {/* top offset clears the fixed promo banner (~36px) that overlays the top edge. */}
       <div className="absolute right-6 flex items-center gap-4 mobile:hidden" style={{ top: appSettings.banner.enabled ? 52 : 16 }}>
         <DayNightToggle />
+        {/* Pro Credits battery, between Day · Night and Upgrade / sign-in. */}
+        <ProCreditsBattery />
         {isPro ? (
           <div
             className="h-10 w-10 flex items-center justify-center"

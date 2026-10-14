@@ -14,21 +14,58 @@
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
+/** Markdown → plain-text paragraphs (links keep their text; symbols and HTML removed). */
+function cleanParagraphs(markdown: string): string[] {
+  return markdown
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/<[^>]*>/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1').replace(/[#*_`>]/g, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
 /**
  * Split markdown into narratable chunks (markdown symbols stripped): one per paragraph,
  * except the first sentence goes alone so the first audio is short and starts quickly.
  */
 export function toParagraphs(markdown: string): string[] {
-  const paragraphs = markdown
-    .split(/\n\s*\n/)
-    .map((p) => p.replace(/<[^>]*>/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1').replace(/[#*_`>]/g, '').replace(/\s+/g, ' ').trim())
-    .filter(Boolean);
+  const paragraphs = cleanParagraphs(markdown);
   const first = paragraphs[0];
   const cut = first ? first.search(/[.!?…](\s|$)/) : -1;
   if (cut > 0 && cut < first.length - 2) {
     paragraphs.splice(0, 1, first.slice(0, cut + 1), first.slice(cut + 1).trim());
   }
   return paragraphs;
+}
+
+// A sentence shorter than this rides with the next one (fewer, more natural TTS calls).
+const MIN_SENTENCE = 40;
+
+/**
+ * Sentence-sized chunks (Magazine): the first audio starts sooner, and leaving the page
+ * wastes at most the one sentence prepared ahead. Citation markers ("[elpais]") are not
+ * read. A sentence ends at . ! ? … followed by a space, so "1.153,11" stays whole.
+ */
+export function toSentences(markdown: string): string[] {
+  const out: string[] = [];
+  for (const paragraph of cleanParagraphs(markdown.replace(/\s*\[[^\]]*\](?!\()/g, ''))) {
+    const parts = paragraph.split(/([.!?…]+["'”»)]*)\s+/);
+    const sentences: string[] = [];
+    for (let i = 0; i < parts.length; i += 2) {
+      const s = `${parts[i]}${parts[i + 1] ?? ''}`.trim();
+      if (s) sentences.push(s);
+    }
+    let carry = '';
+    const start = out.length;
+    for (const s of sentences) {
+      carry = carry ? `${carry} ${s}` : s;
+      if (carry.length >= MIN_SENTENCE) { out.push(carry); carry = ''; }
+    }
+    // A short tail joins the paragraph's last chunk; alone (e.g. a heading) it stays alone.
+    if (carry) {
+      if (out.length > start) out[out.length - 1] += ` ${carry}`;
+      else out.push(carry);
+    }
+  }
+  return out;
 }
 
 function base64ToBuffer(b64: string): ArrayBuffer {

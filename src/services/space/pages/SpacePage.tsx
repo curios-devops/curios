@@ -8,7 +8,7 @@ import ContentCard from '../components/ContentCard';
 
 const MODE_LABEL: Record<string, string> = {
   fast_search: 'Search',
-  stories: 'Story',
+  stories: 'Magazine',
   explore: 'Article',
 };
 

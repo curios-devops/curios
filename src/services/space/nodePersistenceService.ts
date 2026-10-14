@@ -210,11 +210,11 @@ export async function listNodesByTopic(topic: string, limit = 60): Promise<NodeR
   return (data ?? []) as NodeRecord[];
 }
 
-/** The discovery feed (public nodes + movies + cinematic), recent first. */
-export async function listFeed(limit = 60): Promise<FeedItem[]> {
-  const { data, error } = await supabase
-    .from('discovery_feed')
-    .select('*')
+/** The discovery feed (public nodes + movies + cinematic), recent first; `types` narrows it (Discover tabs). */
+export async function listFeed(limit = 60, types?: string[]): Promise<FeedItem[]> {
+  let request = supabase.from('discovery_feed').select('*');
+  if (types?.length) request = request.in('type', types);
+  const { data, error } = await request
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) {

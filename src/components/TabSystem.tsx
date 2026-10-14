@@ -7,35 +7,28 @@ import { useAccentColor } from '../hooks/useAccentColor';
 import { useTranslation } from '../hooks/useTranslation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { generateArticleImage, extractArticleSummary } from '../services/stories/agents/imageGenerationService';
-import { NarrationService } from '../services/movie/audio/NarrationService';
+import { ParagraphNarrator, toSentences, type NarratorState } from '../services/movie/audio/paragraphNarrator';
 import { NanoBananaProvider } from '../services/movie/providers/NanoBananaProvider';
 import { getCached, setCached } from '../services/search/searchCache';
 import CuriosLogo from './common/CuriosLogo';
 import type { StoryResult } from '../services/stories/agents/storyAgent';
 
 // Standard ElevenLabs premade voices for the listen picker.
-const ELEVENLABS_VOICES: { id: string; name: string; tone: string }[] = [
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', tone: 'Soft' },
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', tone: 'Calm' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi', tone: 'Strong' },
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', tone: 'Deep' },
-  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', tone: 'Warm' },
-  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh', tone: 'Young' },
+// Gender picks the OpenAI fallback voice when ElevenLabs is down.
+const ELEVENLABS_VOICES: { id: string; name: string; tone: string; gender: 'female' | 'male' }[] = [
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', tone: 'Soft', gender: 'female' },
+  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', tone: 'Calm', gender: 'female' },
+  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi', tone: 'Strong', gender: 'female' },
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', tone: 'Deep', gender: 'male' },
+  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', tone: 'Warm', gender: 'male' },
+  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh', tone: 'Young', gender: 'male' },
 ];
 
-// Strip markdown/HTML and cap length so the TTS request stays within provider limits.
-const stripForTts = (md: string): string =>
-  md
-    .replace(/<[^>]*>/g, '')
-    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
-    .replace(/[#*_`>]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 5000);
 import CustomMarkdown from './CustomMarkdown';
 import FollowUps from './FollowUps';
 import { toCitations } from './citations/toCitations';
 import DynamicShareRow from './share/DynamicShareRow';
+import { ensureShared, type SavedNodeRef } from '../services/space/nodePersistenceService';
 
 // Helper function to calculate reading and listening time
 const calculateReadingTime = (text: string) => {
@@ -74,6 +67,8 @@ interface TabSystemProps {
   cacheKey: string;
   /** "Go deeper": Astra continues the story along `result.deeper` (the page appends it). */
   onDeepen?: () => Promise<void>;
+  /** Signed-in: the saved node — Share sends its /s/ short link and publishes it to Discover. */
+  savedNode?: SavedNodeRef | null;
 }
 
 type Tab = 'curios' | 'images' | 'videos' | 'news' | 'sources';
@@ -110,7 +105,7 @@ const SourceItem: React.FC<SourceItemProps> = ({ source }) => (
   </a>
 );
 
-export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLabel, isNews, cacheKey, onDeepen }) => {
+export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLabel, isNews, cacheKey, onDeepen, savedNode }) => {
   const [deepening, setDeepening] = useState(false);
   const [deepenFailed, setDeepenFailed] = useState(false);
   const { t } = useTranslation();
@@ -126,12 +121,11 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
   const [aiFailed, setAiFailed] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [coverMode, setCoverMode] = useState<'photo' | 'ai'>(isNews ? 'photo' : 'ai');
-  // Listening (free)
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+  // Listening (free), sentence by sentence
+  const [narration, setNarration] = useState<NarratorState | 'idle'>('idle');
   const [selectedVoice, setSelectedVoice] = useState(ELEVENLABS_VOICES[0].id);
   const [showVoiceDropdown, setShowVoiceDropdown] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const narratorRef = useRef<ParagraphNarrator | null>(null);
   const voiceDropdownRef = useRef<HTMLDivElement>(null);
   const accent = useAccentColor();
 
@@ -182,11 +176,8 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
     window.location.href = `/stories-results?${new URLSearchParams({ q: question }).toString()}`;
   };
 
-  // Stop audio playback on unmount
-  useEffect(() => () => {
-    audioRef.current?.pause();
-    audioRef.current = null;
-  }, []);
+  // Leaving the page stops playback and cancels the sentence being prepared (no wasted TTS).
+  useEffect(() => () => narratorRef.current?.stop(), []);
 
   useEffect(() => {
     if (!showVoiceDropdown) return;
@@ -213,40 +204,26 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
   };
 
   const resetAudio = () => {
-    audioRef.current?.pause();
-    audioRef.current = null;
-    setIsPlaying(false);
+    narratorRef.current?.stop();
+    narratorRef.current = null;
+    setNarration('idle');
   };
 
-  // Listen (ElevenLabs TTS) — free for everyone.
-  const handleListen = async () => {
-    if (isPlaying && audioRef.current) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-      return;
-    }
-    if (audioRef.current) {
-      if (audioRef.current.ended) audioRef.current.currentTime = 0;
-      await audioRef.current.play().catch(() => {});
-      setIsPlaying(true);
-      return;
-    }
-    const text = stripForTts(result?.markdown_report || '');
-    if (!text) return;
-    try {
-      setIsGeneratingAudio(true);
-      const res = await new NarrationService().generateNarration([{ text, startTime: 0, duration: 0 }], { voice: selectedVoice });
-      const audio = new Audio(res.audioUrl);
-      audio.onended = () => setIsPlaying(false);
-      audio.onerror = () => setIsPlaying(false);
-      audioRef.current = audio;
-      await audio.play();
-      setIsPlaying(true);
-    } catch (error) {
-      console.error('[Listen] TTS generation failed', error);
-    } finally {
-      setIsGeneratingAudio(false);
-    }
+  // Listen (ElevenLabs TTS) — free for everyone. Sentence by sentence: the first one plays
+  // as soon as it's ready while the next is generated.
+  const handleListen = () => {
+    const current = narratorRef.current;
+    if (current && narration === 'playing') { current.pause(); return; }
+    if (current && narration === 'paused') { current.resume(); return; }
+    if (current && (narration === 'ended' || narration === 'error')) { void current.start(0); return; }
+    if (current) return; // still loading
+    const sentences = toSentences(result?.markdown_report || '');
+    if (!sentences.length) return;
+    // Created synchronously in the tap so the browser lets the audio play.
+    const gender = ELEVENLABS_VOICES.find((v) => v.id === selectedVoice)?.gender ?? 'female';
+    const narrator = new ParagraphNarrator(sentences, selectedVoice, gender, setNarration);
+    narratorRef.current = narrator;
+    void narrator.start(0);
   };
 
   const news = result?.news ?? [];
@@ -347,11 +324,11 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
                             <button
                               type="button"
                               onClick={handleListen}
-                              disabled={isGeneratingAudio}
-                              aria-label={isPlaying ? 'Pause' : 'Listen'}
+                              disabled={narration === 'loading'}
+                              aria-label={narration === 'playing' ? 'Pause' : 'Listen'}
                               className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:opacity-80 transition-colors disabled:cursor-wait"
                             >
-                              {isGeneratingAudio ? <Loader2 size={16} className="animate-spin" /> : isPlaying ? <Pause size={16} /> : <Headphones size={16} />}
+                              {narration === 'loading' ? <Loader2 size={16} className="animate-spin" /> : narration === 'playing' ? <Pause size={16} /> : <Headphones size={16} />}
                               <span className="tabular-nums">{listeningTime} min</span>
                             </button>
                             <button
@@ -412,12 +389,13 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
                     <div className="mt-3">
                       <DynamicShareRow
                         serviceType="stories"
+                        onShare={savedNode ? () => ensureShared(savedNode.id) : undefined}
                         payload={{
                           title: result.headline || 'Curios Magazine',
                           description: result.subtitle || (result.markdown_report ? result.markdown_report.slice(0, 200) : ''),
                           text: result.subtitle || (result.markdown_report ? result.markdown_report.slice(0, 100) : ''),
                           imageUrls: [...(aiImageUrl ? [aiImageUrl] : []), ...(result.images || []).map((img) => img.url)],
-                          deepLink: globalThis.location.href,
+                          deepLink: savedNode ? `https://curiosai.com/s/${savedNode.shareSlug}` : globalThis.location.href,
                         }}
                       />
                     </div>

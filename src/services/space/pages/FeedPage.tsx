@@ -10,28 +10,60 @@ import { rankFeed, feedItemHref, FEED_TYPE_BADGE } from '../feedRanking';
 
 const RESET_EVERY = 6;
 
+// The kinds that are saved and shared (also on the Home strip). "All" includes everything.
+const TABS: { id: string; label: string; types?: string[] }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'search', label: 'Search', types: ['fast_search'] },
+  { id: 'magazine', label: 'Magazine', types: ['stories'] },
+  { id: 'video', label: 'Video', types: ['movie', 'cinematic'] },
+];
+
 export default function FeedPage() {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('all');
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
     (async () => {
-      const data = await listFeed();
+      const data = await listFeed(60, TABS.find((t) => t.id === tab)?.types);
       if (active) {
         setItems(data);
         setLoading(false);
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [tab]);
 
   const ranked = useMemo(() => rankFeed(items), [items]);
 
   return (
     <div className="min-h-screen px-4 py-8 max-w-6xl mx-auto">
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Discover</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Explanations shared across CuriosAI.</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Explanations shared across CuriosAI.</p>
+
+      {/* Tabs — same underline style as the results pages. */}
+      <div className="flex gap-6 border-b border-gray-200 dark:border-gray-800 mb-6" role="tablist">
+        {TABS.map((t) => {
+          const active = t.id === tab;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(t.id)}
+              className="pb-3 -mb-px border-b-2 text-sm font-medium transition-colors"
+              style={active
+                ? { color: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }
+                : { color: 'var(--ui-text-secondary)', borderColor: 'transparent' }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
 
       {loading ? (
         <div className="py-20 flex justify-center">
