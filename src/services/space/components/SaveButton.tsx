@@ -49,7 +49,7 @@ export default function SaveButton({ nodeId }: { nodeId: string }) {
       onClick={handleClick}
       aria-label={saved ? 'Saved' : 'Save'}
       title={saved ? 'Saved to Library' : 'Save to Library'}
-      className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-gray-100 dark:bg-[#222222] hover:bg-gray-200 dark:hover:bg-[#2a2a2a] text-gray-900 dark:text-white transition-colors"
+      className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-gray-100 dark:bg-night-800 hover:bg-gray-200 dark:hover:bg-night-750 text-gray-900 dark:text-white transition-colors"
     >
       <Bookmark size={18} fill={saved ? 'currentColor' : 'none'} />
     </button>

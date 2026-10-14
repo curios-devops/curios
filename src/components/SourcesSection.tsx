@@ -21,7 +21,7 @@ export default function SourcesSection({
   return (
     <div className="mb-6">
       {/* CuriosAI Header Section */}
-      <div className="mb-6 p-6 bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800">
+      <div className="mb-6 p-6 bg-white dark:bg-night-900 rounded-xl border border-gray-200 dark:border-gray-800">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           CuriosAI Web Search
         </h1>

@@ -56,7 +56,7 @@ function Segmented<T extends string>({ options, value, onChange }: {
 }
 
 export default function GeneralSection() {
-  const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor } = useTheme();
+  const { theme, setTheme, accentColor: selectedAccentColor, setAccentColor, hasDayNight, dayNightAuto, setDayNightAuto } = useTheme();
   const { currentLanguage } = useLanguage();
   const { session } = useSession();
   const { t } = useTranslation();
@@ -77,6 +77,19 @@ export default function GeneralSection() {
     { key: 'dark', label: 'Dark', icon: Moon },
     { key: 'system', label: 'System', icon: Monitor },
   ];
+  // DAY / NIGHT themes (Terra): Auto switches at sunrise / sunset.
+  const autoSwitch = (
+    <label className="flex items-center gap-2 text-sm font-medium cursor-pointer" style={{ color: 'var(--ui-text-secondary)' }}>
+      Auto
+      <ToggleSwitch checked={dayNightAuto} onChange={setDayNightAuto} />
+      <span className="w-6 text-xs">{dayNightAuto ? 'On' : 'Off'}</span>
+    </label>
+  );
+  // DAY / NIGHT themes (Terra): no System — Auto follows the sun instead.
+  const dayNightOptions: SegmentedOption<'light' | 'dark'>[] = [
+    { key: 'light', label: 'Day', icon: Sun },
+    { key: 'dark', label: 'Night', icon: Moon },
+  ];
 
   const cookieOptions: SegmentedOption<CookieOption>[] = [
     { key: 'all', label: 'All' },
@@ -96,18 +109,27 @@ export default function GeneralSection() {
                 <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Appearance</h3>
                 <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">How CuriosAI looks on your device</p>
               </div>
-              <Segmented options={themeOptions} value={theme} onChange={setTheme} />
+              {hasDayNight ? (
+                <div className="flex items-center gap-4">
+                  <Segmented options={dayNightOptions} value={isDarkMode ? 'dark' : 'light'} onChange={setTheme} />
+                  {/* Guests have no Theme row, so their Auto lives here. */}
+                  {!session && autoSwitch}
+                </div>
+              ) : (
+                <Segmented options={themeOptions} value={theme} onChange={setTheme} />
+              )}
             </div>
           </div>
 
-          {/* Accent Color — signed-in users only (guests keep the default 'sky'). */}
+          {/* Theme — signed-in users only (guests keep the default theme). */}
           {session && (
             <div className="py-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Accent Color</h3>
-                  <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">The one brand color used for buttons, highlights and progress</p>
+                  <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('accentColor')}</h3>
+                  <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">{t('themeDesc')}</p>
                 </div>
+                <div className="flex items-center gap-4">
                 <div className="flex gap-2">
                   {ACCENT_OPTIONS.map((color) => {
                     const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
@@ -128,6 +150,8 @@ export default function GeneralSection() {
                       />
                     );
                   })}
+                </div>
+                {hasDayNight && autoSwitch}
                 </div>
               </div>
             </div>

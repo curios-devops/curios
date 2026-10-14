@@ -395,7 +395,7 @@ export default function CinematicResults() {
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors duration-200">
       {/* TopBar with question, arrow, share button, and tabs */}
-      <div className="sticky top-0 bg-white/80 dark:bg-[#111111]/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 z-10 transition-colors duration-200">
+      <div className="sticky top-0 bg-white/80 dark:bg-night-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 z-10 transition-colors duration-200">
         {/* Top row with back arrow, query title and time */}
         <div className="px-4 sm:px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -543,7 +543,7 @@ export default function CinematicResults() {
             </div>
 
             {/* Video Info Card */}
-            <div className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden mb-6">
+            <div className="bg-white dark:bg-night-850 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden mb-6">
 
               {/* Video Title and Info Section - Added below video */}
               <div className="p-4 space-y-4">
@@ -714,7 +714,7 @@ export default function CinematicResults() {
 
         {/* Narrative Tab */}
         {activeTab === 'narrative' && (
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <div className="bg-white dark:bg-night-850 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
             {!!effectiveNarrative && (
               <div className="mb-3">
                 <NarrativePhaseBadge
@@ -814,7 +814,7 @@ export default function CinematicResults() {
                 );
               })
             ) : (
-              <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-gray-800 p-8 text-center">
+              <div className="bg-white dark:bg-night-850 rounded-xl border border-gray-200 dark:border-gray-800 p-8 text-center">
                 <p className="text-gray-500 dark:text-gray-400">
                   {isLoading ? 'Collecting sources...' : 'No sources available'}
                 </p>
@@ -825,7 +825,7 @@ export default function CinematicResults() {
 
         {/* Related Topics / Continue Exploring - Show in all tabs */}
         {(experience?.relatedTopics?.length ?? 0) > 0 && (
-          <section className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a1a1a] p-4 sm:p-5 mt-6">
+          <section className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-night-850 p-4 sm:p-5 mt-6">
             <div className="flex items-center gap-2 mb-4">
               <Link2 size={16} />
               <h3 className="text-base font-semibold">Continue Exploring</h3>

@@ -22,7 +22,7 @@ export default function VerificationModal({ email, onClose }: VerificationModalP
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-      <div className={`${theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'} w-full max-w-[480px] p-10 rounded-2xl relative`}>
+      <div className={`${theme === 'dark' ? 'bg-night-850' : 'bg-white'} w-full max-w-[480px] p-10 rounded-2xl relative`}>
         <button
           onClick={onClose}
           className={`absolute top-6 right-6 ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'} transition-colors`}
@@ -33,7 +33,7 @@ export default function VerificationModal({ email, onClose }: VerificationModalP
 
         <div className="flex flex-col items-center text-center">
           {/* Email Icon */}
-          <div className={`w-20 h-20 ${theme === 'dark' ? 'bg-[#222222]' : 'bg-gray-100'} rounded-full flex items-center justify-center mb-6`}>
+          <div className={`w-20 h-20 ${theme === 'dark' ? 'bg-night-800' : 'bg-gray-100'} rounded-full flex items-center justify-center mb-6`}>
             <Mail className={`w-10 h-10 ${theme === 'dark' ? 'text-white' : 'text-gray-700'}`} />
           </div>
 
@@ -50,7 +50,7 @@ export default function VerificationModal({ email, onClose }: VerificationModalP
           {!showCodeInput ? (
             <button
               onClick={() => setShowCodeInput(true)}
-              className="w-full text-white font-medium py-3.5 rounded-lg transition-colors"
+              className="w-full text-[var(--ui-text-on-accent)] font-medium py-3.5 rounded-lg transition-colors"
               style={{ 
                 backgroundColor: 'var(--accent-primary)',
               }}

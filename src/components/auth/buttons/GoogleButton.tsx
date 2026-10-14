@@ -30,7 +30,7 @@ export default function GoogleButton({ onSuccess, onError }: GoogleButtonProps) 
       className={`w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-lg transition-colors`}
       onClick={handleClick}
       type="button"
-      style={{ backgroundColor: accentColor.primary, color: '#fff', border: theme === 'dark' ? '1px solid rgba(255,255,255,0.04)' : undefined }}
+      style={{ backgroundColor: accentColor.primary, color: 'var(--ui-text-on-accent)', border: theme === 'dark' ? '1px solid rgba(255,255,255,0.04)' : undefined }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = accentColor.hover; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = accentColor.primary; }}
     >

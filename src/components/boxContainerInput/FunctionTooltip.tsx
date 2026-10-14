@@ -102,14 +102,14 @@ export default function FunctionTooltip({
         ref={tooltipRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="absolute top-full left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
+        className="absolute top-full left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 mt-2 bg-white dark:bg-night-850 rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
       >
         {/* Header */}
         <div className="text-left mb-2.5">
             <div className="flex items-center gap-2 mb-1">
             <h3 className="text-xs font-medium text-gray-900 dark:text-white">{title}</h3>
             {config.badge && (
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-[var(--ui-text-on-accent)] rounded" style={{ backgroundColor: accentColor.primary }}>
                 {config.badge}
               </span>
             )}
@@ -122,7 +122,7 @@ export default function FunctionTooltip({
         <div className="mb-2.5">
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-[var(--ui-text-on-accent)] rounded" style={{ backgroundColor: accentColor.primary }}>
                 {t('pro')}
               </span>
               <span className="text-[10px] font-bold" style={{ color: accentColor.primary }}>{proTitle}</span>
@@ -145,7 +145,7 @@ export default function FunctionTooltip({
         <button
           type="button"
           onClick={onSignIn}
-          className="w-full text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
+          className="w-full text-[var(--ui-text-on-accent)] py-2 rounded-lg transition-colors text-[10px] font-medium"
           style={{ backgroundColor: accentColor.primary }}
           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accentColor.hover}
           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor.primary}
@@ -153,7 +153,7 @@ export default function FunctionTooltip({
           {t('signInForAccess')}
         </button>
         {/* Arrow pointer - aligned differently on mobile vs desktop */}
-        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
+        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-night-850 border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
       </div>
     );
   }
@@ -165,10 +165,10 @@ export default function FunctionTooltip({
         ref={tooltipRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="absolute left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
+        className="absolute left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 top-full mt-2 bg-white dark:bg-night-850 rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
       >
         {/* Arrow pointing up - aligned differently on mobile vs desktop */}
-        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
+        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-night-850 border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
         
         <div className="relative">
           {/* Header */}
@@ -189,7 +189,7 @@ export default function FunctionTooltip({
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{description}</p>
 
           {/* Pro Toggle */}
-          <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
+          <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 dark:bg-night-750 rounded-lg">
             <div className="flex items-center gap-2">
               <Sparkles size={16} style={{ color: accentColor.primary }} />
               <span className="text-sm font-medium text-gray-900 dark:text-white">{t('proMode')}</span>
@@ -258,14 +258,14 @@ export default function FunctionTooltip({
         ref={tooltipRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="absolute top-full left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
+        className="absolute top-full left-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 mt-2 bg-white dark:bg-night-850 rounded-lg px-3 py-2.5 shadow-xl border border-gray-200 dark:border-gray-800 w-64 z-50 transition-colors duration-200"
       >
         {/* Header */}
         <div className="text-left mb-2.5">
             <div className="flex items-center gap-2 mb-1">
             <h3 className="text-xs font-medium text-gray-900 dark:text-white">{title}</h3>
             {config.badge && (
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-[var(--ui-text-on-accent)] rounded" style={{ backgroundColor: accentColor.primary }}>
                 {config.badge}
               </span>
             )}
@@ -280,7 +280,7 @@ export default function FunctionTooltip({
         <div className="mb-2.5">
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-white rounded" style={{ backgroundColor: accentColor.primary }}>
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold text-[var(--ui-text-on-accent)] rounded" style={{ backgroundColor: accentColor.primary }}>
                 {t('pro')}
               </span>
               <span className="text-[10px] font-bold" style={{ color: accentColor.primary }}>{proTitle}</span>
@@ -294,7 +294,7 @@ export default function FunctionTooltip({
         </div>
 
         {/* Daily Pro Quota - NEW for free users */}
-        <div className="mb-2.5 p-2 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
+        <div className="mb-2.5 p-2 bg-gray-50 dark:bg-night-750 rounded-lg">
           <div className="flex justify-between items-center mb-1">
             <span className="text-[10px] text-gray-600 dark:text-gray-400">{t('dailyProQuota')}</span>
             <span className="text-[10px] font-medium text-gray-900 dark:text-white">
@@ -313,7 +313,7 @@ export default function FunctionTooltip({
         <button
           type="button"
           onClick={onUpgrade}
-          className="w-full text-white py-2 rounded-lg transition-colors text-[10px] font-medium"
+          className="w-full text-[var(--ui-text-on-accent)] py-2 rounded-lg transition-colors text-[10px] font-medium"
           style={{ backgroundColor: accentColor.primary }}
           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accentColor.hover}
           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor.primary}
@@ -322,7 +322,7 @@ export default function FunctionTooltip({
         </button>
         
         {/* Arrow pointer - aligned differently on mobile vs desktop */}
-        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1a1a1a] border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
+        <div className="absolute -top-2 left-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-4 h-4 bg-white dark:bg-night-850 border-l border-t border-gray-200 dark:border-gray-800 rotate-45"></div>
       </div>
     );
   }

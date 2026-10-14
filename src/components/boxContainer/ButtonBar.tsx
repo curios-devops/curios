@@ -176,7 +176,7 @@ export default function ButtonBar({
           <button
             type="button"
             onClick={toggleModeMenu}
-            className="h-8 px-3 rounded-full flex items-center gap-1.5 transition-colors duration-200 text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
+            className="h-8 px-3 rounded-full flex items-center gap-1.5 transition-colors duration-200 text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-night-750"
             onMouseEnter={(e) => {
               e.currentTarget.style.color = accentColor.primary;
             }}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Clapperboard, Search, Rocket, PersonStanding, Crown, Popcorn, Gamepad2, Music, ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpen, Clapperboard, Search, Rocket, PersonStanding, Popcorn, Gamepad2, Music, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
@@ -10,7 +10,6 @@ interface Mode {
   id: ModeType;
   label: string;
   icon: React.ElementType;
-  premium?: boolean; // shows a crown (consumes a Pro Credit)
 }
 
 // 'fastsearch' is the new primary "Search" (default). Legacy 'search' is kept in
@@ -25,7 +24,7 @@ const modes: Mode[] = [
   // Magazine (route 'stories'): the answer as a magazine story.
   { id: 'stories', label: 'stories', icon: BookOpen },
   // Avatar was merged into Character (half-body option inside the page).
-  { id: 'character', label: 'character', icon: PersonStanding, premium: true },
+  { id: 'character', label: 'character', icon: PersonStanding },
 ];
 const moreModes: Mode[] = [
   // Movie 🍿: film fact sheet (Auto/Video also detect films by themselves).
@@ -88,7 +87,6 @@ export default function ModeSelector({ selectedMode, onModeSelect, onClose }: Mo
               <span className="font-medium capitalize">
                 {t(mode.label)}
               </span>
-              {mode.premium && <Crown size={14} style={{ color: accentColor.primary }} />}
             </div>
 
             {/* Red dot indicator for active mode */}

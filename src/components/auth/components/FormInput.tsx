@@ -38,7 +38,7 @@ export default function FormInput({
         value={value}
         onChange={onChange}
         disabled={disabled}
-        className={`w-full bg-[#222222] border ${
+        className={`w-full bg-night-800 border ${
           error ? 'border-red-500' : 'border-gray-700'
         } rounded-lg p-3 text-white focus:outline-none`}
         onFocus={(e) => {

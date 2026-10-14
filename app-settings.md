@@ -52,10 +52,12 @@ THEME_COLOR = TERRA
 ```
 
 ### Theme colors — edit any hex to retune a theme (hover / soft tints are derived)
-TERRA = Vivix-family terracotta · OCEAN = Pamba blue · FIRE = Claude-like orange
-SKY = purple · BOREALIS = teal · CLASSIC_BLUE = our original blue (pinned)
+TERRA = xerj.org ochre (DAY) · TERRA_NIGHT = xerj.org yellow (NIGHT) · OCEAN = Pamba blue
+FIRE = Claude-like orange · SKY = purple · BOREALIS = teal · CLASSIC_BLUE = our original blue (pinned)
+Terra also brings its own paper/black grounds, fonts and square corners — see DESIGN.md → Themes.
 ```
-TERRA = #9C7A5B
+TERRA = #7F5200
+TERRA_NIGHT = #FFC400
 OCEAN = #1C8BFD
 FIRE = #D97757
 SKY = #7C55D6
@@ -226,7 +228,9 @@ MODEL_SOL = gpt-6.1-sol
 MODEL_ASTRA = gpt-6-astra
 ```
 
-### MODEL_DEEP — Search's "Ask Deeper" research synthesis (free, no credit)
+### MODEL_DEEP — fallback for Search's "Ask Deeper" (free, no credit)
+Ask Deeper (Search) and Long Read (Magazine) answer one model up from the question's own
+(LUNA → SOL, SOL → ASTRA); this model is only used if that can't be decided.
 Default = gpt-6.1-sol
 ```
 MODEL_DEEP = gpt-6.1-sol

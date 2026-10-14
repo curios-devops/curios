@@ -7,7 +7,7 @@ export default function GoogleButton({ onClick, label = "Continue with Google" }
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center justify-center gap-3 bg-[#222222] text-white py-3.5 px-4 rounded-lg hover:bg-[#2a2a2a] transition-colors border border-gray-700"
+      className="w-full flex items-center justify-center gap-3 bg-night-800 text-white py-3.5 px-4 rounded-lg hover:bg-night-750 transition-colors border border-gray-700"
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path

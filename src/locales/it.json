@@ -4,7 +4,7 @@
   "languageSelectorTooltip": "Lingua",
   "helpFaqTooltip": "Aiuto e FAQ",
   "themeSelectorTooltip": "Tema e Colore",
-  "accentColor": "Colore di Accento",
+  "accentColor": "Temi",
   "search": "Cerca",
   "stories": "Rivista",
   "cinematic": "Cinematico",
@@ -172,5 +172,6 @@
   "historyEmpty": "Ancora niente qui.",
   "character": "Personaggio",
   "moreModes": "Altro",
-  "lessModes": "Meno"
+  "lessModes": "Meno",
+  "themeDesc": "Colori, caratteri e forme di tutta l'app"
 }

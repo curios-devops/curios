@@ -64,7 +64,7 @@ export default function NavItem({
       onClick={handleClick}
       className={`flex items-center ${
         isCollapsed ? "justify-center" : "gap-3"
-      } p-2.5 rounded-lg border transition-colors duration-200 ${
+      } px-2.5 py-[9px] rounded-lg border transition-colors duration-200 ${
         isActive
           ? "font-medium"
           : ""

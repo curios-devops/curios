@@ -291,7 +291,7 @@ export function SourcesList({ sources }: { sources: { title: string; url: string
           href={s.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-[#0a0a0a]"
+          className="flex gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-night-950"
         >
           <div className="flex-shrink-0 w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
             <img src={`https://www.google.com/s2/favicons?domain=${domain(s.url)}&sz=32`} alt="" className="w-4 h-4" />

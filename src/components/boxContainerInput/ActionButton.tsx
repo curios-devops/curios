@@ -41,8 +41,8 @@ export default function ActionButton({
               : disabled
               ? 'text-gray-600 cursor-not-allowed'
               : isActive
-              ? 'bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
-              : 'text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
+              ? 'bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-night-750'
+              : 'text-gray-500 bg-gray-100 dark:bg-transparent hover:bg-gray-200 dark:hover:bg-night-750'
           }
           ${className || ''}
         `}

@@ -66,7 +66,7 @@ export default function EmailForm({ onSubmit }: EmailFormProps) {
           transition-all
           ${email.trim() && !loading
             ? ''
-            : 'bg-[#222222] text-gray-500 cursor-not-allowed'
+            : 'bg-night-800 text-gray-500 cursor-not-allowed'
           }
         `}
         style={email.trim() && !loading ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : undefined}

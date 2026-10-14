@@ -45,7 +45,7 @@ export default function SubscriptionSuccess() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-black' : 'bg-gray-50'} flex flex-col items-center justify-center p-4`}>
-      <div className={`max-w-md w-full ${theme === 'dark' ? 'bg-[#111111]' : 'bg-white border border-gray-200'} rounded-xl p-8 text-center shadow-lg`}>
+      <div className={`max-w-md w-full ${theme === 'dark' ? 'bg-night-900' : 'bg-white border border-gray-200'} rounded-xl p-8 text-center shadow-lg`}>
         <div className="flex justify-center mb-6">
           <Compass className="h-12 w-12 text-[#007BFF]" />
         </div>

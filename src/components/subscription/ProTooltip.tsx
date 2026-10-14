@@ -50,7 +50,7 @@ export default function ProTooltip({
   if (!isLoggedIn) {
     return (
       <div
-        className="absolute left-0 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
+        className="absolute left-0 top-full mt-2 bg-white dark:bg-night-850 rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
         onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
@@ -66,7 +66,7 @@ export default function ProTooltip({
           <button
             type="button"
             onClick={onSignIn}
-            className="w-full text-white py-2.5 rounded-lg transition-colors text-sm font-medium"
+            className="w-full text-[var(--ui-text-on-accent)] py-2.5 rounded-lg transition-colors text-sm font-medium"
             style={{ backgroundColor: accentColor.primary }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = accentColor.hover)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = accentColor.primary)}
@@ -82,7 +82,7 @@ export default function ProTooltip({
   if (subscription?.isActive) {
     return (
       <div
-        className="absolute left-0 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
+        className="absolute left-0 top-full mt-2 bg-white dark:bg-night-850 rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
         onMouseLeave={onClose}
       >
         <div className="flex items-center gap-2 mb-3">
@@ -96,7 +96,7 @@ export default function ProTooltip({
           </p>
           
           <div className="space-y-2">
-            <div className="w-full bg-gray-100 dark:bg-[#222222] rounded-full h-1.5 transition-colors duration-200">
+            <div className="w-full bg-gray-100 dark:bg-night-800 rounded-full h-1.5 transition-colors duration-200">
               <div 
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   safeRemainingSearches === 0 
@@ -135,7 +135,7 @@ export default function ProTooltip({
   return (
     <div 
       ref={tooltipRef}
-      className="absolute left-0 top-full mt-2 bg-white dark:bg-[#1a1a1a] rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
+      className="absolute left-0 top-full mt-2 bg-white dark:bg-night-850 rounded-lg p-4 shadow-xl border border-gray-200 dark:border-gray-800 w-80 z-50 transition-colors duration-200"
     >
       <div className="flex items-center gap-2 mb-3">
         <Sparkles size={18} style={{ color: accentColor.primary }} />
@@ -148,7 +148,7 @@ export default function ProTooltip({
         </p>
         
         <div className="space-y-2">
-          <div className="w-full bg-gray-100 dark:bg-[#222222] rounded-full h-1.5 transition-colors duration-200">
+          <div className="w-full bg-gray-100 dark:bg-night-800 rounded-full h-1.5 transition-colors duration-200">
             <div 
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 safeRemainingSearches === 0 
@@ -182,7 +182,7 @@ export default function ProTooltip({
         <button
           type="button"
           onClick={onUpgrade}
-          className="w-full text-white py-2.5 rounded-lg transition-colors text-sm font-medium"
+          className="w-full text-[var(--ui-text-on-accent)] py-2.5 rounded-lg transition-colors text-sm font-medium"
           style={{ backgroundColor: accentColor.primary }}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = accentColor.hover)}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = accentColor.primary)}

@@ -20,6 +20,7 @@ import { saveNode } from '../../space/nodePersistenceService';
 import { fetchMagazinePlan, MAGAZINE_SECTIONS, type MagazinePlan, type MagazineSection } from '../../auto/intentRouter.ts';
 import { stepUp } from '../../auto/modelTier.ts';
 import { getCached, setCached } from '../../search/searchCache.ts';
+import { readerGeo } from '../../../utils/readerGeo.ts';
 
 interface ProgressState {
   stage: string;
@@ -44,15 +45,6 @@ const INITIAL_PROGRESS: ProgressState = {
   agentActions: [],
   storyPhase: 'analyzing',
 };
-
-// The reader's city (Local's place), once per visit: IP geolocation (/api/geo, Netlify edge),
-// else the time zone's city ("America/Santiago" → "Santiago"; Spain is all "Madrid").
-const tzCity = () => (Intl.DateTimeFormat().resolvedOptions().timeZone?.split('/').pop() ?? '').replace(/_/g, ' ');
-let cityLookup: Promise<string> | null = null;
-const readerCity = () => (cityLookup ??= fetch('/api/geo', { signal: AbortSignal.timeout(2000) })
-  .then((r) => r.json() as Promise<{ city?: string }>)
-  .then((g) => g.city || tzCity())
-  .catch(() => tzCity()));
 
 export default function StoriesResults() {
   const goBack = useGoBack();
@@ -104,7 +96,7 @@ export default function StoriesResults() {
     if (!query) return;
     storiesService.prefetch(query, handleProgress);
     let live = true;
-    void readerCity().then(async (c) => {
+    void readerGeo().then(async ({ city: c }) => {
       if (live) setCity(c);
       if (plan) return;
       const p = await fetchMagazinePlan(query, c);
@@ -198,7 +190,7 @@ export default function StoriesResults() {
   const sectionName = (id: MagazineSection) => (id === 'local' && city ? `${t('magSection_local')} · ${city}` : t(`magSection_${id}` as never));
 
   return (
-    <div className="stories-result-page min-h-screen bg-white dark:bg-[#111111] text-gray-900 dark:text-white transition-colors duration-200">
+    <div className="stories-result-page min-h-screen bg-white dark:bg-night-900 text-gray-900 dark:text-white transition-colors duration-200">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-3 px-6 pt-6 pb-3">
         <button type="button" onClick={goBack} style={{ color: accent.primary }} className="hover:opacity-80 transition-opacity flex-shrink-0">
           <ArrowLeft size={20} />
@@ -211,7 +203,7 @@ export default function StoriesResults() {
           type="button"
           onClick={toggleLongRead}
           aria-pressed={longRead}
-          className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium text-white whitespace-nowrap transition-all hover:opacity-90"
+          className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium text-[var(--ui-text-on-accent)] whitespace-nowrap transition-all hover:opacity-90"
           style={{
             backgroundColor: 'var(--accent-primary)',
             boxShadow: longRead ? '0 0 0 3px color-mix(in srgb, var(--accent-primary) 30%, transparent)' : undefined,
@@ -258,7 +250,7 @@ export default function StoriesResults() {
           <SourcesLoader sources={progressState.sources} />
         )}
         {error && (
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-red-500/20 p-8 text-center">
+          <div className="bg-white dark:bg-night-850 rounded-xl border border-red-500/20 p-8 text-center">
             <p className="text-red-500 mb-4">{error}</p>
             <button
               type="button"

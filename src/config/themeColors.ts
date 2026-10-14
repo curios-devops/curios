@@ -54,6 +54,10 @@ interface DesignColorSet {
   brand: string;
   brandDark: string;
   brandSubtle: string;
+  /** Secondary text, when the theme defines one (else `text`). */
+  muted?: string;
+  /** Text on an accent fill, when white doesn't read (e.g. Terra's yellow NIGHT). */
+  onAccent?: string;
 }
 
 // LEGACY palette definitions — see NatureAccentColor above for the current set.
@@ -344,9 +348,30 @@ function curiosTheme(hex: string, darkBase: DesignColorSet): { light: DesignColo
   };
 }
 
+// Terra (DESIGN.md → Themes): xerj.org's DAY / NIGHT — warm paper with ochre, near-black with
+// yellow. Its neutrals, type and corners are CSS tokens in src/styles/themes.css.
+function terraTheme(day: string, night: string): { light: DesignColorSet; dark: DesignColorSet } {
+  return {
+    light: {
+      bg: '#F6F4EE', surface: '#F6F4EE', border: '#CFCBBF', text: '#11120F', muted: '#696762', onAccent: '#F6F4EE',
+      brandLight: mix(day, '#FFFFFF', 0.25),
+      brand: day,
+      brandDark: mix(day, '#000000', 0.18),
+      brandSubtle: mix(day, '#FFFFFF', 0.88),
+    },
+    dark: {
+      bg: '#0B0B0D', surface: '#141412', border: '#3A3836', text: '#F4F2EC', muted: '#8A8680', onAccent: '#0B0B0D',
+      brandLight: mix(night, '#FFFFFF', 0.4),
+      brand: night,
+      brandDark: mix(night, '#000000', 0.18),
+      brandSubtle: mix(night, '#0B0B0D', 0.85),
+    },
+  };
+}
+
 const t = appSettings.themes.colors;
 const curiosThemes: Record<CuriosThemeColor, { light: DesignColorSet; dark: DesignColorSet }> = {
-  terra: curiosTheme(t.terra, natureDesignSystemThemes.wood.dark),
+  terra: terraTheme(t.terra, appSettings.themes.night.terra ?? t.terra),
   ocean: curiosTheme(t.ocean, natureDesignSystemThemes.ocean.dark),
   fire: curiosTheme(t.fire, natureDesignSystemThemes.fire.dark),
   sky: curiosTheme(t.sky, natureDesignSystemThemes.dusk.dark), // Sky is now purple
@@ -419,10 +444,10 @@ export function getGlobalPaletteTokens(
     borderDefault: palette.border,
     textPrimary: palette.text,
     textSecondary: palette.text,
-    textMuted: palette.text,
+    textMuted: palette.muted ?? palette.text,
     shadowSoft: theme === 'light' ? 'rgba(0, 0, 0, 0.06)' : 'rgba(0, 0, 0, 0.30)',
     shadowElevated: theme === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(0, 0, 0, 0.44)',
-    textOnAccent: '#FFFFFF',
+    textOnAccent: palette.onAccent ?? '#FFFFFF',
   };
 }
 
@@ -478,4 +503,6 @@ export function applyThemeColors(
   root.style.setProperty('--foreground', palette.text);
 
   root.setAttribute('data-temperature', temperature);
+  // Theme-level token overrides (fonts, neutrals, corners) key off this: src/styles/themes.css.
+  root.setAttribute('data-accent', accentColor);
 }

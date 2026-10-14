@@ -301,7 +301,7 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0d0d0d] text-[#eee]" style={{ fontFamily: PIXEL_FONT, fontVariantLigatures: 'none' }}>
-      <div className="flex items-center gap-2 px-2 py-3 border-b-2 border-[#222]">
+      <div className="flex items-center gap-2 px-2 py-3 border-b-2 border-night-800">
         <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center" aria-label={t('arcadeBack')}>
           <ArrowLeft size={20} />
         </button>
@@ -357,7 +357,7 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
               style={{ fontFamily: PIXEL_FONT, fontVariantLigatures: 'none' }}
             />
             <div className="-mx-5 px-5 mt-2 flex gap-2 overflow-x-auto scrollbar-hide">
-              {!examples && [96, 128, 112].map((w) => <span key={w} className="flex-shrink-0 h-[26px] rounded-md bg-[#222] animate-pulse" style={{ width: w }} />)}
+              {!examples && [96, 128, 112].map((w) => <span key={w} className="flex-shrink-0 h-[26px] rounded-md bg-night-800 animate-pulse" style={{ width: w }} />)}
               {examples?.map((x) => (
                 <button
                   key={x}

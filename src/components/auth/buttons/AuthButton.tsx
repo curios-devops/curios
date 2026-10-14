@@ -23,7 +23,7 @@ export default function AuthButton({ onClick, type, isActive, children }: AuthBu
         ${type === 'signup' ? 'font-medium' : ''}
         ${isActive 
           ? 'transform scale-[0.98]' 
-          : 'bg-gray-100 dark:bg-[#222222] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#1a1a1a]'
+          : 'bg-gray-100 dark:bg-night-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-night-850'
         }
       `}
       style={isActive ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : undefined}

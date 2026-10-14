@@ -21,7 +21,7 @@ export default function CinematicLoadingSkeleton({ progress }: CinematicLoadingS
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111111] overflow-hidden">
+      <section className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-night-900 overflow-hidden">
         <div className="bg-black">
           <div className="w-full aspect-square md:aspect-video bg-gray-900 flex items-center justify-center">
             <div className="text-center">
@@ -65,7 +65,7 @@ export default function CinematicLoadingSkeleton({ progress }: CinematicLoadingS
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111111] p-4 sm:p-5 space-y-3">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-night-900 p-4 sm:p-5 space-y-3">
           <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{t('cinematicLoadingFullVideoText')}</p>
           <div className="h-4 w-full rounded bg-gray-200 dark:bg-gray-800 skeleton-shimmer" />
           <div className="h-4 w-11/12 rounded bg-gray-200 dark:bg-gray-800 skeleton-shimmer" />
@@ -73,7 +73,7 @@ export default function CinematicLoadingSkeleton({ progress }: CinematicLoadingS
           <div className="h-4 w-9/12 rounded bg-gray-200 dark:bg-gray-800 skeleton-shimmer" />
         </div>
 
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111111] p-4 sm:p-5 space-y-3">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-night-900 p-4 sm:p-5 space-y-3">
           <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{t('cinematicLoadingSourcesQuickLinks')}</p>
           {[0, 1, 2].map((item) => (
             <div key={item} className="rounded-md border border-gray-200 dark:border-gray-800 p-2 space-y-2">

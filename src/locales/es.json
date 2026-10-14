@@ -4,7 +4,7 @@
   "languageSelectorTooltip": "Idioma",
   "helpFaqTooltip": "Ayuda y Preguntas Frecuentes",
   "themeSelectorTooltip": "Tema y Color",
-  "accentColor": "Color de Acento",
+  "accentColor": "Temas",
   "auto": "Auto",
   "search": "Buscar",
   "stories": "Revista",
@@ -176,5 +176,6 @@
   "historySignedOut": "Inicia sesión para ver tu historial.",
   "historyEmpty": "Aún no hay nada aquí.",
   "moreModes": "Más",
-  "lessModes": "Menos"
+  "lessModes": "Menos",
+  "themeDesc": "Colores, tipografía y formas de toda la app"
 }

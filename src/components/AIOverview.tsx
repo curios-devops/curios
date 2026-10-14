@@ -75,7 +75,7 @@ export default function AIOverview({ answer, sources, query, followUpQuestions, 
   try {
     return (
       <>
-        <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 transition-colors duration-200">
+        <div className="bg-white dark:bg-night-900 rounded-xl border border-gray-200 dark:border-gray-800 transition-colors duration-200">
           {/* Header with AI Overview title and stacked source icons */}
           <div className="flex items-center justify-between p-4 sm:p-6 gap-2">
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">

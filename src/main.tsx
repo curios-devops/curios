@@ -364,7 +364,7 @@ if (!rootElement) {
 
 // Create root and render app
 // App text font comes from app-settings.md (UI_FONT); inputs/buttons inherit it.
-document.body.style.fontFamily = appSettings.uiFont;
+document.body.style.fontFamily = `var(--font-ui, ${appSettings.uiFont})`; // a theme may set --font-ui
 
 const root = createRoot(rootElement);
 

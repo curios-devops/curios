@@ -3,7 +3,7 @@ import { Brain, ArrowLeft } from 'lucide-react';
 
 export default function Header() {
   return (
-    <header className="bg-[#111111] border-b border-gray-800 px-6 py-4">
+    <header className="bg-night-900 border-b border-gray-800 px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center gap-6">
         <Link
           to="/"

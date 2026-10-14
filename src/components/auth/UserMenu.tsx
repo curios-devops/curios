@@ -50,7 +50,7 @@ export default function UserMenu({ email, isCollapsed }: UserMenuProps) {
     <button
       onClick={handleClick}
       className={`
-        flex items-center gap-3 p-2 rounded-lg hover:bg-[#1a1a1a] transition-colors w-full
+        flex items-center gap-3 p-2 rounded-lg hover:bg-night-850 transition-colors w-full
         ${isCollapsed ? 'justify-center' : ''}
       `}
     >

@@ -37,7 +37,7 @@ export const FocusCategorySelector: React.FC<FocusCategorySelectorProps> = ({
 
   return (
     <div 
-      className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-gray-800 px-6 py-3 mb-6"
+      className="bg-white dark:bg-night-850 rounded-xl border border-gray-200 dark:border-gray-800 px-6 py-3 mb-6"
       ref={dropdownRef}
     >
       <div className="flex items-center gap-3 relative">

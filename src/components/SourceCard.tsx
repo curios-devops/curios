@@ -45,7 +45,7 @@ export default function SourceCard({ source }: SourceCardProps) {
         }}
       >
         {/* Enhanced Card Layout */}
-        <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:border-[#0095FF]/30 transition-all duration-300 group-hover:shadow-lg">
+        <div className="bg-white dark:bg-night-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:border-[#0095FF]/30 transition-all duration-300 group-hover:shadow-lg">
           {/* Image Section */}
           <div className="aspect-video bg-gray-100 dark:bg-gray-800 overflow-hidden">
             {source.image || hostname ? (

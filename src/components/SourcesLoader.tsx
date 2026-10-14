@@ -15,7 +15,7 @@ export default function SourcesLoader({ sources }: { sources: Array<{ title?: st
   }, [sources.length]);
 
   return (
-    <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+    <div className="bg-white dark:bg-night-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
       {sources.length === 0 ? (
         <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
           <span className="inline-block w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--accent-primary)' }} />

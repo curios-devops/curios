@@ -22,6 +22,7 @@ import HomeDiscovery from '../services/space/components/HomeDiscovery.tsx';
 import EnhancedVideoCard from '../services/movie/components/EnhancedVideoCard.tsx';
 import AnimatedHomeTitle from '../components/AnimatedHomeTitle.tsx';
 import CuriosLogo from '../components/common/CuriosLogo.tsx';
+import DayNightToggle from '../components/theme/DayNightToggle.tsx';
 import { getUserFirstName } from '../utils/userName.ts';
 import { useWelcomeScreen } from '../hooks/useWelcomeScreen.ts';
 
@@ -179,13 +180,14 @@ export default function Home() {
       </div>
 
       <div className="absolute right-6 flex items-center gap-4 mobile:hidden" style={{ top: appSettings.banner.enabled ? 52 : 16 }}>
+        <DayNightToggle />
         {isPro ? (
           <div
             className="h-10 w-10 flex items-center justify-center"
             style={{
               backgroundColor: accentColors.primary,
               color: 'var(--ui-text-on-accent)',
-              borderRadius: '12px',
+              borderRadius: 'var(--radius-xl)', // 12px; square on Terra
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
             }}
             title={t('premiumActive') || 'Premium Subscription Active'}
@@ -199,7 +201,7 @@ export default function Home() {
               backgroundColor: getStartedBackground,
               color: getStartedText,
               border: '1px solid transparent',
-              borderRadius: '12px',
+              borderRadius: 'var(--radius-xl)', // 12px; square on Terra
               fontSize: '15px',
               fontWeight: '500',
               boxShadow: '0 0 0 0 transparent',
@@ -227,7 +229,7 @@ export default function Home() {
                 backgroundColor: 'transparent',
                 color: 'var(--ui-text-primary)',
                 border: '1.5px solid var(--ui-border-default)',
-                borderRadius: '12px',
+                borderRadius: 'var(--radius-xl)', // 12px; square on Terra
                 fontSize: '15px',
                 fontWeight: '500',
                 transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
@@ -264,7 +266,7 @@ export default function Home() {
                   backgroundColor: getStartedBackground,
                   color: getStartedText,
                   border: '1px solid transparent',
-                  borderRadius: '12px',
+                  borderRadius: 'var(--radius-xl)', // 12px; square on Terra
                   fontSize: '15px',
                   fontWeight: '500',
                   boxShadow: '0 0 0 0 transparent',
@@ -318,12 +320,13 @@ export default function Home() {
             // "font-bricolage" for "font-space-grotesk" (previous) or
             // "font-legacy-home-title" (original).
             className="text-center transition-opacity duration-300 font-bricolage"
+            // Size and weight are tokens a theme can override (Terra: xerj's display caps).
             style={{
               color: 'var(--ui-text-primary)',
-              fontWeight: 700,
-              letterSpacing: '-0.025em',
-              lineHeight: 1.05,
-              fontSize: 'clamp(28px, 6vw, 36px)',
+              fontWeight: 'var(--home-title-weight, 700)' as unknown as number,
+              letterSpacing: 'var(--home-title-tracking, -0.025em)',
+              lineHeight: 'var(--home-title-leading, 1.05)',
+              fontSize: 'var(--home-title-size, clamp(28px, 6vw, 36px))',
             }}
           />
         </div>
@@ -409,7 +412,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => { dismissPastDueNotice(); setShowProModal(true); }}
-                className="text-sm px-4 py-2 rounded-lg text-white transition-colors"
+                className="text-sm px-4 py-2 rounded-lg text-[var(--ui-text-on-accent)] transition-colors"
                 style={{ backgroundColor: accentColors.primary }}
               >
                 Reactivate now

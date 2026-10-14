@@ -70,7 +70,7 @@ export default function AnswerSection({ answer, citations = [], sources = [], is
 
   return (
     <>
-      <div className="bg-white dark:bg-[#111111] rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800 transition-colors duration-200">
+      <div className="bg-white dark:bg-night-900 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800 transition-colors duration-200">
         <div className="flex items-center gap-2 mb-4">
           <BookOpen className="text-[#0095FF]" size={22} />
           <h2 className="text-lg sm:text-xl font-medium text-gray-900 dark:text-white transition-colors duration-200">

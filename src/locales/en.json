@@ -4,7 +4,7 @@
   "languageSelectorTooltip": "Language",
   "helpFaqTooltip": "Help & FAQ",
   "themeSelectorTooltip": "Theme & Color",
-  "accentColor": "Accent Color",
+  "accentColor": "Themes",
   "auto": "Auto",
   "search": "Search",
   "stories": "Magazine",
@@ -179,5 +179,6 @@
   "historySignedOut": "Sign in to see your history.",
   "historyEmpty": "Nothing here yet.",
   "moreModes": "More",
-  "lessModes": "Less"
+  "lessModes": "Less",
+  "themeDesc": "Colors, type and shapes of the whole app"
 }

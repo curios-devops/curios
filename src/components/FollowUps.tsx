@@ -6,7 +6,7 @@ export default function FollowUps({ questions, onPick }: { questions: string[]; 
   const { t } = useTranslation();
   if (questions.length === 0) return null;
   return (
-    <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+    <div className="bg-white dark:bg-night-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-5 h-5 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
           <div className="w-2.5 h-2.5 grid grid-cols-2 gap-0.5">

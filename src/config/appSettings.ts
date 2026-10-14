@@ -34,7 +34,8 @@ export interface LogoConfig {
 export interface AppSettings {
   theme: { default: ThemeName };
   // Accent theme: default + each theme's base hex (hover/tints derived).
-  themes: { default: ThemeColorName; colors: Record<ThemeColorName, string> };
+  // A theme may have its own NIGHT (dark-mode) accent; otherwise it is derived from the base.
+  themes: { default: ThemeColorName; colors: Record<ThemeColorName, string>; night: Partial<Record<ThemeColorName, string>> };
   // Logo mark: frame color, center-dot color ('accent' follows the theme), pulse.
   logoMark: { iconColor: string; dotColor: string | 'accent'; dotPulse: boolean };
   banner: { enabled: boolean; text: string };
@@ -107,7 +108,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const asHex = (v: string | undefined, def: string): string => (v && HEX.test(v.trim()) ? v.trim() : def);
 
 const THEME_DEFAULTS: Record<ThemeColorName, string> = {
-  terra: '#9C7A5B',
+  terra: '#7F5200',
   ocean: '#1C8BFD',
   fire: '#D97757',
   sky: '#7C55D6',
@@ -190,6 +191,9 @@ export const appSettings: AppSettings = {
       sky: asHex(cfg.SKY, THEME_DEFAULTS.sky),
       borealis: asHex(cfg.BOREALIS, THEME_DEFAULTS.borealis),
       classic_blue: asHex(cfg.CLASSIC_BLUE, THEME_DEFAULTS.classic_blue),
+    },
+    night: {
+      terra: asHex(cfg.TERRA_NIGHT, '#FFC400'),
     },
   },
   logoMark: {

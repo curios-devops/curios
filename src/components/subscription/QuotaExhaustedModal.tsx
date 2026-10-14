@@ -19,7 +19,7 @@ export default function QuotaExhaustedModal({ isOpen, onClose, message }: QuotaE
 
   return (
     <div className={`fixed inset-0 ${theme === 'dark' ? 'bg-black/70' : 'bg-gray-500/50'} flex items-center justify-center z-50`}>
-      <div className={`${theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'} w-full max-w-[420px] p-8 rounded-2xl relative text-center`}>
+      <div className={`${theme === 'dark' ? 'bg-night-850' : 'bg-white'} w-full max-w-[420px] p-8 rounded-2xl relative text-center`}>
         <button
           onClick={onClose}
           className={`absolute top-5 right-5 ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'} transition-colors`}
@@ -40,7 +40,7 @@ export default function QuotaExhaustedModal({ isOpen, onClose, message }: QuotaE
 
         <button
           onClick={onClose}
-          className="w-full py-3 rounded-lg text-white transition-colors"
+          className="w-full py-3 rounded-lg text-[var(--ui-text-on-accent)] transition-colors"
           style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
         >
           {t('gotIt') || 'Got it'}

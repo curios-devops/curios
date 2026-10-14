@@ -196,7 +196,7 @@ export default function ArcadeCatalog() {
               tabIndex={0}
               onClick={() => open(g)}
               onKeyDown={(e) => { if (e.key === 'Enter') open(g); }}
-              className="group cursor-pointer flex flex-col rounded-xl border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md transition-all overflow-hidden bg-white dark:bg-[#0a0a0a]"
+              className="group cursor-pointer flex flex-col rounded-xl border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md transition-all overflow-hidden bg-white dark:bg-night-950"
             >
               <div className="relative aspect-video overflow-hidden">
                 <GameArt game={g} />

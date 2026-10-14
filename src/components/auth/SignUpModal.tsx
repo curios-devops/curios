@@ -44,7 +44,7 @@ export default function SignUpModal({ isOpen, onClose, context = 'default', curr
 
   return (
     <div className={`fixed inset-0 flex items-center justify-center z-50 ${theme === 'dark' ? 'bg-black/70' : 'bg-gray-200/70'}`}>
-      <div className={`${theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'} w-full max-w-[480px] p-10 rounded-2xl relative`}>
+      <div className={`${theme === 'dark' ? 'bg-night-850' : 'bg-white'} w-full max-w-[480px] p-10 rounded-2xl relative`}>
         <button
           type="button"
           onClick={onClose}

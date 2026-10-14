@@ -270,7 +270,7 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
     : { color: 'var(--ui-text-secondary)' };
 
   return (
-    <div className="bg-white dark:bg-[#111111]">
+    <div className="bg-white dark:bg-night-900">
       {/* Tab Headers — same style as Search (TopBar): underline-on-active, accent color */}
       <div className="border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6">
         <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">

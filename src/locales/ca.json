@@ -4,7 +4,7 @@
   "languageSelectorTooltip": "Idioma",
   "helpFaqTooltip": "Ajuda i PMF",
   "themeSelectorTooltip": "Tema i Color",
-  "accentColor": "Color d'Accent",
+  "accentColor": "Temes",
   "search": "Cerca",
   "stories": "Revista",
   "cinematic": "Cinematogràfic",
@@ -172,5 +172,6 @@
   "historyEmpty": "Encara no hi ha res aquí.",
   "character": "Personatge",
   "moreModes": "Més",
-  "lessModes": "Menys"
+  "lessModes": "Menys",
+  "themeDesc": "Colors, tipografia i formes de tota l'app"
 }

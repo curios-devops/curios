@@ -46,7 +46,7 @@ export default function NumberedCitation({ citations, citationNumber }: Numbered
       <button
         type="button"
         onClick={handleButtonClick}
-        className="inline-flex items-center justify-center w-5 h-5 mx-0.5 text-white text-xs font-bold rounded-full cursor-pointer hover:opacity-90 active:opacity-75 align-super"
+        className="inline-flex items-center justify-center w-5 h-5 mx-0.5 text-[var(--ui-text-on-accent)] text-xs font-bold rounded-full cursor-pointer hover:opacity-90 active:opacity-75 align-super"
         style={{
           backgroundColor: 'var(--accent-primary)',
           fontSize: '10px',

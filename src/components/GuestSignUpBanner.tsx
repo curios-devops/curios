@@ -63,7 +63,7 @@ export default function GuestSignUpBanner({ isEnabled = false }: GuestSignUpBann
                 type="button"
                 onClick={handleSignUp}
                 style={{ backgroundColor: accentColor.primary }}
-                className="text-white px-2 py-1 rounded text-[10px] font-medium transition-colors hover:opacity-90"
+                className="text-[var(--ui-text-on-accent)] px-2 py-1 rounded text-[10px] font-medium transition-colors hover:opacity-90"
               >
                 {t('signUp')}
               </button>

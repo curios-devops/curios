@@ -1,5 +1,8 @@
 # Curios AI — Design Kit
 
+> **Superseded (2026-10-14) by [`/DESIGN.md`](../../../DESIGN.md)** — the single source for
+> tokens, components and themes. This file is kept as the history behind it.
+
 The standing design system for this codebase. Follow this for all UI work.
 Where a value isn't covered, derive it from the nearest token — never invent a
 new color, font, radius, or shadow. If a request conflicts with this file,

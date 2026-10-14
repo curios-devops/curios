@@ -109,7 +109,7 @@ export default function ExploreFurther({ query, images, prep }: { query: string;
             title={t('exploreMoreOptions')}
             aria-label={t('exploreMoreOptions')}
             aria-expanded={menuOpen}
-            className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#222222] transition-colors"
+            className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-night-800 transition-colors"
           >
             <Settings2 size={18} />
           </button>
@@ -129,7 +129,7 @@ export default function ExploreFurther({ query, images, prep }: { query: string;
                       <button
                         type="button"
                         onClick={() => { setMenuOpen(false); go('listen'); }}
-                        className="w-full text-left rounded-lg px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-[#222222] transition-colors"
+                        className="w-full text-left rounded-lg px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-night-800 transition-colors"
                       >
                         <span className="block text-xs font-medium text-gray-900 dark:text-white">{t('exploreRealSong')}</span>
                         <span className="block text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{line('listen')}</span>
@@ -138,7 +138,7 @@ export default function ExploreFurther({ query, images, prep }: { query: string;
                     <button
                       type="button"
                       onClick={() => { setMenuOpen(false); goExplain(); }}
-                      className="w-full text-left rounded-lg px-2.5 py-1.5 border transition-colors hover:bg-gray-50 dark:hover:bg-[#222222]"
+                      className="w-full text-left rounded-lg px-2.5 py-1.5 border transition-colors hover:bg-gray-50 dark:hover:bg-night-800"
                       style={{ borderColor: 'var(--accent-primary)' }}
                     >
                       <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: 'var(--accent-primary)' }}>
@@ -153,7 +153,7 @@ export default function ExploreFurther({ query, images, prep }: { query: string;
                   key={id}
                   type="button"
                   onClick={() => { setMenuOpen(false); go(id); }}
-                  className="w-full flex items-start gap-3 px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-[#222222] transition-colors"
+                  className="w-full flex items-start gap-3 px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-night-800 transition-colors"
                 >
                   <WayIcon size={18} className="flex-shrink-0 mt-0.5 text-gray-900 dark:text-white" />
                   <span className="min-w-0">

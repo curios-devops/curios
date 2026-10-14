@@ -69,7 +69,8 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, 
           </div>
         </div>
 
-        <nav className="flex-1 px-2 py-4">
+        {/* min-h-0 + scroll: on short screens the modes scroll, the sign-in card stays visible. */}
+        <nav className="flex-1 min-h-0 overflow-y-auto px-2 pt-5 pb-2">
           <div className="space-y-1">
             <NavItem
               to="/"
@@ -133,7 +134,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar, embedded = false, 
           </div>
         </nav>
 
-        <div className={`flex-shrink-0 ${isCollapsed ? "px-2" : "px-4"} pb-6`}>
+        <div className={`flex-shrink-0 ${isCollapsed ? "px-2" : "px-4"} pb-14`}>
           <div className="space-y-4">
             <div
               className="border-t w-full transition-colors duration-200"

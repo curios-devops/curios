@@ -13,7 +13,7 @@ export default function Divider({ text }: DividerProps) {
         <div className="w-full border-t border-gray-800"></div>
       </div>
       <div className="relative flex justify-center text-sm">
-        <span className={`px-4 ${theme === 'dark' ? 'bg-[#1a1a1a] text-gray-500' : 'bg-white text-gray-600'}`}>
+        <span className={`px-4 ${theme === 'dark' ? 'bg-night-850 text-gray-500' : 'bg-white text-gray-600'}`}>
           {text}
         </span>
       </div>

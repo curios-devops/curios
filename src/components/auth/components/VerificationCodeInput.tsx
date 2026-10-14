@@ -74,7 +74,7 @@ export default function VerificationCodeInput({ email, onSubmit, onClose }: Veri
             setError('');
           }}
           disabled={loading || timeLeft <= 0}
-          className={`w-full ${theme === 'dark' ? 'bg-[#222222] text-white border-gray-700 placeholder-gray-500' : 'bg-gray-100 text-gray-900 border-gray-300 placeholder-gray-400'} border ${
+          className={`w-full ${theme === 'dark' ? 'bg-night-800 text-white border-gray-700 placeholder-gray-500' : 'bg-gray-100 text-gray-900 border-gray-300 placeholder-gray-400'} border ${
             error ? 'border-red-500' : timeLeft <= 0 ? 'border-yellow-500' : ''
           } rounded-lg px-4 py-3.5 focus:outline-none transition-colors text-center tracking-wider text-lg`}
           onFocus={(e) => {
@@ -113,7 +113,7 @@ export default function VerificationCodeInput({ email, onSubmit, onClose }: Veri
             code.length === 6 && !loading
               ? 'text-white'
               : theme === 'dark' 
-                ? 'bg-[#222222] text-gray-500 cursor-not-allowed' 
+                ? 'bg-night-800 text-gray-500 cursor-not-allowed' 
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           }`}
           style={code.length === 6 && !loading ? { backgroundColor: 'var(--accent-primary)' } : undefined}

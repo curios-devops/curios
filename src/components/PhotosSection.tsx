@@ -37,7 +37,7 @@ export default function PhotosSection({ images, maxImages = 7 }: PhotosSectionPr
   const hasMoreImages = validImages.length > 7;
 
   return (
-    <div className="bg-[#111111] rounded-xl border border-gray-800 overflow-hidden mb-4">
+    <div className="bg-night-900 rounded-xl border border-gray-800 overflow-hidden mb-4">
       <div className="p-4">
         <div className="flex items-center gap-2 mb-4 justify-between">
           <div className="flex items-center gap-2">
@@ -118,7 +118,7 @@ export default function PhotosSection({ images, maxImages = 7 }: PhotosSectionPr
               </a>
 
               {/* Right Mini Grid (up to 3 images) */}
-              <div className="bg-[#222222] rounded-lg p-2">
+              <div className="bg-night-800 rounded-lg p-2">
                 <div className="grid grid-cols-3 gap-2">
                   {miniImages.slice(0, 3).map((image, index) => (
                     <a

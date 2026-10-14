@@ -44,7 +44,7 @@ export default function OfflineError() {
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium text-white transition-opacity hover:opacity-90"
+        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium text-[var(--ui-text-on-accent)] transition-opacity hover:opacity-90"
         style={{ backgroundColor: 'var(--accent-primary)' }}
       >
         Retry

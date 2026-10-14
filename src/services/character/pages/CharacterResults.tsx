@@ -3,16 +3,15 @@
 //     full-body action (walk, gesture, dance, pick up a product).
 //   • Half body (Anam): a talking upper body; no director — the spoken answer is
 //     streamed straight into the avatar as it is written.
-// The first answer is prepared in parallel with the connection. One
-// conversation = one Pro Credit; 30 s idle → freeze the last frame and close.
+// The first answer is prepared in parallel with the connection. Free for everyone;
+// cost guards: 3-minute sessions and 30 s idle → freeze the last frame and close.
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Crown, Mic, Send, Loader2, Users, ThumbsUp, Volume2, RotateCcw, PersonStanding, UserRound, Captions } from 'lucide-react';
+import { Mic, Send, Loader2, Users, ThumbsUp, Volume2, RotateCcw, PersonStanding, UserRound, Captions } from 'lucide-react';
 import TopBar from '../../../components/results/TopBar';
 import DynamicShareRow from '../../../components/share/DynamicShareRow';
 import SaveButton from '../../space/components/SaveButton';
-import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { useSession } from '../../../hooks/useSession';
 import { useVoiceRecording } from '../../../hooks/useVoiceRecording';
 import { transcribeAudioWithFallback } from '../../stt/transcriptionService';
@@ -26,9 +25,8 @@ import { directTurn, buildScriptEvent, type StageProduct, type DirectedTurn } fr
 import { startCharacterSession, type LiveCharacter } from '../characterSession';
 import { startAnamSession, SpeechQueue, type LiveAnam } from '../anamSession';
 import { speakAnswer } from '../speechAnswer';
-import { decideTier, pickAnswerModel, type AnswerModel } from '../../auto/modelTier';
+import { decideTier } from '../../auto/modelTier';
 import { appSettings } from '../../../config/appSettings';
-import AstraNotice from '../../../components/AstraNotice';
 import CharacterPicker from '../components/CharacterPicker';
 import { mark } from '../timing';
 import { loadPrefs, fetchPrefs, savePrefs, type CharacterPrefs } from '../characterPrefs';
@@ -36,7 +34,7 @@ import { revealWords, captionTail } from '../captions';
 import { recordLoop } from '../idleLoop';
 
 type Body = 'full' | 'half';
-type Status = 'idle' | 'no-credits' | 'connecting' | 'live' | 'needs-sound' | 'paused' | 'closed' | 'error';
+type Status = 'idle' | 'connecting' | 'live' | 'needs-sound' | 'paused' | 'closed' | 'error';
 interface Turn { role: 'user' | 'character'; text: string }
 type Presenter =
   | { body: 'full'; preset: CharacterPreset }
@@ -100,13 +98,8 @@ export default function CharacterResults() {
   const initialQuery = params.get('q') || '';
   const openMic = params.get('mic') === '1';
 
-  const { requestProAccess, canUseProFeature, loading: creditsLoading, remaining, tryConsumeCredit } = useProCredits();
-  // Answer model for the whole conversation, rated on its first question (Luna/Sol/Astra).
+  // Answer model for the whole conversation, rated on its first question: Luna if easy, else Sol.
   const modelRef = useRef<Promise<string> | undefined>(undefined);
-  const [answerModel, setAnswerModel] = useState<AnswerModel | null>(null);
-  const remainingRef = useRef(remaining);
-  remainingRef.current = remaining;
-  const forcedAstra = params.get('tier') === 'astra';
   const { session } = useSession();
   const { isRecording, startRecording, stopRecording } = useVoiceRecording();
 
@@ -306,13 +299,6 @@ export default function CharacterResults() {
   }, [deliver, prepare, presenter, thinking]);
 
   const start = useCallback(async (who: Presenter, firstQ: string) => {
-    // One conversation = one Pro Credit (guest 1, free 3, pro 25 per day).
-    // Check the balance first, but only spend it once the presenter is live.
-    if (!canUseProFeature) {
-      await requestProAccess(); // opens the sign-in / upgrade modal
-      setStatus('no-credits');
-      return;
-    }
     setStatusDetail(null);
     setSecondsLeft(SESSION_SECONDS);
     setFrozenFrame(null);
@@ -321,16 +307,9 @@ export default function CharacterResults() {
     stopCaptionTimer();
     speakingRef.current = false;
 
-    // Rate the first question → conversation model. Astra needs a SECOND credit (the first is
-    // the conversation's), so it's only picked with ≥2 left and charged once the session is live —
-    // waiting for the charge would delay the parallel first answer by the whole connect time.
-    let pick: Promise<AnswerModel> | null = null;
+    // Rate the first question → conversation model (free: no Astra).
     if (firstQ.trim()) {
-      pick = (async () => {
-        const tier = forcedAstra ? 'complex' : await decideTier(firstQ);
-        return pickAnswerModel(tier, async () => remainingRef.current >= 2);
-      })();
-      modelRef.current = pick.then((m) => m.model);
+      modelRef.current = decideTier(firstQ).then((tier) => (tier === 'easy' ? appSettings.models.luna : appSettings.models.sol));
     }
 
     // Parallel: the first answer starts now, while the session connects.
@@ -372,20 +351,8 @@ export default function CharacterResults() {
         live.onSpokenText((chunk) => { if (chunk) setCaptionText((t) => t + chunk); });
         engine = { kind: 'half', live };
       }
-      if (!(await requestProAccess())) {
-        await engine.live.close();
-        setStatus('no-credits');
-        setThinking(false);
-        return;
-      }
       engineRef.current = engine;
       touch();
-      if (pick) {
-        void pick.then(async (m) => {
-          setAnswerModel(m);
-          if (m.model === appSettings.models.astra) await tryConsumeCredit();
-        });
-      }
       if (prepared) {
         await deliver(prepared).catch((e) => setStatusDetail(e instanceof Error ? e.message : 'Something went wrong'));
         setThinking(false);
@@ -399,12 +366,12 @@ export default function CharacterResults() {
       setStatus('error');
       setStatusDetail(`${who.preset.name} couldn't get on stage right now. Please try again in a moment.`);
     }
-  }, [canUseProFeature, deliver, forcedAstra, maybeRecordLoop, openMic, prepare, requestProAccess, startRecording, tryConsumeCredit]);
+  }, [deliver, maybeRecordLoop, openMic, prepare, startRecording]);
 
-  // Start once credits are known (checking earlier reads an empty balance).
+  // Start on arrival.
   useEffect(() => {
-    if (creditsLoading || startedRef.current) return;
-    mark('credits loaded → start');
+    if (startedRef.current) return;
+    mark('start');
     startedRef.current = true;
     // Signed-in users: their saved setup (any device) — unless the URL says otherwise.
     void fetchPrefs(session?.user).then((prefs) => {
@@ -416,7 +383,7 @@ export default function CharacterResults() {
       void start(who, initialQuery);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [creditsLoading]);
+  }, []);
 
   // Always release the billable session when leaving.
   useEffect(() => {
@@ -459,7 +426,7 @@ export default function CharacterResults() {
     remember({ captions: next });
   };
 
-  // While paused, any new question resumes with a fresh session (1 credit).
+  // While paused, any new question resumes with a fresh session (free).
   const send = (q: string) => {
     if (!q.trim()) return;
     if (paused) void start(presenter, q);
@@ -600,16 +567,15 @@ export default function CharacterResults() {
                   className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
                   style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
                 >
-                  Continue <Crown size={12} />
+                  Continue
                 </button>
               </div>
             )}
 
-            {(ended || status === 'error' || status === 'no-credits') && (
+            {(ended || status === 'error') && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 text-white text-center p-6">
                 <p className="text-sm">
-                  {status === 'no-credits' ? 'You are out of Pro Credits for today.'
-                    : status === 'error' ? (statusDetail || 'The presenter could not start.')
+                  {status === 'error' ? (statusDetail || 'The presenter could not start.')
                     : 'Conversation ended.'}
                 </p>
                 <button
@@ -618,7 +584,7 @@ export default function CharacterResults() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
                   style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
                 >
-                  <RotateCcw size={16} /> New conversation <Crown size={14} />
+                  <RotateCcw size={16} /> New conversation
                 </button>
               </div>
             )}
@@ -697,16 +663,6 @@ export default function CharacterResults() {
               </p>
             )}
           </div>
-
-          {answerModel?.astraBlocked && (
-            <AstraNotice
-              onContinueWithAstra={() => {
-                const url = new URL(window.location.href);
-                url.searchParams.set('tier', 'astra');
-                window.location.assign(url.toString());
-              }}
-            />
-          )}
 
           {suggestions.length > 0 && (
             <div className="flex flex-wrap gap-2">

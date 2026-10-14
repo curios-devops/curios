@@ -27,14 +27,14 @@ export default function EmailInput({
           disabled={disabled}
           className={`
             w-full 
-            bg-[#222222] 
+            bg-night-800 
             border 
             ${error ? 'border-red-500' : 'border-gray-700'} 
             rounded-lg 
             px-4
             py-3.5
             ${theme === 'dark' 
-              ? 'bg-[#222222] placeholder-gray-700 text-white' 
+              ? 'bg-night-800 placeholder-gray-700 text-white' 
               : 'bg-white text-gray-900 placeholder-gray-400'} // Use theme for conditional styling
             focus:outline-none 
             transition-colors

@@ -105,7 +105,8 @@ Default to surfacing uncertainty, not hiding it.
 
 ## Design
 
-Follow docs/General/UX/design-kit.md for all UI work. When a value is not covered,
+Follow DESIGN.md (repo root: tokens, components and themes) for all UI work.
+docs/General/UX/design-kit.md is history only. When a value is not covered,
 derive it from the nearest token. Never invent new colors, fonts,
 radii, or shadows. If a request conflicts with the kit, say so
 before building.

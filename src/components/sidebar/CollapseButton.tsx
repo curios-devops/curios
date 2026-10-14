@@ -38,7 +38,7 @@ export default function CollapseButton(
         transition-colors
         rounded-md
         hover:bg-gray-100
-        dark:hover:bg-[#1a1a1a]
+        dark:hover:bg-night-850
         dark:text-gray-400
       `}
       onMouseEnter={(e) => {

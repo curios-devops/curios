@@ -598,7 +598,7 @@ export default function MovieResults() {
                     {roleLabel(selectedSwipe)}
                   </span>
                   {selectedSwipe.enhanced && (
-                    <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>
+                    <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded text-[var(--ui-text-on-accent)]" style={{ backgroundColor: 'var(--accent-primary)' }}>
                       <Crown size={10} /> Enhanced
                     </span>
                   )}
@@ -648,7 +648,7 @@ export default function MovieResults() {
                 Swipes {swipes.length > 0 && `(${swipes.length})`}
               </span>
               <span
-                className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded text-white"
+                className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded text-[var(--ui-text-on-accent)]"
                 style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
                 title="Selecting any swipe outside Core consumes 1 Pro Credit."
               >
@@ -696,7 +696,7 @@ export default function MovieResults() {
                         <Loader2 size={10} className="animate-spin" /> render
                       </span>
                     ) : swipe.enhanced ? (
-                      <span className="absolute bottom-1 right-1 text-[10px] px-1.5 py-0.5 rounded text-white flex items-center gap-1" style={{ backgroundColor: 'var(--accent-primary)' }}>
+                      <span className="absolute bottom-1 right-1 text-[10px] px-1.5 py-0.5 rounded text-[var(--ui-text-on-accent)] flex items-center gap-1" style={{ backgroundColor: 'var(--accent-primary)' }}>
                         <Crown size={10} /> ▶
                       </span>
                     ) : swipe.videoUrl ? (

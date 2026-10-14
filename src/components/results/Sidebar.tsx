@@ -28,7 +28,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
   return (
     <>
       <aside
-        className={`fixed left-0 top-0 h-screen bg-[#f9f9f8] dark:bg-[#111111] border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 ${
+        className={`fixed left-0 top-0 h-screen bg-[#f9f9f8] dark:bg-night-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 ${
           isCollapsed ? "w-20" : "w-56"
         }`}
       >

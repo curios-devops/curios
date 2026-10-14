@@ -11,7 +11,7 @@ export default function CleanInput({ className = '', ...props }: CleanInputProps
       className={`
         w-full
         h-12
-        bg-[#1a1a1a]
+        bg-night-850
         text-white
         text-base
         rounded-lg

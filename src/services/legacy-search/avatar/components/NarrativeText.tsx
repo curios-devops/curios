@@ -25,7 +25,7 @@ export default function NarrativeText({ text, title }: NarrativeTextProps) {
   const paragraphs = text.split('\n\n').filter(p => p.trim());
 
   return (
-    <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-6 transition-colors duration-200">
+    <div className="bg-white dark:bg-night-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 transition-colors duration-200">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title || 'Full Response'}</h3>
         <button

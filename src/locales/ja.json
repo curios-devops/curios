@@ -4,7 +4,7 @@
   "languageSelectorTooltip": "言語",
   "helpFaqTooltip": "ヘルプとFAQ",
   "themeSelectorTooltip": "テーマとカラー",
-  "accentColor": "アクセントカラー",
+  "accentColor": "テーマ",
   "search": "検索",
   "stories": "マガジン",
   "cinematic": "シネマティック",
@@ -172,5 +172,6 @@
   "historyEmpty": "まだ何もありません。",
   "character": "キャラクター",
   "moreModes": "その他",
-  "lessModes": "閉じる"
+  "lessModes": "閉じる",
+  "themeDesc": "アプリ全体の色・書体・形"
 }

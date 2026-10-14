@@ -229,7 +229,7 @@ export default function FunctionSelector({
   return (
     <div className={`relative ${className}`}>
       {/* Tab Buttons */}
-      <div className="flex items-center bg-gray-50 dark:bg-[#2a2a2a] rounded-lg p-1 gap-1">
+      <div className="flex items-center bg-gray-50 dark:bg-night-750 rounded-lg p-1 gap-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -256,9 +256,9 @@ export default function FunctionSelector({
                   transition-all duration-200 ease-in-out
                   cursor-pointer hover:scale-[1.02]
                   ${isActive
-                    ? 'bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700'
+                    ? 'bg-white dark:bg-night-850 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700'
                     : isHovered
-                      ? 'bg-gray-100 dark:bg-[#333333] text-gray-700 dark:text-gray-300'
+                      ? 'bg-gray-100 dark:bg-night-700 text-gray-700 dark:text-gray-300'
                       : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   }
                 `}

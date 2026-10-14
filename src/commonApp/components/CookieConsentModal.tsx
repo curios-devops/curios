@@ -61,7 +61,7 @@ export default function CookieConsentModal({
 
   return (
     <div className="fixed bottom-2 left-2 sm:left-56 z-40 animate-fade-in">
-      <div className="bg-[#2a2a2a] border border-gray-700 rounded-md shadow-xl max-w-[280px] p-3 relative">
+      <div className="bg-night-750 border border-gray-700 rounded-md shadow-xl max-w-[280px] p-3 relative">
         {/* Header with icon */}
         <div className="flex items-center gap-1.5 mb-2">
           <div className="p-1 rounded-full" style={{ backgroundColor: 'transparent' }}>
@@ -93,7 +93,7 @@ export default function CookieConsentModal({
           <button
             type="button"
             onClick={handleNecessaryOnly}
-            className="flex-1 text-white font-medium py-1.5 px-2 rounded text-[10px] transition-colors"
+            className="flex-1 text-[var(--ui-text-on-accent)] font-medium py-1.5 px-2 rounded text-[10px] transition-colors"
             style={{ backgroundColor: accentColor.primary }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = accentColor.hover)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = accentColor.primary)}

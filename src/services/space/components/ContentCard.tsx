@@ -41,7 +41,7 @@ export default function ContentCard({ to, title, summary, cover, badge }: Conten
   return (
     <Link
       to={to}
-      className="group flex flex-col rounded-xl border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md transition-all overflow-hidden bg-white dark:bg-[#0a0a0a]"
+      className="group flex flex-col rounded-xl border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md transition-all overflow-hidden bg-white dark:bg-night-950"
     >
       <div className="aspect-video bg-gray-100 dark:bg-gray-900 overflow-hidden">
         {showImage ? (

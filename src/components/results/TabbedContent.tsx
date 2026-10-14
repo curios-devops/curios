@@ -106,7 +106,7 @@ export default function TabbedContent({
   if (searchState.isLoading) {
     return (
       <div className="flex-1">
-        <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-8 transition-colors duration-200">
+        <div className="bg-white dark:bg-night-900 rounded-xl border border-gray-200 dark:border-gray-800 p-8 transition-colors duration-200">
           <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
             <div className="relative">
               <div className="w-3 h-3 rounded-full animate-ping absolute" style={{ backgroundColor: 'var(--accent-primary)', opacity: 0.4 }}></div>

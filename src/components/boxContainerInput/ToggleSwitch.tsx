@@ -37,7 +37,7 @@ export default function ToggleSwitch({
           ease-in-out
           focus:outline-none 
           ${disabled 
-            ? 'bg-[#2a2a2a] border-gray-700 cursor-not-allowed opacity-50' 
+            ? 'bg-night-750 border-gray-700 cursor-not-allowed opacity-50' 
             : isEnabled 
               ? 'focus:ring-2 focus:ring-offset-2 focus:ring-offset-black' 
               : ''

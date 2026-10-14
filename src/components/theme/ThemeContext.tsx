@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo } 
 import { AccentColor, applyThemeColors } from '../../config/themeColors';
 import { appSettings, VISITOR_THEMES } from '../../config/appSettings.ts';
 import { supabase } from '../../lib/supabase.ts';
+import { readerGeo } from '../../utils/readerGeo.ts';
+import { isDaytime } from '../../utils/sunTimes.ts';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -11,6 +13,11 @@ interface ThemeContextType {
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
   setAccentColor: (color: AccentColor) => void;
+  /** The theme has DAY / NIGHT that can follow the sun (Terra). */
+  hasDayNight: boolean;
+  /** Auto: DAY at sunrise, NIGHT at sunset (on by default; picking Day or Night turns it off). */
+  dayNightAuto: boolean;
+  setDayNightAuto: (on: boolean) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -21,6 +28,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = 'accentTheme';
 const PROFILE_PREFIX = 'theme:';
 const validThemes: AccentColor[] = [...VISITOR_THEMES, 'classic_blue'];
+// Themes whose DAY / NIGHT follow the sun by default (DESIGN.md → Themes).
+const DAY_NIGHT_THEMES: AccentColor[] = ['terra'];
+const AUTO_KEY = 'dayNightAuto';
 
 function normalizeAccentColor(value: string | null | undefined): AccentColor | null {
   const name = value?.startsWith(PROFILE_PREFIX) ? value.slice(PROFILE_PREFIX.length) : value;
@@ -40,6 +50,9 @@ function getInitialAccentColor(): AccentColor {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const [accentColor, setAccentColorState] = useState<AccentColor>(getInitialAccentColor);
+  const [dayNightAuto, setDayNightAutoState] = useState(() => localStorage.getItem(AUTO_KEY) !== 'off');
+  const hasDayNight = DAY_NIGHT_THEMES.includes(accentColor);
+  const followSun = hasDayNight && dayNightAuto;
   // Store only userId (stable string) — not the full session object.
   // This means Supabase TOKEN_REFRESHED events won't cascade through context.
   const [userId, setUserId] = useState<string | null>(null);
@@ -96,7 +109,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       .then(undefined, () => {});
   }, [userId]);
 
-  const setTheme = useCallback((t: Theme) => setThemeState(t), []);
+  // Auto DAY / NIGHT: the sun at the reader's place (07:00–20:00 until it's known), checked every 5 min.
+  useEffect(() => {
+    if (!followSun) return;
+    let live = true;
+    let place: { lat: number | null; lng: number | null } = { lat: null, lng: null };
+    const tick = () => setThemeState(isDaytime(new Date(), place.lat, place.lng) ? 'light' : 'dark');
+    tick();
+    void readerGeo().then((g) => { if (live) { place = g; tick(); } });
+    const id = setInterval(tick, 5 * 60 * 1000);
+    return () => { live = false; clearInterval(id); };
+  }, [followSun]);
+
+  const setDayNightAuto = useCallback((on: boolean) => {
+    setDayNightAutoState(on);
+    localStorage.setItem(AUTO_KEY, on ? 'on' : 'off');
+  }, []);
+
+  // Picking Day or Night yourself on a DAY / NIGHT theme turns Auto off.
+  const setTheme = useCallback((t: Theme) => {
+    setThemeState(t);
+    if (hasDayNight) setDayNightAuto(false);
+  }, [hasDayNight, setDayNightAuto]);
 
   const toggleTheme = useCallback(() => {
     setThemeState(c => c === 'dark' ? 'light' : c === 'light' ? 'system' : 'dark');
@@ -113,8 +147,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Memoize context value so consumers only re-render when theme/accent change,
   // not when Supabase fires TOKEN_REFRESHED and userId is the same string.
   const value = useMemo(
-    () => ({ theme, accentColor, toggleTheme, setTheme, setAccentColor }),
-    [theme, accentColor, toggleTheme, setTheme, setAccentColor]
+    () => ({ theme, accentColor, toggleTheme, setTheme, setAccentColor, hasDayNight, dayNightAuto, setDayNightAuto }),
+    [theme, accentColor, toggleTheme, setTheme, setAccentColor, hasDayNight, dayNightAuto, setDayNightAuto]
   );
 
   return (

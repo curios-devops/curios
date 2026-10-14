@@ -198,7 +198,7 @@ export default function ProSearchResultsV2() {
                       href={source.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block bg-white dark:bg-[#111111] rounded-lg border border-gray-200 dark:border-gray-800 p-4 hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
+                      className="block bg-white dark:bg-night-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
                     >
                       <h4 className="text-blue-600 dark:text-blue-400 font-medium mb-2 hover:underline">
                         {source.title}
@@ -236,7 +236,7 @@ export default function ProSearchResultsV2() {
                       href={video.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block bg-white dark:bg-[#111111] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
+                      className="block bg-white dark:bg-night-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
                     >
                       {video.thumbnail && (
                         <img
@@ -346,7 +346,7 @@ export default function ProSearchResultsV2() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
-      <div className="sticky top-0 bg-white/80 dark:bg-[#111111]/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 z-10 transition-colors duration-200">
+      <div className="sticky top-0 bg-white/80 dark:bg-night-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 z-10 transition-colors duration-200">
         {/* Top row with back arrow, query title and time */}
         <div className="px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">

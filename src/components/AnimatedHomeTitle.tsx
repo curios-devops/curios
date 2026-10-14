@@ -57,6 +57,8 @@ export default function AnimatedHomeTitle({ name, className, style, onDone }: An
   onDoneRef.current = onDone;
 
   const [display, setDisplay] = useState('');
+  // The question beat may take its own color (Terra: the accent, like xerj's second line).
+  const [asking, setAsking] = useState(false);
 
   const charRef = useRef(0);
   const phaseRef = useRef<Phase>('sal-typing');
@@ -68,6 +70,7 @@ export default function AnimatedHomeTitle({ name, className, style, onDone }: An
   useEffect(() => {
     if (prefersReduced) {
       setDisplay(QUESTION);
+      setAsking(true);
       onDoneRef.current?.();
       return;
     }
@@ -75,6 +78,7 @@ export default function AnimatedHomeTitle({ name, className, style, onDone }: An
     charRef.current = 0;
     phaseRef.current = 'sal-typing';
     setDisplay('');
+    setAsking(false);
 
     let timer: ReturnType<typeof setTimeout>;
 
@@ -102,6 +106,7 @@ export default function AnimatedHomeTitle({ name, className, style, onDone }: An
           if (charRef.current <= 0) {
             phaseRef.current = 'q-typing';
             charRef.current = 0;
+            setAsking(true);
             timer = setTimeout(tick, 450);
           } else {
             timer = setTimeout(tick, 28);
@@ -130,7 +135,7 @@ export default function AnimatedHomeTitle({ name, className, style, onDone }: An
 
   return (
     <h1 className={className} style={{ minHeight: '1.4em', ...style }} aria-label={QUESTION}>
-      <span>{display}</span>
+      <span style={asking ? { color: 'var(--home-question-color, inherit)' } : undefined}>{display}</span>
     </h1>
   );
 }

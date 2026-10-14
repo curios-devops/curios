@@ -27,7 +27,7 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
 
   return (
     <div className={`fixed inset-0 ${theme === 'dark' ? 'bg-black/70' : 'bg-gray-500/50'} flex items-center justify-center z-50`}>
-      <div className={`${theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'} w-full max-w-[900px] p-8 rounded-2xl relative`}>
+      <div className={`${theme === 'dark' ? 'bg-night-850' : 'bg-white'} w-full max-w-[900px] p-8 rounded-2xl relative`}>
         <button
           onClick={onClose}
           className={`absolute top-6 right-6 ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'} transition-colors z-20`}
@@ -43,14 +43,14 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
           <div className="flex justify-center items-center mt-4">
             <button
               onClick={() => setSelectedInterval('month')}
-              className={`px-4 py-2 rounded-l-lg text-sm font-medium ${selectedInterval === 'month' ? 'text-white' : theme === 'dark' ? 'bg-[#333333] text-gray-400' : 'bg-gray-200 text-gray-600'}`}
+              className={`px-4 py-2 rounded-l-lg text-sm font-medium ${selectedInterval === 'month' ? 'text-[var(--ui-text-on-accent)]' : theme === 'dark' ? 'bg-night-700 text-gray-400' : 'bg-gray-200 text-gray-600'}`}
               style={selectedInterval === 'month' ? { backgroundColor: accentColor.primary } : {}}
             >
               {t('monthly')}
             </button>
             <button
               onClick={() => setSelectedInterval('year')}
-              className={`px-4 py-2 rounded-r-lg text-sm font-medium ${selectedInterval === 'year' ? 'text-white' : theme === 'dark' ? 'bg-[#333333] text-gray-400' : 'bg-gray-200 text-gray-600'}`}
+              className={`px-4 py-2 rounded-r-lg text-sm font-medium ${selectedInterval === 'year' ? 'text-[var(--ui-text-on-accent)]' : theme === 'dark' ? 'bg-night-700 text-gray-400' : 'bg-gray-200 text-gray-600'}`}
               style={selectedInterval === 'year' ? { backgroundColor: accentColor.primary } : {}}
             >
               {t('yearly')}
@@ -60,7 +60,7 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Standard Plan */}
-          <div className={`${theme === 'dark' ? 'bg-[#222222] border-gray-800' : 'bg-gray-50 border-gray-200'} p-6 rounded-xl border flex flex-col justify-between h-full`}>
+          <div className={`${theme === 'dark' ? 'bg-night-800 border-gray-800' : 'bg-gray-50 border-gray-200'} p-6 rounded-xl border flex flex-col justify-between h-full`}>
             <div>
               <div className="text-center mb-8">
                 <h3 className={`text-xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4`}>{t('standard')}</h3>
@@ -86,7 +86,7 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
           </div>
 
           {/* Premium Plan */}
-          <div className={`${theme === 'dark' ? 'bg-[#222222] border-gray-800' : 'bg-gray-50 border-gray-200'} p-6 rounded-xl border flex flex-col justify-between h-full`}>
+          <div className={`${theme === 'dark' ? 'bg-night-800 border-gray-800' : 'bg-gray-50 border-gray-200'} p-6 rounded-xl border flex flex-col justify-between h-full`}>
             <div>
               <div className="text-center mb-6">
                 <h3 className={`text-xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>{t('premium')}</h3>

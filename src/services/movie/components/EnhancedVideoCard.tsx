@@ -88,7 +88,7 @@ export default function EnhancedVideoCard() {
                 <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
               )}
               <span className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.25)' }}>
-                <span className="h-12 w-12 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>
+                <span className="h-12 w-12 rounded-full flex items-center justify-center text-[var(--ui-text-on-accent)]" style={{ backgroundColor: 'var(--accent-primary)' }}>
                   <Play size={22} className="ml-0.5" />
                 </span>
               </span>

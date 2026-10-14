@@ -1,0 +1,58 @@
+/* Theme overrides of the design tokens (DESIGN.md → Themes). A theme wins over the general
+   design; whatever it doesn't set is inherited from src/styles/tokens.css. Accent and page
+   colors come from themeColors.ts (applyThemeColors), which also sets html[data-accent]. */
+
+/* Terra — xerj.org. DAY: warm paper, ink, ochre. NIGHT: near-black, bone, yellow.
+   Condensed display type (Big Shoulders, normal case), IBM Plex labels, Inter text, square corners. */
+html[data-accent="terra"] {
+  --gray-50: 246 244 238;   /* #F6F4EE paper */
+  --gray-100: 239 236 228;  /* #EFECE4 */
+  --gray-200: 227 223 212;  /* #E3DFD4 faint (day) */
+  --gray-300: 207 203 191;  /* #CFCBBF line (day) */
+  --gray-400: 138 134 128;  /* #8A8680 mute (night) */
+  --gray-500: 105 103 98;   /* #696762 mute (day) */
+  --gray-600: 79 77 73;     /* #4F4D49 */
+  --gray-700: 58 56 54;     /* #3A3836 line (night) */
+  --gray-800: 43 42 40;     /* #2B2A28 faint (night) */
+  --gray-900: 17 18 15;     /* #11120F ink (day) */
+  --gray-950: 11 11 13;     /* #0B0B0D night */
+
+  --night-950: 11 11 13;    /* #0B0B0D */
+  --night-900: 11 11 13;    /* page = #0B0B0D */
+  --night-850: 20 20 18;    /* #141412 card */
+  --night-800: 28 27 25;    /* #1C1B19 */
+  --night-750: 43 42 40;    /* #2B2A28 */
+  --night-700: 58 56 54;    /* #3A3836 */
+
+  --radius-sm: 2px;
+  --radius: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+  --radius-3xl: 2px;
+
+  --font-display: 'Big Shoulders Display', 'Inter', system-ui, sans-serif;
+  --font-label: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  --label-size: 11px;
+  --label-weight: 600;
+  --label-tracking: 0.14em;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+}
+
+/* xerj headlines: black weight, tight leading. */
+html[data-accent="terra"] :is(h1, h2, h3).font-bricolage {
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+}
+
+/* Terra Home (xerj hero): big display type, the question in the accent. */
+html[data-accent="terra"] {
+  --home-title-size: clamp(30px, 4.6vw, 46px);
+  --home-title-weight: 900;
+  --home-title-tracking: -0.01em;
+  --home-title-leading: 0.92;
+  --home-question-color: var(--accent-primary);
+}

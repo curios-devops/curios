@@ -27,7 +27,7 @@ export default function App() {
 
   return <LanguageProvider>
     <ThemeProvider>
-      <div className="flex min-h-screen bg-white dark:bg-[#111111] text-gray-900 dark:text-white transition-colors duration-200">
+      <div className="flex min-h-screen bg-white dark:bg-night-900 text-gray-900 dark:text-white transition-colors duration-200">
         <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
         <main className={`flex-1 transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-48'}`}>
           <Outlet />

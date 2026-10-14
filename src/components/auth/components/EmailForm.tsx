@@ -61,7 +61,7 @@ export default function EmailForm({ mode = 'signup', onSubmit }: EmailFormProps)
         type="button"
         onClick={handleSubmit}
         disabled={!email.trim() || loading}
-        className="w-full rounded-lg px-4 py-3 text-center font-medium transition-colors text-white"
+        className="w-full rounded-lg px-4 py-3 text-center font-medium transition-colors text-[var(--ui-text-on-accent)]"
         style={{ 
           backgroundColor: accentColor.primary,
           opacity: (!email.trim() || loading) ? 0.5 : 1,

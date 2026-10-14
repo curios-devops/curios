@@ -37,7 +37,7 @@ export default function CitationTooltip({ citation, children }: CitationTooltipP
       <button
         type="button"
         onClick={handleClick}
-        className="inline-flex items-center px-2 py-0.5 mx-0.5 text-white text-xs font-medium rounded-md cursor-pointer hover:opacity-90"
+        className="inline-flex items-center px-2 py-0.5 mx-0.5 text-[var(--ui-text-on-accent)] text-xs font-medium rounded-md cursor-pointer hover:opacity-90"
         style={{ backgroundColor: 'var(--accent-primary)' }}
       >
         {children}

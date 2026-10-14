@@ -12,7 +12,7 @@ export default function PremiumBadge() {
     >
       <div className="relative">
         <div
-          className="flex items-center text-white p-2 rounded-lg shadow-lg transition-colors"
+          className="flex items-center text-[var(--ui-text-on-accent)] p-2 rounded-lg shadow-lg transition-colors"
           style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
@@ -26,7 +26,7 @@ export default function PremiumBadge() {
 
         {/* Tooltip */}
         {showTooltip && (
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap bg-[#1a1a1a] text-white text-sm px-3 py-1.5 rounded-lg shadow-lg border border-gray-800">
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap bg-night-850 text-white text-sm px-3 py-1.5 rounded-lg shadow-lg border border-gray-800">
             Premium Subscription Active
           </div>
         )}

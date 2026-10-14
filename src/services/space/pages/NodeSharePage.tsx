@@ -126,7 +126,7 @@ export default function NodeSharePage() {
   const cover = node.cover_image || node.images[0]?.url;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#111111] overflow-x-hidden">
+    <div className="min-h-screen bg-white dark:bg-night-900 overflow-x-hidden">
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         <button
           type="button"
@@ -146,7 +146,7 @@ export default function NodeSharePage() {
               <Link
                 key={topic}
                 to={`/topic/${topicSlug(topic)}`}
-                className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-[#222222] text-gray-700 dark:text-gray-300 hover:opacity-80 transition-opacity capitalize"
+                className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-night-800 text-gray-700 dark:text-gray-300 hover:opacity-80 transition-opacity capitalize"
               >
                 {topic}
               </Link>
@@ -171,7 +171,7 @@ export default function NodeSharePage() {
           trailing={<SaveButton nodeId={node.id} />}
         />
 
-        <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <div className="bg-white dark:bg-night-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="flex items-center gap-3 p-6 border-b border-gray-200 dark:border-gray-800">
             <Sparkles className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
             <h2 className="text-xl font-medium text-gray-900 dark:text-white">Overview</h2>

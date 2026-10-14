@@ -69,9 +69,9 @@ export default function SearchResults() {
   }, [query]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#111111] to-black text-white">
+    <div className="min-h-screen bg-gradient-to-b from-night-900 to-black text-white">
       {/* Top bar with time and query */}
-      <div className="sticky top-0 bg-[#111111]/80 backdrop-blur-sm border-b border-gray-800 px-6 py-4 z-10">
+      <div className="sticky top-0 bg-night-900/80 backdrop-blur-sm border-b border-gray-800 px-6 py-4 z-10">
         <div className="max-w-7xl mx-auto flex items-center">
           <div className="flex items-center gap-1.5 text-gray-400">
             <Clock size={14} />
@@ -99,7 +99,7 @@ export default function SearchResults() {
         <div className="flex gap-6">
           <div className="flex-1">
             {searchState.isLoading && (
-              <div className="flex flex-col items-center justify-center p-12 bg-[#111111] rounded-xl border border-gray-800">
+              <div className="flex flex-col items-center justify-center p-12 bg-night-900 rounded-xl border border-gray-800">
                 <Loader2 className="animate-spin text-[#0095FF] mb-4" size={28} />
                 <p className="text-gray-400 text-sm">{statusMessage}</p>
                 <p className="text-xs text-gray-500 mt-2">This might take a few moments</p>
@@ -210,7 +210,7 @@ export default function SearchResults() {
                 <AdBanner
                   dataAdSlot={import.meta.env.VITE_ADSENSE_SIDEBAR_SLOT}
                   style={{ minHeight: '600px' }}
-                  className="bg-[#111111] rounded-xl border border-gray-800 overflow-hidden"
+                  className="bg-night-900 rounded-xl border border-gray-800 overflow-hidden"
                 />
               </div>
             </div>

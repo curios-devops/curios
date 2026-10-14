@@ -416,7 +416,7 @@ export default function FastSearchResults() {
     : images;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#111111] fast-search-page overflow-x-hidden">
+    <div className="min-h-screen bg-white dark:bg-night-900 fast-search-page overflow-x-hidden">
       <style>{`
         .fast-search-page nav button:first-child {
           display: none;
@@ -468,7 +468,7 @@ export default function FastSearchResults() {
             type="button"
             onClick={handleToggleDeep}
             title="Deeper research with more sources, context, and visuals"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-all cursor-pointer hover:opacity-90"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-[var(--ui-text-on-accent)] transition-all cursor-pointer hover:opacity-90"
             style={{
               backgroundColor: 'var(--accent-primary)',
               boxShadow: wantsDeep
@@ -541,7 +541,7 @@ export default function FastSearchResults() {
                     disabled={isExporting}
                     title="Export PDF"
                     aria-label="Export PDF"
-                    className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-gray-100 dark:bg-[#222222] hover:bg-gray-200 dark:hover:bg-[#2a2a2a] text-gray-900 dark:text-white transition-colors disabled:opacity-60"
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-gray-100 dark:bg-night-800 hover:bg-gray-200 dark:hover:bg-night-750 text-gray-900 dark:text-white transition-colors disabled:opacity-60"
                   >
                     <FileText size={18} />
                   </button>
@@ -556,7 +556,7 @@ export default function FastSearchResults() {
           <>
             {/* Overview - appears when streaming starts */}
             {!showSearching && (
-              <div ref={answerCardRef} className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+              <div ref={answerCardRef} className="bg-white dark:bg-night-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                 <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
                   <div className="flex items-center gap-3">
                     <Sparkles className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
@@ -722,7 +722,7 @@ export default function FastSearchResults() {
                   href={video.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-[#0a0a0a]"
+                  className="flex gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-night-950"
                 >
                   {video.thumbnail && (
                     <img src={video.thumbnail} alt={video.title} className="w-32 h-20 object-cover rounded flex-shrink-0" />
@@ -759,7 +759,7 @@ export default function FastSearchResults() {
                     href={source.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-[#0a0a0a]"
+                    className="flex gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-night-950"
                   >
                     <div className="flex-shrink-0 w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
                       <img
