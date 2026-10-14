@@ -15,8 +15,8 @@ const ACCENT_OPTIONS = VISITOR_THEMES;
 
 const THEME_OPTIONS: { key: 'light' | 'system' | 'dark'; icon: LucideIcon }[] = [
   { key: 'light', icon: Sun },
-  { key: 'system', icon: Monitor },
   { key: 'dark', icon: Moon },
+  { key: 'system', icon: Monitor },
 ];
 
 interface GuestSettingsModalProps {
@@ -67,7 +67,7 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
 
         <div className="divide-y px-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
           {/* Appearance: light / system / dark, and Auto (light at sunrise, dark at sunset). */}
-          {/* Line 1: Appearance … Auto (right). Line 2: description … light / system / dark. */}
+          {/* Appearance … Auto (right); the description; then light / dark / system. */}
           <div className="py-5">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('appearance')}</h3>
@@ -77,10 +77,10 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
                 <span className="w-6">{dayNightAuto ? 'On' : 'Off'}</span>
               </label>
             </div>
-            <div className="flex items-center justify-between gap-3 mt-2">
-            <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400 min-w-0">{t('settingsThemeDesc')}</p>
+            <div className="mt-1.5 flex flex-col items-start gap-3">
+            <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsThemeDesc')}</p>
             <div
-              className="flex items-center gap-1 rounded-lg p-1 border flex-shrink-0"
+              className="flex items-center gap-1 rounded-lg p-1 border"
               style={{ backgroundColor: 'var(--ui-bg-secondary)', borderColor: 'var(--ui-border-default)' }}
             >
               {THEME_OPTIONS.map(({ key, icon: Icon }) => {
@@ -107,13 +107,13 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
             </div>
           </div>
 
-          {/* Themes (the accent color) */}
-          <div className="py-5 flex items-center justify-between gap-4">
-            <div className="min-w-0">
+          {/* Themes (the accent color): title, description, then the dots. */}
+          <div className="py-5">
+            <div>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('theme')}</h3>
               <p className="text-xs mt-1.5 leading-relaxed text-gray-500 dark:text-gray-400">{t('themeDesc')}</p>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex gap-2 mt-3">
               {ACCENT_OPTIONS.map((color) => {
                 const colorConfig = accentColors[color][isDarkMode ? 'dark' : 'light'];
                 const isSelected = selectedAccentColor === color;
