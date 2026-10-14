@@ -1,6 +1,8 @@
 # Proxy Supabase Edge Functions directly (no Netlify proxy needed)
 # EXCEPT social-share which needs Netlify to force correct Content-Type
 /functions/v1/social-share /.netlify/functions/social-share 200
+# Short, brand-only share links: curiosai.com/share?q=…&s=…&i=…
+/share /.netlify/functions/social-share 200
 
 # Fast Search share: Supabase proxy attempt — didn't work reliably for previews,
 # so Fast Search uses the Netlify social-share function instead (see

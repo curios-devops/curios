@@ -11,7 +11,8 @@
 
 import type { SocialNetwork, SharePayload } from './shareConfig';
 
-const SHARE_FN = 'https://curiosai.com/.netlify/functions/social-share';
+// Rewritten to the Netlify social-share function (public/_redirects) — short, no "netlify" in the link.
+const SHARE_FN = 'https://curiosai.com/share';
 
 // First-sentence snippet, matching ShareMenu's logic: clamp to 160 and pad short
 // snippets toward LinkedIn's optimal 70-160 char window.
@@ -46,6 +47,12 @@ function firstValidImageUrl(urls: string[] | undefined): string {
   );
 }
 
+// True when the link is just /fast-search?q=<query> — where the share function returns anyway.
+function isPlainSearch(link: string, query: string): boolean {
+  const url = new URL(link);
+  return url.pathname === '/fast-search' && [...url.searchParams.keys()].join() === 'q' && url.searchParams.get('q') === query;
+}
+
 // Crawler-friendly URL that renders OG meta tags for X / LinkedIn / Facebook.
 function buildCrawlerShareUrl(payload: SharePayload): string {
   // Curiosity Share links (/s/:slug) are already short AND serve OG tags via the
@@ -56,13 +63,13 @@ function buildCrawlerShareUrl(payload: SharePayload): string {
   const query = (payload.title || '').trim();
   const snippet = buildSnippet(payload.description || payload.text, query);
   const image = firstValidImageUrl(payload.imageUrls);
-  const params = new URLSearchParams({ query, snippet });
-  if (image) params.set('image', image);
+  const params = new URLSearchParams({ q: query, s: snippet });
+  if (image) params.set('i', image);
   // Carry the page's own deep link so the share function returns a human visitor to
-  // the right service (Stories / new Search) instead of the legacy /search fallback.
-  // Only forward prod curiosai.com links; the function re-validates the origin too.
+  // the right service (Stories / Search). Only prod curiosai.com links (the function
+  // re-validates), and skipped when it's just Search for this query — the default.
   const deepLink = payload.deepLink || '';
-  if (/^https:\/\/curiosai\.com\//i.test(deepLink)) params.set('redirect', deepLink);
+  if (/^https:\/\/curiosai\.com\//i.test(deepLink) && !isPlainSearch(deepLink, query)) params.set('r', deepLink);
   return `${SHARE_FN}?${params.toString()}`;
 }
 

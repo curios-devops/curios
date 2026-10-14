@@ -57,7 +57,7 @@ const getHeader = (headers = {}, name) => {
 // open redirect; falls back to legacy /search when absent/invalid (back-compat).
 const buildReturnUrl = (redirect, query) => {
   if (redirect && /^https:\/\/curiosai\.com\//i.test(redirect)) return redirect;
-  return `https://curiosai.com/search?q=${encodeURIComponent(query)}`;
+  return `https://curiosai.com/fast-search?q=${encodeURIComponent(query)}`;
 };
 
 const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, shareUrl, returnUrl }) => `<!DOCTYPE html>
@@ -98,11 +98,12 @@ const buildShareHtml = ({ title, description, ogImage, imageWidth, imageHeight, 
 </html>`;
 
 exports.handler = async (event) => {
+  // Short names (curiosai.com/share?q=&s=&i=&r=); the long ones still work for old links.
   const params = event.queryStringParameters || {};
-  const query = params.query || DEFAULT_TITLE;
-  const snippet = params.snippet || DEFAULT_DESCRIPTION;
-  const image = params.image || '';
-  const redirect = params.redirect || '';
+  const query = params.q || params.query || DEFAULT_TITLE;
+  const snippet = params.s || params.snippet || DEFAULT_DESCRIPTION;
+  const image = params.i || params.image || '';
+  const redirect = params.r || params.redirect || '';
   const returnUrl = buildReturnUrl(redirect, query);
 
   const userAgent = getHeader(event.headers, 'user-agent');
@@ -114,8 +115,8 @@ exports.handler = async (event) => {
   const ogImage = image && image.startsWith('http') ? image : FALLBACK_IMAGE;
   const imageWidth = '1200';
   const imageHeight = '627';
-  // Prefer the direct Netlify function path to avoid hitting any Supabase proxy or stale endpoints.
-  const shareUrl = `https://curiosai.com/.netlify/functions/social-share?query=${encodeURIComponent(query)}&snippet=${encodeURIComponent(snippet)}${image ? `&image=${encodeURIComponent(image)}` : ''}${redirect ? `&redirect=${encodeURIComponent(redirect)}` : ''}`;
+  // /share is a rewrite of this function (public/_redirects).
+  const shareUrl = `https://curiosai.com/share?q=${encodeURIComponent(query)}&s=${encodeURIComponent(snippet)}${image ? `&i=${encodeURIComponent(image)}` : ''}${redirect ? `&r=${encodeURIComponent(redirect)}` : ''}`;
 
   if (!isBot && userAgent && userAgent.includes('Mozilla') && (acceptHeader || '').includes('text/html')) {
     return {

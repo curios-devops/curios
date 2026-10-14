@@ -114,11 +114,11 @@ tints are derived; everything else is the general design.
   labels **IBM Plex Sans** 600 11px +0.14em; body **Inter**; mono **JetBrains Mono**.
 - Shapes: square — every `rounded-*` except `full` is 2px.
 - Home: the title in display type (`--home-title-*`, ≤46px so it fits one line), the
-  question beat in the accent (xerj's second line); `DAY · NIGHT · AUTO` top right.
+  question beat in the accent (xerj's second line); `DAY · NIGHT` top right (desktop).
 - **DAY / NIGHT follow the sun by default** (Auto ON): DAY from sunrise to sunset at the
   reader's place (`/api/geo` coordinates; 07:00–20:00 when unknown), checked every 5 min.
-  Picking Day or Night turns Auto off; the Auto switch (Settings → Themes, Home header)
-  turns it back on.
+  Picking Day or Night turns Auto off; the Auto switch (Settings →
+  Appearance) turns it back on.
 
 **Adding a theme:** a base hex in `app-settings.md` → `THEME_DEFAULTS` / `curiosThemes` in
 `themeColors.ts`; only if it changes more than the accent, an `html[data-accent="<name>"]`
