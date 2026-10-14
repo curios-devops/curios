@@ -13,7 +13,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { query, searchDepth = 'basic' } = await req.json()
+    // Optional: topic ("news"), includeDomains (e.g. ["youtube.com"] for videos).
+    const { query, searchDepth = 'basic', topic, includeDomains } = await req.json()
 
     if (!query || typeof query !== 'string' || !query.trim()) {
       return new Response(
@@ -40,6 +41,8 @@ Deno.serve(async (req: Request) => {
         query: query.trim(),
         search_depth: searchDepth === 'advanced' ? 'advanced' : 'basic', // advanced costs more
         max_results: 10,
+        ...(topic === 'news' ? { topic: 'news' } : {}),
+        ...(Array.isArray(includeDomains) && includeDomains.length ? { include_domains: includeDomains.slice(0, 5) } : {}),
         include_images: true,
         include_image_descriptions: true,
         include_answer: false,

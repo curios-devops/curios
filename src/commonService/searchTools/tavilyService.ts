@@ -30,7 +30,9 @@ class TavilyError extends Error {
 
 export async function searchWithTavily(
   query: string,
-  searchDepth: 'basic' | 'advanced' = 'basic'
+  searchDepth: 'basic' | 'advanced' = 'basic',
+  /** Optional filters: topic "news", or only these domains (e.g. youtube.com for videos). */
+  options: { topic?: 'news'; includeDomains?: string[] } = {}
 ): Promise<{ results: SearchResult[]; images: ImageResult[] }> {
   const searchTavily = async () => {
     const controller = new AbortController();
@@ -58,6 +60,7 @@ export async function searchWithTavily(
         body: JSON.stringify({
           query: query.trim(),
           searchDepth, // 'basic' or 'advanced' (advanced costs more)
+          ...options,
         }),
         signal: controller.signal,
       }));

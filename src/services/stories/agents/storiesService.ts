@@ -1,4 +1,4 @@
-// StoriesService - Regular/Free-tier Insights (Stories) ONLY
+// StoriesService — Magazine stories (free for everyone).
 // Thin wrapper around the single-agent StoryAgent pipeline.
 
 import { StoryAgent, StoryRequest, StoryResult } from './storyAgent';
@@ -34,21 +34,20 @@ class StoriesService {
     return this.agent;
   }
 
+  /** Starts the search right away (while the sections are decided); the story reuses it. */
+  prefetch(query: string, onProgress?: StoryProgressCallback) {
+    this.getAgent().prefetch(query.trim(), onProgress);
+  }
+
   async performStoryAnalysis(
     query: string,
     onProgress?: StoryProgressCallback,
-    focusCategory?: string,
-    model?: Promise<string>
+    options: Omit<StoryRequest, 'query'> = {}
   ): Promise<StoryResult> {
     try {
-      logger.info('StoriesService: Starting insight analysis', { query, focusCategory });
+      logger.info('StoriesService: Starting magazine story', { query, section: options.section });
 
-      const request: StoryRequest = {
-        query: query.trim(),
-        isPro: false, // Always false for insights service
-        focusCategory: focusCategory, // No default - let auto-detection work
-        model
-      };
+      const request: StoryRequest = { ...options, query: query.trim() };
 
       const result = await this.getAgent().process(request, onProgress);
 

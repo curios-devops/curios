@@ -8,6 +8,7 @@
 // Returns { mode, probabilities?, buyProbability, movieProbability, musicProbability, gameProbability
 // (each null when unknown), tier (null when unknown), backend }. The topic predicates send a film,
 // a song/artist/album or a video game to its own page.
+// Body { query, location?, only: "magazine" } → { sections: [main, …3 more], news } for Magazine.
 // Body { query, answer, only: "explore" } picks the best way to keep exploring a Search answer
 // (Decisions: watch / play / read) while Luna drafts the one-line pitch of each option.
 // Orchestration layer only — does not call any downstream mode.
@@ -147,6 +148,58 @@ const EXPLORE_PROMPT = `For a question the user asked, write one short line (max
 Also name "game": one real, well-known video game closest to the topic (title only), "song": one real, well-known song closest to the topic ("Title Artist"; when the question is about a song, artist or album, that one), and "topic": the question's subject as a short noun phrase with its article, in the question's language (2-5 words, e.g. "los agujeros de gusano", "black holes").
 Respond with strict JSON only: {"watch":"","play":"","listen":"","read":"","game":"","song":"","topic":""}.`;
 
+// Magazine 📰: which sections (NYT + Wired) a question belongs to — the main one and three
+// more to rewrite it from — and whether it's current news (→ a news photo) or a general
+// topic (→ an AI image for the article).
+const MAGAZINE_SECTIONS: { value: string; description: string }[] = [
+  { value: "world", description: "World: international affairs, countries, conflicts, diplomacy, global events." },
+  { value: "local", description: "Local: what it means for the reader's own city or country (their location is given)." },
+  { value: "business", description: "Business: companies, markets, the economy, money, work, startups." },
+  { value: "science", description: "Science: research, discoveries, space, nature, how things work." },
+  { value: "culture", description: "Culture: arts, books, film, music, TV, games, history, ideas in society." },
+  { value: "lifestyle", description: "Style & Lifestyle: fashion, food, travel, home, relationships, trends." },
+  { value: "opinion", description: "Opinion: a debatable question where an argued, clearly-labeled point of view helps." },
+  { value: "sports", description: "Sports: teams, athletes, competitions, games and results." },
+  { value: "well", description: "Health & Wellness: body, mind, fitness, nutrition, sleep, medicine in daily life." },
+  { value: "ai", description: "Artificial Intelligence: AI models, companies, uses, risks and rules." },
+  { value: "gadgets", description: "Gadgets: phones, devices, consumer tech, apps and reviews." },
+  { value: "ideas", description: "Ideas: big-picture essays about where technology, society or thought is heading." },
+  { value: "environment", description: "Environment: climate, energy, wildlife, pollution, sustainability." },
+  { value: "security", description: "Security: cybersecurity, privacy, hacking, surveillance, crime online." },
+  { value: "politics", description: "Politics: governments, elections, laws, policy and political conflict." },
+];
+const MAGAZINE_INSTRUCTIONS = "Which magazine section of a publication like The New York Times or Wired would run a story answering this question? Judge the core subject, not passing words.";
+const NEWS_INSTRUCTIONS = "Answering this well depends on current events or recent developments (news, latest updates, something happening now or this year), rather than an evergreen topic.";
+
+// Luna picks the most interesting OTHER angles (Decisions only ranks the main one well).
+async function draftSections(query: string, location: string): Promise<string[]> {
+  const headers: Record<string, string> = { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` };
+  if (OPENAI_ORG_ID) headers["OpenAI-Organization"] = OPENAI_ORG_ID;
+  try {
+    const res = await fetch(OPENAI_RESPONSES_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: "gpt-6-luna",
+        input: [
+          { role: "system", content: `Magazine sections: ${MAGAZINE_SECTIONS.map((s) => `"${s.value}" (${s.description})`).join("; ")}.
+For the user's question, list the 4 sections that would give the most interesting, clearly different stories about it, best first. Use "local" only when the reader's location${location ? ` (${location})` : ""} truly changes the story, and "opinion" only for debatable questions. Respond with strict JSON only: {"sections":["",""]}.` },
+          { role: "user", content: query },
+        ],
+        max_output_tokens: 80,
+        reasoning: { effort: "none" },
+        text: { format: { type: "json_object" } },
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) return [];
+    const obj = JSON.parse(extractOutputText(await res.json()));
+    return (Array.isArray(obj?.sections) ? obj.sections : []).filter((v: unknown) => typeof v === "string" && MAGAZINE_SECTIONS.some((s) => s.value === v));
+  } catch {
+    return [];
+  }
+}
+
 async function draftExplore(query: string): Promise<Record<string, string> | null> {
   const headers: Record<string, string> = { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` };
   if (OPENAI_ORG_ID) headers["OpenAI-Organization"] = OPENAI_ORG_ID;
@@ -198,6 +251,23 @@ Deno.serve(async (req: Request) => {
 
     if (!query) {
       return jsonResponse({ error: "Missing query" }, 400);
+    }
+
+    if (body?.only === "magazine") {
+      const location = typeof body?.location === "string" ? body.location.slice(0, 60) : "";
+      const [answers, angles] = await Promise.all([
+        decide(`Question: ${query}${location ? `\nReader's location: ${location}` : ""}`, [
+          { type: "choice", name: "section", instructions: MAGAZINE_INSTRUCTIONS, choices: MAGAZINE_SECTIONS },
+          { type: "predicate", name: "news", instructions: NEWS_INSTRUCTIONS },
+        ], 3000),
+        draftSections(query, location),
+      ]);
+      const probs = [...(answers?.section?.probabilities ?? [])].sort((a, b) => b.probability - a.probability);
+      const ranked = probs.map((p) => p.value).filter((v) => MAGAZINE_SECTIONS.some((s) => s.value === v));
+      // Main = Decisions' pick; the other three = Luna's angles, topped up from Decisions' ranking.
+      const sections = [...new Set([...ranked.slice(0, 1), ...angles, ...ranked])].slice(0, 4);
+      const news = answers?.news?.probability;
+      return jsonResponse({ sections, news: typeof news === "number" ? news : null, backend: answers ? "decisions" : "default" });
     }
 
     if (body?.only === "explore") {

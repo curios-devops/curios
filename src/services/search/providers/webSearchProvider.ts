@@ -13,6 +13,8 @@ export interface WebSearchResult {
   url: string;
   snippet: string;
   content?: string;
+  /** The page's lead image, when the engine gives one (Exa). */
+  image?: string;
 }
 
 // Below this many results we consider the search "sparse" and bring in the next engine.

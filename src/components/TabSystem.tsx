@@ -1,13 +1,19 @@
+// Magazine story view (/stories-results): tabs Story · Images · Videos · News · Sources.
+// The cover is a news photo for current events or an AI image for general topics (the reader
+// can switch Photo / AI); AI covers carry a subtle Curios watermark. Listening is free.
 import React, { useState, useEffect, useRef } from 'react';
-import { Image, Video, List, Globe, ChevronDown, Wand2, Loader2, Crown, Headphones, Pause } from 'lucide-react';
+import { Image, Video, Globe, ChevronDown, Loader2, Headphones, Pause, Newspaper } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor';
-import { useSession } from '../hooks/useSession';
-import { useSubscription } from '../hooks/useSubscription';
-import { useProCredits } from '../providers/ProCreditsProvider';
+import { useTranslation } from '../hooks/useTranslation';
+import { useLanguage } from '../contexts/LanguageContext';
 import { generateArticleImage, extractArticleSummary } from '../services/stories/agents/imageGenerationService';
 import { NarrationService } from '../services/movie/audio/NarrationService';
+import { NanoBananaProvider } from '../services/movie/providers/NanoBananaProvider';
+import { getCached, setCached } from '../services/search/searchCache';
+import CuriosLogo from './common/CuriosLogo';
+import type { StoryResult } from '../services/stories/agents/storyAgent';
 
-// Standard ElevenLabs premade voices for the "Listen to this article" picker.
+// Standard ElevenLabs premade voices for the listen picker.
 const ELEVENLABS_VOICES: { id: string; name: string; tone: string }[] = [
   { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', tone: 'Soft' },
   { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', tone: 'Calm' },
@@ -28,19 +34,6 @@ const stripForTts = (md: string): string =>
     .slice(0, 5000);
 import CustomMarkdown from './CustomMarkdown';
 import DynamicShareRow from './share/DynamicShareRow';
-
-// Relative time: "Just now" → "5 min ago" → "3 hours ago" → "2 days ago" → "Jun 12, 2026".
-const formatRelativeTime = (date: Date): string => {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return 'Just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-};
 
 // Helper function to calculate reading and listening time
 const calculateReadingTime = (text: string) => {
@@ -69,14 +62,20 @@ const calculateReadingTime = (text: string) => {
 };
 
 interface TabSystemProps {
-  result: any;
-  progressState: any;
+  result: StoryResult;
   loading: boolean;
-  focusCategory?: string;
+  /** The section the story was written for ("Science", "Local · Santiago"). */
+  sectionLabel: string;
+  /** Current news → the cover defaults to a news photo; otherwise to an AI image. */
+  isNews: boolean;
+  /** The story's cache key (the AI cover is kept with it). */
+  cacheKey: string;
 }
 
+type Tab = 'curios' | 'images' | 'videos' | 'news' | 'sources';
+
 interface SourceItemProps {
-  source: any;
+  source: StoryResult['sources'][number];
   index: number;
 }
 
@@ -114,34 +113,27 @@ const SourceItem: React.FC<SourceItemProps> = ({ source, index }) => (
   </div>
 );
 
-export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loading, focusCategory }) => {
-  const [activeTab, setActiveTab] = useState<'curios' | 'steps' | 'sources' | 'images' | 'videos'>('curios');
+export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLabel, isNews, cacheKey }) => {
+  const { t } = useTranslation();
+  const { currentLanguage } = useLanguage();
+  const [activeTab, setActiveTab] = useState<Tab>('curios');
   const [featuredImageIndex, setFeaturedImageIndex] = useState(0);
-  const [validImageIndices, setValidImageIndices] = useState<number[]>([]); // Track which images successfully load
+  const [validImageIndices, setValidImageIndices] = useState<number[]>([]); // images that actually load
   const [isValidatingImages, setIsValidatingImages] = useState(false);
+  // Cover: 'photo' (search image) or 'ai' (generated for the article).
+  const aiKey = `${cacheKey}|ai-cover`;
+  const [aiImageUrl, setAiImageUrl] = useState<string | null>(() => getCached<string>(aiKey)?.value ?? null);
+  const [aiFailed, setAiFailed] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
-  const [showImageDropdown, setShowImageDropdown] = useState(false);
-  // "Listen to this article" (Pro TTS) state
+  const [coverMode, setCoverMode] = useState<'photo' | 'ai'>(isNews ? 'photo' : 'ai');
+  // Listening (free)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState(ELEVENLABS_VOICES[0].id);
   const [showVoiceDropdown, setShowVoiceDropdown] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const voiceDropdownRef = useRef<HTMLDivElement>(null);
-  const imageDropdownRef = useRef<HTMLDivElement>(null);
   const accent = useAccentColor();
-  const { session } = useSession();
-  const { subscription } = useSubscription(session);
-  const { canUseProFeature, requestProAccess } = useProCredits();
-
-  // Determine user type
-  const getUserType = (): 'guest' | 'free' | 'premium' => {
-    if (!session) return 'guest';
-    return subscription?.isActive ? 'premium' : 'free';
-  };
-
-  const userType = getUserType();
 
   // Validate images on load - only show images that successfully load
   useEffect(() => {
@@ -150,197 +142,86 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
       setFeaturedImageIndex(0);
       return;
     }
-
     setIsValidatingImages(true);
-    console.log(`🖼️ [IMAGE-VALIDATION] Validating ${result.images.length} images...`);
-
-    // Test each image URL
-    const validateImage = (url: string, index: number): Promise<number | null> => {
-      return new Promise((resolve) => {
-        const img = document.createElement('img') as HTMLImageElement;
-        img.onload = () => {
-          console.log(`✅ [IMAGE-VALIDATION] Image ${index} loaded successfully:`, url);
-          resolve(index);
-        };
-        img.onerror = () => {
-          console.warn(`❌ [IMAGE-VALIDATION] Image ${index} failed to load:`, url);
-          resolve(null);
-        };
-        // Set timeout to avoid hanging on slow images
-        setTimeout(() => {
-          console.warn(`⏱️ [IMAGE-VALIDATION] Image ${index} timed out:`, url);
-          resolve(null);
-        }, 5000);
-        img.src = url;
-      });
-    };
-
-    // Validate all images in parallel — validate the thumbnail we actually
-    // display (img.image), falling back to the full URL when there's no thumbnail.
-    Promise.all(
-      result.images.map((img: any, index: number) => validateImage(img.image || img.url, index))
-    ).then((results) => {
-      const validIndices = results.filter((idx): idx is number => idx !== null);
-      console.log(`🖼️ [IMAGE-VALIDATION] ${validIndices.length}/${result.images.length} images are valid`);
-      setValidImageIndices(validIndices);
-      
-      // Set featured image to first valid image
-      if (validIndices.length > 0) {
-        setFeaturedImageIndex(validIndices[0]);
-      }
-      
-      setIsValidatingImages(false);
+    const validateImage = (url: string, index: number): Promise<number | null> => new Promise((resolve) => {
+      const img = document.createElement('img') as HTMLImageElement;
+      img.onload = () => resolve(index);
+      img.onerror = () => resolve(null);
+      setTimeout(() => resolve(null), 5000);
+      img.src = url;
     });
+    Promise.all(result.images.map((img, index) => validateImage(img.image || img.url, index)))
+      .then((results) => {
+        const validIndices = results.filter((idx): idx is number => idx !== null);
+        setValidImageIndices(validIndices);
+        if (validIndices.length > 0) setFeaturedImageIndex(validIndices[0]);
+        setIsValidatingImages(false);
+      });
   }, [result?.images]);
 
-  // Handle follow-up question clicks
-  const handleFollowUpClick = (question: string) => {
-    const searchParams = new URLSearchParams();
-    searchParams.set('q', question);
-    searchParams.set('type', 'stories');
-    // Force page reload to trigger new stories workflow
-    window.location.href = `/stories-results?${searchParams.toString()}`;
-  };
+  const hasPhoto = validImageIndices.length > 0;
+  // No usable photo for a news story → the AI cover; the AI cover failed → the photo.
+  const showAi = (coverMode === 'ai' || (!hasPhoto && !isValidatingImages)) && !aiFailed;
 
-  // Handle image generation - FREE for everyone, HD uses quota for free users
-  const handleGenerateImage = async (useHD: boolean) => {
-    console.log('🎨 [Image Generation] Generate clicked', { useHD, userType });
-    
-    if (!result) {
-      console.error('❌ [Image Generation] No result available');
-      return;
-    }
-    
-    if (isGeneratingImage) {
-      console.warn('⚠️ [Image Generation] Already generating, skipping');
-      return;
-    }
-
-    // HD (medium quality) is a Pro Feature: consume a daily Pro Credit for every tier
-    // (guests included). The provider opens the register/upgrade/quota modal if blocked.
-    if (useHD) {
-      const allowed = await requestProAccess();
-      if (!allowed) {
-        return;
-      }
-    }
-
-    console.log('📊 [Image Generation] Starting generation with data:', {
-      headline: result.headline,
-      focus: focusCategory || result.focus_category,
-      hasMarkdown: !!result.markdown_report,
-      useHD,
-      quality: useHD ? 'hd' : 'standard'
-    });
-
-    try {
-      setIsGeneratingImage(true);
-      console.log('⏳ [Image Generation] Loading state set to true');
-      
-      const summary = extractArticleSummary(result.markdown_report || '');
-      console.log('📝 [Image Generation] Extracted summary:', summary.substring(0, 100) + '...');
-      
-      console.log('🚀 [Image Generation] Calling generateArticleImage...');
-      const imageResult = await generateArticleImage({
-        articleTitle: result.headline,
-        articleSummary: summary,
-        focusCategory: (focusCategory || result.focus_category) as any,
-        quality: useHD ? 'medium' : 'low'
-      });
-
-      console.log('✅ [Image Generation] Image generated successfully:', imageResult.url);
-      setGeneratedImageUrl(imageResult.url);
-      console.log('💾 [Image Generation] Image URL saved to state');
-    } catch (error) {
-      console.error('❌ [Image Generation] Failed:', error);
-      if (error instanceof Error) {
-        console.error('❌ [Image Generation] Error message:', error.message);
-        console.error('❌ [Image Generation] Error stack:', error.stack);
-      }
-      alert(`Failed to generate image: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsGeneratingImage(false);
-      console.log('✅ [Image Generation] Loading state set to false');
-    }
-  };
-
-  // Close the image generation dropdown when clicking outside
+  // AI cover: generated once per story (Nano Banana; GPT Image 2 as fallback), kept in the cache.
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (imageDropdownRef.current && !imageDropdownRef.current.contains(event.target as Node)) {
-        setShowImageDropdown(false);
-      }
-    };
-    if (showImageDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showImageDropdown]);
+    if (!showAi || aiImageUrl || isGeneratingImage || !result) return;
+    let live = true;
+    setIsGeneratingImage(true);
+    const idea = result.image_prompt || `${result.headline}. ${extractArticleSummary(result.markdown_report || '')}`;
+    const prompt = `Editorial magazine cover image, 16:9: ${idea}. Sophisticated, striking composition. Absolutely no text, letters, logos or watermarks.`;
+    new NanoBananaProvider().generate(prompt, { userId: 'curios-guest' })
+      .catch(() => generateArticleImage({ articleTitle: result.headline, articleSummary: idea, quality: 'low' }).then((r) => r.url))
+      .then((url) => { setCached(aiKey, url); if (live) setAiImageUrl(url); })
+      .catch(() => { if (live) setAiFailed(true); })
+      .finally(() => { if (live) setIsGeneratingImage(false); });
+    return () => { live = false; };
+  }, [showAi, aiImageUrl, result]);
+
+  const handleFollowUpClick = (question: string) => {
+    window.location.href = `/stories-results?${new URLSearchParams({ q: question }).toString()}`;
+  };
 
   // Stop audio playback on unmount
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
+  useEffect(() => () => {
+    audioRef.current?.pause();
+    audioRef.current = null;
   }, []);
 
-  // Close voice dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (voiceDropdownRef.current && !voiceDropdownRef.current.contains(event.target as Node)) {
-        setShowVoiceDropdown(false);
-      }
+    if (!showVoiceDropdown) return;
+    const close = (event: MouseEvent) => {
+      if (voiceDropdownRef.current && !voiceDropdownRef.current.contains(event.target as Node)) setShowVoiceDropdown(false);
     };
-    if (showVoiceDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
   }, [showVoiceDropdown]);
 
-  // Reset any generated audio (e.g. after a voice change) so the next play regenerates.
+  // A voice change resets the audio so the next play uses it.
   const resetAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    audioRef.current?.pause();
+    audioRef.current = null;
     setIsPlaying(false);
   };
 
-  // "Listen to this article" — Pro TTS via ElevenLabs, gated by Pro Credits.
+  // Listen (ElevenLabs TTS) — free for everyone.
   const handleListen = async () => {
-    // Toggle pause while playing.
     if (isPlaying && audioRef.current) {
       audioRef.current.pause();
       setIsPlaying(false);
       return;
     }
-
-    // Resume already-generated audio without spending another credit.
     if (audioRef.current) {
       if (audioRef.current.ended) audioRef.current.currentTime = 0;
       await audioRef.current.play().catch(() => {});
       setIsPlaying(true);
       return;
     }
-
-    // First play is a Pro feature — consume a daily credit. requestProAccess opens
-    // the register/upgrade/quota modal and returns false when access is blocked.
-    const allowed = await requestProAccess();
-    if (!allowed) return;
-
     const text = stripForTts(result?.markdown_report || '');
     if (!text) return;
-
     try {
       setIsGeneratingAudio(true);
-      const narration = new NarrationService();
-      const res = await narration.generateNarration(
-        [{ text, startTime: 0, duration: 0 }],
-        { voice: selectedVoice }
-      );
+      const res = await new NarrationService().generateNarration([{ text, startTime: 0, duration: 0 }], { voice: selectedVoice });
       const audio = new Audio(res.audioUrl);
       audio.onended = () => setIsPlaying(false);
       audio.onerror = () => setIsPlaying(false);
@@ -354,31 +235,18 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
     }
   };
 
-  const tabs: { id: string; label: string; icon?: React.ReactNode }[] = [
-    { id: 'curios', label: 'Story' },
-    // Only show images tab if we have valid images
-    ...(validImageIndices.length > 0 ? [{
-      id: 'images',
-      label: `Images · ${validImageIndices.length}`,
-      icon: <Image size={16} />
-    }] : []),
-    // Only show videos tab if we have videos
-    ...(result?.videos && result.videos.length > 0 ? [{
-      id: 'videos',
-      label: `Videos · ${result.videos.length}`,
-      icon: <Video size={16} />
-    }] : []),
-    {
-      id: 'sources',
-      label: `Sources${result?.sources ? ` · ${result.sources.length}` : ''}`,
-      icon: <Globe size={16} />
-    },
-    {
-      id: 'steps',
-      label: 'Steps',
-      icon: <List size={16} />
-    }
+  const news = result?.news ?? [];
+  const tabs: { id: Tab; label: string; icon?: React.ReactNode }[] = [
+    { id: 'curios', label: t('magTab_story') },
+    ...(hasPhoto ? [{ id: 'images' as Tab, label: `${t('magTab_images')} · ${validImageIndices.length}`, icon: <Image size={16} /> }] : []),
+    ...(result?.videos?.length ? [{ id: 'videos' as Tab, label: `${t('magTab_videos')} · ${result.videos.length}`, icon: <Video size={16} /> }] : []),
+    ...(news.length ? [{ id: 'news' as Tab, label: `${t('magTab_news')} · ${news.length}`, icon: <Newspaper size={16} /> }] : []),
+    { id: 'sources', label: `${t('magTab_sources')}${result?.sources ? ` · ${result.sources.length}` : ''}`, icon: <Globe size={16} /> },
   ];
+
+  const pillStyle = (on: boolean) => on
+    ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }
+    : { color: 'var(--ui-text-secondary)' };
 
   return (
     <div className="bg-white dark:bg-[#111111]">
@@ -390,241 +258,155 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors cursor-pointer whitespace-nowrap flex-shrink-0 ${
-                  isActive
-                    ? ''
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  isActive ? '' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
                 style={isActive ? { borderColor: accent.primary, color: accent.primary } : undefined}
               >
-                {tab.icon && (
-                  <span className="flex items-center">
-                    {tab.icon}
-                  </span>
-                )}
-                <span className="hidden sm:inline">
-                  {tab.label}
-                </span>
-                <span className="sm:hidden">
-                  {tab.label.split(' ')[0]}
-                </span>
+                {tab.icon && <span className="flex items-center">{tab.icon}</span>}
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
             );
           })}
         </nav>
       </div>
 
-      {/* Tab Content */}
       <div className="p-6">
         {activeTab === 'curios' && (
           <div className="space-y-6">
             {!loading && result ? (
               <>
-                {/* News Article Header */}
+                {/* Magazine header: section kicker, headline, dek */}
                 <div className="space-y-3">
-                  {/* Relative publish time */}
-                  <div className="text-gray-500 dark:text-gray-400 text-xs font-medium">
-                    {formatRelativeTime(new Date())}
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="font-semibold uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>{sectionLabel}</span>
+                    <span className="text-gray-400">·</span>
+                    <span className="text-gray-500 dark:text-gray-400 font-medium">{new Date().toLocaleDateString(currentLanguage.code, { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                   </div>
-
-                  {/* Headline */}
-                  <h1 className="text-lg font-semibold text-gray-900 dark:text-white leading-snug">
-                    {result.headline || 'Breaking Analysis'}
+                  <h1 className="font-bricolage text-2xl sm:text-4xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white">
+                    {result.headline}
                   </h1>
-
-                  {/* Subtitle */}
                   {result.subtitle && (
-                    <p className="text-base text-gray-600 dark:text-gray-300 leading-relaxed">
-                      {result.subtitle}
-                    </p>
+                    <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 leading-relaxed">{result.subtitle}</p>
                   )}
 
-                  {/* Featured Image - First image from results with fallback, or generated image */}
-                  {result && (
-                    <div className="my-6 relative group">
-                      {/* Only show image container if we have an image to display */}
-                      {/* Image Container — edge-to-edge on mobile, framed on sm+ */}
-                      {(generatedImageUrl || (validImageIndices.length > 0 && !isValidatingImages)) && (
-                        <div className="-mx-6 sm:mx-0 overflow-hidden border-y border-gray-200 dark:border-gray-700 sm:rounded-xl sm:border relative mb-3">
+                  {/* Cover: AI image (watermarked) or news photo */}
+                  <div className="my-6">
+                    <div className="-mx-6 sm:mx-0 overflow-hidden border-y border-gray-200 dark:border-gray-700 sm:rounded-xl sm:border relative aspect-video bg-gray-100 dark:bg-gray-800">
+                      {showAi ? (
+                        aiImageUrl ? (
+                          <>
+                            <img src={aiImageUrl} alt={result.headline} className="w-full h-full object-cover" onError={() => setAiFailed(true)} />
+                            {/* Subtle Curios watermark on generated images */}
+                            <span className="absolute bottom-3 right-3 opacity-60 drop-shadow" aria-hidden>
+                              <CuriosLogo size={22} frameColor="#FFFFFF" colorOverride="#FFFFFF" />
+                            </span>
+                          </>
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 animate-pulse">
+                            <Loader2 size={28} className="animate-spin text-gray-400" />
+                          </div>
+                        )
+                      ) : hasPhoto ? (
+                        <img
+                          src={result.images![featuredImageIndex].url}
+                          alt={result.images![featuredImageIndex]?.alt || result.headline}
+                          className="w-full h-full object-cover"
+                          onError={() => {
+                            const next = validImageIndices[validImageIndices.indexOf(featuredImageIndex) + 1];
+                            if (next !== undefined) setFeaturedImageIndex(next);
+                            else setValidImageIndices(validImageIndices.filter((idx) => idx !== featuredImageIndex));
+                          }}
+                        />
+                      ) : null}
+                    </div>
 
-                          {/* Image */}
-                          <img
-                            src={generatedImageUrl || result.images[featuredImageIndex].url}
-                            alt={result.images[featuredImageIndex]?.alt || result.headline || 'Featured image'}
-                            className="w-full h-auto max-h-[500px] object-cover"
-                            onError={() => {
-                              console.warn('🖼️ [IMAGE-ERROR] Image failed to load:', generatedImageUrl || result.images[featuredImageIndex]?.url);
-                              
-                              if (generatedImageUrl) {
-                                // Generated image failed, clear it
-                                console.log('🖼️ [IMAGE-ERROR] Clearing failed generated image');
-                                setGeneratedImageUrl(null);
-                                return;
-                              }
-                              
-                              // Try next valid image
-                              const currentIndexInValid = validImageIndices.indexOf(featuredImageIndex);
-                              const nextValidIndex = validImageIndices[currentIndexInValid + 1];
-                              
-                              if (nextValidIndex !== undefined) {
-                                console.log(`🖼️ [IMAGE-ERROR] Switching to next valid image: index ${nextValidIndex}`);
-                                setFeaturedImageIndex(nextValidIndex);
-                              } else {
-                                console.log('🖼️ [IMAGE-ERROR] No more valid images available');
-                                // Remove this image from valid indices
-                                setValidImageIndices(validImageIndices.filter(idx => idx !== featuredImageIndex));
-                              }
-                            }}
-                            onLoad={() => {
-                              if (generatedImageUrl) {
-                                console.log(`✅ [IMAGE-LOAD] Generated image loaded successfully`);
-                              } else {
-                                console.log(`✅ [IMAGE-LOAD] Search image ${featuredImageIndex} loaded successfully`);
-                              }
-                            }}
-                          />
-
-                          {/* Loading Overlay */}
-                          {isGeneratingImage && (
-                            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-20">
-                              <Loader2 size={48} className="animate-spin text-white mb-4" />
-                              <p className="text-white text-center px-4 text-sm md:text-base">
-                                Generating image for your article...<br />
-                                <span className="text-white/70">This could take some seconds...</span>
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Image generation controls and Listen - always show when there's a result */}
-                      <div className="flex justify-between items-center mt-3">
-                        {/* Listen to article (Pro TTS) - left side */}
-                        {(() => {
-                          const { listeningTime } = calculateReadingTime(result.markdown_report || '');
-                          return (
-                            <div className="flex items-center gap-1.5 text-sm relative" ref={voiceDropdownRef}>
-                              {/* Listen / play-pause button — gray/inactive when out of credits */}
-                              <button
-                                type="button"
-                                onClick={handleListen}
-                                disabled={isGeneratingAudio}
-                                title={canUseProFeature ? 'Listen to this article (Pro)' : 'Pro feature — out of daily credits'}
-                                className={`flex items-center gap-2 transition-colors disabled:cursor-wait ${
-                                  canUseProFeature
-                                    ? 'text-gray-700 dark:text-gray-300 hover:opacity-80'
-                                    : 'text-gray-400 dark:text-gray-600'
-                                }`}
+                    {/* Listen · voice, and the Photo / AI cover selector */}
+                    <div className="flex justify-between items-center mt-3">
+                      {(() => {
+                        const { listeningTime } = calculateReadingTime(result.markdown_report || '');
+                        return (
+                          <div className="flex items-center gap-1 text-sm relative" ref={voiceDropdownRef}>
+                            <button
+                              type="button"
+                              onClick={handleListen}
+                              disabled={isGeneratingAudio}
+                              aria-label={isPlaying ? 'Pause' : 'Listen'}
+                              className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:opacity-80 transition-colors disabled:cursor-wait"
+                            >
+                              {isGeneratingAudio ? <Loader2 size={16} className="animate-spin" /> : isPlaying ? <Pause size={16} /> : <Headphones size={16} />}
+                              <span className="tabular-nums">{listeningTime} min</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowVoiceDropdown((v) => !v)}
+                              aria-label="Voice"
+                              className="flex items-center px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            >
+                              <ChevronDown size={14} />
+                            </button>
+                            {showVoiceDropdown && (
+                              <div
+                                className="absolute bottom-full left-0 mb-2 rounded-lg shadow-lg border overflow-hidden min-w-[180px] z-20"
+                                style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
                               >
-                                {isGeneratingAudio ? (
-                                  <Loader2 size={16} className="animate-spin" />
-                                ) : isPlaying ? (
-                                  <Pause size={16} />
-                                ) : (
-                                  <Headphones size={16} />
-                                )}
-                                <span>Listen to this article · {listeningTime} min</span>
-                                {/* Pro badge: gold crown on an accent square */}
-                                <span
-                                  className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-md"
-                                  style={{ backgroundColor: accent.primary }}
-                                >
-                                  <Crown size={11} style={{ color: '#F5B301' }} />
-                                </span>
-                              </button>
-
-                              {/* Voice selector — active voice name hidden to save space */}
-                              <button
-                                type="button"
-                                onClick={() => setShowVoiceDropdown(v => !v)}
-                                title="Select voice"
-                                className="flex items-center px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                              >
-                                <ChevronDown size={14} />
-                              </button>
-
-                              {showVoiceDropdown && (
-                                <div className="absolute bottom-full left-0 mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20 min-w-[150px] overflow-hidden">
-                                  {ELEVENLABS_VOICES.map(v => (
+                                {ELEVENLABS_VOICES.map((v) => {
+                                  const active = v.id === selectedVoice;
+                                  return (
                                     <button
                                       key={v.id}
                                       type="button"
-                                      onClick={() => {
-                                        setSelectedVoice(v.id);
-                                        setShowVoiceDropdown(false);
-                                        resetAudio();
-                                      }}
-                                      className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${v.id === selectedVoice ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}
+                                      onClick={() => { setSelectedVoice(v.id); setShowVoiceDropdown(false); resetAudio(); }}
+                                      className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-left transition-colors hover:bg-[var(--ui-bg-secondary)]"
+                                      style={{ color: active ? 'var(--accent-primary)' : 'var(--ui-text-primary)', fontWeight: active ? 500 : 400 }}
                                     >
-                                      <span>{v.name}</span>
-                                      <span className="text-[10px] text-gray-400 dark:text-gray-500">{v.tone}</span>
+                                      <span>{v.name} <span className="text-xs" style={{ color: 'var(--ui-text-muted)' }}>· {v.tone}</span></span>
+                                      {active && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--accent-primary)' }} />}
                                     </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
-                        {/* Generate Photo dropdown - right side */}
-                        <div className="relative" ref={imageDropdownRef}>
-                          <button
-                            onClick={() => setShowImageDropdown(v => !v)}
-                            disabled={isGeneratingImage}
-                            title="Generate photo"
-                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-1"
-                          >
-                            <Wand2 size={18} style={{ color: accent.primary }} />
-                            <ChevronDown size={14} className="text-gray-400" />
-                          </button>
-
-                          {showImageDropdown && (
-                            <div className="absolute bottom-full right-0 mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20 min-w-[190px] overflow-hidden">
-                              {/* Default — standard quality, free */}
-                              <button
-                                type="button"
-                                onClick={() => { setShowImageDropdown(false); handleGenerateImage(false); }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                              >
-                                <Wand2 size={15} style={{ color: accent.primary }} />
-                                <span>Generate Photo</span>
-                              </button>
-                              {/* HD — Pro: consumes 1 credit, subscription modal if none */}
-                              <button
-                                type="button"
-                                onClick={() => { setShowImageDropdown(false); handleGenerateImage(true); }}
-                                className="w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                              >
-                                <span>HD quality</span>
-                                <span
-                                  className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-md"
-                                  style={{ backgroundColor: accent.primary }}
-                                >
-                                  <Crown size={11} style={{ color: '#F5B301' }} />
-                                </span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Share row — same DynamicShareRow used in Search */}
-                      <div className="mt-3">
-                        <DynamicShareRow
-                          serviceType="stories"
-                          payload={{
-                            title: result.headline || 'Curios Story',
-                            description: result.subtitle || (result.markdown_report ? result.markdown_report.slice(0, 200) : ''),
-                            text: result.subtitle || (result.markdown_report ? result.markdown_report.slice(0, 100) : ''),
-                            imageUrls: (result.images || []).map((img: any) => img.url),
-                            deepLink: globalThis.location.href,
-                          }}
-                        />
+                      <div className="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 p-0.5 text-xs font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setCoverMode('photo')}
+                          disabled={!hasPhoto}
+                          className="px-3 py-1 rounded-full transition-colors disabled:opacity-40"
+                          style={pillStyle(!showAi)}
+                        >
+                          {t('magPhoto')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setAiFailed(false); setCoverMode('ai'); }}
+                          className="px-3 py-1 rounded-full transition-colors"
+                          style={pillStyle(showAi)}
+                        >
+                          {t('magAI')}
+                        </button>
                       </div>
                     </div>
-                  )}
 
+                    <div className="mt-3">
+                      <DynamicShareRow
+                        serviceType="stories"
+                        payload={{
+                          title: result.headline || 'Curios Magazine',
+                          description: result.subtitle || (result.markdown_report ? result.markdown_report.slice(0, 200) : ''),
+                          text: result.subtitle || (result.markdown_report ? result.markdown_report.slice(0, 100) : ''),
+                          imageUrls: [...(aiImageUrl ? [aiImageUrl] : []), ...(result.images || []).map((img) => img.url)],
+                          deepLink: globalThis.location.href,
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Article Body — same markdown renderer as Search */}
@@ -632,211 +414,86 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, progressState, loa
                   <CustomMarkdown>{result.markdown_report || ''}</CustomMarkdown>
                 </div>
 
-                {/* Follow-up Questions */}
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-8">
-                  <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Follow-up Questions</h2>
-                  <div className="space-y-3">
-                    {result.follow_up_questions.map((q: string, i: number) => (
-                      <button
-                        key={i}
-                        onClick={() => handleFollowUpClick(q)}
-                        className="w-full text-left p-4 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                            {q}
-                          </span>
-                          <svg 
-                            className="w-4 h-4 text-gray-400 group-hover:text-[#0095FF] transition-colors" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </div>
-                      </button>
-                    ))}
+                {result.follow_up_questions?.length > 0 && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-8">
+                    <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">{t('magFollowUps')}</h2>
+                    <div className="space-y-3">
+                      {result.follow_up_questions.map((q: string, i: number) => (
+                        <button
+                          key={i}
+                          onClick={() => handleFollowUpClick(q)}
+                          className="w-full text-left p-4 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             ) : (
-              <div className="text-center py-8">
-                <div className="text-gray-500 dark:text-gray-400">
-                  {loading ? 'Generating comprehensive report...' : 'No results available'}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'steps' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Research Process</h2>
-            </div>
-            
-            {/* Process Steps - now first */}
-            {progressState?.thinkingSteps && progressState.thinkingSteps.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-medium mb-3 text-gray-800 dark:text-gray-200">Process Steps</h3>
-                <div className="relative">
-                  {/* Vertical connecting line */}
-                  {progressState.thinkingSteps.length > 1 && (
-                    <div className="absolute left-3 top-6 bottom-0 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
-                  )}
-                  
-                  <div className="space-y-4">
-                    {progressState.thinkingSteps.map((step: string, index: number) => (
-                      <div key={index} className="flex items-start gap-3 relative">
-                        <div className="relative z-10 w-6 h-6 bg-[#0095FF] rounded-full flex items-center justify-center flex-shrink-0">
-                          <div className="text-white text-xs font-bold">✓</div>
-                        </div>
-                        <div className="text-gray-700 dark:text-gray-300 pt-0.5">{step}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Search Queries - now second */}
-            {result?.search_queries && result.search_queries.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium mb-3 text-gray-800 dark:text-gray-200">Search Queries</h3>
-                <div className="space-y-2">
-                  {result.search_queries.map((query: string, index: number) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <div className="w-6 h-6 bg-[#0095FF] rounded-full flex items-center justify-center text-white text-xs font-bold">
-                        {index + 1}
-                      </div>
-                      <span className="text-gray-700 dark:text-gray-300">{query}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(!progressState?.thinkingSteps || progressState.thinkingSteps.length === 0) && (!result?.search_queries || result.search_queries.length === 0) && !loading && (
-              <div className="text-center py-8">
-                <div className="text-gray-500 dark:text-gray-400">No process steps available</div>
-              </div>
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">…</div>
             )}
           </div>
         )}
 
         {activeTab === 'sources' && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Sources</h2>
-            
-            {result?.sources && result.sources.length > 0 ? (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {result.sources.map((source: any, index: number) => (
-                  <SourceItem key={index} source={source} index={index} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="text-gray-500 dark:text-gray-400">
-                  {loading ? 'Gathering sources...' : 'No sources available'}
-                </div>
-              </div>
-            )}
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {(result?.sources ?? []).map((source, index) => (
+              <SourceItem key={index} source={source} index={index} />
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'news' && (
+          <div className="divide-y divide-gray-200 dark:divide-gray-800">
+            {news.map((item, i) => (
+              <a key={i} href={item.url} target="_blank" rel="noopener noreferrer" className="group flex gap-3 py-4 first:pt-0">
+                <img src={`https://www.google.com/s2/favicons?domain=${item.source}&sz=32`} alt="" className="w-4 h-4 mt-1 rounded-sm flex-shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                <span className="min-w-0">
+                  <span className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">{item.source}</span>
+                  <span className="block font-medium text-gray-900 dark:text-white group-hover:text-[var(--accent-primary)] transition-colors line-clamp-2">{item.title}</span>
+                  {item.snippet && <span className="block mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{item.snippet}</span>}
+                </span>
+              </a>
+            ))}
           </div>
         )}
 
         {activeTab === 'images' && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-              Images ({validImageIndices.length})
-            </h2>
-            
-            {validImageIndices.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {validImageIndices.map((imageIndex: number) => {
-                  const image = result.images[imageIndex];
-                  return (
-                    <div key={imageIndex} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group relative">
-                      <img
-                        src={image.image || image.url}
-                        alt={image.alt || `Image ${imageIndex + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
-                        onClick={() => window.open(image.url, '_blank')}
-                        onError={() => {
-                          console.warn(`🖼️ [IMAGES-TAB] Image ${imageIndex} failed at runtime, removing from valid list`);
-                          // Remove from valid images if it fails at runtime
-                          setValidImageIndices(prev => prev.filter(idx => idx !== imageIndex));
-                        }}
-                        onLoad={() => {
-                          console.log(`✅ [IMAGES-TAB] Image ${imageIndex} loaded in gallery`);
-                        }}
-                      />
-                      {/* Image number badge */}
-                      <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                        {imageIndex + 1}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="text-gray-500 dark:text-gray-400">
-                  {isValidatingImages ? 'Validating images...' : 'No valid images found for this search.'}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {validImageIndices.map((imageIndex: number) => {
+              const image = result.images![imageIndex];
+              return (
+                <div key={imageIndex} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group relative">
+                  <img
+                    src={image.image || image.url}
+                    alt={image.alt || `Image ${imageIndex + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
+                    onClick={() => window.open(image.url, '_blank')}
+                    onError={() => setValidImageIndices((prev) => prev.filter((idx) => idx !== imageIndex))}
+                  />
                 </div>
-              </div>
-            )}
+              );
+            })}
           </div>
         )}
 
         {activeTab === 'videos' && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-              Videos ({result?.videos?.length || 0})
-            </h2>
-
-            {result?.videos && result.videos.length > 0 ? (
-              <div className="grid gap-4">
-                {result.videos.map((video: any, index: number) => (
-                  <div key={index} className="flex gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
-                    <div className="flex-shrink-0 w-32 h-20 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
-                      {video.thumbnail ? (
-                        <img
-                          src={video.thumbnail}
-                          alt={video.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Video size={24} className="text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <a
-                        href={video.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium text-gray-900 dark:text-white hover:underline line-clamp-2"
-                      >
-                        {video.title}
-                      </a>
-                      {video.duration && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Duration: {video.duration}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="text-gray-500 dark:text-gray-400">
-                  {loading ? 'Searching for videos...' : 'No videos found for this search.'}
+          <div className="grid gap-4">
+            {(result?.videos ?? []).map((video, index) => (
+              <a key={index} href={video.url} target="_blank" rel="noopener noreferrer" className="group flex gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors">
+                <div className="flex-shrink-0 w-36 aspect-video bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
+                  {video.thumbnail
+                    ? <img src={video.thumbnail} alt="" className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center"><Video size={24} className="text-gray-400" /></div>}
                 </div>
-              </div>
-            )}
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-[var(--accent-primary)] line-clamp-2">{video.title}</span>
+                  {video.duration && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{video.duration}</p>}
+                </div>
+              </a>
+            ))}
           </div>
         )}
       </div>

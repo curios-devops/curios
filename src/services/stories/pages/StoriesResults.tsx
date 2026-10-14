@@ -1,29 +1,26 @@
-// Stories Results page with multi-agent workflow integration
+// Magazine (route /stories-results): the answer as a magazine story. The search starts at
+// once while Decisions picks the sections (the main one + three more, NYT / Wired desks);
+// tapping another section rewrites the story from that angle with the same sources.
+// Free for everyone. Finished stories are cached for the visit (per question + section).
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router';
-import { ArrowLeft, Search, Brain, Sparkles, CheckCircle2, ChevronDown, Crown } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Search, Sparkles, CheckCircle2 } from 'lucide-react';
 import { storiesService, StoryProgressCallback } from '../agents/storiesService';
+import type { StoryResult } from '../agents/storyAgent.ts';
 import { SearchResult } from '../types.ts';
 import ResearchProgress from '../../../components/ResearchProgress';
 import TabSystem from '../../../components/TabSystem';
+import CuriosLogo from '../../../components/common/CuriosLogo.tsx';
+import { appSettings } from '../../../config/appSettings.ts';
 import { useAccentColor } from '../../../hooks/useAccentColor';
 import { useGoBack } from '../../../hooks/useGoBack.ts';
-import { useProCredits } from '../../../providers/ProCreditsProvider';
 import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
+import { useTranslation } from '../../../hooks/useTranslation.ts';
+import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import AstraNotice from '../../../components/AstraNotice.tsx';
 import { saveNode } from '../../space/nodePersistenceService';
-
-// Topic categories for the header dropdown (label = what the user sees).
-const FOCUS_CATEGORIES = [
-  { id: 'ANALYSIS', label: 'ANALYSIS' },
-  { id: 'ARTS', label: 'ARTS & ENTERTAINMENT' },
-  { id: 'BUSINESS', label: 'BUSINESS & INNOVATION' },
-  { id: 'HEALTH & SPORT', label: 'HEALTH & SPORT' },
-  { id: 'SCIENCES & TECH', label: 'SCIENCES & TECH' }
-];
-
-// First letter uppercase, rest lowercase (matches Search's button/label casing).
-const toSentenceCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+import { fetchMagazinePlan, MAGAZINE_SECTIONS, type MagazinePlan, type MagazineSection } from '../../auto/intentRouter.ts';
+import { getCached, setCached } from '../../search/searchCache.ts';
 
 interface ProgressState {
   stage: string;
@@ -37,71 +34,50 @@ interface ProgressState {
   storyPhase?: 'analyzing' | 'searching' | 'synthesizing' | 'finalizing';
 }
 
+const INITIAL_PROGRESS: ProgressState = {
+  stage: 'Shaping Your Story',
+  timeRemaining: 'About 1-2 minutes remaining',
+  progress: 0,
+  thinkingSteps: [],
+  searchTerms: [],
+  sources: [],
+  currentAgent: 'StoryWriter',
+  agentActions: [],
+  storyPhase: 'analyzing',
+};
+
+// The reader's city from the browser's time zone ("America/Santiago" → "Santiago"): Local's place.
+const readerCity = () => (Intl.DateTimeFormat().resolvedOptions().timeZone?.split('/').pop() ?? '').replace(/_/g, ' ');
+
 export default function StoriesResults() {
   const goBack = useGoBack();
+  const navigate = useNavigate();
   const location = useLocation();
   const accent = useAccentColor();
-  const { requestProAccess } = useProCredits();
+  const { t } = useTranslation();
+  const { currentLanguage } = useLanguage();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
-  // Only use focus category if explicitly provided in URL, otherwise let auto-detection work
-  const focusCategory = searchParams.get('focus') || undefined;
+  const askedSection = searchParams.get('section') as MagazineSection | null;
   const { getModel, answerModel, continueWithAstra } = useAnswerModel(query);
+  const city = readerCity();
+
+  const [plan, setPlan] = useState<MagazinePlan | null>(() => getCached<MagazinePlan>(`magazine-plan|${query}`)?.value ?? null);
+  const section: MagazineSection | null = askedSection && (MAGAZINE_SECTIONS as readonly string[]).includes(askedSection)
+    ? askedSection
+    : plan?.sections[0] ?? null;
+  const storyKey = `magazine|${query}|${section}|${currentLanguage.code}`;
 
   const [loading, setLoading] = useState(true);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<StoryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [workflowStarted, setWorkflowStarted] = useState(false);
-  const [showPhaseIndicator, setShowPhaseIndicator] = useState(true);
-  const [showFocusDropdown, setShowFocusDropdown] = useState(false);
-  const focusDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Changing the topic category is a Pro feature — consume one daily Pro Credit.
-  // requestProAccess opens the register/upgrade/quota modal and returns false when
-  // access is blocked, in which case we don't re-run the story.
-  const handleFocusChange = async (newFocus: string) => {
-    const allowed = await requestProAccess();
-    if (!allowed) return;
-    const params = new URLSearchParams(window.location.search);
-    params.set('focus', newFocus);
-    window.location.href = `/stories-results?${params.toString()}`;
-  };
-
-  // Close the focus dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (focusDropdownRef.current && !focusDropdownRef.current.contains(event.target as Node)) {
-        setShowFocusDropdown(false);
-      }
-    };
-    if (showFocusDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showFocusDropdown]);
-
-  const [progressState, setProgressState] = useState<ProgressState>({
-    stage: 'Starting Your Story',
-    timeRemaining: 'About 2-3 minutes remaining',
-    progress: 0,
-    thinkingSteps: [],
-    searchTerms: [],
-    sources: [],
-    currentAgent: 'StoryWriter',
-    agentActions: [],
-    storyPhase: 'analyzing'
-  });
+  const [progressState, setProgressState] = useState<ProgressState>(INITIAL_PROGRESS);
+  const runKey = useRef('');
 
   const handleProgress = ((
-    stage: string, 
-    timeRemaining: string, 
-    progress: number, 
-    thinkingStep: string,
-    searchTerms: string[] = [],
-    sources: any[] = [],
-    currentAgent?: string,
-    agentAction?: string,
-    storyPhase?: 'analyzing' | 'searching' | 'synthesizing' | 'finalizing'
+    stage: string, timeRemaining: string, progress: number, thinkingStep: string,
+    searchTerms: string[] = [], sources: SearchResult[] = [], currentAgent?: string, agentAction?: string,
+    storyPhase?: ProgressState['storyPhase']
   ) => {
     setProgressState(prev => ({
       stage,
@@ -112,216 +88,144 @@ export default function StoriesResults() {
       sources: sources.length > 0 ? sources : prev.sources,
       currentAgent: currentAgent || prev.currentAgent,
       agentActions: agentAction ? [...(prev.agentActions || []), agentAction] : prev.agentActions || [],
-      storyPhase: storyPhase || prev.storyPhase
+      storyPhase: storyPhase || prev.storyPhase,
     }));
   }) as StoryProgressCallback;
 
+  // 1) Sections (Decisions) and the search start together.
   useEffect(() => {
-    if (!query || workflowStarted) return;
-    
-    setWorkflowStarted(true);
+    if (!query) return;
+    storiesService.prefetch(query, handleProgress);
+    if (plan) return;
+    let live = true;
+    void fetchMagazinePlan(query, city).then((p) => {
+      setCached(`magazine-plan|${query}`, p);
+      if (live) setPlan(p);
+    });
+    return () => { live = false; };
+  }, [query]);
+
+  // 2) The story for the active section (cached per question + section + language).
+  useEffect(() => {
+    if (!query || !section || runKey.current === storyKey) return;
+    runKey.current = storyKey;
+    const cached = getCached<StoryResult>(storyKey)?.value;
+    if (cached) {
+      setResult(cached);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+    let live = true;
     setLoading(true);
     setError(null);
     setResult(null);
-    setProgressState({
-      stage: 'Initializing Insight Analysis',
-      timeRemaining: 'About 2-3 minutes remaining',
-      progress: 0,
-      thinkingSteps: [],
-      searchTerms: [],
-      sources: [],
-      currentAgent: 'StoryAnalyzer',
-      agentActions: [],
-      storyPhase: 'analyzing'
-    });
-
-    // Simple promise handling - no complex cancellation logic
-    storiesService.performStoryAnalysis(query, handleProgress, focusCategory, getModel().then((m) => m.model))
-      .then((storyResult) => {
-        console.log('✅ Insights completed', { resultKeys: Object.keys(storyResult) });
-        setResult(storyResult);
+    setProgressState((p) => ({ ...p, storyPhase: 'synthesizing' }));
+    storiesService.performStoryAnalysis(query, handleProgress, {
+      section,
+      location: city,
+      language: currentLanguage.code,
+      model: getModel().then((m) => m.model),
+    })
+      .then((story) => {
+        setCached(storyKey, story);
+        if (!live) return;
+        setResult(story);
         setLoading(false);
-
-        // Auto-save this story as a curiosity node (authenticated only; no-op for guests).
+        // Auto-save as a curiosity node (authenticated only; no-op for guests).
         saveNode({
           mode: 'stories',
           query,
-          answer: storyResult.markdown_report,
-          shortSummary: storyResult.short_summary,
-          sources: (storyResult.sources || []).map((s: any) => ({ title: s.title, url: s.url, snippet: s.snippet })),
-          images: (storyResult.images || []).map((i: any) => ({ url: i.url, title: i.title || i.alt || '', source: i.source_url })),
-          videos: (storyResult.videos || []).map((v: any) => ({ url: v.url, title: v.title, thumbnail: v.thumbnail || '' })),
-          followUps: storyResult.follow_up_questions,
-          coverImage: storyResult.images?.[0]?.url,
+          answer: story.markdown_report,
+          shortSummary: story.short_summary,
+          sources: (story.sources || []).map((s) => ({ title: s.title, url: s.url, snippet: s.snippet })),
+          images: (story.images || []).map((i) => ({ url: i.url, title: i.title || i.alt || '', source: i.source_url })),
+          videos: (story.videos || []).map((v) => ({ url: v.url, title: v.title, thumbnail: v.thumbnail || '' })),
+          followUps: story.follow_up_questions,
+          coverImage: story.images?.[0]?.url,
         });
       })
       .catch((err: Error) => {
-        console.error('❌ Insights failed', { error: err.message });
-        setError(err.message || 'Failed to generate insights. Please try again.');
+        if (!live) return;
+        setError(err.message || 'The story could not be written. Please try again.');
         setLoading(false);
       });
-  }, [query, workflowStarted, handleProgress]);
+    return () => { live = false; runKey.current = ''; };
+  }, [query, storyKey]);
 
-  // Hide phase indicator after loading completes
-  useEffect(() => {
-    if (!loading && result && progressState.storyPhase === 'finalizing') {
-      // Wait 1 second then fade out
-      const timer = setTimeout(() => {
-        setShowPhaseIndicator(false);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [loading, result, progressState.storyPhase]);
+  const pickSection = (id: MagazineSection) => {
+    if (id === section) return;
+    const params = new URLSearchParams(location.search);
+    params.set('section', id);
+    navigate(`/stories-results?${params.toString()}`);
+  };
+  const sectionName = (id: MagazineSection) => (id === 'local' && city ? `${t('magSection_local')} · ${city}` : t(`magSection_${id}` as never));
 
-  const getPhaseIcon = (phase?: string) => {
+  const phaseIcon = (phase?: string) => {
     switch (phase) {
-      case 'analyzing': return <Brain className="text-blue-500" size={14} />;
       case 'searching': return <Search className="text-green-500" size={14} />;
       case 'synthesizing': return <Sparkles style={{ color: accent.primary }} size={14} />;
       case 'finalizing': return <CheckCircle2 className="text-green-500" size={14} />;
-      default: return <Brain className="text-blue-500" size={14} />;
+      default: return <CuriosLogo size={14} frameColor={appSettings.logoMark.iconColor} />;
     }
   };
 
-  // Current topic shown on the header button, in Search's sentence-case style.
-  const currentFocusId = focusCategory || result?.focus_category || 'ANALYSIS';
-  const currentFocusLabel = toSentenceCase(
-    FOCUS_CATEGORIES.find(c => c.id === currentFocusId)?.label ?? currentFocusId
-  );
-
   return (
     <div className="stories-result-page min-h-screen bg-white dark:bg-[#111111] text-gray-900 dark:text-white transition-colors duration-200">
-      <header className="flex items-center gap-4 px-6 py-6">
-        <button 
-          type="button"
-          onClick={goBack}
-          style={{ color: accent.primary }}
-          className="hover:opacity-80 transition-opacity flex-shrink-0"
-        >
+      <header className="flex items-center gap-4 px-6 pt-6 pb-3">
+        <button type="button" onClick={goBack} style={{ color: accent.primary }} className="hover:opacity-80 transition-opacity flex-shrink-0">
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <h1 className="text-base sm:text-lg font-medium break-words max-h-24 overflow-y-auto pr-1">{query}</h1>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Insight Phase Indicator */}
-            {progressState.storyPhase && showPhaseIndicator && (
-              <div 
-                className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full transition-opacity duration-1000"
-                style={{ opacity: !loading && result ? 0 : 1 }}
-              >
-                {getPhaseIcon(progressState.storyPhase)}
-                <span className="text-xs font-medium capitalize">{progressState.storyPhase}</span>
-              </div>
-            )}
-          </div>
+          {loading && (
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full flex-shrink-0">
+              {phaseIcon(progressState.storyPhase)}
+              <span className="text-xs font-medium capitalize">{progressState.storyPhase}</span>
+            </div>
+          )}
         </div>
-        {/* Topic category dropdown — same button style as Search's header pill */}
-        {!loading && result && (
-          <div className="relative flex-shrink-0" ref={focusDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setShowFocusDropdown(v => !v)}
-              title="Change topic category (Pro · 1 credit)"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all cursor-pointer hover:opacity-90"
-              style={{ backgroundColor: accent.primary }}
-            >
-              <Crown size={16} />
-              <span>{currentFocusLabel}</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
-
-            {showFocusDropdown && (
-              <div className="absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg z-20 min-w-[210px] rounded-md overflow-hidden">
-                {FOCUS_CATEGORIES.map((category) => {
-                  const current = focusCategory || result?.focus_category || 'ANALYSIS';
-                  return (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => {
-                        setShowFocusDropdown(false);
-                        if (category.id !== current) handleFocusChange(category.id);
-                      }}
-                      className={`w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                        category.id === current
-                          ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white'
-                          : 'text-gray-700 dark:text-gray-300'
-                      }`}
-                    >
-                      {toSentenceCase(category.label)}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
       </header>
+
+      {/* Sections, NYT style: the main one and three more angles to rewrite it from. */}
+      {plan && (
+        <nav className="max-w-4xl mx-auto px-6 flex gap-5 overflow-x-auto scrollbar-hide border-b border-gray-200 dark:border-gray-800">
+          {plan.sections.map((id) => {
+            const active = id === section;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => pickSection(id)}
+                aria-current={active ? 'page' : undefined}
+                className={`py-2.5 border-b-2 -mb-px text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-colors ${active ? '' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                style={active ? { borderColor: accent.primary, color: accent.primary } : undefined}
+              >
+                {sectionName(id)}
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
       <main className="max-w-4xl mx-auto px-0 sm:px-6 py-6">
         {loading && (
-          <div className="space-y-3">
-            <ResearchProgress
-              stage={progressState.stage}
-              timeRemaining={progressState.timeRemaining}
-              progress={progressState.progress}
-              thinkingSteps={progressState.thinkingSteps}
-              isComplete={false}
-              searchTerms={progressState.searchTerms}
-              sources={progressState.sources}
-            />
-            {/* Multi-Agent Progress Display */}
-            {progressState.currentAgent && (
-              <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-2 h-2 rounded-full animate-pulse"
-                      style={{ backgroundColor: accent.primary }}
-                    ></div>
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Agent:</span>
-                    <span 
-                      className="text-sm font-semibold"
-                      style={{ color: accent.primary }}
-                    >
-                      {progressState.currentAgent}
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Topic Detection Info - shown when InsightWriter is active and we have result */}
-                {result?.focus_category && result?.style_source && progressState.currentAgent === 'StoryWriter' && (
-                  <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-                    <div className="text-sm text-gray-700 dark:text-gray-300">
-                      <span className="font-medium">Topic "{result.focus_category}"</span> auto-selected.{' '}
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Style inspired by: <em>{result.style_source}</em>
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
-                {progressState.agentActions && progressState.agentActions.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">Recent Actions:</h4>
-                    <div className="space-y-1">
-                      {progressState.agentActions.slice(-3).map((action, index) => (
-                        <div key={index} className="text-xs text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded">
-                          {action}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <ResearchProgress
+            stage={progressState.stage}
+            timeRemaining={progressState.timeRemaining}
+            progress={progressState.progress}
+            thinkingSteps={progressState.thinkingSteps}
+            isComplete={false}
+            searchTerms={progressState.searchTerms}
+            sources={progressState.sources}
+          />
         )}
         {error && (
           <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-red-500/20 p-8 text-center">
             <p className="text-red-500 mb-4">{error}</p>
-            <button 
+            <button
               type="button"
-              onClick={() => globalThis.location.reload()} 
+              onClick={() => globalThis.location.reload()}
               className="bg-red-500/10 text-red-500 px-6 py-2 rounded-lg hover:bg-red-500/20 transition-colors"
             >
               Try Again
@@ -331,12 +235,13 @@ export default function StoriesResults() {
         {!loading && result && answerModel?.astraBlocked && (
           <AstraNotice onContinueWithAstra={continueWithAstra} />
         )}
-        {!loading && result && (
+        {!loading && result && section && (
           <TabSystem
             result={result}
-            progressState={progressState}
             loading={loading}
-            focusCategory={focusCategory}
+            sectionLabel={sectionName(section)}
+            isNews={(plan?.news ?? 0) >= 0.5}
+            cacheKey={storyKey}
           />
         )}
       </main>

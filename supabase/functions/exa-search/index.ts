@@ -16,7 +16,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { query, numResults = 10 } = await req.json()
+    // Optional: category ("news"), includeDomains (e.g. ["youtube.com"] for videos).
+    const { query, numResults = 10, category, includeDomains } = await req.json()
 
     if (!query || typeof query !== 'string' || !query.trim()) {
       return new Response(
@@ -45,6 +46,8 @@ Deno.serve(async (req: Request) => {
         query: query.trim(),
         type: 'auto',
         numResults,
+        ...(category === 'news' ? { category: 'news' } : {}),
+        ...(Array.isArray(includeDomains) && includeDomains.length ? { includeDomains: includeDomains.slice(0, 5) } : {}),
         contents: { text: { maxCharacters: 600 } },
       }),
     })

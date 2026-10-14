@@ -1,40 +1,51 @@
-// StoryAgent — single-agent Insights (Stories) pipeline.
+// StoryAgent — Magazine (route /stories-results) pipeline.
 //
-// Replaces the former 3-agent swarm (InsightAnalyzerAgent + InsightsRetrieverAgent +
-// InsightWriterAgent + InsightSwarmController). Two LLM calls remain: a lightweight
-// query-drafting call that turns the topic into two "perspective" and two
-// "counterpoint" questions (deterministic templates as fallback), and the writer that
-// synthesises the article. Search runs 3 calls concurrently — Brave (principal: the
-// user's main question; returns text + images + videos), Tavily (the perspective
-// questions) and Exa (the counterpoint questions) — with a single lean SerpApi
-// fallback for media only when Brave is sparse. The output shape (StoryResult)
-// and progress phases are unchanged so the UI stays untouched.
+// 1. Search angles: the user's question plus two "perspective" and two "counterpoint"
+//    questions drafted by the model (templates as fallback).
+// 2. Search (cached per question for the visit, so rewriting the story from another
+//    section only re-writes): Brave (main question: text + media), Tavily (perspectives),
+//    Exa (counterpoints); News and Videos each try Exa → Tavily → Brave.
+// 3. Writer (magazine-write edge function): one magazine feature in the chosen section's
+//    voice (NYT / Wired desks), grounded ONLY in the sources (no invented quotes or numbers),
+//    in the app's language, with a magazine headline + dek, a scene-setting lede, evocative
+//    subheads, a kicker, and an image idea for the AI cover.
 
 import { SearchResult, ImageResult, VideoResult } from '../../../commonApp/types/index';
 import { braveSearchTool, type BraveSearchResults } from '../../../commonService/searchTools/braveSearchTool';
 import { searchWithTavily } from '../../../commonService/searchTools/tavilyService';
 import { searchExa } from '../../search/providers/engines/exaService';
 import { searchSerpApiImages } from '../../search/providers/engines/serpApiImages';
-import { searchSerpApiVideos } from '../../search/providers/engines/serpApiVideos';
 import { logger } from '../../../utils/logger';
 import { appSettings } from '../../../config/appSettings';
+import { supabase } from '../../../lib/supabase';
+import type { MagazineSection } from '../../auto/intentRouter.ts';
 
 export interface StoryRequest {
   query: string;
   /** Article model (Luna/Sol/Astra), awaited just before writing; default Sol. */
   model?: Promise<string>;
-  isPro?: boolean;
-  focusCategory?: string;
+  /** The section to write it for (Decisions' main pick, or the one the reader tapped). */
+  section?: MagazineSection;
+  /** The reader's city/country (for Local). */
+  location?: string;
+  /** Language code to write in (the app's language). */
+  language?: string;
 }
+
+export interface NewsItem { title: string; url: string; snippet: string; source: string; image?: string }
 
 export interface StoryResult {
   query: string;
+  /** The section it was written for. */
   focus_category?: string;
   style_source?: string;
   headline: string;
+  /** The dek under the headline. */
   subtitle: string;
   short_summary: string;
   markdown_report: string;
+  /** English prompt for the AI cover image. */
+  image_prompt?: string;
   follow_up_questions: string[];
   thinking_process: string;
   progress_updates: string[];
@@ -50,6 +61,7 @@ export interface StoryResult {
   citations: Array<{ text: string; source: { url: string; title?: string } }>;
   images?: ImageResult[];
   videos?: VideoResult[];
+  news?: NewsItem[];
   story_areas: string[];
   confidence_level: number;
 }
@@ -67,147 +79,106 @@ export type StoryStatusUpdate = (
 ) => void;
 
 interface WriterOutput {
-  focus_category: string;
-  style_source: string;
   headline: string;
-  subtitle: string;
+  dek: string;
   short_summary: string;
   markdown_report: string;
+  image_prompt: string;
   follow_up_questions: string[];
-  citations: Array<{ text: string; source: any }>;
-  confidence_level: number;
 }
+
+interface SearchBundle { queries: string[]; results: SearchResult[]; images: ImageResult[]; videos: VideoResult[]; news: NewsItem[] }
+
+// One search per question for the whole visit: rewriting from another section reuses it.
+const searches = new Map<string, Promise<SearchBundle>>();
+
+const hostOf = (url: string) => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } };
+const youtubeId = (url: string) => url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]{11})/)?.[1];
+
+// A slow provider must not hold the story: after `ms` it counts as empty.
+const within = <T,>(work: Promise<T>, empty: T, ms = 15_000): Promise<T> =>
+  Promise.race([work, new Promise<T>((resolve) => setTimeout(() => resolve(empty), ms))]);
 
 export class StoryAgent {
   async process(request: StoryRequest, onStatusUpdate?: StoryStatusUpdate): Promise<StoryResult> {
-    try {
-      const { query } = request;
-      if (!query?.trim()) {
-        throw new Error('Insight query cannot be empty');
-      }
+    const { query } = request;
+    if (!query?.trim()) throw new Error('Insight query cannot be empty');
+    const section: MagazineSection = request.section ?? 'ideas';
+    logger.info('StoryAgent: starting', { query, section });
 
-      logger.info('StoryAgent: starting', { query, focusCategory: request.focusCategory });
+    const cached = searches.has(query);
+    onStatusUpdate?.(
+      cached ? 'Rewriting Your Story' : 'Shaping Your Story',
+      cached ? 'Almost complete' : 'About 1-2 minutes remaining',
+      cached ? 60 : 10,
+      'Finding the angle for your story',
+      [], [], 'StoryWriter', 'Mapping the story and search strategy', 'analyzing'
+    );
 
-      // Step 1 — Analysis. Query expansion is LLM-drafted (perspective + counterpoint).
-      const storyAreas = this.buildStoryAreas(query);
-      const analysisStrategy = `Insight analysis on "${query}" — surface trends, patterns and actionable intelligence.`;
+    const { queries, results, images, videos, news } = await this.searchOnce(query, onStatusUpdate);
 
-      onStatusUpdate?.(
-        'Shaping Your Story',
-        'About 1-2 minutes remaining',
-        10,
-        'Finding the angle for your story',
-        [],
-        [],
-        'StoryWriter',
-        'Mapping the story and search strategy',
-        'analyzing'
-      );
+    onStatusUpdate?.(
+      'Writing Your Story', 'Almost complete', 70, 'Weaving the sources into a story',
+      queries, results.slice(0, 5), 'StoryWriter', 'Writing the story', 'synthesizing'
+    );
 
-      const searchQueries = await this.generateSearchQueries(query);
+    const writer = await this.writeArticle(query, results, section, request, await request.model);
 
-      // Step 2 — Search.
-      onStatusUpdate?.(
-        'Gathering Sources for Your Story',
-        'About 30 seconds remaining',
-        40,
-        'Searching for relevant sources and information',
-        searchQueries,
-        [],
-        'StoryWriter',
-        'Searching for sources across the web',
-        'searching'
-      );
+    const result: StoryResult = {
+      query,
+      focus_category: section,
+      style_source: writer.style_source,
+      headline: writer.headline,
+      subtitle: writer.dek,
+      short_summary: writer.short_summary,
+      markdown_report: writer.markdown_report,
+      image_prompt: writer.image_prompt,
+      follow_up_questions: writer.follow_up_questions,
+      thinking_process: `Magazine story on "${query}" for the ${section} section.`,
+      progress_updates: ['Search angles drafted', 'Sources gathered', 'Story written'],
+      search_queries: queries,
+      sources: results.map((r) => ({ title: r.title, url: r.url, snippet: r.content.slice(0, 200), image: r.image, relevance_score: 0.8 })),
+      agent_contributions: { StoryAgent: { section, sources_found: results.length } },
+      citations: results.slice(0, 5).map((r) => ({ text: r.title, source: { title: r.title, url: r.url } })),
+      images,
+      videos,
+      news,
+      story_areas: [section],
+      confidence_level: results.length >= 8 ? 85 : results.length >= 4 ? 70 : 60,
+    };
 
-      const { results, images, videos } = await this.search(searchQueries, query);
-
-      logger.info('StoryAgent: search complete', {
-        resultsCount: results.length, imagesCount: images.length, videosCount: videos.length
-      });
-
-      // Step 3 — Synthesis (single LLM call).
-      onStatusUpdate?.(
-        'Writing Your Story',
-        'Almost complete',
-        70,
-        'Weaving the sources into a story',
-        searchQueries,
-        results.slice(0, 5),
-        'StoryWriter',
-        'Analysing patterns and writing the story',
-        'synthesizing'
-      );
-
-      const writer = await this.writeArticle(query, results, storyAreas, request.focusCategory, await request.model);
-
-      // Step 4 — Assemble result.
-      const result: StoryResult = {
-        query,
-        focus_category: writer.focus_category,
-        style_source: writer.style_source,
-        headline: writer.headline,
-        subtitle: writer.subtitle,
-        short_summary: writer.short_summary,
-        markdown_report: writer.markdown_report,
-        follow_up_questions: writer.follow_up_questions,
-        thinking_process: analysisStrategy,
-        progress_updates: [
-          'Query analysis completed',
-          'Strategic search executed',
-          'Insights synthesized',
-          'Recommendations generated'
-        ],
-        search_queries: searchQueries,
-        sources: results.map((r) => ({
-          title: r.title,
-          url: r.url,
-          snippet: r.content.slice(0, 200),
-          image: r.image,
-          relevance_score: 0.8
-        })),
-        agent_contributions: {
-          StoryAgent: {
-            story_areas: storyAreas,
-            sources_found: results.length,
-            stories_generated: writer.follow_up_questions.length
-          }
-        },
-        citations: writer.citations,
-        images,
-        videos,
-        story_areas: storyAreas,
-        confidence_level: writer.confidence_level
-      };
-
-      logger.info('StoryAgent: completed', {
-        reportLength: result.markdown_report.length,
-        sourcesCount: result.sources.length,
-        focusCategory: result.focus_category
-      });
-
-      onStatusUpdate?.('Complete', 'Complete', 100, 'Your story is ready', searchQueries, results.slice(0, 5), 'Complete', 'Ready', 'finalizing');
-
-      return result;
-    } catch (error) {
-      logger.error('StoryAgent: failed', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        query: request.query
-      });
-      onStatusUpdate?.('Complete', 'Complete', 100, 'Error occurred', [], [], 'Complete', 'Error', 'finalizing');
-      return this.getFallbackResult(request.query);
-    }
+    onStatusUpdate?.('Complete', 'Complete', 100, 'Your story is ready', queries, results.slice(0, 5), 'Complete', 'Ready', 'finalizing');
+    return result;
   }
 
-  // ---- Step 1 helpers (deterministic analysis) ----
+  // ---- Step 1 + 2: search angles and search (once per question) ----
 
-  private buildStoryAreas(query: string): string[] {
-    return [
-      `Current trends in ${query}`,
-      'Market dynamics and patterns',
-      'Growth opportunities and challenges',
-      'Competitive landscape insights',
-      'Future outlook and implications'
-    ];
+  /** Start the search now (Magazine decides the section meanwhile). */
+  prefetch(query: string, onStatusUpdate?: StoryStatusUpdate) {
+    void this.searchOnce(query, onStatusUpdate).catch(() => undefined);
+  }
+
+  private searchOnce(query: string, onStatusUpdate?: StoryStatusUpdate): Promise<SearchBundle> {
+    let search = searches.get(query);
+    if (!search) {
+      search = this.gather(query, onStatusUpdate);
+      searches.set(query, search);
+      search.catch(() => searches.delete(query));
+    }
+    return search;
+  }
+
+  private async gather(query: string, onStatusUpdate?: StoryStatusUpdate): Promise<SearchBundle> {
+    const queries = await this.generateSearchQueries(query);
+    onStatusUpdate?.(
+      'Gathering Sources for Your Story', 'About 30 seconds remaining', 40,
+      'Searching for relevant sources and information', queries, [], 'StoryWriter', 'Searching for sources across the web', 'searching'
+    );
+    const bundle = await this.search(queries, query);
+    logger.info('StoryAgent: search complete', {
+      results: bundle.results.length, images: bundle.images.length, videos: bundle.videos.length, news: bundle.news.length,
+    });
+    return { queries, ...bundle };
   }
 
   // Five questions, one bundle per intent, routed to three engines (see `search`):
@@ -281,6 +252,7 @@ Each question must be a single, specific, naturally-phrased question about the t
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     const response = await fetch(supabaseEdgeUrl, {
       method: 'POST',
+      signal: AbortSignal.timeout(10_000), // the angles have a template fallback; never wait long
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${supabaseAnonKey}`
@@ -312,44 +284,27 @@ Each question must be a single, specific, naturally-phrased question about the t
     return q.replace(/\s+/g, ' ').trim() || query.trim();
   }
 
-  // Hook-y, SEO-friendly fallback headline. Deliberately avoids "Understanding …".
-  private buildFallbackHeadline(query: string): string {
-    const q = query.trim().replace(/\?+$/, '');
-    const titled = q.charAt(0).toUpperCase() + q.slice(1);
-    return `${titled}: What's Happening and Why It Matters`;
-  }
-
-  // ---- Step 2: search — 3 concurrent calls + independent media fallbacks ----
-  // Brave is the principal: one call returns text (web), images and videos. Exa and
-  // Tavily run alongside as text perspectives. Brave's media is used directly; if it
-  // returns too few images we fall back to SerpApi google_images, and — separately —
-  // if too few videos we fall back to SerpApi google_videos. Each fallback is
-  // independent and fires only when its own media is sparse, keeping API usage low.
-
-  private async search(queries: string[], originalQuery: string): Promise<{ results: SearchResult[]; images: ImageResult[]; videos: VideoResult[] }> {
+  // Brave runs the user's main question (and yields media + news); Tavily and Exa add the
+  // perspective and counterpoint angles. News and videos each try Exa → Tavily → Brave.
+  private async search(queries: string[], originalQuery: string): Promise<Omit<SearchBundle, 'queries'>> {
     const [main, perspectiveA, perspectiveB, counterA, counterB] = queries;
-    const imageQuery = this.buildImageQuery(originalQuery);
+    const topic = this.buildImageQuery(originalQuery);
 
-    // Brave runs the user's main question (and yields the principal media); Tavily
-    // and Exa add the perspective and counterpoint angles, one concatenated call each.
     const [brave, tavily, exa] = await Promise.all([
-      this.runBrave(main),
-      this.runTavily(`${perspectiveA} ${perspectiveB}`.trim()),
-      this.runExa(`${counterA} ${counterB}`.trim())
+      within(this.runBrave(main), { web: [], images: [], news: [], videos: [] }),
+      within(this.runTavily(`${perspectiveA} ${perspectiveB}`.trim()), []),
+      within(this.runExa(`${counterA} ${counterB}`.trim()), [])
     ]);
 
     const results = this.mergeText(this.clean(brave.web), exa, tavily);
-    // Media keys off the reformulated topic query, independent of Brave's web query.
-    const [images, videos] = await Promise.all([
-      this.resolveImages(imageQuery, brave.images),
-      this.resolveVideos(imageQuery, brave.videos)
+    const [images, videos, news] = await Promise.all([
+      within(this.resolveImages(topic, brave.images), []),
+      within(this.findVideos(topic, brave.videos), []),
+      within(this.findNews(main, brave.news), []),
     ]);
-
-    logger.info('StoryAgent: search complete', {
-      braveWeb: brave.web.length, exa: exa.length, tavily: tavily.length,
-      merged: results.length, images: images.length, videos: videos.length
-    });
-    return { results, images, videos };
+    // News photos lead: a news story's photo cover comes from the reporting, not a generic image search.
+    const newsPhotos: ImageResult[] = news.filter((n) => n.image).map((n) => ({ url: n.image!, image: n.image!, alt: n.title, title: n.title, source_url: n.url }));
+    return { results, images: this.dedupeByUrl([...newsPhotos, ...images]).slice(0, 12), videos, news };
   }
 
   private clean(results: SearchResult[]): SearchResult[] {
@@ -407,6 +362,37 @@ Each question must be a single, specific, naturally-phrased question about the t
     return merged.slice(0, 12);
   }
 
+  // News: Exa (news category) → Tavily (news topic) → Brave news, until there are enough.
+  private async findNews(query: string, braveNews: BraveSearchResults['news']): Promise<NewsItem[]> {
+    const ENOUGH = 5;
+    const toItem = (r: { title: string; url: string; content?: string; snippet?: string; image?: string }): NewsItem =>
+      ({ title: r.title, url: r.url, snippet: (r.content || r.snippet || '').slice(0, 220), source: hostOf(r.url), image: r.image });
+    let items: NewsItem[] = (await searchExa(query, 10, { category: 'news' }).catch(() => [])).map(toItem);
+    if (items.length < ENOUGH) {
+      const tavily = await searchWithTavily(query, 'basic', { topic: 'news' }).catch(() => ({ results: [] as SearchResult[] }));
+      items = [...items, ...tavily.results.map(toItem)];
+    }
+    if (items.length < ENOUGH) items = [...items, ...braveNews.map(toItem)];
+    return this.dedupeByUrl(items.filter((n) => n.url && n.title)).slice(0, 10);
+  }
+
+  // Videos: YouTube results from Exa → Tavily → Brave videos, until there are enough.
+  private async findVideos(query: string, braveVideos: BraveSearchResults['videos']): Promise<VideoResult[]> {
+    const ENOUGH = 4;
+    const fromWeb = (r: { title: string; url: string }): VideoResult | null => {
+      const id = youtubeId(r.url);
+      return id ? { title: r.title, url: r.url, thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` } : null;
+    };
+    const yt = { includeDomains: ['youtube.com'] };
+    let videos = (await searchExa(query, 10, yt).catch(() => [])).map(fromWeb).filter((v): v is VideoResult => !!v);
+    if (videos.length < ENOUGH) {
+      const tavily = await searchWithTavily(query, 'basic', yt).catch(() => ({ results: [] as SearchResult[] }));
+      videos = [...videos, ...tavily.results.map(fromWeb).filter((v): v is VideoResult => !!v)];
+    }
+    if (videos.length < ENOUGH) videos = [...videos, ...braveVideos.filter((v) => !!v.url)];
+    return this.dedupeByUrl(videos).slice(0, 10);
+  }
+
   // Images: SerpApi keyed on the reformulated topic query is the primary source so
   // visuals stay aligned with the user's subject. Brave images (from the main
   // web query) are used ONLY as a fallback when SerpApi is sparse — never merged in
@@ -440,29 +426,6 @@ Each question must be a single, specific, naturally-phrased question about the t
     }
   }
 
-  // Videos: SerpApi google_videos primary (same as images); the Brave videos that
-  // came with the main web call are the fallback when SerpApi is sparse.
-  private async resolveVideos(query: string, braveVideos: BraveSearchResults['videos']): Promise<VideoResult[]> {
-    const MIN_VIDEOS = 2;
-    const serp = await this.serpVideos(query);
-    if (serp.length >= MIN_VIDEOS) return serp.slice(0, 10);
-
-    const brave = braveVideos
-      .filter((v) => !!v.url)
-      .map((v) => ({ title: v.title, url: v.url, thumbnail: v.thumbnail, duration: v.duration }));
-    return this.dedupeByUrl([...serp, ...brave]).slice(0, 10);
-  }
-
-  private async serpVideos(query: string): Promise<VideoResult[]> {
-    try {
-      const media = await searchSerpApiVideos(query, 10);
-      return media.map((v) => ({ title: v.title, url: v.url, thumbnail: v.thumbnail, duration: v.duration }));
-    } catch (error) {
-      logger.warn('StoryAgent: SerpApi video fallback failed', { error: error instanceof Error ? error.message : 'Unknown error' });
-      return [];
-    }
-  }
-
   private dedupeByUrl<T extends { url: string }>(items: T[]): T[] {
     const seen = new Set<string>();
     const out: T[] = [];
@@ -474,312 +437,23 @@ Each question must be a single, specific, naturally-phrased question about the t
     return out;
   }
 
-  // ---- Step 3: writer (single LLM call, journalistic article) ----
+  // ---- Step 3: writer (magazine-write edge function: section voice, grounded in the sources) ----
 
-  private async writeArticle(
-    query: string,
-    results: SearchResult[],
-    storyAreas: string[],
-    focusCategory?: string,
-    model: string = appSettings.models.sol
-  ): Promise<WriterOutput> {
-    if (!results || results.length === 0) {
-      return this.getFallbackStories(query, results, focusCategory);
+  private async writeArticle(query: string, results: SearchResult[], section: MagazineSection, request: StoryRequest, model: string = appSettings.models.sol): Promise<WriterOutput & { style_source: string }> {
+    const { data, error } = await supabase.functions.invoke('magazine-write', {
+      body: {
+        query,
+        section,
+        location: request.location ?? '',
+        language: request.language || 'en',
+        model,
+        sources: results.slice(0, 10).map((r) => ({ title: r.title, url: r.url, content: r.content.slice(0, 700) })),
+      },
+    });
+    if (error || !data?.markdown_report) {
+      logger.error('StoryAgent: writer failed', { error: error?.message ?? data?.detail });
+      throw new Error('The story could not be written. Please try again.');
     }
-
-    const detectedCategory = focusCategory || this.determineFocusCategory(query);
-    const editorialStyle = this.getEditorialStyle(detectedCategory);
-
-    const systemPrompt = `You are an elite investigative journalist with decades of experience writing for ${editorialStyle.source}.
-Your mission is to craft a professional, balanced, and deeply insightful article that reads like the best journalism.
-
-CRITICAL REQUIREMENTS:
-- Write a COMPREHENSIVE essay of 800-1200 words (aim for 1000+ words for depth)
-- This should be a genuine 2-3 minute read with substantial analysis
-- Write in FLOWING, NARRATIVE prose - not fragmented bullet points
-- ALWAYS start with a compelling opening paragraph that draws readers in
-- Use **Bold Section Headers** to organize (NOT markdown # headers)
-- Think like a journalist: Lead → Context → Analysis → Implications → Next Steps
-
-JSON OUTPUT FORMAT:
-{
-  "focus_category": "${detectedCategory}",
-  "style_source": "${editorialStyle.source}",
-  "headline": "A real, hook-y, SEO-friendly story title (8-12 words) that leads with the core development, tension or stakes. NEVER start with 'Understanding', 'Exploring', 'A Look at', or generic framing. Make a reader want to click.",
-  "subtitle": "Contextual subheading (12-20 words) that expands on the headline with specifics",
-  "short_summary": "Strong 2-3 sentence lede that answers: What happened? Why does it matter? What's at stake? (60-100 words)",
-  "markdown_report": "FULL 800-1200 word article. Start with **Opening Section Title** (like 'The Shift', 'Breaking Ground', 'A New Era') followed by 3-4 engaging paragraphs. Then continue with 3-4 more **Bold Sections** with 2-3 paragraphs each. Write in natural, flowing journalistic prose. NO bullet points. NO lists. Pure narrative storytelling with facts, context, expert voices, and implications woven throughout.",
-  "follow_up_questions": ["What factors will determine...", "How might this development affect...", "What are the longer-term implications for..."],
-  "citations": [{"text": "Direct quote or key fact", "source": {"title": "...", "url": "...", "snippet": "..."}}],
-  "confidence_level": 85
-}
-
-${editorialStyle.source} WRITING PRINCIPLES:
-Tone: ${editorialStyle.tone}
-Approach: ${editorialStyle.style}
-
-NARRATIVE STRUCTURE (be flexible and natural):
-${editorialStyle.structure}
-
-ESSENTIAL WRITING GUIDELINES:
-• START STRONG: Open with a vivid scene, striking fact, or compelling tension
-• NARRATIVE FLOW: Connect paragraphs with transitions. Tell a story, don't list facts
-• SHOW, DON'T TELL: Use specific examples, quotes, and concrete details
-• MULTIPLE PERSPECTIVES: Include expert voices, data, and different viewpoints
-• CONTEXT IS KING: Explain the "why" and "how we got here" before diving into implications
-• DEPTH OVER BREADTH: Go deeper into key themes rather than skimming many topics
-• HUMAN ELEMENT: Connect to real-world impact on people, companies, or society
-• AUTHORITATIVE YET ACCESSIBLE: Write with sophistication but remain clear
-• NO CONCLUSIONS: Let the narrative and facts speak. End with forward-looking insight
-
-FOCUS AREAS TO EXPLORE: ${storyAreas.join(', ')}
-
-REMEMBER: You're writing feature journalism, not a report. The article should feel alive, insightful, and worth reading. Aim for AT LEAST 900 words. The focus_category MUST be "${detectedCategory}".`;
-
-    const resultsContext = this.formatResultsForContext(results);
-
-    const userPrompt = `Query: "${query}"
-
-${resultsContext}
-
-Write a compelling, deeply researched article in the style of ${editorialStyle.source}. This is feature journalism - tell a story with the facts.
-
-IMPORTANT:
-- Write a FULL 800-1200 word article (don't stop at 500-600 words!)
-- Start with an engaging opening section with a **Bold Title**
-- Use flowing, narrative paragraphs (3-5 sentences each)
-- Include expert quotes and specific data from sources
-- Connect ideas with transitions between sections
-- End with forward-looking analysis, not a summary
-
-Make this feel like a premium piece of journalism that readers will want to finish.`;
-
-    try {
-      const supabaseEdgeUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OPENAI_API_URL)
-        ? import.meta.env.VITE_OPENAI_API_URL
-        : 'VITE_OPENAI_API_URL';
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const response = await fetch(supabaseEdgeUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({
-          prompt: JSON.stringify({
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            model,
-            response_format: { type: 'json_object' },
-            // Reasoning tokens count toward this budget on GPT-6.
-            max_output_tokens: 6000
-          })
-        })
-      });
-      const data = await response.json();
-      const content = data.text || data.choices?.[0]?.message?.content;
-      if (!content) throw new Error('No response content from insight writer');
-
-      let writerResult: WriterOutput;
-      try {
-        writerResult = JSON.parse(content);
-      } catch {
-        logger.warn('StoryAgent: failed to parse writer response, using fallback');
-        writerResult = this.getFallbackStories(query, results, focusCategory);
-      }
-
-      return this.validateWriterResult(writerResult, query, results, focusCategory);
-    } catch (error) {
-      logger.error('StoryAgent: writer failed, using fallback', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      return this.getFallbackStories(query, results, focusCategory);
-    }
-  }
-
-  private formatResultsForContext(results: SearchResult[]): string {
-    return results
-      .slice(0, 10)
-      .map((result, index) => {
-        const title = result.title.slice(0, 60);
-        const content = result.content.slice(0, 150);
-        return `[${index + 1}] ${title}\n${content}...\n`;
-      })
-      .join('');
-  }
-
-  private validateWriterResult(result: WriterOutput, query: string, results: SearchResult[], focusCategory?: string): WriterOutput {
-    const detectedCategory = result.focus_category || focusCategory || this.determineFocusCategory(query);
-    const editorialStyle = this.getEditorialStyle(detectedCategory);
-
-    result.focus_category = detectedCategory;
-    result.style_source = result.style_source || editorialStyle.source;
-    result.headline = result.headline || this.buildFallbackHeadline(query);
-    result.subtitle = result.subtitle || 'What You Need to Know About This Emerging Development';
-    result.short_summary = result.short_summary || `Recent developments in ${query} are reshaping the landscape. Here's what experts say about the implications and what to watch for next.`;
-
-    if (!result.markdown_report || result.markdown_report.length < 300) {
-      result.markdown_report = this.generateStyledReport(query, results, detectedCategory);
-    }
-
-    if (!result.follow_up_questions || result.follow_up_questions.length === 0) {
-      result.follow_up_questions = [
-        `What are the most significant changes happening in ${query}?`,
-        `How are experts responding to these developments?`,
-        `What should people watch for in the coming months?`
-      ];
-    }
-
-    if (!result.citations || result.citations.length === 0) {
-      result.citations = results.slice(0, 5).map((r) => ({
-        text: `${r.title} - ${r.content.slice(0, 100)}...`,
-        source: { title: r.title, url: r.url, snippet: r.content.slice(0, 200) }
-      }));
-    }
-
-    if (!result.confidence_level || result.confidence_level < 1 || result.confidence_level > 100) {
-      result.confidence_level = results.length >= 8 ? 85 : results.length >= 4 ? 70 : 60;
-    }
-
-    return result;
-  }
-
-  private determineFocusCategory(query: string): string {
-    const queryLower = query.toLowerCase();
-
-    if (/business|market|economy|company|corporate|finance|industry|trade|stock|earning|earnings|revenue|profit|sales|investor|investment|quarter|quarterly|fiscal|financial|merger|acquisition|ceo|executive|wall street|shares|shareholder|dividend/.test(queryLower)) {
-      return 'BUSINESS';
-    }
-    if (/health|medical|drug|disease|patient|doctor|sport|fitness|athletic|wellness|nutrition|diet|exercise|clinic|hospital|therapy/.test(queryLower)) {
-      return 'HEALTH & SPORT';
-    }
-    if (/tech|ai|software|digital|computer|cyber|science|research|study|discovery|innovation|algorithm|cloud|internet|web|app|programming/.test(queryLower)) {
-      return 'SCIENCES & TECH';
-    }
-    if (/art|music|film|culture|entertainment|theater|theatre|gallery|museum|creative|movie|show|concert|exhibition|fashion|design|style/.test(queryLower)) {
-      return 'ARTS';
-    }
-    return 'ANALYSIS';
-  }
-
-  private getEditorialStyle(focusCategory: string): { source: string; tone: string; style: string; structure: string } {
-    switch (focusCategory) {
-      case 'BUSINESS':
-        return {
-          source: 'Wall Street Journal',
-          tone: 'Data-driven, executive-focused, action-oriented',
-          style: 'Open with the market-moving development or strategic shift. Weave in precise metrics and financial data throughout the narrative. Quote executives and analysts to add authority. Examine competitive dynamics and strategic implications. Connect financial moves to broader industry trends. Write multiple flowing paragraphs per section - avoid choppy, fragmented text. End with forward-looking market implications.',
-          structure: '**The Move** (3-4 paragraphs setting the scene) → **The Numbers** (2-3 paragraphs with data and context) → **The Strategy** (3-4 paragraphs analyzing decisions) → **The Ripple Effect** (2-3 paragraphs on wider impact) → **The Road Ahead** (2-3 paragraphs on future outlook)'
-        };
-      case 'SCIENCES & TECH':
-        return {
-          source: 'Wired',
-          tone: 'Futuristic, accessible, wonder-filled',
-          style: 'Begin with a compelling scene or breakthrough moment. Make complex technology tangible through vivid analogies and real-world examples. Show how the innovation connects to human needs and societal change. Include voices from creators, users, and experts. Maintain a sense of possibility and curiosity throughout. Write in long, flowing paragraphs that build momentum. Balance technical accuracy with narrative storytelling.',
-          structure: '**The Breakthrough** (3-4 paragraphs introducing innovation) → **How It Works** (3-4 paragraphs explaining technology) → **The Human Element** (3-4 paragraphs on real impact) → **The Bigger Picture** (2-3 paragraphs on implications) → **What Comes Next** (2-3 paragraphs on future possibilities)'
-        };
-      case 'ARTS':
-        return {
-          source: 'Vogue',
-          tone: 'Elegant, sensory, emotionally resonant',
-          style: 'Paint a vivid picture with rich sensory details and emotional depth. Explore the creative vision and cultural significance with sophistication. Use elegant, rhythmic prose that mirrors the artistry being discussed. Include voices of creators and cultural observers. Connect aesthetic choices to broader cultural movements. Write in long, luxurious paragraphs that reward close reading. Let the narrative breathe and unfold naturally.',
-          structure: '**The Moment** (3-4 paragraphs capturing the scene) → **The Vision** (3-4 paragraphs on creative intent) → **The Craft** (2-3 paragraphs on technique and execution) → **The Resonance** (3-4 paragraphs on cultural impact) → **The Legacy** (2-3 paragraphs on lasting significance)'
-        };
-      case 'HEALTH & SPORT':
-        return {
-          source: 'Health Magazine',
-          tone: 'Energetic, evidence-based, empowering',
-          style: 'Start with a relatable scenario or surprising finding. Ground advice in solid research and expert medical opinion. Share real stories that illustrate the science in action. Translate complex medical information into clear, actionable insights. Maintain an encouraging, energetic voice throughout. Write in substantial, informative paragraphs that build understanding progressively. Connect individual health choices to broader wellness trends.',
-          structure: '**The Discovery** (3-4 paragraphs introducing the finding) → **The Science Explained** (3-4 paragraphs breaking down research) → **Real Stories** (2-3 paragraphs with examples) → **Expert Guidance** (3-4 paragraphs with actionable advice) → **Your Path Forward** (2-3 paragraphs on next steps)'
-        };
-      default:
-        return {
-          source: 'New York Times',
-          tone: 'Objective, authoritative, deeply reported',
-          style: 'Begin with a strong news lede that captures the essential development. Build context layer by layer, explaining how we arrived at this moment. Present multiple perspectives fairly with thorough attribution. Use concrete examples and verified data to support analysis. Examine implications for different stakeholders. Write in substantial, well-developed paragraphs that advance understanding. Avoid rushed transitions - let ideas fully develop. End with forward-looking questions or emerging trends, not summary.',
-          structure: '**The Development** (3-4 paragraphs establishing the story) → **The Background** (3-4 paragraphs providing context) → **Multiple Voices** (3-4 paragraphs with diverse perspectives) → **The Implications** (3-4 paragraphs analyzing impact) → **The Questions Ahead** (2-3 paragraphs on what\'s next)'
-        };
-    }
-  }
-
-  private generateStyledReport(query: string, results: SearchResult[], focusCategory: string): string {
-    const editorialStyle = this.getEditorialStyle(focusCategory);
-    const structureParts = editorialStyle.structure
-      .split(' → ')
-      .map((s) => s.replace(/\*\*/g, '').replace(/\s*\([^)]*\)/g, '').trim());
-
-    let intro = '';
-    if (focusCategory === 'BUSINESS') {
-      intro = `Market dynamics in ${query} are shifting as key players respond to emerging pressures and opportunities.\n\n${results.length > 0 ? results[0].content.slice(0, 200) + '...' : 'Industry sources indicate significant movement in this sector.'}`;
-    } else if (focusCategory === 'SCIENCES & TECH') {
-      intro = `A breakthrough in ${query} signals a new chapter in how we understand and interact with this technology.\n\n${results.length > 0 ? results[0].content.slice(0, 200) + '...' : 'Researchers and developers are exploring innovative approaches.'}`;
-    } else if (focusCategory === 'ARTS') {
-      intro = `In the world of ${query}, a new creative vision is taking shape—one that speaks to our moment and points toward something larger.\n\n${results.length > 0 ? results[0].content.slice(0, 200) + '...' : 'Artists and cultural observers are tracing these evolving currents.'}`;
-    } else if (focusCategory === 'HEALTH & SPORT') {
-      intro = `New insights into ${query} are empowering people to make informed decisions about their health and performance.\n\n${results.length > 0 ? results[0].content.slice(0, 200) + '...' : 'Experts are translating cutting-edge research into practical guidance.'}`;
-    } else {
-      intro = `Recent developments in ${query} are capturing attention as experts and observers track significant changes unfolding across the sector.\n\n${results.length > 0 ? results[0].content.slice(0, 200) + '...' : 'Multiple sources indicate growing interest and activity in this area.'}`;
-    }
-
-    const sections = [
-      intro,
-      `**${structureParts[0] || 'Background'}**\n\nThe current situation emerged from a combination of ${focusCategory === 'BUSINESS' ? 'market forces, competitive dynamics, and strategic decisions' : focusCategory === 'SCIENCES & TECH' ? 'technological advances, research breakthroughs, and innovative thinking' : focusCategory === 'ARTS' ? 'cultural shifts, creative exploration, and evolving aesthetics' : focusCategory === 'HEALTH & SPORT' ? 'scientific discoveries, clinical evidence, and expert consensus' : 'technological advances, market shifts, and changing needs'}. ${focusCategory === 'BUSINESS' ? 'Executives and analysts' : focusCategory === 'SCIENCES & TECH' ? 'Researchers and engineers' : focusCategory === 'ARTS' ? 'Artists and curators' : focusCategory === 'HEALTH & SPORT' ? 'Health professionals and researchers' : 'Industry observers'} point to several factors driving the transformation.`,
-      `**${structureParts[1] || 'Key Findings'}**\n\n${results.slice(0, 2).map((r) => `${focusCategory === 'BUSINESS' ? 'Market data shows' : focusCategory === 'SCIENCES & TECH' ? 'Research indicates' : focusCategory === 'ARTS' ? 'Critical analysis reveals' : focusCategory === 'HEALTH & SPORT' ? 'Studies demonstrate' : 'According to'} ${r.title}, ${r.content.slice(0, 150)}...`).join('\n\n')}`,
-      `**${structureParts[2] || 'Expert Perspectives'}**\n\n${focusCategory === 'BUSINESS' ? 'Industry leaders and financial analysts' : focusCategory === 'SCIENCES & TECH' ? 'Leading researchers and technologists' : focusCategory === 'ARTS' ? 'Critics and cultural observers' : focusCategory === 'HEALTH & SPORT' ? 'Medical experts and wellness professionals' : 'Industry observers'} note that these developments reflect broader trends.`,
-      `**${structureParts[3] || 'Impact'}**\n\nThe changes are prompting ${focusCategory === 'BUSINESS' ? 'organizations to reassess strategies and market positioning' : focusCategory === 'SCIENCES & TECH' ? 'institutions to rethink approaches and capabilities' : focusCategory === 'ARTS' ? 'the cultural landscape to evolve in unexpected ways' : focusCategory === 'HEALTH & SPORT' ? 'individuals to reconsider their health and fitness approaches' : 'stakeholders to adjust their approaches'}.`,
-      `**${structureParts[4] || 'Next Steps'}**\n\n${focusCategory === 'BUSINESS' ? 'Market watchers' : focusCategory === 'SCIENCES & TECH' ? 'Technology observers' : focusCategory === 'ARTS' ? 'Cultural commentators' : focusCategory === 'HEALTH & SPORT' ? 'Health experts' : 'Experts'} recommend continued monitoring of developments in the coming months.`
-    ];
-
-    return sections.join('\n\n');
-  }
-
-  private getFallbackStories(query: string, results: SearchResult[], focusCategory?: string): WriterOutput {
-    const detectedCategory = focusCategory || this.determineFocusCategory(query);
-    const editorialStyle = this.getEditorialStyle(detectedCategory);
-
-    return {
-      focus_category: detectedCategory,
-      style_source: editorialStyle.source,
-      headline: this.buildFallbackHeadline(query),
-      subtitle: 'A Look at Recent Developments and What They Mean',
-      short_summary: `Analysis of ${query} reveals emerging trends and significant changes. Experts are monitoring the situation as developments unfold and implications become clearer.`,
-      markdown_report: this.generateStyledReport(query, results, detectedCategory),
-      follow_up_questions: [
-        `What are the key factors driving changes in ${query}?`,
-        `How are industry leaders responding to these developments?`,
-        `What should observers watch for in the near future?`
-      ],
-      citations: results.slice(0, 5).map((r) => ({
-        text: r.title.slice(0, 50),
-        source: { title: r.title, url: r.url, snippet: r.content.slice(0, 100) }
-      })),
-      confidence_level: results.length >= 6 ? 75 : 65
-    };
-  }
-
-  private getFallbackResult(query: string): StoryResult {
-    const writer = this.getFallbackStories(query, []);
-    return {
-      query,
-      focus_category: writer.focus_category,
-      style_source: writer.style_source,
-      headline: writer.headline,
-      subtitle: writer.subtitle,
-      short_summary: writer.short_summary,
-      markdown_report: writer.markdown_report,
-      follow_up_questions: writer.follow_up_questions,
-      thinking_process: `Strategic analysis approach for ${query}`,
-      progress_updates: ['Analysis initiated', 'Data gathered', 'Insights generated'],
-      search_queries: this.buildSearchQueries(query),
-      sources: [],
-      agent_contributions: {},
-      citations: writer.citations,
-      images: [],
-      videos: [],
-      story_areas: this.buildStoryAreas(query),
-      confidence_level: writer.confidence_level
-    };
+    return data as WriterOutput & { style_source: string };
   }
 }

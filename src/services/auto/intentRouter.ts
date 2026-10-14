@@ -84,3 +84,35 @@ export async function fetchExploreOptions(query: string, answer: string): Promis
     return { recommended: null, lines: {} };
   }
 }
+
+// ---- Magazine 📰 ----
+export const MAGAZINE_SECTIONS = [
+  'world', 'local', 'business', 'science', 'culture', 'lifestyle', 'opinion', 'sports', 'well',
+  'ai', 'gadgets', 'ideas', 'environment', 'security', 'politics',
+] as const;
+export type MagazineSection = typeof MAGAZINE_SECTIONS[number];
+
+export interface MagazinePlan {
+  /** The main section first, then three more to rewrite the story from (Decisions). */
+  sections: MagazineSection[];
+  /** Current news (→ a news photo) rather than an evergreen topic (→ an AI image); null if unknown. */
+  news: number | null;
+}
+
+const DEFAULT_PLAN: MagazinePlan = { sections: ['ideas', 'culture', 'science', 'world'], news: null };
+
+/** Sections and news-vs-evergreen for a Magazine story (one Decisions call). */
+export async function fetchMagazinePlan(query: string, location: string): Promise<MagazinePlan> {
+  try {
+    const { data, error } = await supabase.functions.invoke('classify-intent', {
+      body: { query: query.trim(), location, only: 'magazine' },
+    });
+    if (error) throw error;
+    const d = data as { sections?: string[]; news?: number | null } | null;
+    const sections = (d?.sections ?? []).filter((s): s is MagazineSection => (MAGAZINE_SECTIONS as readonly string[]).includes(s));
+    return { sections: sections.length ? sections : DEFAULT_PLAN.sections, news: typeof d?.news === 'number' ? d.news : null };
+  } catch (error) {
+    logger.error('Magazine plan failed', { error });
+    return DEFAULT_PLAN;
+  }
+}

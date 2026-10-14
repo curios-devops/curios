@@ -13,7 +13,8 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://gpfccicfqynah
  * Search the web via Exa. Returns [] on any failure or if the key is missing,
  * so callers can fall back to Brave.
  */
-export async function searchExa(query: string, numResults = 10): Promise<WebSearchResult[]> {
+/** Optional filters: category "news", or only these domains (e.g. youtube.com for videos). */
+export async function searchExa(query: string, numResults = 10, options: { category?: 'news'; includeDomains?: string[] } = {}): Promise<WebSearchResult[]> {
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   if (!anonKey?.trim()) {
     logger.warn('Exa: VITE_SUPABASE_ANON_KEY not configured');
@@ -31,7 +32,7 @@ export async function searchExa(query: string, numResults = 10): Promise<WebSear
         'Content-Type': 'application/json',
         Authorization: `Bearer ${anonKey}`,
       },
-      body: JSON.stringify({ query: query.trim(), numResults }),
+      body: JSON.stringify({ query: query.trim(), numResults, ...options }),
       signal: controller.signal,
     }));
 
@@ -45,13 +46,14 @@ export async function searchExa(query: string, numResults = 10): Promise<WebSear
     const data = await res.json();
     return (data.results || [])
       .filter((r: { url?: string; title?: string }) => r?.url && r?.title)
-      .map((r: { title: string; url: string; text?: string; summary?: string }) => {
+      .map((r: { title: string; url: string; text?: string; summary?: string; image?: string }) => {
         const text = (r.text || r.summary || '').toString().trim();
         return {
           title: String(r.title).trim(),
           url: String(r.url).trim(),
           snippet: text.slice(0, 600),
           content: text,
+          ...(r.image ? { image: String(r.image) } : {}),
         };
       });
   } catch (error) {

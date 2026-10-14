@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Brain, Check, Lightbulb, Search, BookOpen } from 'lucide-react';
+import { Check, Lightbulb, Search, BookOpen } from 'lucide-react';
+import CuriosLogo from './common/CuriosLogo';
+import { appSettings } from '../config/appSettings';
 import { useAccentColor } from '../hooks/useAccentColor';
 
 interface ResearchProgressProps {
@@ -52,7 +54,7 @@ export const ResearchProgress: React.FC<ResearchProgressProps> = ({
     <div className="bg-gray-800 dark:bg-gray-900 rounded-xl p-6 text-white">
       {/* Title */}
       <div className="flex items-center gap-3 mb-6">
-        <Brain style={{ color: accentColors.primary }} size={24} />
+        <CuriosLogo size={24} frameColor={appSettings.logoMark.iconColor} pulse />
         <h3 className="text-lg font-medium">Curios AI Magazine</h3>
       </div>
       
