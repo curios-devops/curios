@@ -1,25 +1,24 @@
 // Magazine (route /stories-results): the answer as a magazine story. The search starts at
 // once while Decisions picks the sections (the main one + three more, NYT / Wired desks);
-// tapping another section rewrites the story from that angle with the same sources.
-// Free for everyone. Finished stories are cached for the visit (per question + section).
+// "change focus" rewrites the story from another section's angle with the same sources.
+// Decisions also rates the question: complex → Sol writes it, otherwise Luna; Astra is kept
+// for "go deeper", which continues the story. Free for everyone. Finished stories are cached for the visit (per question + section).
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { storiesService, StoryProgressCallback } from '../agents/storiesService';
 import type { StoryResult } from '../agents/storyAgent.ts';
 import { SearchResult } from '../types.ts';
-import ResearchProgress from '../../../components/ResearchProgress';
+import SourcesLoader from '../../../components/SourcesLoader';
 import TabSystem from '../../../components/TabSystem';
-import CuriosLogo from '../../../components/common/CuriosLogo.tsx';
 import { appSettings } from '../../../config/appSettings.ts';
 import { useAccentColor } from '../../../hooks/useAccentColor';
 import { useGoBack } from '../../../hooks/useGoBack.ts';
-import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
-import AstraNotice from '../../../components/AstraNotice.tsx';
 import { saveNode } from '../../space/nodePersistenceService';
 import { fetchMagazinePlan, MAGAZINE_SECTIONS, type MagazinePlan, type MagazineSection } from '../../auto/intentRouter.ts';
+import { stepUp } from '../../auto/modelTier.ts';
 import { getCached, setCached } from '../../search/searchCache.ts';
 
 interface ProgressState {
@@ -46,8 +45,14 @@ const INITIAL_PROGRESS: ProgressState = {
   storyPhase: 'analyzing',
 };
 
-// The reader's city from the browser's time zone ("America/Santiago" → "Santiago"): Local's place.
-const readerCity = () => (Intl.DateTimeFormat().resolvedOptions().timeZone?.split('/').pop() ?? '').replace(/_/g, ' ');
+// The reader's city (Local's place), once per visit: IP geolocation (/api/geo, Netlify edge),
+// else the time zone's city ("America/Santiago" → "Santiago"; Spain is all "Madrid").
+const tzCity = () => (Intl.DateTimeFormat().resolvedOptions().timeZone?.split('/').pop() ?? '').replace(/_/g, ' ');
+let cityLookup: Promise<string> | null = null;
+const readerCity = () => (cityLookup ??= fetch('/api/geo', { signal: AbortSignal.timeout(2000) })
+  .then((r) => r.json() as Promise<{ city?: string }>)
+  .then((g) => g.city || tzCity())
+  .catch(() => tzCity()));
 
 export default function StoriesResults() {
   const goBack = useGoBack();
@@ -59,14 +64,16 @@ export default function StoriesResults() {
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
   const askedSection = searchParams.get('section') as MagazineSection | null;
-  const { getModel, answerModel, continueWithAstra } = useAnswerModel(query);
-  const city = readerCity();
+  const longRead = searchParams.get('long') === '1';
+  const [city, setCity] = useState('');
+  const [focusOpen, setFocusOpen] = useState(false);
+  const focusRef = useRef<HTMLDivElement>(null);
 
   const [plan, setPlan] = useState<MagazinePlan | null>(() => getCached<MagazinePlan>(`magazine-plan|${query}`)?.value ?? null);
   const section: MagazineSection | null = askedSection && (MAGAZINE_SECTIONS as readonly string[]).includes(askedSection)
     ? askedSection
     : plan?.sections[0] ?? null;
-  const storyKey = `magazine|${query}|${section}|${currentLanguage.code}`;
+  const storyKey = `magazine|${query}|${section}|${currentLanguage.code}${longRead ? '|long' : ''}`;
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<StoryResult | null>(null);
@@ -96,9 +103,11 @@ export default function StoriesResults() {
   useEffect(() => {
     if (!query) return;
     storiesService.prefetch(query, handleProgress);
-    if (plan) return;
     let live = true;
-    void fetchMagazinePlan(query, city).then((p) => {
+    void readerCity().then(async (c) => {
+      if (live) setCity(c);
+      if (plan) return;
+      const p = await fetchMagazinePlan(query, c);
       setCached(`magazine-plan|${query}`, p);
       if (live) setPlan(p);
     });
@@ -107,7 +116,7 @@ export default function StoriesResults() {
 
   // 2) The story for the active section (cached per question + section + language).
   useEffect(() => {
-    if (!query || !section || runKey.current === storyKey) return;
+    if (!query || !section || !plan || runKey.current === storyKey) return;
     runKey.current = storyKey;
     const cached = getCached<StoryResult>(storyKey)?.value;
     if (cached) {
@@ -121,11 +130,14 @@ export default function StoriesResults() {
     setError(null);
     setResult(null);
     setProgressState((p) => ({ ...p, storyPhase: 'synthesizing' }));
+    // Luna, or Sol when Decisions rates the question complex; Long Read goes one model up.
+    const baseModel = plan.tier && plan.tier !== 'complex' ? appSettings.models.luna : appSettings.models.sol;
     storiesService.performStoryAnalysis(query, handleProgress, {
       section,
       location: city,
       language: currentLanguage.code,
-      model: getModel().then((m) => m.model),
+      model: longRead ? stepUp(baseModel) : baseModel,
+      long: longRead,
     })
       .then((story) => {
         setCached(storyKey, story);
@@ -151,9 +163,33 @@ export default function StoriesResults() {
         setLoading(false);
       });
     return () => { live = false; runKey.current = ''; };
-  }, [query, storyKey]);
+  }, [query, storyKey, plan]);
+
+  useEffect(() => {
+    if (!focusOpen) return;
+    const close = (e: MouseEvent) => { if (!focusRef.current?.contains(e.target as Node)) setFocusOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [focusOpen]);
+
+  // "Go deeper": Astra continues the story; the longer story replaces the cached one.
+  const deepen = async () => {
+    if (!result || !section) return;
+    const more = await storiesService.deepen(result, { section, location: city, language: currentLanguage.code });
+    const next = { ...result, markdown_report: `${result.markdown_report}\n\n${more}`, deeper: undefined };
+    setCached(storyKey, next);
+    setResult(next);
+  };
+
+  // "Long Read" (Magazine's Ask Deeper): free; same question and section, longer and deeper.
+  const toggleLongRead = () => {
+    const params = new URLSearchParams(location.search);
+    if (longRead) params.delete('long'); else params.set('long', '1');
+    navigate(`/stories-results?${params.toString()}`);
+  };
 
   const pickSection = (id: MagazineSection) => {
+    setFocusOpen(false);
     if (id === section) return;
     const params = new URLSearchParams(location.search);
     params.set('section', id);
@@ -161,64 +197,65 @@ export default function StoriesResults() {
   };
   const sectionName = (id: MagazineSection) => (id === 'local' && city ? `${t('magSection_local')} · ${city}` : t(`magSection_${id}` as never));
 
-  const phaseIcon = (phase?: string) => {
-    switch (phase) {
-      case 'searching': return <Search className="text-green-500" size={14} />;
-      case 'synthesizing': return <Sparkles style={{ color: accent.primary }} size={14} />;
-      case 'finalizing': return <CheckCircle2 className="text-green-500" size={14} />;
-      default: return <CuriosLogo size={14} frameColor={appSettings.logoMark.iconColor} />;
-    }
-  };
-
   return (
     <div className="stories-result-page min-h-screen bg-white dark:bg-[#111111] text-gray-900 dark:text-white transition-colors duration-200">
-      <header className="flex items-center gap-4 px-6 pt-6 pb-3">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-3 px-6 pt-6 pb-3">
         <button type="button" onClick={goBack} style={{ color: accent.primary }} className="hover:opacity-80 transition-opacity flex-shrink-0">
           <ArrowLeft size={20} />
         </button>
-        <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div className="flex items-center gap-4 flex-1 min-w-[70%] sm:min-w-0">
           <h1 className="text-base sm:text-lg font-medium break-words max-h-24 overflow-y-auto pr-1">{query}</h1>
-          {loading && (
-            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full flex-shrink-0">
-              {phaseIcon(progressState.storyPhase)}
-              <span className="text-xs font-medium capitalize">{progressState.storyPhase}</span>
-            </div>
-          )}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+        <button
+          type="button"
+          onClick={toggleLongRead}
+          aria-pressed={longRead}
+          className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium text-white whitespace-nowrap transition-all hover:opacity-90"
+          style={{
+            backgroundColor: 'var(--accent-primary)',
+            boxShadow: longRead ? '0 0 0 3px color-mix(in srgb, var(--accent-primary) 30%, transparent)' : undefined,
+          }}
+        >
+          {t('magLongRead')}
+        </button>
+        {/* Change focus: the three other sections Decisions suggested, to rewrite the story from. */}
+        {plan && section && (
+          <div className="relative flex-shrink-0" ref={focusRef}>
+            <button
+              type="button"
+              onClick={() => setFocusOpen((o) => !o)}
+              aria-expanded={focusOpen}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-xs font-medium text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors whitespace-nowrap"
+            >
+              {t('magChangeFocus')}
+            </button>
+            {focusOpen && (
+              <div
+                className="absolute right-0 top-full mt-2 rounded-lg shadow-lg border overflow-hidden min-w-[200px] z-20"
+                style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
+              >
+                {plan.sections.filter((id) => id !== section).map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => pickSection(id)}
+                    className="w-full px-4 py-2.5 text-sm text-left transition-colors hover:bg-[var(--ui-bg-secondary)]"
+                    style={{ color: 'var(--ui-text-primary)' }}
+                  >
+                    {sectionName(id)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         </div>
       </header>
 
-      {/* Sections, NYT style: the main one and three more angles to rewrite it from. */}
-      {plan && (
-        <nav className="max-w-4xl mx-auto px-6 flex gap-5 overflow-x-auto scrollbar-hide border-b border-gray-200 dark:border-gray-800">
-          {plan.sections.map((id) => {
-            const active = id === section;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => pickSection(id)}
-                aria-current={active ? 'page' : undefined}
-                className={`py-2.5 border-b-2 -mb-px text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-colors ${active ? '' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
-                style={active ? { borderColor: accent.primary, color: accent.primary } : undefined}
-              >
-                {sectionName(id)}
-              </button>
-            );
-          })}
-        </nav>
-      )}
-
       <main className="max-w-4xl mx-auto px-0 sm:px-6 py-6">
         {loading && (
-          <ResearchProgress
-            stage={progressState.stage}
-            timeRemaining={progressState.timeRemaining}
-            progress={progressState.progress}
-            thinkingSteps={progressState.thinkingSteps}
-            isComplete={false}
-            searchTerms={progressState.searchTerms}
-            sources={progressState.sources}
-          />
+          <SourcesLoader sources={progressState.sources} />
         )}
         {error && (
           <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-red-500/20 p-8 text-center">
@@ -232,9 +269,6 @@ export default function StoriesResults() {
             </button>
           </div>
         )}
-        {!loading && result && answerModel?.astraBlocked && (
-          <AstraNotice onContinueWithAstra={continueWithAstra} />
-        )}
         {!loading && result && section && (
           <TabSystem
             result={result}
@@ -242,6 +276,7 @@ export default function StoriesResults() {
             sectionLabel={sectionName(section)}
             isNews={(plan?.news ?? 0) >= 0.5}
             cacheKey={storyKey}
+            onDeepen={deepen}
           />
         )}
       </main>

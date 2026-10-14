@@ -39,6 +39,11 @@ class StoriesService {
     this.getAgent().prefetch(query.trim(), onProgress);
   }
 
+  /** "Go deeper": the continuation (markdown) to append to the story. */
+  deepen(story: StoryResult, options: Omit<StoryRequest, 'query' | 'model'>): Promise<string> {
+    return this.getAgent().deepen(story, options);
+  }
+
   async performStoryAnalysis(
     query: string,
     onProgress?: StoryProgressCallback,

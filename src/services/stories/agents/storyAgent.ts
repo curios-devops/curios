@@ -22,10 +22,12 @@ import type { MagazineSection } from '../../auto/intentRouter.ts';
 
 export interface StoryRequest {
   query: string;
-  /** Article model (Luna/Sol/Astra), awaited just before writing; default Sol. */
-  model?: Promise<string>;
+  /** Article model: Luna, or Sol when Decisions rates the question complex; default Sol. */
+  model?: string;
   /** The section to write it for (Decisions' main pick, or the one the reader tapped). */
   section?: MagazineSection;
+  /** "Long Read": a longer, more detailed feature (written one model up). */
+  long?: boolean;
   /** The reader's city/country (for Local). */
   location?: string;
   /** Language code to write in (the app's language). */
@@ -46,6 +48,8 @@ export interface StoryResult {
   markdown_report: string;
   /** English prompt for the AI cover image. */
   image_prompt?: string;
+  /** "Go deeper" button label: the thread Astra can expand (the writer's pick, reader's language). */
+  deeper?: string;
   follow_up_questions: string[];
   thinking_process: string;
   progress_updates: string[];
@@ -85,6 +89,7 @@ interface WriterOutput {
   markdown_report: string;
   image_prompt: string;
   follow_up_questions: string[];
+  deeper: string;
 }
 
 interface SearchBundle { queries: string[]; results: SearchResult[]; images: ImageResult[]; videos: VideoResult[]; news: NewsItem[] }
@@ -98,6 +103,18 @@ const youtubeId = (url: string) => url.match(/(?:youtube\.com\/watch\?v=|youtu\.
 // A slow provider must not hold the story: after `ms` it counts as empty.
 const within = <T,>(work: Promise<T>, empty: T, ms = 15_000): Promise<T> =>
   Promise.race([work, new Promise<T>((resolve) => setTimeout(() => resolve(empty), ms))]);
+
+// Primary engine first; if it hasn't brought `enough` within `ms` (slow, failed or thin), the
+// fallback runs too and the first one with enough wins (both thin → both merged).
+async function hedge<T>(primary: () => Promise<T[]>, fallback: () => Promise<T[]>, enough: number, ms = 5000): Promise<T[]> {
+  const a = primary().catch(() => [] as T[]);
+  const early = await Promise.race([a, new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))]);
+  if (early && early.length >= enough) return early;
+  const b = fallback().catch(() => [] as T[]);
+  if (early) return [...early, ...(await b)];
+  const good = (p: Promise<T[]>) => p.then((r) => (r.length >= enough ? r : new Promise<T[]>(() => undefined)));
+  return Promise.race([good(a), good(b), Promise.all([a, b]).then(([x, y]) => [...x, ...y])]);
+}
 
 export class StoryAgent {
   async process(request: StoryRequest, onStatusUpdate?: StoryStatusUpdate): Promise<StoryResult> {
@@ -122,7 +139,7 @@ export class StoryAgent {
       queries, results.slice(0, 5), 'StoryWriter', 'Writing the story', 'synthesizing'
     );
 
-    const writer = await this.writeArticle(query, results, section, request, await request.model);
+    const writer = await this.writeArticle(query, results, section, request, request.model);
 
     const result: StoryResult = {
       query,
@@ -133,6 +150,7 @@ export class StoryAgent {
       short_summary: writer.short_summary,
       markdown_report: writer.markdown_report,
       image_prompt: writer.image_prompt,
+      deeper: writer.deeper || undefined,
       follow_up_questions: writer.follow_up_questions,
       thinking_process: `Magazine story on "${query}" for the ${section} section.`,
       progress_updates: ['Search angles drafted', 'Sources gathered', 'Story written'],
@@ -168,17 +186,38 @@ export class StoryAgent {
     return search;
   }
 
+  // Everything that doesn't need the drafted angles starts at once (Brave on the question,
+  // news, videos, images); the angles go to Exa, with Tavily brought in after 5 s.
   private async gather(query: string, onStatusUpdate?: StoryStatusUpdate): Promise<SearchBundle> {
+    const topic = this.buildImageQuery(query);
+    const brave = within(this.runBrave(query), { web: [], images: [], news: [], videos: [] });
+    const media = Promise.all([
+      within(brave.then((b) => this.resolveImages(topic, b.images)), []),
+      within(this.findVideos(topic, brave), []),
+      within(this.findNews(query, brave), []),
+    ]);
+
     const queries = await this.generateSearchQueries(query);
     onStatusUpdate?.(
       'Gathering Sources for Your Story', 'About 30 seconds remaining', 40,
       'Searching for relevant sources and information', queries, [], 'StoryWriter', 'Searching for sources across the web', 'searching'
     );
-    const bundle = await this.search(queries, query);
+    const [, perspectiveA, perspectiveB, counterA, counterB] = queries;
+    const [web, perspective, counter] = await Promise.all([
+      brave,
+      within(this.searchText(`${perspectiveA} ${perspectiveB}`.trim()), []),
+      within(this.searchText(`${counterA} ${counterB}`.trim()), []),
+    ]);
+    const results = this.mergeText(this.clean(web.web), perspective, counter);
+    const [images, videos, news] = await media;
+
+    // News photos lead: a news story's photo cover comes from the reporting, not a generic image search.
+    const newsPhotos: ImageResult[] = news.filter((n) => n.image).map((n) => ({ url: n.image!, image: n.image!, alt: n.title, title: n.title, source_url: n.url }));
+    const bundle = { queries, results, images: this.dedupeByUrl([...newsPhotos, ...images]).slice(0, 12), videos, news };
     logger.info('StoryAgent: search complete', {
-      results: bundle.results.length, images: bundle.images.length, videos: bundle.videos.length, news: bundle.news.length,
+      results: results.length, images: bundle.images.length, videos: videos.length, news: news.length,
     });
-    return { queries, ...bundle };
+    return bundle;
   }
 
   // Five questions, one bundle per intent, routed to three engines (see `search`):
@@ -284,29 +323,6 @@ Each question must be a single, specific, naturally-phrased question about the t
     return q.replace(/\s+/g, ' ').trim() || query.trim();
   }
 
-  // Brave runs the user's main question (and yields media + news); Tavily and Exa add the
-  // perspective and counterpoint angles. News and videos each try Exa → Tavily → Brave.
-  private async search(queries: string[], originalQuery: string): Promise<Omit<SearchBundle, 'queries'>> {
-    const [main, perspectiveA, perspectiveB, counterA, counterB] = queries;
-    const topic = this.buildImageQuery(originalQuery);
-
-    const [brave, tavily, exa] = await Promise.all([
-      within(this.runBrave(main), { web: [], images: [], news: [], videos: [] }),
-      within(this.runTavily(`${perspectiveA} ${perspectiveB}`.trim()), []),
-      within(this.runExa(`${counterA} ${counterB}`.trim()), [])
-    ]);
-
-    const results = this.mergeText(this.clean(brave.web), exa, tavily);
-    const [images, videos, news] = await Promise.all([
-      within(this.resolveImages(topic, brave.images), []),
-      within(this.findVideos(topic, brave.videos), []),
-      within(this.findNews(main, brave.news), []),
-    ]);
-    // News photos lead: a news story's photo cover comes from the reporting, not a generic image search.
-    const newsPhotos: ImageResult[] = news.filter((n) => n.image).map((n) => ({ url: n.image!, image: n.image!, alt: n.title, title: n.title, source_url: n.url }));
-    return { results, images: this.dedupeByUrl([...newsPhotos, ...images]).slice(0, 12), videos, news };
-  }
-
   private clean(results: SearchResult[]): SearchResult[] {
     return results.filter((r) => r.url && r.url !== '#' && r.title && r.content).slice(0, 10);
   }
@@ -350,11 +366,16 @@ Each question must be a single, specific, naturally-phrased question about the t
     }
   }
 
-  // Merge Brave (principal) with Exa + Tavily (perspectives), dedupe by URL, cap 12.
-  private mergeText(brave: SearchResult[], exa: SearchResult[], tavily: SearchResult[]): SearchResult[] {
+  // Text angle: Exa first (fast); Tavily joins if Exa is slow or thin after 5 s.
+  private searchText(query: string): Promise<SearchResult[]> {
+    return hedge(() => this.runExa(query), () => this.runTavily(query), 5);
+  }
+
+  // Merge Brave (principal) with the two angles, dedupe by URL, cap 12.
+  private mergeText(brave: SearchResult[], perspective: SearchResult[], counter: SearchResult[]): SearchResult[] {
     const seen = new Set<string>();
     const merged: SearchResult[] = [];
-    for (const r of [...brave, ...exa, ...tavily]) {
+    for (const r of [...brave, ...perspective, ...counter]) {
       if (seen.has(r.url)) continue;
       seen.add(r.url);
       merged.push(r);
@@ -362,34 +383,32 @@ Each question must be a single, specific, naturally-phrased question about the t
     return merged.slice(0, 12);
   }
 
-  // News: Exa (news category) → Tavily (news topic) → Brave news, until there are enough.
-  private async findNews(query: string, braveNews: BraveSearchResults['news']): Promise<NewsItem[]> {
-    const ENOUGH = 5;
+  // News: Exa (news category), Tavily (news topic) after 5 s if needed, topped up with Brave news.
+  private async findNews(query: string, brave: Promise<BraveSearchResults>): Promise<NewsItem[]> {
     const toItem = (r: { title: string; url: string; content?: string; snippet?: string; image?: string }): NewsItem =>
       ({ title: r.title, url: r.url, snippet: (r.content || r.snippet || '').slice(0, 220), source: hostOf(r.url), image: r.image });
-    let items: NewsItem[] = (await searchExa(query, 10, { category: 'news' }).catch(() => [])).map(toItem);
-    if (items.length < ENOUGH) {
-      const tavily = await searchWithTavily(query, 'basic', { topic: 'news' }).catch(() => ({ results: [] as SearchResult[] }));
-      items = [...items, ...tavily.results.map(toItem)];
-    }
-    if (items.length < ENOUGH) items = [...items, ...braveNews.map(toItem)];
+    let items = await hedge(
+      () => searchExa(query, 10, { category: 'news' }).then((r) => r.map(toItem)),
+      () => searchWithTavily(query, 'basic', { topic: 'news' }).then((r) => (r.results ?? []).map(toItem)),
+      5,
+    );
+    if (items.length < 5) items = [...items, ...(await brave).news.map(toItem)];
     return this.dedupeByUrl(items.filter((n) => n.url && n.title)).slice(0, 10);
   }
 
-  // Videos: YouTube results from Exa → Tavily → Brave videos, until there are enough.
-  private async findVideos(query: string, braveVideos: BraveSearchResults['videos']): Promise<VideoResult[]> {
-    const ENOUGH = 4;
-    const fromWeb = (r: { title: string; url: string }): VideoResult | null => {
+  // Videos: YouTube results from Exa, Tavily after 5 s if needed, topped up with Brave videos.
+  private async findVideos(query: string, brave: Promise<BraveSearchResults>): Promise<VideoResult[]> {
+    const fromWeb = (rows: { title: string; url: string }[]): VideoResult[] => rows.flatMap((r) => {
       const id = youtubeId(r.url);
-      return id ? { title: r.title, url: r.url, thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` } : null;
-    };
+      return id ? [{ title: r.title, url: r.url, thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` }] : [];
+    });
     const yt = { includeDomains: ['youtube.com'] };
-    let videos = (await searchExa(query, 10, yt).catch(() => [])).map(fromWeb).filter((v): v is VideoResult => !!v);
-    if (videos.length < ENOUGH) {
-      const tavily = await searchWithTavily(query, 'basic', yt).catch(() => ({ results: [] as SearchResult[] }));
-      videos = [...videos, ...tavily.results.map(fromWeb).filter((v): v is VideoResult => !!v)];
-    }
-    if (videos.length < ENOUGH) videos = [...videos, ...braveVideos.filter((v) => !!v.url)];
+    let videos = await hedge(
+      () => searchExa(query, 10, yt).then(fromWeb),
+      () => searchWithTavily(query, 'basic', yt).then((r) => fromWeb(r.results ?? [])),
+      4,
+    );
+    if (videos.length < 4) videos = [...videos, ...(await brave).videos.filter((v) => !!v.url)];
     return this.dedupeByUrl(videos).slice(0, 10);
   }
 
@@ -439,6 +458,24 @@ Each question must be a single, specific, naturally-phrased question about the t
 
   // ---- Step 3: writer (magazine-write edge function: section voice, grounded in the sources) ----
 
+  /** "Go deeper": Astra continues the story along `story.deeper`, from this visit's sources. */
+  async deepen(story: StoryResult, request: Omit<StoryRequest, 'query' | 'model'>): Promise<string> {
+    const bundle = await searches.get(story.query)?.catch(() => null);
+    const sources = bundle?.results.map((r) => ({ title: r.title, url: r.url, content: r.content.slice(0, 700) }))
+      ?? story.sources.map((s) => ({ title: s.title, url: s.url, content: s.snippet }));
+    const { data, error } = await supabase.functions.invoke('magazine-write', {
+      body: {
+        query: story.query,
+        section: request.section,
+        language: request.language || 'en',
+        sources: sources.slice(0, 10),
+        deeper: { label: story.deeper, report: story.markdown_report },
+      },
+    });
+    if (error || !data?.markdown) throw new Error('The story could not be expanded. Please try again.');
+    return data.markdown as string;
+  }
+
   private async writeArticle(query: string, results: SearchResult[], section: MagazineSection, request: StoryRequest, model: string = appSettings.models.sol): Promise<WriterOutput & { style_source: string }> {
     const { data, error } = await supabase.functions.invoke('magazine-write', {
       body: {
@@ -447,6 +484,7 @@ Each question must be a single, specific, naturally-phrased question about the t
         location: request.location ?? '',
         language: request.language || 'en',
         model,
+        long: !!request.long,
         sources: results.slice(0, 10).map((r) => ({ title: r.title, url: r.url, content: r.content.slice(0, 700) })),
       },
     });

@@ -8,7 +8,7 @@
 // Returns { mode, probabilities?, buyProbability, movieProbability, musicProbability, gameProbability
 // (each null when unknown), tier (null when unknown), backend }. The topic predicates send a film,
 // a song/artist/album or a video game to its own page.
-// Body { query, location?, only: "magazine" } → { sections: [main, …3 more], news } for Magazine.
+// Body { query, location?, only: "magazine" } → { sections: [main, …3 more], news, tier } for Magazine.
 // Body { query, answer, only: "explore" } picks the best way to keep exploring a Search answer
 // (Decisions: watch / play / read) while Luna drafts the one-line pitch of each option.
 // Orchestration layer only — does not call any downstream mode.
@@ -259,6 +259,7 @@ Deno.serve(async (req: Request) => {
         decide(`Question: ${query}${location ? `\nReader's location: ${location}` : ""}`, [
           { type: "choice", name: "section", instructions: MAGAZINE_INSTRUCTIONS, choices: MAGAZINE_SECTIONS },
           { type: "predicate", name: "news", instructions: NEWS_INSTRUCTIONS },
+          tierQuestion,
         ], 3000),
         draftSections(query, location),
       ]);
@@ -267,7 +268,7 @@ Deno.serve(async (req: Request) => {
       // Main = Decisions' pick; the other three = Luna's angles, topped up from Decisions' ranking.
       const sections = [...new Set([...ranked.slice(0, 1), ...angles, ...ranked])].slice(0, 4);
       const news = answers?.news?.probability;
-      return jsonResponse({ sections, news: typeof news === "number" ? news : null, backend: answers ? "decisions" : "default" });
+      return jsonResponse({ sections, news: typeof news === "number" ? news : null, tier: topTier(answers), backend: answers ? "decisions" : "default" });
     }
 
     if (body?.only === "explore") {

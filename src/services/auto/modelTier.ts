@@ -62,6 +62,14 @@ export async function decideTier(query: string): Promise<QuestionTier | null> {
 }
 
 /**
+ * "Ask Deeper" (Search) and "Long Read" (Magazine): one model up from the one that wrote
+ * the plain answer — Luna → Sol, Sol → Astra (Astra stays). Free: no credit is spent.
+ */
+export function stepUp(model: string, models = appSettings.models): string {
+  return model === models.luna ? models.sol : models.astra;
+}
+
+/**
  * Tier → model. Astra costs one Pro credit: `tryConsumeCredit` spends it (no modal);
  * when it can't, the question is answered by Sol and flagged so the UI can offer an upgrade.
  */

@@ -412,7 +412,8 @@ export async function executeDeepFastSearchStreaming(
         query,
         webResults,
         date: new Date().toISOString().split('T')[0],
-        locale
+        locale,
+        model: await request.model,
       },
       (chunk: string) => {
         fullAnswer += chunk;

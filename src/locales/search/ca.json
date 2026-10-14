@@ -16,5 +16,8 @@
   "exploreMoreOptions": "Més opcions",
   "exploreRealSong": "Una cançó real",
   "exploreExplainSong": "Una cançó que m'ho expliqui",
-  "exploreExplainLine": "Creada per entendre {topic}"
+  "exploreExplainLine": "Creada per entendre {topic}",
+  "followUps": "Preguntes de seguiment",
+  "searchingSources": "Cercant fonts fiables...",
+  "analyzingSource": "Analitzant"
 }

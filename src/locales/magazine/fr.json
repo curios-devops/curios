@@ -21,5 +21,7 @@
   "magTab_sources": "Sources",
   "magPhoto": "Photo",
   "magAI": "IA",
-  "magFollowUps": "Continuer à explorer"
+  "magChangeFocus": "Changer d'angle",
+  "magDeeperError": "Impossible d'approfondir l'article. Réessayez.",
+  "magLongRead": "Grand format"
 }

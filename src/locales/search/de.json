@@ -16,5 +16,8 @@
   "exploreMoreOptions": "Weitere Optionen",
   "exploreRealSong": "Ein echter Song",
   "exploreExplainSong": "Ein Song, der es erklärt",
-  "exploreExplainLine": "Geschrieben, um {topic} zu verstehen"
+  "exploreExplainLine": "Geschrieben, um {topic} zu verstehen",
+  "followUps": "Folgefragen",
+  "searchingSources": "Durchsuche vertrauenswürdige Quellen...",
+  "analyzingSource": "Analysiere"
 }

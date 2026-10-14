@@ -1,7 +1,7 @@
 // Magazine story view (/stories-results): tabs Story · Images · Videos · News · Sources.
 // The cover is a news photo for current events or an AI image for general topics (the reader
 // can switch Photo / AI); AI covers carry a subtle Curios watermark. Listening is free.
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Image, Video, Globe, ChevronDown, Loader2, Headphones, Pause, Newspaper } from 'lucide-react';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useTranslation } from '../hooks/useTranslation';
@@ -33,6 +33,8 @@ const stripForTts = (md: string): string =>
     .trim()
     .slice(0, 5000);
 import CustomMarkdown from './CustomMarkdown';
+import FollowUps from './FollowUps';
+import { toCitations } from './citations/toCitations';
 import DynamicShareRow from './share/DynamicShareRow';
 
 // Helper function to calculate reading and listening time
@@ -70,6 +72,8 @@ interface TabSystemProps {
   isNews: boolean;
   /** The story's cache key (the AI cover is kept with it). */
   cacheKey: string;
+  /** "Go deeper": Astra continues the story along `result.deeper` (the page appends it). */
+  onDeepen?: () => Promise<void>;
 }
 
 type Tab = 'curios' | 'images' | 'videos' | 'news' | 'sources';
@@ -113,9 +117,12 @@ const SourceItem: React.FC<SourceItemProps> = ({ source, index }) => (
   </div>
 );
 
-export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLabel, isNews, cacheKey }) => {
+export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLabel, isNews, cacheKey, onDeepen }) => {
+  const [deepening, setDeepening] = useState(false);
+  const [deepenFailed, setDeepenFailed] = useState(false);
   const { t } = useTranslation();
   const { currentLanguage } = useLanguage();
+  const citations = useMemo(() => toCitations(result?.sources ?? []), [result?.sources]);
   const [activeTab, setActiveTab] = useState<Tab>('curios');
   const [featuredImageIndex, setFeaturedImageIndex] = useState(0);
   const [validImageIndices, setValidImageIndices] = useState<number[]>([]); // images that actually load
@@ -198,6 +205,20 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
   }, [showVoiceDropdown]);
 
   // A voice change resets the audio so the next play uses it.
+  const handleDeepen = async () => {
+    if (!onDeepen || deepening) return;
+    setDeepening(true);
+    setDeepenFailed(false);
+    try {
+      await onDeepen();
+      resetAudio(); // the narration must cover the longer story
+    } catch {
+      setDeepenFailed(true);
+    } finally {
+      setDeepening(false);
+    }
+  };
+
   const resetAudio = () => {
     audioRef.current?.pause();
     audioRef.current = null;
@@ -411,25 +432,28 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
 
                 {/* Article Body — same markdown renderer as Search */}
                 <div className="prose dark:prose-invert max-w-none break-words">
-                  <CustomMarkdown>{result.markdown_report || ''}</CustomMarkdown>
+                  <CustomMarkdown citations={citations}>{result.markdown_report || ''}</CustomMarkdown>
                 </div>
 
-                {result.follow_up_questions?.length > 0 && (
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-8">
-                    <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">{t('magFollowUps')}</h2>
-                    <div className="space-y-3">
-                      {result.follow_up_questions.map((q: string, i: number) => (
-                        <button
-                          key={i}
-                          onClick={() => handleFollowUpClick(q)}
-                          className="w-full text-left p-4 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                        >
-                          {q}
-                        </button>
-                      ))}
-                    </div>
+                {result.deeper && onDeepen && (
+                  <div className="mt-6">
+                    <button
+                      type="button"
+                      onClick={handleDeepen}
+                      disabled={deepening}
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-left hover:opacity-80 transition-opacity disabled:cursor-wait"
+                      style={{ color: 'var(--accent-primary)' }}
+                    >
+                      <span>{result.deeper}</span>
+                      {deepening ? <Loader2 size={15} className="animate-spin flex-shrink-0" /> : <ChevronDown size={15} className="flex-shrink-0" />}
+                    </button>
+                    {deepenFailed && <p className="mt-1 text-xs text-red-500">{t('magDeeperError')}</p>}
                   </div>
                 )}
+
+                <div className="mt-8">
+                  <FollowUps questions={result.follow_up_questions ?? []} onPick={handleFollowUpClick} />
+                </div>
               </>
             ) : (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">…</div>

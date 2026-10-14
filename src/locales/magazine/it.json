@@ -21,5 +21,7 @@
   "magTab_sources": "Fonti",
   "magPhoto": "Foto",
   "magAI": "IA",
-  "magFollowUps": "Continua a esplorare"
+  "magChangeFocus": "Cambia prospettiva",
+  "magDeeperError": "Impossibile approfondire la storia. Riprova.",
+  "magLongRead": "Approfondimento"
 }

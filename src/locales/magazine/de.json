@@ -21,5 +21,7 @@
   "magTab_sources": "Quellen",
   "magPhoto": "Foto",
   "magAI": "KI",
-  "magFollowUps": "Weiter entdecken"
+  "magChangeFocus": "Blickwinkel ändern",
+  "magDeeperError": "Die Geschichte konnte nicht erweitert werden. Versuche es erneut.",
+  "magLongRead": "Hintergrund"
 }

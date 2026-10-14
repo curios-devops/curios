@@ -3,13 +3,18 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, ChevronLeft, ChevronRight, Plus, Link2, FileText, ArrowRight } from 'lucide-react';
+import { Sparkles, ChevronLeft, ChevronRight, Link2, FileText, ArrowRight } from 'lucide-react';
 import { ImagesCarousel, ImagesGrid } from '../../../components/results/ImageGallery.tsx';
 import { executeFastSearchStreaming, executeDeepFastSearchStreaming } from '../controller';
 import { generateExpansionStreaming, extractKnowMoreLabel } from '../providers/llmProvider';
 import type { FastSearchResponse } from '../controller';
 import { exportDeepSearchPdf } from '../utils/exportPdf';
 import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
+import { decideTier, stepUp } from '../../auto/modelTier.ts';
+import { toCitations } from '../../../components/citations/toCitations.ts';
+import FollowUps from '../../../components/FollowUps.tsx';
+import SourcesLoader from '../../../components/SourcesLoader.tsx';
+import { appSettings } from '../../../config/appSettings.ts';
 import AstraNotice from '../../../components/AstraNotice.tsx';
 import CustomMarkdown from '../../../components/CustomMarkdown';
 import TopBar from '../../../components/results/TopBar';
@@ -155,7 +160,6 @@ export default function FastSearchResults() {
   const [showSearching, setShowSearching] = useState(true);
   const [foundSources, setFoundSources] = useState<Array<{ title: string; url: string; snippet: string }>>([]);
   const [frozenSourcesForAnimation, setFrozenSourcesForAnimation] = useState<Array<{ title: string; url: string; snippet: string }>>([]);
-  const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
   const [images, setImages] = useState<Array<{ url: string; title: string; source: string }>>([]);
   // Explore further's pick + video frame: prepared from the start, in parallel with the answer.
   const explorePrep = useExplorePrep(query);
@@ -169,29 +173,7 @@ export default function FastSearchResults() {
   const [savedNode, setSavedNode] = useState<SavedNodeRef | null>(null);
 
   // Memoize citations separately to prevent recreation on every render
-  const citations = useMemo(() => {
-    return foundSources.map(source => {
-      const hostname = (() => {
-        try {
-          return new URL(source.url).hostname.replace(/^www\./, '');
-        } catch {
-          return '';
-        }
-      })();
-      const parts = hostname.split('.');
-
-      // Extract siteName: prefer first part (subdomain like 'azure') over root domain
-      // Examples: azure.microsoft.com -> azure, wikipedia.org -> wikipedia
-      const siteName = parts[0] || '';
-
-      return {
-        url: source.url,
-        title: source.title,
-        siteName: siteName,
-        snippet: source.snippet
-      };
-    });
-  }, [foundSources]);
+  const citations = useMemo(() => toCitations(foundSources), [foundSources]);
 
   // Process answer text separately (same cleanup for "Know more" expansions)
   const processedAnswer = useMemo(() => (streamingAnswer ? cleanAnswerText(streamingAnswer) : ''), [streamingAnswer]);
@@ -209,18 +191,6 @@ export default function FastSearchResults() {
     return () => clearInterval(interval);
   }, [searchStartTime]);
 
-  // Cycle through source names while searching — Claude-style: each full name
-  // overwrites the previous with a cross-fade (the .fs-shimmer span keys off the
-  // index), no letter-by-letter typing/erasing.
-  useEffect(() => {
-    if (frozenSourcesForAnimation.length === 0 || !showSearching) {
-      return;
-    }
-    const id = setInterval(() => {
-      setCurrentSourceIndex((prev) => (prev + 1) % frozenSourcesForAnimation.length);
-    }, 1500);
-    return () => clearInterval(id);
-  }, [frozenSourcesForAnimation.length, showSearching]);
 
   // Execute search with streaming
   useEffect(() => {
@@ -322,7 +292,8 @@ export default function FastSearchResults() {
         // own Amazon lookup already spent this query's SerpAPI quota.
         const response = deep
           ? await executeDeepFastSearchStreaming(
-              { query, locale, skipSerpApiImages: buyIntentConfirmed },
+              // One model up from the plain answer's (rated without spending a credit).
+              { query, locale, skipSerpApiImages: buyIntentConfirmed, model: decideTier(query).then((tier) => stepUp(tier === 'easy' ? appSettings.models.luna : appSettings.models.sol)) },
               onChunk,
               onSources,
               onImagesFound,
@@ -520,63 +491,7 @@ export default function FastSearchResults() {
         )}
 
         {/* Loading indicator - animated sources counter */}
-        {showSearching && activeTab === 'answer' && (
-          <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
-            {frozenSourcesForAnimation.length === 0 ? (
-              <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
-                <span className="inline-block w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--accent-primary)' }} />
-                <span>Searching trusted sources...</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between w-full gap-2">
-                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400 min-w-0 flex-1">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-3 h-3 rounded-full animate-ping absolute" style={{ backgroundColor: 'var(--accent-primary)', opacity: 0.4 }}></div>
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
-                  </div>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-base flex-shrink-0 fs-shimmer">Analyzing</span>
-                    <span
-                      key={currentSourceIndex}
-                      className="text-base font-medium truncate fs-shimmer"
-                    >
-                      {frozenSourcesForAnimation[currentSourceIndex % frozenSourcesForAnimation.length]?.title?.slice(0, 40) || ''}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Frozen favicons - rendered once, no re-renders */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="flex items-center">
-                    {frozenSourcesForAnimation.slice(0, 3).map((source, index) => {
-                      try {
-                        const domain = new URL(source.url).hostname.replace('www.', '');
-                        return (
-                          <div
-                            key={source.url}
-                            className="w-6 h-6 rounded-full bg-white dark:bg-gray-700 border-2 border-white dark:border-gray-800 flex items-center justify-center overflow-hidden"
-                            style={{ marginLeft: index > 0 ? '-8px' : '0', zIndex: 3 - index }}
-                          >
-                            <img
-                              src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
-                              alt=""
-                              className="w-4 h-4"
-                            />
-                          </div>
-                        );
-                      } catch {
-                        return null;
-                      }
-                    })}
-                  </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                    +{frozenSourcesForAnimation.length}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {showSearching && activeTab === 'answer' && <SourcesLoader sources={frozenSourcesForAnimation} />}
 
         {/* Ask Deeper: generating the contextual hero image (copied from legacy
             search's "Generating answer..." dot) so the user waits for it. */}
@@ -787,61 +702,7 @@ export default function FastSearchResults() {
             )}
 
             {/* Follow-up Questions - only after streaming completes */}
-            {!isLoading && followUpQuestions.length > 0 && (
-          <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-5 h-5 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
-                <div className="w-2.5 h-2.5 grid grid-cols-2 gap-0.5">
-                  <div className="rounded-sm" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
-                  <div className="rounded-sm" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
-                  <div className="rounded-sm" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
-                  <div className="rounded-sm" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
-                </div>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Follow-Ups</h3>
-            </div>
-
-            <div className="space-y-0">
-              {followUpQuestions.map((question, index) => (
-                <div key={index}>
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between py-2.5 px-0 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group cursor-pointer"
-                    onClick={() => handleFollowUpClick(question)}
-                    onMouseEnter={(e) => {
-                      const span = e.currentTarget.querySelector('.question-text') as HTMLElement;
-                      const circle = e.currentTarget.querySelector('.plus-circle') as HTMLElement;
-                      if (span) span.style.color = 'var(--accent-primary)';
-                      if (circle) {
-                        circle.style.borderColor = 'var(--accent-primary)';
-                        circle.style.backgroundColor = 'var(--accent-primary)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      const span = e.currentTarget.querySelector('.question-text') as HTMLElement;
-                      const circle = e.currentTarget.querySelector('.plus-circle') as HTMLElement;
-                      if (span) span.style.color = '';
-                      if (circle) {
-                        circle.style.borderColor = '';
-                        circle.style.backgroundColor = '';
-                      }
-                    }}
-                  >
-                    <span className="question-text text-sm text-gray-700 dark:text-gray-300 transition-colors leading-relaxed">
-                      {question}
-                    </span>
-                    <div className="plus-circle flex-shrink-0 w-5 h-5 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center transition-colors ml-3">
-                      <Plus size={10} className="text-gray-400 group-hover:text-white transition-colors" />
-                    </div>
-                  </button>
-                  {index < followUpQuestions.length - 1 && (
-                    <div className="border-b border-gray-200 dark:border-gray-800"></div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-            )}
+            {!isLoading && <FollowUps questions={followUpQuestions} onPick={handleFollowUpClick} />}
           </>
         )}
 

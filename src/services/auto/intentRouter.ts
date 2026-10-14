@@ -97,9 +97,11 @@ export interface MagazinePlan {
   sections: MagazineSection[];
   /** Current news (→ a news photo) rather than an evergreen topic (→ an AI image); null if unknown. */
   news: number | null;
+  /** Difficulty (Decisions): complex → Sol writes it, otherwise Luna; null if unknown. */
+  tier: QuestionTier | null;
 }
 
-const DEFAULT_PLAN: MagazinePlan = { sections: ['ideas', 'culture', 'science', 'world'], news: null };
+const DEFAULT_PLAN: MagazinePlan = { sections: ['ideas', 'culture', 'science', 'world'], news: null, tier: null };
 
 /** Sections and news-vs-evergreen for a Magazine story (one Decisions call). */
 export async function fetchMagazinePlan(query: string, location: string): Promise<MagazinePlan> {
@@ -108,9 +110,10 @@ export async function fetchMagazinePlan(query: string, location: string): Promis
       body: { query: query.trim(), location, only: 'magazine' },
     });
     if (error) throw error;
-    const d = data as { sections?: string[]; news?: number | null } | null;
+    const d = data as { sections?: string[]; news?: number | null; tier?: string | null } | null;
     const sections = (d?.sections ?? []).filter((s): s is MagazineSection => (MAGAZINE_SECTIONS as readonly string[]).includes(s));
-    return { sections: sections.length ? sections : DEFAULT_PLAN.sections, news: typeof d?.news === 'number' ? d.news : null };
+    const tier = d?.tier === 'easy' || d?.tier === 'normal' || d?.tier === 'complex' ? d.tier : null;
+    return { sections: sections.length ? sections : DEFAULT_PLAN.sections, news: typeof d?.news === 'number' ? d.news : null, tier };
   } catch (error) {
     logger.error('Magazine plan failed', { error });
     return DEFAULT_PLAN;

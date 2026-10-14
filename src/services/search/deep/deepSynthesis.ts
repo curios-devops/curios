@@ -15,6 +15,8 @@ export interface DeepSynthesisContext {
   webResults: WebSearchResult[];
   date: string;
   locale: string;
+  /** One model up from the question's own (see stepUp); default MODEL_DEEP. */
+  model?: string;
 }
 
 /**
@@ -51,5 +53,5 @@ Today's date: ${context.date}
 Language: ${context.locale}`;
 
   // Higher token budget + longer timeout for the "report" tier, on the full model.
-  return streamLLMText(userMessage, 3000, onChunk, 90000, DEEP_MODEL);
+  return streamLLMText(userMessage, 3000, onChunk, 90000, context.model || DEEP_MODEL);
 }

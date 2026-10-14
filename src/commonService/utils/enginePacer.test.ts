@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-describe('paced (per-engine 1s spacing)', () => {
+describe('paced (per-engine spacing)', () => {
   beforeEach(() => { vi.useFakeTimers(); vi.resetModules(); });
   afterEach(() => { vi.useRealTimers(); });
 
@@ -14,6 +14,18 @@ describe('paced (per-engine 1s spacing)', () => {
     await vi.advanceTimersByTimeAsync(1000);
     await Promise.all([a, b]);
     expect(started).toEqual([0, 1000]);
+  });
+
+  // Exa allows ~5 req/s: Magazine's angles, news and videos must not queue a full second each.
+  it('spaces Exa calls by only 250ms', async () => {
+    const { paced } = await import('./enginePacer');
+    const started: number[] = [];
+    const t0 = Date.now();
+    const a = paced('exa', async () => { started.push(Date.now() - t0); });
+    const b = paced('exa', async () => { started.push(Date.now() - t0); });
+    await vi.advanceTimersByTimeAsync(250);
+    await Promise.all([a, b]);
+    expect(started).toEqual([0, 250]);
   });
 
   // Parallel Exa + Tavily is the point of using two engines — they must not wait on each other.
