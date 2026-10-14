@@ -1,10 +1,12 @@
-// Character picker: tall rounded portrait cards (Vivix-style), a search box over
-// the cast, plus "upload a photo" and "describe one" to build your own.
+// Character picker: a carousel of five tall rounded portrait cards (two women, two
+// men, one character). "More" opens the whole cast with a search box, plus "upload a
+// photo" and "describe one" to build your own; "Less" folds it back to the five.
 
 import { useRef, useState } from 'react';
-import { Search, Upload, Wand2, X, Loader2 } from 'lucide-react';
+import { Search, Upload, Wand2, X, Loader2, Plus, Minus } from 'lucide-react';
 import { searchCharacters, type CharacterPreset } from '../characterCatalog';
 import { characterFromDescription, characterFromPhoto } from '../customCharacter';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 // Anything with a portrait can be picked (full-body presets or Anam half-body).
 export interface PickableItem { id: string; name: string; tagline: string; imageUrl: string; tags: string[]; personality?: string }
@@ -12,18 +14,44 @@ export interface PickableItem { id: string; name: string; tagline: string; image
 interface Props {
   selectedId: string;
   items: PickableItem[];
+  featured: string[]; // ids shown in the carousel before "More"
   allowCustom: boolean; // "create your own" only exists for full body (Vivix)
   onSelect: (c: PickableItem | CharacterPreset) => void;
   onClose: () => void;
 }
 
-export default function CharacterPicker({ selectedId, items, allowCustom, onSelect, onClose }: Props) {
+export default function CharacterPicker({ selectedId, items, featured, allowCustom, onSelect, onClose }: Props) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState('');
   const [describe, setDescribe] = useState('');
   const [busy, setBusy] = useState<null | 'photo' | 'describe'>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const list = searchCharacters(query, items as CharacterPreset[]);
+  const shortList = featured.map((id) => items.find((c) => c.id === id)).filter((c): c is PickableItem => !!c);
+
+  const card = (c: PickableItem, className = '') => {
+    const active = c.id === selectedId;
+    return (
+      <button
+        key={c.id}
+        type="button"
+        onClick={() => onSelect(c)}
+        className={`group text-left ${className}`}
+        title={c.personality ?? c.tagline}
+      >
+        <div
+          className="aspect-[9/16] rounded-full overflow-hidden border-4 transition-transform group-hover:-translate-y-0.5"
+          style={{ borderColor: active ? 'var(--accent-primary)' : 'transparent' }}
+        >
+          <img src={c.imageUrl} alt={c.name} className="w-full h-full object-cover" loading="lazy" />
+        </div>
+        <div className="mt-1.5 text-sm font-medium text-center truncate">{c.name}</div>
+        <div className="text-xs text-center truncate" style={{ color: 'var(--ui-text-secondary)' }}>{c.tagline}</div>
+      </button>
+    );
+  };
 
   const build = async (kind: 'photo' | 'describe', run: () => Promise<CharacterPreset>) => {
     setBusy(kind);
@@ -46,10 +74,43 @@ export default function CharacterPicker({ selectedId, items, allowCustom, onSele
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Choose your character</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="p-1 rounded-full hover:opacity-70">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {expanded && (
+              <button
+                type="button"
+                onClick={() => { setExpanded(false); setQuery(''); }}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full border text-sm"
+                style={{ borderColor: 'var(--ui-border-default)', color: 'var(--ui-text-secondary)' }}
+              >
+                <Minus size={14} /> {t('charPickLess' as never)}
+              </button>
+            )}
+            <button type="button" onClick={onClose} aria-label="Close" className="p-1 rounded-full hover:opacity-70">
+              <X size={20} />
+            </button>
+          </div>
         </div>
+
+        {!expanded && (
+          <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2">
+            {shortList.map((c) => card(c, 'w-24 sm:w-28 shrink-0 snap-start'))}
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="w-24 sm:w-28 shrink-0 snap-start text-left"
+            >
+              <div
+                className="aspect-[9/16] rounded-full border flex flex-col items-center justify-center gap-1 text-sm font-medium"
+                style={{ borderColor: 'var(--ui-border-default)', color: 'var(--ui-text-secondary)' }}
+              >
+                <Plus size={20} />
+                {t('charPickMore' as never)}
+              </div>
+            </button>
+          </div>
+        )}
+
+        {expanded && (<>
 
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl border mb-4" style={{ borderColor: 'var(--ui-border-default)' }}>
           <Search size={16} style={{ color: 'var(--ui-text-secondary)' }} />
@@ -62,27 +123,7 @@ export default function CharacterPicker({ selectedId, items, allowCustom, onSele
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-          {list.map((c) => {
-            const active = c.id === selectedId;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => onSelect(c)}
-                className="group text-left"
-                title={c.personality ?? c.tagline}
-              >
-                <div
-                  className="aspect-[9/16] rounded-full overflow-hidden border-4 transition-transform group-hover:-translate-y-0.5"
-                  style={{ borderColor: active ? 'var(--accent-primary)' : 'transparent' }}
-                >
-                  <img src={c.imageUrl} alt={c.name} className="w-full h-full object-cover" loading="lazy" />
-                </div>
-                <div className="mt-1.5 text-sm font-medium text-center truncate">{c.name}</div>
-                <div className="text-xs text-center truncate" style={{ color: 'var(--ui-text-secondary)' }}>{c.tagline}</div>
-              </button>
-            );
-          })}
+          {list.map((c) => card(c))}
           {list.length === 0 && (
             <p className="col-span-full text-sm" style={{ color: 'var(--ui-text-secondary)' }}>No characters match “{query}”.</p>
           )}
@@ -136,6 +177,7 @@ export default function CharacterPicker({ selectedId, items, allowCustom, onSele
           {error && <p className="text-sm text-red-500">{error}</p>}
         </div>
         )}
+        </>)}
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ export async function transcribeAudio(audioBlob: Blob, language = 'en'): Promise
     logger.info('Starting Whisper transcription via Supabase', { blobSize: audioBlob.size, language });
 
     const formData = new FormData();
-    formData.append('audio', audioBlob, 'audio.webm');
+    formData.append('audio', audioBlob, audioBlob.type.includes('mp4') ? 'audio.mp4' : 'audio.webm');
     formData.append('language', language);
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/whisper-transcription`, {

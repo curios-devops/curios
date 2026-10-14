@@ -39,6 +39,8 @@ export const HALF_BODY: HalfBodyPreset[] = [
 ];
 
 export const DEFAULT_HALF_BODY_ID = 'mia-studio';
+// The picker's first row: two women, two men, and Sophie (no non-human half bodies yet).
+export const FEATURED_HALF_BODY = ['mia-studio', 'gabriel', 'liv', 'finn', 'sophie'];
 
 export function findHalfBody(id: string | null | undefined): HalfBodyPreset {
   return HALF_BODY.find((p) => p.id === id) ?? HALF_BODY.find((p) => p.id === DEFAULT_HALF_BODY_ID)!;

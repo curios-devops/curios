@@ -20,8 +20,8 @@ import { formatTimeAgo } from '../../../utils/time';
 import { resolveBuyIntent } from '../../search/buyIntent';
 import { searchAmazonProducts } from '../../amazon-api';
 import { saveNode, ensureShared, updateNodeAnswer, toggleNodeLike, type SavedNodeRef } from '../../space/nodePersistenceService';
-import { findCharacter, DEFAULT_CHARACTER_ID, CHARACTERS, type CharacterPreset } from '../characterCatalog';
-import { findHalfBody, DEFAULT_HALF_BODY_ID, HALF_BODY, type HalfBodyPreset } from '../halfBodyCatalog';
+import { findCharacter, DEFAULT_CHARACTER_ID, CHARACTERS, FEATURED_CHARACTERS, type CharacterPreset } from '../characterCatalog';
+import { findHalfBody, DEFAULT_HALF_BODY_ID, HALF_BODY, FEATURED_HALF_BODY, type HalfBodyPreset } from '../halfBodyCatalog';
 import { directTurn, buildScriptEvent, type StageProduct, type DirectedTurn } from '../characterDirector';
 import { startCharacterSession, type LiveCharacter } from '../characterSession';
 import { startAnamSession, SpeechQueue, type LiveAnam } from '../anamSession';
@@ -114,7 +114,7 @@ export default function CharacterResults() {
   // Answer model for the whole conversation, rated on its first question: Luna if easy, else Sol.
   const modelRef = useRef<Promise<string> | undefined>(undefined);
   const { session } = useSession();
-  const { isRecording, startRecording, stopRecording } = useVoiceRecording();
+  const { isRecording, startRecording, stopRecording, error: micError } = useVoiceRecording();
 
   // Explicit URL (?body=…&c=…) wins; otherwise the remembered choice.
   const urlBody = params.get('body') === 'half' ? 'half' : params.get('body') === 'full' ? 'full' : null;
@@ -452,8 +452,14 @@ export default function CharacterResults() {
     remember({ captions: next });
   };
 
+  // Phones block the presenter's sound until a tap: any tap here unblocks it too.
+  const unlockSound = () => {
+    if (status === 'needs-sound') void resumeRef.current?.().then(() => setStatus('live'));
+  };
+
   // While paused, any new question resumes with a fresh session (a new minute).
   const send = (q: string) => {
+    unlockSound();
     if (!q.trim()) return;
     if (paused) void start(presenter, q);
     else void ask(q);
@@ -461,6 +467,7 @@ export default function CharacterResults() {
 
   const handleMic = async () => {
     touch();
+    unlockSound();
     if (!isRecording) { await startRecording(); return; }
     setTranscribing(true);
     try {
@@ -741,6 +748,7 @@ export default function CharacterResults() {
             </button>
           </form>
           {statusDetail && status !== 'error' && <p className="text-xs text-red-500">{statusDetail}</p>}
+          {micError && <p className="text-xs text-red-500">{micError}</p>}
         </section>
       </main>
 
@@ -748,6 +756,7 @@ export default function CharacterResults() {
         <CharacterPicker
           selectedId={presenter.preset.id}
           items={presenter.body === 'full' ? CHARACTERS : HALF_BODY}
+          featured={presenter.body === 'full' ? FEATURED_CHARACTERS : FEATURED_HALF_BODY}
           allowCustom={presenter.body === 'full'}
           onSelect={(item) => void restartWith(
             presenter.body === 'full'

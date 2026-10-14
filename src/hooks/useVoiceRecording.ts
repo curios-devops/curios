@@ -23,10 +23,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Create MediaRecorder
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      // Create MediaRecorder — webm/opus where supported; iOS Safari only records mp4.
+      const mimeType = ['audio/webm;codecs=opus', 'audio/mp4'].find((t) => MediaRecorder.isTypeSupported(t));
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
 
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -62,7 +61,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       // Set up the stop event handler
       mediaRecorder.addEventListener('stop', () => {
         // Create blob from chunks
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' });
+        const blob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
         setAudioBlob(blob);
         setIsRecording(false);
 

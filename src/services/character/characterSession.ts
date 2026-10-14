@@ -91,9 +91,13 @@ export async function startCharacterSession(
   mark('trtc sdk loaded');
   const rtc = TRTC.create();
   const m = creds.trtc;
+  // Phones block sound until a tap. The block can arrive before the first frame, so
+  // remember it — otherwise "live" would hide the "enable sound" button for good.
+  let soundBlocked = false;
   rtc.on(TRTC.EVENT.AUTOPLAY_FAILED, (event: { resume: () => Promise<void> }) => {
+    soundBlocked = true;
     onStatus('needs-sound');
-    onSoundResume(event.resume);
+    onSoundResume(async () => { await event.resume(); soundBlocked = false; });
   });
   rtc.on(TRTC.EVENT.ERROR, (e: { message?: string }) => onStatus('error', e?.message));
   rtc.on(TRTC.EVENT.REMOTE_VIDEO_AVAILABLE, ({ userId, streamType }) => {
@@ -102,7 +106,7 @@ export async function startCharacterSession(
     }
   });
   rtc.on(TRTC.EVENT.FIRST_VIDEO_FRAME, ({ userId }: { userId: string }) => {
-    if (userId === m.publisher_user_id) { mark('first video frame (LIVE)'); onStatus('live'); }
+    if (userId === m.publisher_user_id) { mark('first video frame (LIVE)'); onStatus(soundBlocked ? 'needs-sound' : 'live'); }
   });
   try {
     await rtc.enterRoom({

@@ -110,6 +110,8 @@ export const CHARACTERS: CharacterPreset[] = [
 ];
 
 export const DEFAULT_CHARACTER_ID = 'nova';
+// The picker's first row: two women, two men and one character; "More" opens the rest.
+export const FEATURED_CHARACTERS = ['nova', 'leo', 'mia', 'coach', 'whiskers'];
 
 export function findCharacter(id: string | null | undefined): CharacterPreset {
   return CHARACTERS.find((c) => c.id === id) ?? CHARACTERS.find((c) => c.id === DEFAULT_CHARACTER_ID)!;
