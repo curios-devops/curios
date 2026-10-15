@@ -110,7 +110,9 @@ export default function StoriesResults() {
 
   // Save the story as a curiosity node (guests: null) — the same node Search uses for its
   // Space, its /s/ short link and Discover (once shared), shown there as "Magazine".
-  const persist = (story: StoryResult) => saveNode({
+  // Every version (another section, Long Read, regenerated) is a new node with its own
+  // link, like a new search; reopening the same version reuses its node (cached per page).
+  const persist = (story: StoryResult, key: string) => saveNode({
     mode: 'stories',
     query,
     answer: story.markdown_report,
@@ -120,18 +122,24 @@ export default function StoriesResults() {
     videos: (story.videos || []).map((v) => ({ url: v.url, title: v.title, thumbnail: v.thumbnail || '' })),
     followUps: story.follow_up_questions,
     coverImage: story.images?.[0]?.url,
+  }, { reuse: false }).then((ref) => {
+    if (ref) setCached(`node|${key}`, ref);
+    return ref;
   });
 
   // 2) The story for the active section (cached per question + section + language).
   useEffect(() => {
     if (!query || !section || !plan || runKey.current === storyKey) return;
     runKey.current = storyKey;
+    setSavedNode(null); // the previous version's link must not be shared for this one
     const cached = getCached<StoryResult>(storyKey)?.value;
     if (cached) {
       setResult(cached);
       setError(null);
       setLoading(false);
-      void persist(cached).then(setSavedNode); // saveNode reuses the existing node
+      const node = getCached<SavedNodeRef>(`node|${storyKey}`)?.value;
+      if (node) setSavedNode(node);
+      else void persist(cached, storyKey).then(setSavedNode);
       return;
     }
     let live = true;
@@ -154,7 +162,7 @@ export default function StoriesResults() {
         setResult(story);
         setLoading(false);
         // Auto-save as a curiosity node (authenticated only; no-op for guests).
-        void persist(story).then((ref) => { if (live) setSavedNode(ref); });
+        void persist(story, storyKey).then((ref) => { if (live) setSavedNode(ref); });
       })
       .catch((err: Error) => {
         if (!live) return;

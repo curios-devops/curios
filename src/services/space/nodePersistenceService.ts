@@ -38,7 +38,7 @@ export interface SavedNodeRef {
  * when persistence is unavailable (callers must treat null as "ephemeral").
  * The node is created private; sharing flips it public via ensureShared().
  */
-export async function saveNode(snapshot: NodeSnapshot): Promise<SavedNodeRef | null> {
+export async function saveNode(snapshot: NodeSnapshot, { reuse = true }: { reuse?: boolean } = {}): Promise<SavedNodeRef | null> {
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData?.session?.user?.id;
   if (!isValidUuid(userId)) {
@@ -48,14 +48,17 @@ export async function saveNode(snapshot: NodeSnapshot): Promise<SavedNodeRef | n
 
   // Dedup: reuse an existing node for the same (user, query, mode) instead of
   // piling up duplicates when the same article/search is re-opened or re-rendered.
-  const { data: existing } = await supabase
-    .from('curiosity_nodes')
-    .select('id, share_slug')
-    .eq('user_id', userId)
-    .eq('mode', snapshot.mode)
-    .eq('query', snapshot.query)
-    .limit(1)
-    .maybeSingle();
+  // reuse: false (Magazine) — every version of a page is its own node and link.
+  const { data: existing } = reuse
+    ? await supabase
+      .from('curiosity_nodes')
+      .select('id, share_slug')
+      .eq('user_id', userId)
+      .eq('mode', snapshot.mode)
+      .eq('query', snapshot.query)
+      .limit(1)
+      .maybeSingle()
+    : { data: null };
   if (existing?.id) {
     return { id: existing.id as string, shareSlug: existing.share_slug as string };
   }
