@@ -58,9 +58,9 @@ export interface AppSettings {
   sidebar: { logo: LogoConfig };
   getStarted: { mode: GetStartedMode; text: string };
   credits: { display: CreditsDisplay; iconSize: number };
-  // Pricing modal promo: tag above the price + struck-through regular monthly
-  // price. Empty strings hide them.
-  pricingPromo: { label: string; regularMonthly: string };
+  // Pricing modal: the prices shown (they must match the Stripe prices the checkout uses), a promo
+  // tag above them, the struck-through regular monthly price and the yearly note. Empty hides.
+  pricingPromo: { label: string; regularMonthly: string; monthly: string; yearly: string; yearlyNote: string };
   // AI models. Questions are rated easy/normal/complex → luna/sol/astra (see MODELS
   // in app-settings.md); router OFF = always sol.
   models: {
@@ -240,6 +240,9 @@ export const appSettings: AppSettings = {
   pricingPromo: {
     label: cfg.PROMO_LABEL === 'OFF' ? '' : cfg.PROMO_LABEL || '',
     regularMonthly: cfg.PROMO_REGULAR_MONTHLY === 'OFF' ? '' : cfg.PROMO_REGULAR_MONTHLY || '',
+    monthly: cfg.PRICE_MONTHLY || '$1',
+    yearly: cfg.PRICE_YEARLY || '$10',
+    yearlyNote: cfg.PROMO_YEARLY_NOTE === 'OFF' ? '' : cfg.PROMO_YEARLY_NOTE || '',
   },
   models: {
     router: onOff(cfg.MODEL_ROUTER, true),

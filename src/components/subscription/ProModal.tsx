@@ -26,8 +26,10 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 ${theme === 'dark' ? 'bg-black/70' : 'bg-gray-500/50'} flex items-center justify-center z-50`}>
-      <div className={`${theme === 'dark' ? 'bg-night-850' : 'bg-white'} w-full max-w-[900px] p-8 rounded-2xl relative`}>
+    // Scrolls when the plans are taller than the screen (phones, short laptops).
+    <div className={`fixed inset-0 ${theme === 'dark' ? 'bg-black/70' : 'bg-gray-500/50'} z-50 overflow-y-auto`}>
+      <div className="min-h-full flex items-center justify-center p-4">
+      <div className={`${theme === 'dark' ? 'bg-night-850' : 'bg-white'} w-full max-w-[900px] p-5 sm:p-8 rounded-2xl relative`}>
         <button
           onClick={onClose}
           className={`absolute top-6 right-6 ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'} transition-colors z-20`}
@@ -107,15 +109,15 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
                     </span>
                   )}
                   <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedInterval === 'month' ? '$5' : '$50'}
+                    {selectedInterval === 'month' ? promo.monthly : promo.yearly}
                   </span>
                   <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                     {selectedInterval === 'month' ? t('perMonth') : t('perYear')}
                   </span>
                 </div>
                 <div className="mt-2 h-6">
-                  {selectedInterval === 'year' && (
-                    <span className="text-sm" style={{ color: accentColor.primary }}>20% Extra Discount</span>
+                  {selectedInterval === 'year' && promo.yearlyNote && (
+                    <span className="text-sm" style={{ color: accentColor.primary }}>{promo.yearlyNote}</span>
                   )}
                 </div>
               </div>
@@ -148,6 +150,7 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
         >
           {t('maybeLater')}
         </button>
+      </div>
       </div>
     </div>
   );

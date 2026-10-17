@@ -33,7 +33,7 @@ BANNER = OFF
 Recommended length: **up to ~90 characters** (it scrolls, so longer works, but
 reads best under ~90 on a phone). Current example ≈ 60.
 ```
-BANNER_TEXT = 🎃 Halloween Launch — Pro 50% OFF · $5/month · Limited time
+BANNER_TEXT = 🖤 Black Friday — Pro 90% OFF · $1/month · $10/year · Limited time
 ```
 
 
@@ -177,28 +177,44 @@ GET_STARTED_TEXT = Get Started
 ====================================================================
 ====================== PRICING MODAL ===============================
 ====================================================================
-The Pro pricing window. Use these during a promo so $5 reads as a launch deal,
-not "the price of CuriosAI". Set to OFF when the promo ends.
+The Pro pricing window. Use these during a promo so the price reads as a deal,
+not "the price of CuriosAI". Set the promo lines to OFF when the promo ends.
+
+### PRICE_MONTHLY / PRICE_YEARLY — the prices shown
+They must match the Stripe prices the checkout charges (Supabase secrets
+STRIPE_MONTHLY_PRICE_ID / STRIPE_YEARLY_PRICE_ID). Black Friday 2026:
+monthly price_1URhI4BIQFhjr01IGXzDjTiX ($1), yearly price_1URhI5BIQFhjr01IrK7AJEiV ($10).
+Before it: Halloween price_1ULfTWBIQFhjr01IJElMYMZ5 ($5) / price_1ULfTeBIQFhjr01IMwGQ4QPR ($50).
+```
+PRICE_MONTHLY = $1
+PRICE_YEARLY = $10
+```
+
+### PROMO_YEARLY_NOTE — line under the yearly price
+Default = OFF · any text, or OFF
+```
+PROMO_YEARLY_NOTE = 20% Extra Discount
+```
 
 ### PROMO_LABEL — tag shown above the Premium price
 Default = OFF · any text, or OFF
 ```
-PROMO_LABEL = 🎃 Halloween Launch — 50% off
+PROMO_LABEL = 🖤 Black Friday — 90% off
 ```
 
-### PROMO_REGULAR_MONTHLY — regular monthly price, shown struck through next to $5
+### PROMO_REGULAR_MONTHLY — regular monthly price, shown struck through next to the price
 Monthly view only. Default = OFF · any price text (e.g. $10), or OFF
 Only claim a regular price that really exists in Stripe ($10/month "Monthly
-Subscription" does), otherwise the "50% off" isn't true.
+Subscription" does), otherwise the "90% off" isn't true.
 
 Why there's no struck-through price on the YEARLY view: there is no real regular
-yearly price (e.g. $100) to compare $50 against, so yearly keeps its
-"20% Extra Discount" note and only shows PROMO_LABEL. To add one, first create
+yearly price (e.g. $100) to compare against, so yearly keeps its
+PROMO_YEARLY_NOTE and only shows PROMO_LABEL. To add one, first create
 that regular yearly price in Stripe, then ask for a PROMO_REGULAR_YEARLY setting.
 
 When the promo ends: set PROMO_LABEL = OFF, PROMO_REGULAR_MONTHLY = OFF and
-BANNER = OFF. The Stripe checkout prices are separate (Supabase secrets
-STRIPE_MONTHLY_PRICE_ID / STRIPE_YEARLY_PRICE_ID) and don't change from here.
+BANNER = OFF, point the Supabase secrets back to the regular prices and set
+PRICE_MONTHLY / PRICE_YEARLY to match — the checkout doesn't change from here.
 ```
 PROMO_REGULAR_MONTHLY = $10
 ```
