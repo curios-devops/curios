@@ -18,9 +18,9 @@ Sizes use **L / M / S** (M is the everyday size; L is bigger, S smaller).
 ### THEME — light or dark background for first-time visitors
 Applies before a visitor picks their own. LIGHT uses Vivix's warm off-white
 background (#F9F6F4), near-black ink and Inter. AUTO follows the device.
-Default = LIGHT · Valid: LIGHT / DARK / AUTO
+Default = DARK · Valid: LIGHT / DARK / AUTO
 ```
-THEME = LIGHT
+THEME = DARK
 ```
 
 ### BANNER — show or hide the top promo banner
@@ -45,22 +45,28 @@ focus). Visitors can switch between the five themes in Settings; this picks the
 one they start with.
 
 ### THEME_COLOR — default theme
-Default = TERRA · Valid: TERRA / OCEAN / FIRE / SKY / BOREALIS / CLASSIC_BLUE
-(CLASSIC_BLUE is our original blue — kept here to go back to, not offered to visitors)
+Default = SPACE · Valid: TERRA / NEBULA / SPACE / OCEAN / FIRE / BOREALIS / CLASSIC_BLUE
+(purple is NEBULA, black & white is SPACE; CLASSIC_BLUE, our original blue, is kept here to go
+back to, not offered to visitors)
 ```
-THEME_COLOR = TERRA
+THEME_COLOR = SPACE
 ```
 
 ### Theme colors — edit any hex to retune a theme (hover / soft tints are derived)
 TERRA = xerj.org ochre (DAY) · TERRA_NIGHT = xerj.org yellow (NIGHT) · OCEAN = Pamba blue
-FIRE = Claude-like orange · SKY = purple · BOREALIS = teal · CLASSIC_BLUE = our original blue (pinned)
-Terra also brings its own paper/black grounds, fonts and square corners — see DESIGN.md → Themes.
+NEBULA = Singularity Hub violet (light) · NEBULA_NIGHT = Upcomers violet (dark)
+SPACE = black buttons (light) · SPACE_NIGHT = white buttons (dark) — black & white only, no color
+FIRE = Claude-like orange · BOREALIS = teal · CLASSIC_BLUE = our original blue (pinned)
+Terra, Nebula and Space also bring their own grounds, fonts and corners — see DESIGN.md → Themes.
 ```
 TERRA = #7F5200
 TERRA_NIGHT = #FFC400
+NEBULA = #6633FF
+NEBULA_NIGHT = #9945FF
+SPACE = #050505
+SPACE_NIGHT = #FFFFFF
 OCEAN = #1C8BFD
 FIRE = #D97757
-SKY = #7C55D6
 BOREALIS = #12A88C
 CLASSIC_BLUE = #4F6FE0
 ```

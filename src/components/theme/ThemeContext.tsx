@@ -13,7 +13,8 @@ interface ThemeContextType {
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
   setAccentColor: (color: AccentColor) => void;
-  /** Auto (every theme): light at sunrise, dark at sunset. On by default; picking a mode turns it off. */
+  /** Auto (every theme): light at sunrise, dark at sunset. Off by default for now (Space dark is the
+   *  default look); turning it on is remembered; picking a mode turns it off. */
   dayNightAuto: boolean;
   setDayNightAuto: (on: boolean) => void;
 }
@@ -26,11 +27,14 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = 'accentTheme';
 const PROFILE_PREFIX = 'theme:';
 const validThemes: AccentColor[] = [...VISITOR_THEMES, 'classic_blue'];
+// Retired from Settings → the theme that replaced it (Space's purple is now Nebula).
+const RENAMED: Record<string, AccentColor> = { sky: 'nebula' };
 const AUTO_KEY = 'dayNightAuto';
 
 function normalizeAccentColor(value: string | null | undefined): AccentColor | null {
   const name = value?.startsWith(PROFILE_PREFIX) ? value.slice(PROFILE_PREFIX.length) : value;
-  return name && validThemes.includes(name as AccentColor) ? (name as AccentColor) : null;
+  const current = name && RENAMED[name] ? RENAMED[name] : name;
+  return current && validThemes.includes(current as AccentColor) ? (current as AccentColor) : null;
 }
 
 function getInitialTheme(): Theme {
@@ -46,7 +50,7 @@ function getInitialAccentColor(): AccentColor {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const [accentColor, setAccentColorState] = useState<AccentColor>(getInitialAccentColor);
-  const [dayNightAuto, setDayNightAutoState] = useState(() => localStorage.getItem(AUTO_KEY) !== 'off');
+  const [dayNightAuto, setDayNightAutoState] = useState(() => localStorage.getItem(AUTO_KEY) === 'on');
   const followSun = dayNightAuto;
   // Store only userId (stable string) — not the full session object.
   // This means Supabase TOKEN_REFRESHED events won't cascade through context.

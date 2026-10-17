@@ -11,8 +11,8 @@ export type NatureAccentColor = 'ocean' | 'sky' | 'borealis' | 'fire' | 'wood' |
 export type LegacyAccentColor = 'blue' | 'teal' | 'purple' | 'orange' | 'gray';
 
 // 2026 redesign themes (app-settings.md → THEMES). terra/classic_blue are new;
-// ocean and sky are re-tuned (Pamba blue; Sky is now purple).
-export type CuriosThemeColor = 'terra' | 'ocean' | 'fire' | 'sky' | 'borealis' | 'classic_blue';
+// ocean is re-tuned (Pamba blue). The old purple 'sky' is gone — Nebula is the purple theme.
+export type CuriosThemeColor = 'terra' | 'nebula' | 'space' | 'ocean' | 'fire' | 'borealis' | 'classic_blue';
 
 export type AccentColor = NatureAccentColor | LegacyAccentColor | CuriosThemeColor;
 export type ColorTemperature = 'cold' | 'warm' | 'neutral';
@@ -369,12 +369,57 @@ function terraTheme(day: string, night: string): { light: DesignColorSet; dark: 
   };
 }
 
+// Nebula (DESIGN.md → Themes): singularityhub.com + upcomers.com — true white / true black
+// grounds (never tinted purple), electric violet as the one accent. Its neutrals, type and
+// corners are CSS tokens in src/styles/themes.css.
+function nebulaTheme(day: string, night: string): { light: DesignColorSet; dark: DesignColorSet } {
+  return {
+    light: {
+      bg: '#FFFFFF', surface: '#FFFFFF', border: '#E5E5E5', text: '#000000', muted: '#616161', onAccent: '#FFFFFF',
+      brandLight: mix(day, '#FFFFFF', 0.25),
+      brand: day,
+      brandDark: '#4F26D0', // Singularity's own deeper violet
+      brandSubtle: mix(day, '#FFFFFF', 0.9),
+    },
+    dark: {
+      bg: '#000000', surface: '#141414', border: '#262626', text: '#FFFFFF', muted: '#A3A3A3', onAccent: '#FFFFFF',
+      brandLight: mix(night, '#FFFFFF', 0.42), // Upcomers' brand-300
+      brand: night,
+      brandDark: mix(night, '#000000', 0.18),
+      brandSubtle: mix(night, '#000000', 0.85),
+    },
+  };
+}
+
+// Space (DESIGN.md → Themes): Grok + X — black and white only. The "accent" is ink itself:
+// black buttons with white text by day, white buttons with black text by night; no color.
+// Its neutrals, type and corners are CSS tokens in src/styles/themes.css.
+function spaceTheme(day: string, night: string): { light: DesignColorSet; dark: DesignColorSet } {
+  return {
+    light: {
+      bg: '#FFFFFF', surface: '#FFFFFF', border: '#DEDEDE', text: '#050505', muted: '#636363', onAccent: '#FFFFFF',
+      brandLight: '#474747',
+      brand: day,
+      brandDark: '#292929', // Grok's filled-button hover
+      brandSubtle: '#F2F2F2',
+    },
+    dark: {
+      bg: '#000000', surface: '#141414', border: '#292929', text: '#FFFFFF', muted: '#858585', onAccent: '#050505',
+      brandLight: '#DEDEDE',
+      brand: night,
+      brandDark: '#DEDEDE', // Grok's filled-button hover (dark)
+      brandSubtle: '#1F1F1F',
+    },
+  };
+}
+
 const t = appSettings.themes.colors;
 const curiosThemes: Record<CuriosThemeColor, { light: DesignColorSet; dark: DesignColorSet }> = {
   terra: terraTheme(t.terra, appSettings.themes.night.terra ?? t.terra),
+  nebula: nebulaTheme(t.nebula, appSettings.themes.night.nebula ?? t.nebula),
+  space: spaceTheme(t.space, appSettings.themes.night.space ?? '#FFFFFF'),
   ocean: curiosTheme(t.ocean, natureDesignSystemThemes.ocean.dark),
   fire: curiosTheme(t.fire, natureDesignSystemThemes.fire.dark),
-  sky: curiosTheme(t.sky, natureDesignSystemThemes.dusk.dark), // Sky is now purple
   borealis: curiosTheme(t.borealis, natureDesignSystemThemes.borealis.dark),
   classic_blue: curiosTheme(t.classic_blue, natureDesignSystemThemes.sky.dark), // our original blue
 };
@@ -416,6 +461,8 @@ export const accentTemperatureMap: Record<AccentColor, ColorTemperature> = {
   wood: 'warm',
   dusk: 'warm',
   terra: 'warm',
+  nebula: 'cold',
+  space: 'neutral',
   classic_blue: 'cold',
 };
 

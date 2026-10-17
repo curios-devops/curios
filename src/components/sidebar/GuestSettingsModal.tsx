@@ -16,8 +16,8 @@ const ACCENT_OPTIONS = VISITOR_THEMES;
 
 const THEME_OPTIONS: { key: 'light' | 'system' | 'dark'; icon: LucideIcon }[] = [
   { key: 'light', icon: Sun },
-  { key: 'dark', icon: Moon },
   { key: 'system', icon: Monitor },
+  { key: 'dark', icon: Moon },
 ];
 
 interface GuestSettingsModalProps {

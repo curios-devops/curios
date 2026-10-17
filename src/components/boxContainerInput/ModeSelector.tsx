@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { BookOpen, Clapperboard, Search, Rocket, PersonStanding, Popcorn, Gamepad2, Music, ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpen, Clapperboard, Search, PersonStanding, Popcorn, Gamepad2, Music, ChevronDown, ChevronUp } from 'lucide-react';
+import AutoModeIcon from '../icons/AutoModeIcon.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
@@ -17,7 +18,7 @@ interface Mode {
 // The menu shows Auto, Search, Video, Magazine and Character; "More" opens the rest. Auto
 // reaches every mode by itself (movies, games and music included).
 const modes: Mode[] = [
-  { id: 'auto', label: 'auto', icon: Rocket },
+  { id: 'auto', label: 'auto', icon: AutoModeIcon }, // the Roadster on the Space theme
   { id: 'fastsearch', label: 'search', icon: Search },
   // Video = Movie mode (question → explainer video); Cinematic was merged into it.
   { id: 'movie', label: 'video', icon: Clapperboard },

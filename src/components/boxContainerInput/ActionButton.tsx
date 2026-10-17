@@ -37,7 +37,7 @@ export default function ActionButton({
           w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200
           ${
             accent
-              ? 'text-white hover:shadow-lg'
+              ? 'text-[var(--ui-text-on-accent)] hover:shadow-lg'
               : disabled
               ? 'text-gray-600 cursor-not-allowed'
               : isActive

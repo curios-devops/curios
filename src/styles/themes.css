@@ -56,3 +56,206 @@ html[data-accent="terra"] {
   --home-title-leading: 0.92;
   --home-question-color: var(--accent-primary);
 }
+
+/* Nebula — singularityhub.com + upcomers.com. Light: true white, black ink, Singularity violet.
+   Dark (its home): true black, #141414 cards, Upcomers violet. Grounds stay neutral — the violet is
+   only the accent. Figtree (Singularity) for display and text, Geist Mono labels, rounder corners. */
+html[data-accent="nebula"] {
+  --gray-50: 250 250 250;   /* #FAFAFA */
+  --gray-100: 245 245 245;  /* #F5F5F5 */
+  --gray-200: 229 229 229;  /* #E5E5E5 line (light) */
+  --gray-300: 212 212 212;  /* #D4D4D4 */
+  --gray-400: 163 163 163;  /* #A3A3A3 muted (dark) */
+  --gray-500: 97 97 97;     /* #616161 muted (light, Singularity) */
+  --gray-600: 82 82 82;     /* #525252 */
+  --gray-700: 64 64 64;     /* #404040 */
+  --gray-800: 38 38 38;     /* #262626 line (dark) */
+  --gray-900: 20 20 20;     /* #141414 */
+  --gray-950: 0 0 0;        /* #000000 */
+
+  --night-950: 0 0 0;       /* #000000 */
+  --night-900: 0 0 0;       /* page = true black */
+  --night-850: 20 20 20;    /* #141414 card (Singularity) */
+  --night-800: 28 28 28;    /* #1C1C1C */
+  --night-750: 38 38 38;    /* #262626 */
+  --night-700: 51 51 51;    /* #333333 */
+
+  /* Upcomers corners: 12 / 16 / 20, pills stay full. */
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+
+  --font-display: 'Figtree', 'Inter', system-ui, sans-serif;
+  --font-label: 'Geist Mono', ui-monospace, monospace;
+  --label-size: 11px;
+  --label-weight: 500;
+  --label-tracking: 0.16em;
+  --font-ui: 'Figtree', 'Inter', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  --home-question-color: var(--accent-primary);
+}
+
+/* Futuristic headlines: heavy, tight geometric sans. */
+html[data-accent="nebula"] :is(h1, h2, h3).font-bricolage {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+/* Nebula NIGHT background: a few tiny stars over true black, drifting almost imperceptibly
+   (one tile per ~7 minutes). Painted as the Home page's own background, so it sits behind
+   everything and never tints the black. Off for reduced motion. */
+html[data-accent="nebula"][data-theme="dark"] .nebula-sky {
+  background-image:
+    radial-gradient(1px 1px at 40px 60px, rgb(255 255 255 / 0.55), transparent 60%),
+    radial-gradient(1px 1px at 190px 130px, rgb(255 255 255 / 0.35), transparent 60%),
+    radial-gradient(1.5px 1.5px at 320px 40px, rgb(255 255 255 / 0.45), transparent 60%),
+    radial-gradient(1px 1px at 470px 210px, rgb(255 255 255 / 0.3), transparent 60%),
+    radial-gradient(1px 1px at 110px 300px, rgb(255 255 255 / 0.4), transparent 60%),
+    radial-gradient(1px 1px at 560px 360px, rgb(255 255 255 / 0.35), transparent 60%),
+    radial-gradient(1.5px 1.5px at 260px 430px, rgb(255 255 255 / 0.4), transparent 60%),
+    radial-gradient(1px 1px at 420px 520px, rgb(255 255 255 / 0.3), transparent 60%),
+    radial-gradient(1px 1px at 60px 540px, rgb(255 255 255 / 0.45), transparent 60%);
+  background-size: 600px 600px;
+  background-repeat: repeat;
+  animation: nebula-drift 420s linear infinite;
+}
+@keyframes nebula-drift {
+  from { background-position: 0 0; }
+  to { background-position: -600px 600px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-accent="nebula"][data-theme="dark"] .nebula-sky { animation: none; }
+}
+
+/* Space — grok.com + x.com. Black and white only: true black / white grounds, Grok's pure gray
+   scale, ink-colored buttons (white on night, black on day). Inter (Grok's fallback for its
+   Universal Sans), Geist Mono, X/Grok pills and soft cards. */
+html[data-accent="space"] {
+  --gray-50: 247 247 247;   /* #F7F7F7 Grok neutral-50 */
+  --gray-100: 242 242 242;  /* #F2F2F2 */
+  --gray-200: 222 222 222;  /* #DEDEDE line (day) */
+  --gray-300: 158 158 158;  /* #9E9E9E */
+  --gray-400: 133 133 133;  /* #858585 muted (night) */
+  --gray-500: 99 99 99;     /* #636363 muted (day) */
+  --gray-600: 71 71 71;     /* #474747 */
+  --gray-700: 54 54 54;     /* #363636 */
+  --gray-800: 41 41 41;     /* #292929 line (night) */
+  --gray-900: 20 20 20;     /* #141414 */
+  --gray-950: 5 5 5;        /* #050505 Grok neutral-1000 */
+
+  --night-950: 0 0 0;       /* #000000 */
+  --night-900: 0 0 0;       /* page = true black (X) */
+  --night-850: 20 20 20;    /* #141414 card */
+  --night-800: 31 31 31;    /* #1F1F1F */
+  --night-750: 41 41 41;    /* #292929 */
+  --night-700: 54 54 54;    /* #363636 */
+
+  /* X cards 16px, Grok composer 24px; pills stay full. */
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-label: 'Geist Mono', ui-monospace, monospace;
+  --label-size: 11px;
+  --label-weight: 500;
+  --label-tracking: 0.12em;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+/* Grok / X headlines: semibold, tight. */
+html[data-accent="space"] :is(h1, h2, h3).font-bricolage {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+/* Space NIGHT — the Tesla Roadster (SpaceX cold-gas thrusters) on the Home mode menu, after
+   x.com/almonk/status/2111151330467406148: four metal nozzles on the corners, white exhaust
+   plumes firing down, a lift-off, one full 3D spin with a small settle wobble, then a slow hover.
+   Monochrome on purpose (Space has no color). Other themes: thrusters hidden, no motion. */
+.rocket-thruster { display: none; }
+
+html[data-accent="space"][data-theme="dark"] .rocket-menu {
+  perspective: 1000px;
+  animation:
+    rocket-lift 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.15) both,
+    rocket-hover 2.6s ease-in-out 1.9s infinite;
+}
+html[data-accent="space"][data-theme="dark"] .rocket-body {
+  transform-style: preserve-3d;
+  animation: rocket-spin 1.2s cubic-bezier(0.45, 0.05, 0.25, 1) 0.55s both;
+}
+
+html[data-accent="space"][data-theme="dark"] .rocket-thruster {
+  display: block;
+  position: absolute;
+  width: 5px;
+  height: 18px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, #2b2b2b, #e6e6e6 45%, #6b6b6b 70%, #2b2b2b);
+  pointer-events: none;
+}
+html[data-accent="space"][data-theme="dark"] .rocket-thruster-tl { left: -2px; top: -12px; }
+html[data-accent="space"][data-theme="dark"] .rocket-thruster-tr { right: -2px; top: -12px; }
+html[data-accent="space"][data-theme="dark"] .rocket-thruster-bl { left: -2px; bottom: -12px; }
+html[data-accent="space"][data-theme="dark"] .rocket-thruster-br { right: -2px; bottom: -12px; }
+
+/* Exhaust: a bright core at the nozzle opening into a soft white plume (bottom nozzles fire). */
+html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::before,
+html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 17px;
+  pointer-events: none;
+  transform-origin: 50% 0;
+}
+html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::before {
+  width: 10px;
+  height: 48px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse 50% 100% at 50% 0%, #ffffff, rgb(255 255 255 / 0.85) 35%, transparent 80%);
+  filter: blur(1.5px);
+  animation: rocket-flicker 0.11s steps(2, jump-none) infinite alternate;
+}
+html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::after {
+  width: 90px;
+  height: 190px;
+  margin-left: -45px;
+  background: radial-gradient(ellipse 42% 100% at 50% 0%, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.4) 30%, rgb(255 255 255 / 0.12) 55%, transparent 75%);
+  filter: blur(7px);
+  mix-blend-mode: screen;
+  animation: rocket-plume 0.17s ease-in-out infinite alternate;
+}
+
+@keyframes rocket-lift {
+  from { opacity: 0; transform: translateY(22px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes rocket-spin {
+  0% { transform: rotateY(0deg); }
+  72% { transform: rotateY(368deg) rotateZ(-1deg); }
+  86% { transform: rotateY(356deg) rotateZ(0.6deg); }
+  100% { transform: rotateY(360deg); }
+}
+@keyframes rocket-hover {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes rocket-flicker {
+  from { opacity: 0.85; transform: scaleY(0.9); }
+  to { opacity: 1; transform: scaleY(1.08); }
+}
+@keyframes rocket-plume {
+  from { opacity: 0.8; transform: scale(0.94, 0.9); }
+  to { opacity: 1; transform: scale(1.04, 1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-accent="space"][data-theme="dark"] :is(.rocket-menu, .rocket-body) { animation: none; }
+  html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::before,
+  html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::after { animation: none; }
+}

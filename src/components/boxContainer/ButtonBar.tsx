@@ -1,4 +1,5 @@
-import { type LucideIcon, Plus, Image as ImageIcon, Search, ChevronDown, Rocket } from 'lucide-react';
+import { type LucideIcon, Plus, Image as ImageIcon, Search, ChevronDown } from 'lucide-react';
+import AutoModeIcon from '../icons/AutoModeIcon.tsx';
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ActionButton from '../boxContainerInput/ActionButton.tsx';
@@ -184,7 +185,7 @@ export default function ButtonBar({
               e.currentTarget.style.color = '';
             }}
           >
-            {selectedMode === 'auto' ? <Rocket size={15} /> : <Search size={15} />}
+            {selectedMode === 'auto' ? <AutoModeIcon size={15} /> : <Search size={15} />}
             <span className="text-[13px] font-medium whitespace-nowrap">
               {getModeLabel(selectedMode)}
             </span>
@@ -192,25 +193,31 @@ export default function ButtonBar({
           </button>
 
           {/* Mode dropdown menu */}
+          {/* Space NIGHT dresses this menu as the Tesla Roadster: it lifts off on four thrusters,
+              spins once and hovers (all CSS in themes.css → .rocket-menu; inert in other themes). */}
           {showModeMenu && (
-            <div
-              className={`absolute ${menuPlacement.up ? 'bottom-full mb-2' : 'top-full mt-2'} left-0 rounded-lg shadow-lg border overflow-x-hidden overflow-y-auto min-w-[220px] z-50`}
-              style={{
-                maxHeight: menuPlacement.maxHeight,
-                backgroundColor: 'var(--ui-bg-elevated)',
-                borderColor: 'var(--ui-border-default)',
-                boxShadow: '0 14px 28px var(--ui-shadow-elevated)',
-              }}
-            >
-              {/* Legacy "Search" option removed — Fast Search (now "Search") is
-                  the default and leads the ModeSelector list below. */}
-
-              {/* Mode Selector - Search (formerly Fast Search), Stories, Video, Character */}
-              <ModeSelector
-                selectedMode={selectedMode}
-                onModeSelect={onModeSelect}
-                onClose={() => setShowModeMenu(false)}
-              />
+            <div className={`rocket-menu absolute ${menuPlacement.up ? 'bottom-full mb-2' : 'top-full mt-2'} left-0 z-50`}>
+              <div className="rocket-body relative">
+                <div
+                  className="rounded-lg shadow-lg border overflow-x-hidden overflow-y-auto min-w-[220px]"
+                  style={{
+                    maxHeight: menuPlacement.maxHeight,
+                    backgroundColor: 'var(--ui-bg-elevated)',
+                    borderColor: 'var(--ui-border-default)',
+                    boxShadow: '0 14px 28px var(--ui-shadow-elevated)',
+                  }}
+                >
+                  {/* Mode Selector - Search (formerly Fast Search), Stories, Video, Character */}
+                  <ModeSelector
+                    selectedMode={selectedMode}
+                    onModeSelect={onModeSelect}
+                    onClose={() => setShowModeMenu(false)}
+                  />
+                </div>
+                {(['tl', 'tr', 'bl', 'br'] as const).map((corner) => (
+                  <span key={corner} className={`rocket-thruster rocket-thruster-${corner}`} aria-hidden />
+                ))}
+              </div>
             </div>
           )}
         </div>

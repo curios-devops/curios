@@ -72,8 +72,8 @@ export default function GeneralSection() {
 
   const themeOptions: SegmentedOption<'light' | 'dark' | 'system'>[] = [
     { key: 'light', label: 'Light', icon: Sun },
-    { key: 'dark', label: 'Dark', icon: Moon },
     { key: 'system', label: 'System', icon: Monitor },
+    { key: 'dark', label: 'Dark', icon: Moon },
   ];
   // Auto (every theme): light at sunrise, dark at sunset.
   const autoSwitch = (

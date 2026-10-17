@@ -15,16 +15,17 @@ export type GetStartedMode = 'button' | 'icon';
 export type CreditsDisplay = 'battery' | 'dial' | 'off';
 export type Size = 'L' | 'M' | 'S';
 export type WordmarkColor = 'pamba' | 'default' | 'gray' | 'dark';
-// Accent themes. The first five are offered to visitors in Settings;
-// classic_blue (our original blue) is only selectable here, to revert.
-export type ThemeColorName = 'terra' | 'ocean' | 'fire' | 'sky' | 'borealis' | 'classic_blue';
-export const VISITOR_THEMES: ThemeColorName[] = ['terra', 'ocean', 'fire', 'sky', 'borealis'];
+// Accent themes offered to visitors in Settings: purple is Nebula, black & white is Space.
+// classic_blue (our original blue) stays here only to revert.
+export type ThemeColorName = 'terra' | 'nebula' | 'space' | 'ocean' | 'fire' | 'borealis' | 'classic_blue';
+export const VISITOR_THEMES: ThemeColorName[] = ['terra', 'ocean', 'fire', 'nebula', 'borealis', 'space'];
 // Display names for the theme dots in Settings (brand names, not translated).
 export const THEME_NAMES: Record<ThemeColorName, string> = {
   terra: 'Terra',
+  nebula: 'Nebula',
+  space: 'Space',
   ocean: 'Aqua',
   fire: 'Fire',
-  sky: 'Space',
   borealis: 'Boreal',
   classic_blue: 'Classic Blue',
 };
@@ -118,9 +119,10 @@ const asHex = (v: string | undefined, def: string): string => (v && HEX.test(v.t
 
 const THEME_DEFAULTS: Record<ThemeColorName, string> = {
   terra: '#7F5200',
+  nebula: '#6633FF',
+  space: '#050505',
   ocean: '#1C8BFD',
   fire: '#D97757',
-  sky: '#7C55D6',
   borealis: '#12A88C',
   classic_blue: '#4F6FE0',
 };
@@ -195,14 +197,17 @@ export const appSettings: AppSettings = {
     default: asThemeName(cfg.THEME_COLOR),
     colors: {
       terra: asHex(cfg.TERRA, THEME_DEFAULTS.terra),
+      nebula: asHex(cfg.NEBULA, THEME_DEFAULTS.nebula),
+      space: asHex(cfg.SPACE, THEME_DEFAULTS.space),
       ocean: asHex(cfg.OCEAN, THEME_DEFAULTS.ocean),
       fire: asHex(cfg.FIRE, THEME_DEFAULTS.fire),
-      sky: asHex(cfg.SKY, THEME_DEFAULTS.sky),
       borealis: asHex(cfg.BOREALIS, THEME_DEFAULTS.borealis),
       classic_blue: asHex(cfg.CLASSIC_BLUE, THEME_DEFAULTS.classic_blue),
     },
     night: {
       terra: asHex(cfg.TERRA_NIGHT, '#FFC400'),
+      nebula: asHex(cfg.NEBULA_NIGHT, '#9945FF'),
+      space: asHex(cfg.SPACE_NIGHT, '#FFFFFF'),
     },
   },
   logoMark: {

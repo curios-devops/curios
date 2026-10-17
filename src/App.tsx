@@ -154,7 +154,7 @@ function AppContent() {
     if (isStandard) {
       return (
         <button
-          className="h-7 px-3 rounded-lg flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
+          className="h-7 px-3 rounded-full flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
           type="button"
           onClick={() => setShowProModal(true)}
           style={{ backgroundColor, color: textColor, border: '1px solid transparent' }}
@@ -181,7 +181,7 @@ function AppContent() {
             {t('headerLogIn')}
           </button>
           <button
-            className="h-7 px-3 whitespace-nowrap rounded-lg flex items-center justify-center text-sm font-medium transition-colors shadow-md"
+            className="h-7 px-3 whitespace-nowrap rounded-full flex items-center justify-center text-sm font-medium transition-colors shadow-md"
             type="button"
             onClick={() => setShowSignUpModal(true)}
             style={{ backgroundColor, color: textColor, border: '1px solid transparent' }}
@@ -212,7 +212,7 @@ function AppContent() {
     // Use the same visual style as the desktop "Get started" button (rounded-lg)
     return (
       <button
-        className="h-7 px-3 rounded-lg flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
+        className="h-7 px-3 rounded-full flex items-center justify-center text-sm font-medium text-white transition-colors shadow-md"
         type="button"
         onClick={() => setShowSignUpModal(true)}
         style={{

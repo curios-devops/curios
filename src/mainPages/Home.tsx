@@ -148,7 +148,7 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen relative transition-colors duration-200"
+      className="nebula-sky min-h-screen relative transition-colors duration-200"
       style={{
         backgroundColor: 'var(--ui-bg-primary)',
         color: 'var(--ui-text-primary)',
@@ -193,12 +193,11 @@ export default function Home() {
           </div>
         ) : isStandard ? (
           <button
-            className="h-10 px-6 flex items-center justify-center font-medium transition-all"
+            className="h-10 px-6 rounded-full flex items-center justify-center font-medium transition-all"
             style={{
               backgroundColor: getStartedBackground,
               color: getStartedText,
               border: '1px solid transparent',
-              borderRadius: 'var(--radius-xl)', // 12px; square on Terra
               fontSize: '15px',
               fontWeight: '500',
               boxShadow: '0 0 0 0 transparent',
@@ -221,12 +220,11 @@ export default function Home() {
         ) : (
           <>
             <button
-              className="h-10 px-6 flex items-center justify-center font-medium transition-all"
+              className="h-10 px-6 rounded-full flex items-center justify-center font-medium transition-all"
               style={{
                 backgroundColor: 'transparent',
                 color: 'var(--ui-text-primary)',
                 border: '1.5px solid var(--ui-border-default)',
-                borderRadius: 'var(--radius-xl)', // 12px; square on Terra
                 fontSize: '15px',
                 fontWeight: '500',
                 transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
@@ -258,12 +256,11 @@ export default function Home() {
               </button>
             ) : (
               <button
-                className="h-10 px-6 flex items-center justify-center font-medium transition-all"
+                className="h-10 px-6 rounded-full flex items-center justify-center font-medium transition-all"
                 style={{
                   backgroundColor: getStartedBackground,
                   color: getStartedText,
                   border: '1px solid transparent',
-                  borderRadius: 'var(--radius-xl)', // 12px; square on Terra
                   fontSize: '15px',
                   fontWeight: '500',
                   boxShadow: '0 0 0 0 transparent',

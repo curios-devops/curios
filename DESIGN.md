@@ -92,15 +92,15 @@ the Home `DAY · NIGHT` switch never appear, disappear or change with the theme.
 **Which theme a person sees**
 1. Signed-in and picked one in Settings → Themes → that theme (saved in their profile as
    `theme:<name>`; also remembered on the device).
-2. Otherwise the default theme from `app-settings.md` (`THEME_COLOR`, today Terra).
+2. Otherwise the default theme from `app-settings.md` (`THEME_COLOR`, today Space, in DARK).
 3. Light / dark: their choice in Settings → Appearance, else `app-settings.md` `THEME`
    (LIGHT / DARK / AUTO = the device). A theme may define its own light/dark variants.
 
-**Accent-only themes** — Aqua (`ocean`) `#1C8BFD`, Fire `#D97757`, Sky `#7C55D6`, Borealis `#12A88C`
-(Classic Blue `#4F6FE0` kept to revert). One base color each (`app-settings.md`); hover and
+**Accent-only themes** — Aqua (`ocean`) `#1C8BFD`, Fire `#D97757`, Borealis `#12A88C`
+(Classic Blue `#4F6FE0` kept to revert). Purple is Nebula and black & white is Space (below). One base color each (`app-settings.md`); hover and
 tints are derived; everything else is the general design.
 
-**Terra** (default) — inspired by xerj.org. Overrides in `src/styles/themes.css` and
+**Terra** — inspired by xerj.org. Overrides in `src/styles/themes.css` and
 `themeColors.ts` (`terraTheme`):
 
 | | DAY (light) | NIGHT (dark) |
@@ -118,10 +118,50 @@ tints are derived; everything else is the general design.
 - Shapes: square — every `rounded-*` except `full` is 2px.
 - Home: the title in display type (`--home-title-*`, ≤46px so it fits one line), the
   question beat in the accent (xerj's second line); `DAY · NIGHT` top right (desktop).
-- **DAY / NIGHT follow the sun by default** (Auto ON): DAY from sunrise to sunset at the
-  reader's place (`/api/geo` coordinates; 07:00–20:00 when unknown), checked every 5 min.
-  Picking Day or Night turns Auto off; the Auto switch (Settings →
-  Appearance) turns it back on.
+- **Auto** (Settings → Appearance, every theme) makes DAY / NIGHT follow the sun: DAY from sunrise
+  to sunset at the reader's place (`/api/geo` coordinates; 07:00–20:00 when unknown), checked every
+  5 min. Off by default for now (the default look is Space dark); picking Day or Night turns it off.
+
+**Nebula** — inspired by singularityhub.com and upcomers.com: futuristic, dark first. Overrides in
+`src/styles/themes.css` and `themeColors.ts` (`nebulaTheme`). It sits on the purple slot in Settings
+(a saved "Space" becomes Nebula).
+
+| | Light | Dark |
+|---|---|---|
+| Background / surface | white `#FFFFFF` | true black `#000000` / card `#141414` |
+| Ink | black `#000000` | white `#FFFFFF` |
+| Muted | `#616161` | `#A3A3A3` |
+| Lines | `#E5E5E5` | `#262626` |
+| Accent | Singularity violet `#6633FF` (`NEBULA`), hover `#4F26D0` | Upcomers violet `#9945FF` (`NEBULA_NIGHT`) |
+| Text on accent | white | white |
+
+- Grounds stay neutral white / black — the violet is only the accent, never a background tint.
+- Neutrals: a pure gray ladder (`gray-50 #FAFAFA` … `gray-950 #000000`).
+- Type: display and body **Figtree** (Singularity), headlines 800 −0.03em; labels and mono **Geist Mono**.
+- Shapes: Upcomers corners — `rounded-lg` 12px, `rounded-xl` 16px, `rounded-2xl` 20px; pills stay full.
+- Background: on the dark Home, a few tiny white stars drift almost imperceptibly (`.nebula-sky`,
+  off with reduced motion). No glow, no lines.
+
+**Space** — inspired by grok.com and x.com: black and white only, no colored accent. Overrides in
+`src/styles/themes.css` and `themeColors.ts` (`spaceTheme`).
+
+| | Light | Dark |
+|---|---|---|
+| Background / surface | white `#FFFFFF` | true black `#000000` / card `#141414` |
+| Ink | `#050505` | white `#FFFFFF` |
+| Muted | `#636363` | `#858585` |
+| Lines | `#DEDEDE` | `#292929` |
+| "Accent" (buttons, active) | black `#050505` (`SPACE`), hover `#292929` | white `#FFFFFF` (`SPACE_NIGHT`), hover `#DEDEDE` |
+| Text on accent | white | `#050505` |
+
+- Neutrals: Grok's pure gray scale (no warm or blue tint).
+- Type: **Inter** (Grok's fallback for Universal Sans) for display and body, headlines 600 −0.03em;
+  labels and mono **Geist Mono**.
+- Shapes: X / Grok — `rounded-lg` 12px, `rounded-xl` 16px, `rounded-2xl` 24px; pills stay full.
+- Motion (dark only): the Home mode menu is the Tesla Roadster — four metal nozzles on its corners,
+  white exhaust plumes firing down, a lift-off, one 3D spin with a small settle wobble, then a slow
+  hover (`.rocket-menu` in `themes.css`; after x.com/almonk/status/2111151330467406148). Monochrome,
+  off with reduced motion, inert in every other theme. The one place a theme may add gradients.
 
 **Adding a theme:** a base hex in `app-settings.md` → `THEME_DEFAULTS` / `curiosThemes` in
 `themeColors.ts`; only if it changes more than the accent, an `html[data-accent="<name>"]`

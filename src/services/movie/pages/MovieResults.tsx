@@ -684,7 +684,7 @@ export default function MovieResults() {
                     <span className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">
                       {idx + 1}/{swipes.length}
                     </span>
-                    <span className="absolute top-1 right-1 text-[10px] px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: swipe.isCore ? 'var(--accent-primary)' : 'rgba(0,0,0,0.6)' }}>
+                    <span className="absolute top-1 right-1 text-[10px] px-1.5 py-0.5 rounded" style={swipe.isCore ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : { backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff' }}>
                       {roleLabel(swipe)}
                     </span>
                     {enhancingIds.has(swipe.id) ? (
