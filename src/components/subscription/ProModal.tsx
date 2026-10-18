@@ -141,6 +141,8 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
                 <Feature text={t('creditsPerDayPro')} theme={theme} />
                 <Feature text={t('uploadUnlimitedFiles')} theme={theme} />
                 <Feature text={t('moreVideoGeneration')} theme={theme} />
+                <Feature text={t('moreAvatarMinutes')} theme={theme} />
+                <Feature text={t('earlyAccessFeatures')} theme={theme} />
               </ul>
             </div>
 
