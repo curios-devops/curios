@@ -41,11 +41,11 @@ export default function SearchButton({ onClick, disabled, isRouting = false }: S
       aria-label="Search"
     >
       {isRouting ? (
-        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        <div className="w-4 h-4 border-2 border-[var(--ui-text-on-accent)] border-t-transparent rounded-full animate-spin" />
       ) : (
         <ArrowRight
           size={18}
-          className="transition-colors duration-250 ease-in-out text-white"
+          className="transition-colors duration-250 ease-in-out text-[var(--ui-text-on-accent)]"
         />
       )}
     </button>
