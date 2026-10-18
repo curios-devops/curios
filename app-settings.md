@@ -191,13 +191,16 @@ PRICE_YEARLY = $10
 ```
 
 ### PROMO_YEARLY_NOTE — line under the yearly price
-Default = OFF · any text, or OFF
+Default = OFF · any text, a text key from src/locales (shown translated), or OFF
+twoMonthsFree = "2 months free" — true: $10/year vs 12 × $1 = $12.
 ```
-PROMO_YEARLY_NOTE = 20% Extra Discount
+PROMO_YEARLY_NOTE = twoMonthsFree
 ```
 
 ### PROMO_LABEL — tag shown above the Premium price
 Default = OFF · any text, or OFF
+While it's on, the pricing window also shows the animated diagonal promo band
+(label · monthly · yearly · yearly note), whatever BANNER says.
 ```
 PROMO_LABEL = 🖤 Black Friday — 90% off
 ```

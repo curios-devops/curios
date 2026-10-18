@@ -1,7 +1,7 @@
 import { X, Check } from 'lucide-react';
 import { useState } from 'react';
 import { useSession } from '../../hooks/useSession';
-import { useTranslation } from '../../hooks/useTranslation';
+import { useTranslation, type TranslationKey } from '../../hooks/useTranslation';
 import { useAccentColor } from '../../hooks/useAccentColor';
 import { useTheme } from '../theme/ThemeContext';
 import CheckoutButton from './CheckoutButton';
@@ -22,6 +22,8 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
   const [selectedInterval, setSelectedInterval] = useState<'month' | 'year'>('month');
   const [error, setError] = useState<string | null>(null);
   const promo = appSettings.pricingPromo;
+  // The note may be a locale key (e.g. twoMonthsFree); t() returns plain text unchanged.
+  const yearlyNote = promo.yearlyNote ? t(promo.yearlyNote as TranslationKey) : '';
 
   if (!isOpen) return null;
 
@@ -29,7 +31,7 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
     // Scrolls when the plans are taller than the screen (phones, short laptops).
     <div className={`fixed inset-0 ${theme === 'dark' ? 'bg-black/70' : 'bg-gray-500/50'} z-50 overflow-y-auto`}>
       <div className="min-h-full flex items-center justify-center p-4">
-      <div className={`${theme === 'dark' ? 'bg-night-850' : 'bg-white'} w-full max-w-[900px] p-5 sm:p-8 rounded-2xl relative`}>
+      <div className={`${theme === 'dark' ? 'bg-night-850' : 'bg-white'} w-full max-w-[900px] p-5 sm:p-8 rounded-2xl relative overflow-hidden`}>
         <button
           onClick={onClose}
           className={`absolute top-6 right-6 ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'} transition-colors z-20`}
@@ -60,6 +62,12 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
           </div>
         </div>
 
+        {promo.label && (
+          <PromoBands
+            message={[promo.label, `${promo.monthly}${t('perMonth')}`, `${promo.yearly}${t('perYear')}`, yearlyNote].filter(Boolean)}
+          />
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Standard Plan */}
           <div className={`${theme === 'dark' ? 'bg-night-800 border-gray-800' : 'bg-gray-50 border-gray-200'} p-6 rounded-xl border flex flex-col justify-between h-full`}>
@@ -73,7 +81,7 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
 
               <ul className={`space-y-4 mb-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} pt-4`}>
                 <Feature text={t('unlimitedBasicSearches')} theme={theme} />
-                <Feature text={t('advancedSearchesPerDay')} theme={theme} />
+                <Feature text={t('creditsPerDayFree')} theme={theme} />
                 <Feature text={t('standardAiModel')} theme={theme} />
                 <Feature text={t('createProfilePersonalize')} theme={theme} />
               </ul>
@@ -116,19 +124,16 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
                   </span>
                 </div>
                 <div className="mt-2 h-6">
-                  {selectedInterval === 'year' && promo.yearlyNote && (
-                    <span className="text-sm" style={{ color: accentColor.primary }}>{promo.yearlyNote}</span>
+                  {selectedInterval === 'year' && yearlyNote && (
+                    <span className="text-sm" style={{ color: accentColor.primary }}>{yearlyNote}</span>
                   )}
                 </div>
               </div>
 
               <ul className={`space-y-4 mb-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} pt-4`}>
                 <Feature text={t('unlimitedBasicSearches')} theme={theme} />
-                <Feature text={t('advancedSearchesPerMonth')} theme={theme} />
-                <Feature text={t('selectPreferredAiModel')} theme={theme} />
+                <Feature text={t('creditsPerDayPro')} theme={theme} />
                 <Feature text={t('uploadUnlimitedFiles')} theme={theme} />
-                <Feature text={t('betterImageQuality')} theme={theme} />
-                <Feature text={t('betterVideoQuality')} theme={theme} />
                 <Feature text={t('moreVideoGeneration')} theme={theme} />
               </ul>
             </div>
@@ -164,5 +169,44 @@ function Feature({ text, theme }: { text: string; theme: string }) {
       <Check size={16} style={{ color: accentColor.primary }} />
       <span>{text}</span>
     </li>
+  );
+}
+// Two promo ribbons crossing on a slight diagonal, scrolling in opposite directions
+// (the upcomers.com effect). Front ribbon in the Fire theme color so the deal stands
+// out of black & white themes; back ribbon in the theme's own ink. Still with reduced motion.
+function PromoBands({ message }: { message: string[] }) {
+  const line = message.join('  🔥  ');
+  const band = (front: boolean) => (
+    <div
+      className={`absolute left-[-10%] top-1/2 -translate-y-1/2 w-[120%] py-2 overflow-hidden ${front ? 'z-10 -rotate-3' : 'rotate-2 opacity-90'}`}
+      style={front
+        ? { backgroundColor: appSettings.themes.colors.fire, color: '#FFFFFF' }
+        : { backgroundColor: 'var(--ui-text-primary)', color: 'var(--ui-bg-primary)' }}
+    >
+      {/* Two identical groups translated by -50% loop seamlessly (as PromoBanner). */}
+      <div
+        className={`flex w-max whitespace-nowrap animate-[slide-infinite_30s_linear_infinite] motion-reduce:animate-none ${front ? '' : '[animation-direction:reverse]'}`}
+      >
+        {[0, 1].map((group) => (
+          <div key={group} className="flex shrink-0">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="px-6 text-sm sm:text-base font-extrabold uppercase tracking-wide"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                🔥  {line}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <div className="relative h-24 -mx-5 sm:-mx-8 mb-4 flex items-center" aria-label={message.join(' · ')}>
+      {band(false)}
+      {band(true)}
+    </div>
   );
 }
