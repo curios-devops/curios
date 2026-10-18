@@ -63,8 +63,14 @@ export default function ProModal({ isOpen, onClose, message }: ProModalProps) {
         </div>
 
         {promo.label && (
-          <PromoBands
-            message={[promo.label, `${promo.monthly}${t('perMonth')}`, `${promo.yearly}${t('perYear')}`, yearlyNote].filter(Boolean)}
+          <PromoBand
+            parts={[
+              // "🖤 Black Friday — 90% off" → "Black Friday", "90% off"
+              ...promo.label.split(/\s+[—–-]\s+/).map((p) => p.replace(/^[^\p{L}\p{N}$]+/u, '')),
+              `${promo.monthly}${t('perMonth')}`,
+              `${promo.yearly}${t('perYear')}`,
+              yearlyNote,
+            ].filter(Boolean)}
           />
         )}
 
@@ -171,42 +177,39 @@ function Feature({ text, theme }: { text: string; theme: string }) {
     </li>
   );
 }
-// Two promo ribbons crossing on a slight diagonal, scrolling in opposite directions
-// (the upcomers.com effect). Front ribbon in the Fire theme color so the deal stands
-// out of black & white themes; back ribbon in the theme's own ink. Still with reduced motion.
-function PromoBands({ message }: { message: string[] }) {
-  const line = message.join('  🔥  ');
-  const band = (front: boolean) => (
-    <div
-      className={`absolute left-[-10%] top-1/2 -translate-y-1/2 w-[120%] py-2 overflow-hidden ${front ? 'z-10 -rotate-3' : 'rotate-2 opacity-90'}`}
-      style={front
-        ? { backgroundColor: appSettings.themes.colors.fire, color: '#FFFFFF' }
-        : { backgroundColor: 'var(--ui-text-primary)', color: 'var(--ui-bg-primary)' }}
-    >
-      {/* Two identical groups translated by -50% loop seamlessly (as PromoBanner). */}
-      <div
-        className={`flex w-max whitespace-nowrap animate-[slide-infinite_30s_linear_infinite] motion-reduce:animate-none ${front ? '' : '[animation-direction:reverse]'}`}
-      >
-        {[0, 1].map((group) => (
-          <div key={group} className="flex shrink-0">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="px-6 text-sm sm:text-base font-extrabold uppercase tracking-wide"
-                style={{ fontFamily: 'var(--font-display)' }}
-              >
-                🔥  {line}
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+// One promo ribbon on a slight diagonal scrolling very slowly (the upcomers.com effect):
+// Nebula violet with darker edges, black lettering, numbers picked out in white, triple
+// slashes between the parts. Still with reduced motion.
+const SLASHES =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 20'%3E%3Cg transform='skewX(-16) translate(3 0)' fill='%23000'%3E%3Crect x='3' width='2.8' height='20' rx='.7' fill-opacity='.55'/%3E%3Crect x='7.6' width='2.8' height='20' rx='.7'/%3E%3Crect x='12.2' width='2.8' height='20' rx='.7' fill-opacity='.55'/%3E%3C/g%3E%3C/svg%3E\")";
+
+function PromoBand({ parts }: { parts: string[] }) {
+  const run = parts.map((part, i) => (
+    <span key={i} className="flex shrink-0 items-center">
+      <span aria-hidden className="h-5 w-[22px] shrink-0" style={{ backgroundImage: SLASHES, backgroundRepeat: 'no-repeat', backgroundPosition: '50%' }} />
+      <span className="px-3.5 sm:px-4 text-[20px] sm:text-[24px] leading-none font-bold uppercase whitespace-nowrap">
+        {part.split(/(\$?\d+%?)/).map((bit, j) => (j % 2 ? <span key={j} className="text-white">{bit}</span> : bit))}
+      </span>
+    </span>
+  ));
   return (
-    <div className="relative h-24 -mx-5 sm:-mx-8 mb-4 flex items-center" aria-label={message.join(' · ')}>
-      {band(false)}
-      {band(true)}
+    <div className="-mx-5 sm:-mx-8 py-5 mb-2 overflow-hidden select-none" role="img" aria-label={parts.join(' · ')}>
+      <div
+        className="relative flex h-9 sm:h-[38px] w-[108%] -translate-x-[4%] items-center overflow-hidden"
+        style={{
+          backgroundImage: `linear-gradient(90deg, rgba(0,0,0,.45), transparent 22%, rgba(255,255,255,.14) 50%, transparent 78%, rgba(0,0,0,.45)), linear-gradient(${appSettings.themes.night.nebula}, ${appSettings.themes.night.nebula})`,
+          transform: 'rotate(-1.6deg)',
+          color: '#000000',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        {/* Two identical groups translated by -50% loop seamlessly (as PromoBanner). */}
+        <div className="flex min-w-max items-center animate-[slide-infinite_80s_linear_infinite] motion-reduce:animate-none">
+          {[0, 1].map((group) => (
+            <div key={group} className="flex shrink-0">{run}{run}{run}</div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
