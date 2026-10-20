@@ -61,17 +61,17 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
     try { sessionStorage.setItem('home_search_draft', query); } catch { /* ignore */ }
   }, [query]);
 
-  // Close attach menu when clicking outside
+  // Close attach menu on any tap/click outside (pointerdown: iOS sends no mousedown on plain areas)
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: PointerEvent) => {
       if (attachMenuRef.current && !attachMenuRef.current.contains(event.target as Node)) {
         setShowAttachMenu(false);
       }
     };
 
     if (showAttachMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener('pointerdown', handleClickOutside);
+      return () => document.removeEventListener('pointerdown', handleClickOutside);
     }
   }, [showAttachMenu]);
 

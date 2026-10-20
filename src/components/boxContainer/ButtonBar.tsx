@@ -86,7 +86,7 @@ export default function ButtonBar({
       setShowModeMenu(false);
       spinningRef.current = false;
       setSpinning(false);
-    }, 700);
+    }, 600);
   };
   const modeMenuRef = useRef<HTMLDivElement>(null);
   // The menu opens toward the side with more room and scrolls inside it (it grows with "More").
@@ -100,17 +100,18 @@ export default function ButtonBar({
     setShowModeMenu(!showModeMenu);
   };
 
-  // Close mode menu when clicking outside
+  // Close mode menu on any tap/click outside. pointerdown, not mousedown: iOS Safari sends no
+  // mousedown for taps on non-clickable areas, so the menu lingered until something was tapped.
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: PointerEvent) => {
       if (modeMenuRef.current && !modeMenuRef.current.contains(event.target as Node)) {
         setShowModeMenu(false);
       }
     };
 
     if (showModeMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener('pointerdown', handleClickOutside);
+      return () => document.removeEventListener('pointerdown', handleClickOutside);
     }
   }, [showModeMenu]);
 

@@ -205,7 +205,7 @@ html[data-theme="light"] .rocket-thruster {
 }
 /* Picking a mode: one more roll (a new animation name so it restarts), then the menu closes. */
 .rocket-body.is-spinning {
-  animation: rocket-spin-again 0.7s cubic-bezier(0.5, 0, 0.3, 1) both;
+  animation: rocket-spin-again 0.6s cubic-bezier(0.5, 0, 0.3, 1) both;
 }
 
 /* Nozzle: a chrome cylinder with a rounded cap and a dark ring near the mouth. Behind the panel
@@ -262,7 +262,7 @@ html[data-theme="light"] .rocket-thruster {
     rocket-thrust 0.85s ease-in-out 1s backwards;
 }
 .rocket-body.is-spinning .rocket-thruster::after {
-  animation: rocket-plume 0.6s ease-in-out infinite alternate, rocket-thrust 0.7s ease-in-out;
+  animation: rocket-plume 0.6s ease-in-out infinite alternate, rocket-thrust 0.6s ease-in-out;
 }
 /* Smoke: puffs leave the nozzle small and dense, then grow, drift and thin out. */
 .rocket-puff {
