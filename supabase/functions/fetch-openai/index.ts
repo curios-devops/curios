@@ -23,7 +23,8 @@ const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
 const DEFAULT_MODEL = "gpt-4.1-mini-2025-04-14";
-const TIMEOUT_MS = 28000; // 28 seconds (leave buffer for edge function)
+// Sol/Astra JSON (Video agents, Cinematic plan) can pass 28s; the edge function allows 150s.
+const TIMEOUT_MS = 55000;
 const STREAMING_TIMEOUT_MS = 60000; // 60 seconds for streaming (longer to allow full response)
 const IMAGE_TIMEOUT_MS = 120000; // 120s — gpt-image-2 (medium/high, 1536x1024) can take ~40-60s
 
@@ -431,7 +432,10 @@ Deno.serve(async (req: Request) => {
 
     // Call OpenAI with timeout (longer timeout for streaming)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), enableStreaming ? STREAMING_TIMEOUT_MS : TIMEOUT_MS);
+    // Callers may ask for more time (complex Video questions); never past the edge limit.
+    const requested = Number(parsedPrompt.timeout_ms) || 0;
+    const callTimeout = Math.min(Math.max(requested, enableStreaming ? STREAMING_TIMEOUT_MS : TIMEOUT_MS), 140000);
+    const timeoutId = setTimeout(() => controller.abort(), callTimeout);
 
     const chatHeaders: Record<string, string> = {
       "Content-Type": "application/json",

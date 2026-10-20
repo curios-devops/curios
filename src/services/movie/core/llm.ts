@@ -5,8 +5,11 @@ import { appSettings } from '../../../config/appSettings';
 // The current movie's answer model (Luna/Sol/Astra, chosen per question by MovieResults).
 // Module-level because one movie generates at a time and every agent + narrativeFlow share it.
 let movieModel = appSettings.models.sol;
-export function setMovieModel(model: string): void {
+// Complex questions get more time at the edge (fetch-openai caps it at 140 s).
+let movieTimeoutMs: number | undefined;
+export function setMovieModel(model: string, timeoutMs?: number): void {
   movieModel = model;
+  movieTimeoutMs = timeoutMs;
 }
 export function getMovieModel(): string {
   return movieModel;
@@ -45,7 +48,7 @@ export async function callMovieLLMJson<T>(
   schemaHint: Record<string, string>,
   temperature = 0.5,
 ): Promise<T> {
-  const raw = await fetchOpenAI({
+  const request = (model: string) => fetchOpenAI({
     messages: [
       { role: 'system', content: systemPrompt },
       {
@@ -53,9 +56,17 @@ export async function callMovieLLMJson<T>(
         content: `${userPrompt}\n\nReturn valid JSON only. Expected keys: ${JSON.stringify(schemaHint)}`,
       },
     ],
-    model: movieModel,
+    model,
     temperature,
     response_format: { type: 'json_object' },
+    ...(movieTimeoutMs ? { timeout_ms: movieTimeoutMs } : {}),
+  });
+  // A slow or failing Sol/Astra call (e.g. the edge timeout, 500) is retried once with Luna,
+  // the fast tier, instead of failing the whole video.
+  const raw = await request(movieModel).catch((err) => {
+    if (movieModel === appSettings.models.luna) throw err;
+    console.warn('[movie llm] retrying with Luna:', err instanceof Error ? err.message : err);
+    return request(appSettings.models.luna);
   });
 
   if (!raw) throw new Error('OpenAI response did not include text content');

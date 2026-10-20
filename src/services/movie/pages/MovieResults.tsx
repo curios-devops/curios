@@ -1,15 +1,14 @@
-// Movie Mode results page (swipe-based).
-// Layout: TopBar (question + "Watch as…" mode dropdown) → tab nav (Video / Narrative /
-// Sources) → a single MAIN VIEWER rendering the active swipe with a lateral swipe RAIL
-// (vertical on desktop, horizontal on mobile) and a "Frame n/N" indicator + HD switch.
+// Video results page — one template for every type.
+// Layout: TopBar (the question) → tab nav (Video / Narrative / Sources) → the type button
+// (Magazine-style: current type framed in the accent; its menu regenerates the video as
+// another type) → a MAIN VIEWER with a lateral RAIL (swipes, or Cinematic's shots).
 // NO video is auto-rendered: even the core swipe waits for the user's Play (cost rule).
-// Changing the mode dropdown regenerates the movie in that style (1 Pro Credit); the
-// "Continue Exploring" topics are kept as-is across mode regenerations.
-// Type selector (?type=): Auto lets Decisions pick the technique (cinematic / video /
-// animation); Cinematic is a real-footage montage (CinematicMontage), Animation = the Cartoon
-// style, HD = Video + the premium (Veo/Omni) render of the core swipe, Character opens a
-// character with the question, Explore (world model) isn't connected → Video. Fallbacks:
-// any technique failing → Video; a Video clip failing → its still frame animated (Ken Burns).
+// Types (?type=): Auto lets Decisions pick the technique (cinematic / video / animation);
+// Cinematic is a real-footage montage (CinematicMontage), Animation = the Cartoon style,
+// HD = Video + the premium (Veo/Omni) render of the core swipe, Character opens a character
+// with the question, Explore (world model) isn't connected → Video. Fallbacks: any technique
+// failing → Video; a Video clip failing → its still frame animated (Ken Burns).
+// Every string comes from src/locales/video (the interface language).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -23,12 +22,12 @@ import LightMarkdown from '../../../components/LightMarkdown';
 import { generateMovie, renderSwipeVideo } from '../movieService.ts';
 import { createEnhanceJob, getEnhancedVideo, attachEnhancedToProject, markEnhancedSeen } from '../enhancedVideosService.ts';
 import { MoviePersistenceService } from '../video/MoviePersistenceService.ts';
-import { MOVIE_MODE_LIST, MOVIE_MODES, normalizeMovieMode } from '../config/movieModes.ts';
+import { normalizeMovieMode } from '../config/movieModes.ts';
 import type { MovieExperience, MovieMode, MovieProgress, MovieRelatedTopic, MovieSwipe } from '../types.ts';
 import SocialShareRow from '../components/SocialShareRow.tsx';
 import SignUpModal from '../../../components/auth/SignUpModal.tsx';
-import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
-import AstraNotice from '../../../components/AstraNotice.tsx';
+import { useTranslation } from '../../../hooks/useTranslation.ts';
+import { decideTier, pickVideoModel } from '../../auto/modelTier.ts';
 import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, detectVideoType, movieModeFor, parseVideoType, resolveVideoType, type VideoType } from '../videoType.ts';
 import CinematicMontage from '../cinematic/CinematicMontage.tsx';
@@ -36,23 +35,33 @@ import CinematicMontage from '../cinematic/CinematicMontage.tsx';
 type MovieTab = 'video' | 'narrative' | 'sources';
 
 const TABS: Array<{ id: MovieTab; label: string; icon: typeof Film }> = [
-  { id: 'video', label: 'Video', icon: Film },
-  { id: 'narrative', label: 'Narrative', icon: FileText },
-  { id: 'sources', label: 'Sources', icon: Link2 },
+  { id: 'video', label: 'vidTab_video', icon: Film },
+  { id: 'narrative', label: 'vidTab_narrative', icon: FileText },
+  { id: 'sources', label: 'vidTab_sources', icon: Link2 },
 ];
 
 export default function MovieResults() {
   const location = useLocation();
   const navigate = useNavigate();
   const { session, isLoading: sessionLoading } = useSession();
-  const { requestProAccess, canUseProFeature } = useProCredits();
+  const { requestProAccess, canUseProFeature, tier: proTier } = useProCredits();
+  const { t } = useTranslation();
 
   const query = useMemo(() => new URLSearchParams(location.search).get('q') || '', [location.search]);
-  const { getModel, answerModel } = useAnswerModel(query);
-  const forcedAstra = new URLSearchParams(window.location.search).get('tier') === 'astra';
-  // After generation the URL becomes ?projectId=… — rerun from the question itself with Astra.
-  const continueWithAstra = () =>
-    window.location.assign(`/movie-results?q=${encodeURIComponent(query)}&tier=astra`);
+  // Decisions rates the question: easy/medium → Luna, complex → Sol (Astra for Premium), and
+  // complex questions get more time at the edge. Once per question.
+  const modelRef = useRef<{ key: string; ready: Promise<void> } | null>(null);
+  const chooseModel = (): Promise<void> => {
+    if (modelRef.current?.key !== query) {
+      modelRef.current = {
+        key: query,
+        ready: decideTier(query).then((tier) => {
+          setMovieModel(pickVideoModel(tier, proTier === 'pro'), tier === 'complex' ? 110_000 : undefined);
+        }),
+      };
+    }
+    return modelRef.current.ready;
+  };
   // Optional explicit style in the URL; otherwise the enhancement agent proposes one.
   const modeParam = useMemo(() => normalizeMovieMode(new URLSearchParams(location.search).get('mode')), [location.search]);
   // Reopen a saved movie (Home "latest enhanced" card) — loads from Supabase, no regeneration.
@@ -80,6 +89,14 @@ export default function MovieResults() {
   // The technique actually running (after Auto / availability / fallbacks).
   const [videoType, setVideoType] = useState<VideoType | null>(null);
   const [typeNotice, setTypeNotice] = useState<string | null>(null);
+  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const typeMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!typeMenuOpen) return;
+    const close = (e: PointerEvent) => { if (!typeMenuRef.current?.contains(e.target as Node)) setTypeMenuOpen(false); };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [typeMenuOpen]);
   // HD: once the core swipe has its frame, its premium render starts by itself.
   const hdPendingRef = useRef(false);
 
@@ -114,9 +131,8 @@ export default function MovieResults() {
   // Shared generation entry point (initial run AND mode regeneration). NOTE renderCoreVideo
   // is OFF: no swipe — not even the core — spends video GPU money until the user hits Play.
   const startGeneration = (questionText: string, modeOverride?: MovieMode) => {
-    // Answer model for this question (Luna/Sol/Astra) — memoized, so a mode change doesn't re-charge.
-    getModel().then((m) => {
-      setMovieModel(m.model);
+    // Answer model for this question (Luna / Sol / Astra) — chosen once per question.
+    chooseModel().then(() => {
       return generateMovie(questionText, {
       userId: session?.user?.id || 'curios-guest',
       // LTX generates each swipe's audio (generate_audio); a separate ElevenLabs
@@ -159,7 +175,7 @@ export default function MovieResults() {
       })
       .catch((err) => {
         logger.error('[MovieResults] Generation failed', { error: err instanceof Error ? err.message : String(err) });
-        setError(err instanceof Error ? err.message : 'Movie generation failed');
+        setError(t('vidGenFailed'));
       });
   };
 
@@ -191,7 +207,7 @@ export default function MovieResults() {
       setExperience(exp);
       setMode(exp.mode ?? null);
       setRelatedTopics(exp.relatedTopics ?? []);
-      setProgress({ stage: 'complete', message: 'Loaded from your library', progress: 100 });
+      setProgress({ stage: 'complete', message: '', progress: 100 });
       const core = exp.swipes.find((s) => s.isCore) || exp.swipes[0];
       if (core) setSelectedSwipeId(core.id);
       return true;
@@ -200,10 +216,10 @@ export default function MovieResults() {
     if (projectIdParam) {
       hasStartedRef.current = true;
       loadSaved(projectIdParam)
-        .then((ok) => { if (!ok) setError('Movie not found'); })
+        .then((ok) => { if (!ok) setError(t('vidNotFound')); })
         .catch((err) => {
           logger.error('[MovieResults] Load failed', { error: err instanceof Error ? err.message : String(err) });
-          setError('Could not load this movie');
+          setError(t('vidLoadFailed'));
         });
       return;
     }
@@ -215,7 +231,7 @@ export default function MovieResults() {
       // Reload/back-navigation with the same question → serve the stored movie
       // (text, frames, videos) instead of paying for a new generation.
       // (Skipped when the user chose "Continue with Astra" — that's an explicit regeneration.)
-      if (session?.user?.id && !forcedAstra && typeParam === 'auto') {
+      if (session?.user?.id && typeParam === 'auto') {
         const existingId = await new MoviePersistenceService()
           .findLatestByQuestion(session.user.id, query)
           .catch(() => null);
@@ -225,9 +241,13 @@ export default function MovieResults() {
         }
       }
 
-      const picked = typeParam === 'auto' ? await detectVideoType(query) : typeParam;
-      const { type, notice } = resolveVideoType(picked);
-      if (notice) setTypeNotice(notice);
+      // The technique (Decisions) and the model (difficulty) are decided together.
+      const [picked] = await Promise.all([
+        typeParam === 'auto' ? detectVideoType(query) : Promise.resolve(typeParam),
+        chooseModel(),
+      ]);
+      const { type, noticeKey } = resolveVideoType(picked);
+      if (noticeKey) setTypeNotice(t(noticeKey));
       if (type === 'character') {
         navigate(`/character?q=${encodeURIComponent(query)}`, { replace: true });
         return;
@@ -242,7 +262,7 @@ export default function MovieResults() {
   // Cinematic found no usable footage (or failed) → the default technique, Video.
   const fallbackToVideo = (reason: string) => {
     logger.warn('[MovieResults] Cinematic fell back to Video', { reason });
-    setTypeNotice('Not enough real footage for this story — making a Video instead.');
+    setTypeNotice(t('vidNoticeNoFootage'));
     setVideoType('video');
     startGeneration(query, modeParam);
   };
@@ -255,22 +275,6 @@ export default function MovieResults() {
   const isComplete = progress.stage === 'complete';
   const selectedSwipe = swipes.find((s) => s.id === selectedSwipeId) || swipes.find((s) => s.isCore) || swipes[0];
   const frameIndex = selectedSwipe ? swipes.findIndex((s) => s.id === selectedSwipe.id) + 1 : 0;
-
-  // ── Mode dropdown ("Watch as…"): a Pro feature — every change consumes 1 Pro Credit
-  // and regenerates the whole movie (narrative, frames, video) in the new style.
-  // Continue Exploring is deliberately kept as-is.
-  const handleModeChange = async (next: MovieMode) => {
-    if (!isComplete || next === mode) return;
-    const questionText = experienceRef.current?.question || query;
-    if (!questionText.trim()) return;
-    const allowed = await requestProAccess();
-    if (!allowed) return; // modal shown by the provider
-    setMode(next);
-    hasStartedRef.current = true; // stay in "started" state; we drive this run ourselves
-    resetForNewRun();
-    setProgress({ stage: 'enhancing', message: `Restyling as ${MOVIE_MODES[next].label}...`, progress: 0 });
-    startGeneration(questionText, next);
-  };
 
   // Lazy on-demand video generation when a user activates a swipe that has only an image.
   // (renderSwipeVideo also creates the image first if it's missing — the enhance-failed
@@ -353,7 +357,7 @@ export default function MovieResults() {
         setEnhanceNotice(null);
         void markEnhancedSeen(jobId);
       } else {
-        setEnhanceNotice('Enhance failed — generating the standard video instead.');
+        setEnhanceNotice(t('vidEnhanceFailed'));
         const target = swipesRef.current.find((s) => s.id === swipeId);
         if (target && !target.videoUrl) void triggerLazyVideo(target);
       }
@@ -362,7 +366,7 @@ export default function MovieResults() {
     // Taking unusually long — the server job keeps going; it will land on Home when ready.
     enhanceRequestedRef.current.delete(swipeId);
     clearEnhancing(swipeId);
-    setEnhanceNotice('Still enhancing in the background — your video will appear on your Home page when ready.');
+    setEnhanceNotice(t('vidEnhanceBackground'));
   };
 
   // Enhance / HD (off by default, Pro): kick a SERVER-owned background job that regenerates
@@ -387,7 +391,7 @@ export default function MovieResults() {
     // From here the default pipeline skips this swipe — the enhanced render replaces it.
     enhanceRequestedRef.current.add(swipe.id);
     setEnhancingIds((prev) => new Set(prev).add(swipe.id));
-    setEnhanceNotice('Enhancing — the premium version will replace this swipe here when ready. You can leave; it will also appear on your Home page.');
+    setEnhanceNotice(t('vidEnhancing'));
     try {
       const jobId = await createEnhanceJob({
         userId: session.user.id,
@@ -406,7 +410,7 @@ export default function MovieResults() {
       enhanceRequestedRef.current.delete(swipe.id);
       clearEnhancing(swipe.id);
       setEnhanceNotice(null);
-      setError(err instanceof Error ? err.message : 'Could not start enhance');
+      setError(t('vidEnhanceStartFailed'));
     }
   };
 
@@ -429,7 +433,7 @@ export default function MovieResults() {
     }
   };
 
-  const roleLabel = (s: MovieSwipe) => (s.isCore ? 'Core' : s.role.charAt(0).toUpperCase() + s.role.slice(1));
+  const roleLabel = (s: MovieSwipe) => t(`vidRole_${s.isCore ? 'core' : s.role}`);
   const isEnhancing = selectedSwipe ? enhancingIds.has(selectedSwipe.id) : false;
   const isEnhanced = Boolean(selectedSwipe?.enhanced);
   const isGenerating = selectedSwipe ? generatingIds.has(selectedSwipe.id) || (!isEnhancing && selectedSwipe.status === 'rendering') : false;
@@ -446,78 +450,10 @@ export default function MovieResults() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
-      {/* Top bar: the user's question with the "Watch as…" mode dropdown on the right.
-          Changing the style is a Pro action: 1 Pro Credit + full regeneration in that mode. */}
-      <TopBar
-        query={displayQuery}
-        timeAgo=""
-        rightSlot={
-          <div className="flex items-center gap-1.5">
-            <span
-              className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded"
-              style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
-              title="Changing the style regenerates this movie in the new look (1 Pro Credit)."
-            >
-              Pro
-            </span>
-            <div className="relative">
-              <select
-                value={mode ?? ''}
-                onChange={(e) => void handleModeChange(e.target.value as MovieMode)}
-                disabled={!isComplete}
-                title="Watch as… — pick the visual style; the movie regenerates in that look (1 Pro Credit)"
-                className="appearance-none rounded-full pl-4 pr-8 py-2 text-sm font-medium transition-all cursor-pointer hover:opacity-90 disabled:opacity-60"
-                style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)', border: 'none' }}
-              >
-                {!mode && <option value="" disabled>Watch as…</option>}
-                {MOVIE_MODE_LIST.map((m) => (
-                  <option key={m.id} value={m.id}>{m.emoji} {m.label}</option>
-                ))}
-              </select>
-              <ChevronDown
-                size={14}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                style={{ color: 'var(--ui-text-on-accent)' }}
-              />
-            </div>
-          </div>
-        }
-      />
+      <TopBar query={displayQuery} timeAgo="" />
 
-      {/* Type selector: how the video is made. Auto = Curios decides (Decisions). */}
-      <div className="max-w-7xl mx-auto px-4 pt-3">
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-          {VIDEO_TYPES.map((t) => {
-            const active = t.id === typeParam;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => !active && chooseType(t.id)}
-                title={t.hint}
-                className="px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0"
-                style={active
-                  ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }
-                  : { backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-secondary)' }}
-              >
-                {t.label}
-                {active && t.id === 'auto' && videoType && (
-                  <span className="opacity-80"> · {VIDEO_TYPES.find((v) => v.id === videoType)?.label}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
-      {answerModel?.astraBlocked && (
-        <div className="max-w-7xl mx-auto px-4 pt-4">
-          <AstraNotice onContinueWithAstra={continueWithAstra} />
-        </div>
-      )}
-
-      {/* Tab navigation (same pattern as Cinematic: Video / Narrative / Sources) */}
-      {videoType !== 'cinematic' && (
+      {/* Tab navigation: Video / Narrative / Sources (every type uses this template) */}
       <div className="border-b" style={{ borderColor: 'var(--ui-bg-elevated)' }}>
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
@@ -534,16 +470,51 @@ export default function MovieResults() {
                     : { borderColor: 'transparent', color: 'var(--ui-text-muted)' }}
                 >
                   <Icon size={16} />
-                  {tab.label}
+                  {t(tab.label)}
                 </button>
               );
             })}
           </nav>
         </div>
       </div>
-      )}
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* The video's type, Magazine-style: the current one in a framed button; the menu
+            regenerates the video as another type. */}
+        {videoType && (
+          <div className="mb-4 relative inline-block" ref={typeMenuRef}>
+            <button
+              type="button"
+              onClick={() => setTypeMenuOpen((o) => !o)}
+              aria-expanded={typeMenuOpen}
+              title={t('vidChangeType')}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border bg-transparent text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-opacity hover:opacity-80"
+              style={{ color: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
+            >
+              {t(`vidType_${videoType}`)}
+              <ChevronDown size={14} className={`transition-transform ${typeMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {typeMenuOpen && (
+              <div
+                className="absolute left-0 top-full mt-2 rounded-lg shadow-lg border overflow-hidden min-w-[200px] z-20"
+                style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
+              >
+                {VIDEO_TYPES.filter((v) => v.id !== 'auto' && v.id !== videoType).map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => chooseType(v.id)}
+                    className="w-full px-4 py-2.5 text-sm text-left transition-colors hover:bg-[var(--ui-bg-secondary)]"
+                    style={{ color: 'var(--ui-text-primary)' }}
+                  >
+                    {t(`vidType_${v.id}`)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {error && (
           <div className="mb-4 rounded-lg p-4 text-sm" style={{ backgroundColor: 'var(--ui-bg-elevated)', color: '#ef4444' }}>
             {error}
@@ -564,7 +535,7 @@ export default function MovieResults() {
         )}
 
         {videoType === 'cinematic' ? (
-          <CinematicMontage question={query} onFail={fallbackToVideo} />
+          <CinematicMontage question={query} tab={activeTab} onFail={fallbackToVideo} />
         ) : (
         <>
         {/* Progress bar while generating */}
@@ -572,7 +543,7 @@ export default function MovieResults() {
           <div className="mb-6">
             <div className="flex items-center gap-2 text-sm mb-2" style={{ color: 'var(--ui-text-secondary)' }}>
               <Loader2 size={16} className="animate-spin" />
-              <span>{progress.message}</span>
+              <span>{t(`vidStage_${progress.stage}`)}</span>
             </div>
             <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
               <div
@@ -601,7 +572,7 @@ export default function MovieResults() {
                     className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
                     style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff' }}
                   >
-                    <Play size={12} /> Retry video
+                    <Play size={12} /> {t('vidRetry')}
                   </button>
                 </>
               ) : selectedSwipe?.imageUrl ? (
@@ -617,19 +588,19 @@ export default function MovieResults() {
                     {isEnhancing ? (
                       <>
                         <Loader2 size={30} className="animate-spin" />
-                        <span className="text-sm">Enhancing this swipe…</span>
+                        <span className="text-sm">{t('vidEnhancingSwipe')}</span>
                       </>
                     ) : isGenerating ? (
                       <>
                         <Loader2 size={30} className="animate-spin" />
-                        <span className="text-sm">Generating video…</span>
+                        <span className="text-sm">{t('vidGenerating')}</span>
                       </>
                     ) : (
                       <>
-                        <span className="h-14 w-14 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--accent-primary)' }}>
+                        <span className="h-14 w-14 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}>
                           <Play size={26} className="ml-1" />
                         </span>
-                        <span className="text-sm font-medium">Tap to generate this swipe</span>
+                        <span className="text-sm font-medium">{t('vidTapToGenerate')}</span>
                       </>
                     )}
                   </button>
@@ -637,7 +608,7 @@ export default function MovieResults() {
               ) : (
                 <div className="flex flex-col items-center gap-3 text-white/70">
                   <Loader2 size={28} className="animate-spin" />
-                  <span className="text-sm">{isEnhancing ? 'Enhancing this swipe…' : 'Creating your swipes…'}</span>
+                  <span className="text-sm">{t(isEnhancing ? 'vidEnhancingSwipe' : 'vidCreatingSwipes')}</span>
                 </div>
               )}
             </div>
@@ -647,7 +618,7 @@ export default function MovieResults() {
             {swipes.length > 0 && (
               <div className="mt-3 flex items-center justify-between">
                 <div className="text-xs font-medium" style={{ color: 'var(--ui-text-muted)' }}>
-                  Frame {frameIndex}/{swipes.length}
+                  {t('vidFrame').replace('{n}', String(frameIndex)).replace('{total}', String(swipes.length))}
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex gap-1">
@@ -666,7 +637,7 @@ export default function MovieResults() {
                     type="button"
                     onClick={() => selectedSwipe && requestEnhance(selectedSwipe)}
                     disabled={!selectedSwipe || isEnhancing || isEnhanced}
-                    title="HD — enhance this swipe with a source-grounded, premium video in the selected style (1 Pro Credit)"
+                    title={t('vidHdTip')}
                     className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer hover:opacity-90 disabled:cursor-default"
                     style={isEnhanced
                       ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }
@@ -674,14 +645,6 @@ export default function MovieResults() {
                   >
                     {isEnhancing ? <Loader2 size={12} className="animate-spin" /> : <Crown size={12} />}
                     <span>HD</span>
-                    {!isEnhanced && !isEnhancing && (
-                      <span
-                        className="text-[8px] font-bold uppercase tracking-wide px-1 py-px rounded"
-                        style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
-                      >
-                        Pro
-                      </span>
-                    )}
                   </button>
                 </div>
               </div>
@@ -695,7 +658,7 @@ export default function MovieResults() {
                   </span>
                   {selectedSwipe.enhanced && (
                     <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded text-[var(--ui-text-on-accent)]" style={{ backgroundColor: 'var(--accent-primary)' }}>
-                      <Crown size={10} /> Enhanced
+                      <Crown size={10} /> {t('vidEnhanced')}
                     </span>
                   )}
                   <h2 className="text-sm font-medium">{selectedSwipe.title}</h2>
@@ -711,7 +674,7 @@ export default function MovieResults() {
               <div className="mt-6 rounded-xl p-5" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
                 <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--accent-primary)' }}>
                   <Sparkles size={16} />
-                  <span className="text-xs font-medium uppercase tracking-wide">Share your swipe</span>
+                  <span className="text-xs font-medium uppercase tracking-wide">{t('vidShare')}</span>
                 </div>
                 <h3 className="text-lg font-semibold">{experience.viral.title}</h3>
                 {experience.viral.caption && (
@@ -739,16 +702,9 @@ export default function MovieResults() {
 
           {/* Lateral swipe rail (desktop) → horizontal on mobile */}
           <aside className="lg:w-64 flex-shrink-0">
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="mb-2">
               <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--ui-text-muted)' }}>
-                Swipes {swipes.length > 0 && `(${swipes.length})`}
-              </span>
-              <span
-                className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded text-[var(--ui-text-on-accent)]"
-                style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
-                title="Selecting any swipe outside Core consumes 1 Pro Credit."
-              >
-                Pro
+                {t('vidSwipes')} {swipes.length > 0 && `(${swipes.length})`}
               </span>
             </div>
             <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:max-h-[70vh] pb-2 lg:pb-0 scrollbar-hide">
@@ -820,7 +776,7 @@ export default function MovieResults() {
             ) : (
               <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--ui-text-muted)' }}>
                 {!isComplete && <Loader2 size={14} className="animate-spin" />}
-                <span>{isComplete ? 'No narrative available for this movie.' : 'Writing your explanation…'}</span>
+                <span>{t(isComplete ? 'vidNoNarrative' : 'vidWritingNarrative')}</span>
               </div>
             )}
           </div>
@@ -863,7 +819,7 @@ export default function MovieResults() {
             ) : (
               <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
                 <p style={{ color: 'var(--ui-text-muted)' }}>
-                  {isComplete ? 'No sources available' : 'Collecting sources…'}
+                  {t(isComplete ? 'vidNoSources' : 'vidCollectingSources')}
                 </p>
               </div>
             )}
@@ -875,7 +831,7 @@ export default function MovieResults() {
           <section className="mt-6 rounded-xl p-4 sm:p-5" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
             <div className="flex items-center gap-2 mb-4" style={{ color: 'var(--accent-primary)' }}>
               <Compass size={16} />
-              <h3 className="text-base font-semibold" style={{ color: 'var(--ui-text-primary)' }}>Continue Exploring</h3>
+              <h3 className="text-base font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('vidContinue')}</h3>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
               {relatedTopics.map((topic) => (

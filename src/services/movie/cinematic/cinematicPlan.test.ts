@@ -15,6 +15,12 @@ describe('validatePlan', () => {
     expect(validatePlan(null)).toBeNull();
   });
 
+  it('accepts a shot list returned as JSON text (what faster models like Luna sometimes send)', () => {
+    const plan = validatePlan({ title: 'x', shots: JSON.stringify([shot, shot, shot]) });
+    expect(plan?.shots).toHaveLength(3);
+    expect(validatePlan({ title: 'x', shots: 'not json' })).toBeNull();
+  });
+
   it('drops malformed shots and caps the film at 6 shots', () => {
     const plan = validatePlan({ title: 'x', shots: [shot, { narration: 3 }, ...Array(8).fill(shot)] });
     expect(plan?.shots).toHaveLength(6);

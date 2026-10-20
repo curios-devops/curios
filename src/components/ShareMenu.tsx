@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Share2, Link2, Check } from 'lucide-react';
 import Notification from './Notification';
 import { useAccentColor } from '../hooks/useAccentColor';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface ShareMenuProps {
   url: string;
@@ -58,6 +59,7 @@ const getBestImageUrl = (
 };
 
 export default function ShareMenu({ url, title, text, query, images, validImageIndices }: ShareMenuProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
@@ -212,12 +214,12 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
         aria-label="Share menu"
       >
         <Share2 size={16} />
-        <span>Share</span>
+        <span>{t('shareLabel')}</span>
       </button>
 
       {isOpen && (
         <div className="absolute top-full right-0 mt-1.5 bg-white dark:bg-night-850 rounded-lg border border-gray-200 dark:border-gray-800 shadow-xl p-3 sm:p-4 w-[280px] sm:w-[320px] animate-fade-in transition-colors duration-200">
-          <h2 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-3 transition-colors duration-200">Share</h2>
+          <h2 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-3 transition-colors duration-200">{t('shareLabel')}</h2>
           
           {/* Development notice for localhost URLs */}
           {url.includes('localhost') && (
@@ -310,14 +312,14 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
               ) : (
                 <Link2 size={20} className="text-gray-900 dark:text-white transition-colors duration-200" />
               )}
-              <span className="text-gray-700 dark:text-gray-300 text-sm transition-colors duration-200">Copy Link</span>
+              <span className="text-gray-700 dark:text-gray-300 text-sm transition-colors duration-200">{t('shareCopyLink')}</span>
             </button>
           </div>
         </div>
       )}
       
       <Notification
-        message="Link copied"
+        message={t('shareLinkCopied')}
         isVisible={showNotification}
         onHide={() => setShowNotification(false)}
       />

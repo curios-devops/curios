@@ -21,6 +21,8 @@ export interface StockClip {
   duration: number;
   credit: string;
   pageUrl: string;
+  /** Pexels poster frame (shot rail thumbnail). */
+  image: string;
 }
 export interface CinematicScene extends CinematicShot {
   clip: StockClip;
@@ -33,8 +35,11 @@ const MAX_NARRATION = 220;
 /** Keeps only usable shots and caps the film's length; null when it can't make a film. */
 export function validatePlan(raw: unknown): CinematicPlan | null {
   const r = raw as { title?: unknown; shots?: unknown } | null;
-  if (!r || !Array.isArray(r.shots)) return null;
-  const shots = r.shots
+  // Faster models sometimes return the list as JSON text inside a string.
+  let list = r?.shots;
+  if (typeof list === 'string') { try { list = JSON.parse(list); } catch { list = null; } }
+  if (!r || !Array.isArray(list)) return null;
+  const shots = list
     .map((s) => s as { narration?: unknown; search?: unknown })
     .filter((s) => typeof s.narration === 'string' && typeof s.search === 'string')
     .map((s) => ({ narration: (s.narration as string).trim().slice(0, MAX_NARRATION), search: (s.search as string).trim().slice(0, 60) }))
@@ -50,6 +55,7 @@ interface PexelsVideo {
   height: number;
   duration: number;
   url: string;
+  image?: string;
   user?: { name?: string };
   video_files: { width: number; height: number; link: string; file_type: string }[];
 }
@@ -76,6 +82,7 @@ export function pickClip(videos: PexelsVideo[], used: Set<number>): StockClip | 
     duration: best.v.duration,
     credit: best.v.user?.name || 'Pexels',
     pageUrl: best.v.url,
+    image: best.v.image || '',
   };
 }
 
@@ -129,7 +136,7 @@ export async function planCinematic(question: string): Promise<CinematicPlan> {
       'and one stock-footage search: 2-4 concrete English words describing what the camera sees ' +
       '(e.g. "barcelona aerial city", "sagrada familia facade") — never abstract ideas, text, logos or charts.',
     `Question: ${question}`,
-    { title: 'short film title in the question language', shots: '[{narration, search}]' },
+    { title: 'string: short film title in the question language', shots: 'array of objects { narration: string, search: string }' },
     0.4,
   );
   const plan = validatePlan(raw);

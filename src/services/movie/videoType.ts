@@ -10,6 +10,7 @@ import type { MovieMode } from './types.ts';
 export type VideoType = 'video' | 'cinematic' | 'animation' | 'hd' | 'character' | 'explore';
 export type VideoTypeChoice = VideoType | 'auto';
 
+// Labels are locale keys vidType_<id>; hints document the intent.
 export const VIDEO_TYPES: { id: VideoTypeChoice; label: string; hint: string }[] = [
   { id: 'auto', label: 'Auto', hint: 'Curios picks the best technique for your question' },
   { id: 'video', label: 'Video', hint: 'New generated scenes' },
@@ -35,11 +36,9 @@ export function movieModeFor(type: VideoType): MovieMode | undefined {
   return type === 'animation' ? 'cartoon' : undefined;
 }
 
-/** The technique that actually runs, and the notice to show when it had to change. */
-export function resolveVideoType(type: VideoType): { type: VideoType; notice?: string } {
-  if (type === 'explore' && !EXPLORE_AVAILABLE) {
-    return { type: 'video', notice: 'Explore (world model) isn’t connected yet — showing Video instead.' };
-  }
+/** The technique that actually runs, and the notice (locale key) when it had to change. */
+export function resolveVideoType(type: VideoType): { type: VideoType; noticeKey?: string } {
+  if (type === 'explore' && !EXPLORE_AVAILABLE) return { type: 'video', noticeKey: 'vidNoticeExplore' };
   return { type };
 }
 

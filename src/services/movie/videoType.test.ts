@@ -11,7 +11,7 @@ describe('video type', () => {
   it('never passes an ordinary clip off as a world model: Explore falls back to Video with a notice', () => {
     const r = resolveVideoType('explore');
     expect(r.type).toBe('video');
-    expect(r.notice).toBeTruthy();
+    expect(r.noticeKey).toBe('vidNoticeExplore');
     expect(resolveVideoType('cinematic')).toEqual({ type: 'cinematic' });
   });
 
