@@ -70,6 +70,24 @@ export default function ButtonBar({
   const navigate = useNavigate(); // Voice mode → live Character with the mic open
   const accentColor = useAccentColor();
   const [showModeMenu, setShowModeMenu] = useState(false);
+  // Picking a mode rolls the Roadster once before the menu closes (skipped with reduced motion).
+  const [spinning, setSpinning] = useState(false);
+  const spinningRef = useRef(false);
+  const selectMode = (mode: ModeType) => {
+    if (spinningRef.current) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      onModeSelect(mode);
+      return;
+    }
+    spinningRef.current = true;
+    setSpinning(true);
+    window.setTimeout(() => {
+      onModeSelect(mode);
+      setShowModeMenu(false);
+      spinningRef.current = false;
+      setSpinning(false);
+    }, 700);
+  };
   const modeMenuRef = useRef<HTMLDivElement>(null);
   // The menu opens toward the side with more room and scrolls inside it (it grows with "More").
   const [menuPlacement, setMenuPlacement] = useState<{ up: boolean; maxHeight: number }>({ up: true, maxHeight: 480 });
@@ -193,11 +211,11 @@ export default function ButtonBar({
           </button>
 
           {/* Mode dropdown menu */}
-          {/* The menu is the Tesla Roadster: it lifts off on four smoking thrusters, spins once
-              and hovers (all CSS in themes.css → .rocket-menu). */}
+          {/* The menu is the Tesla Roadster: it lifts off on four smoking thrusters, does a barrel
+              roll, hovers, and rolls again when a mode is picked (CSS in themes.css → .rocket-menu). */}
           {showModeMenu && (
             <div className={`rocket-menu absolute ${menuPlacement.up ? 'bottom-full mb-2' : 'top-full mt-2'} left-0 z-50`}>
-              <div className="rocket-body relative">
+              <div className={`rocket-body relative${spinning ? ' is-spinning' : ''}`}>
                 <div
                   className="rounded-lg shadow-lg border overflow-x-hidden overflow-y-auto min-w-[220px]"
                   style={{
@@ -210,8 +228,8 @@ export default function ButtonBar({
                   {/* Mode Selector - Search (formerly Fast Search), Stories, Video, Character */}
                   <ModeSelector
                     selectedMode={selectedMode}
-                    onModeSelect={onModeSelect}
-                    onClose={() => setShowModeMenu(false)}
+                    onModeSelect={selectMode}
+                    onClose={() => { if (!spinningRef.current) setShowModeMenu(false); }}
                   />
                 </div>
                 {(['tl', 'tr', 'bl', 'br'] as const).map((corner) => (
