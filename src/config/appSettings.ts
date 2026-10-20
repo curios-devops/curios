@@ -138,6 +138,7 @@ const LOGO_NAMED: Record<string, string> = {
   GRAY: LOGO_GRAY,
   CLASSIC_BLUE: '#4F6FE0',
   RED: '#E5484D',
+  TAB_BLUE: '#007BFF',
 };
 const asLogoColor = (v: string | undefined, def: string): string => {
   const key = (v || '').trim().toUpperCase();

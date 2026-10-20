@@ -21,6 +21,11 @@ describe('validatePlan', () => {
     expect(validatePlan({ title: 'x', shots: 'not json' })).toBeNull();
   });
 
+  it('keeps at most 4 follow-up questions for Continue exploring (and none when missing)', () => {
+    expect(validatePlan({ title: 'x', shots: [shot, shot, shot], related: ['a', 'b', 'c', 'd', 'e', 3] })?.related).toEqual(['a', 'b', 'c', 'd']);
+    expect(validatePlan({ title: 'x', shots: [shot, shot, shot] })?.related).toEqual([]);
+  });
+
   it('drops malformed shots and caps the film at 6 shots', () => {
     const plan = validatePlan({ title: 'x', shots: [shot, { narration: 3 }, ...Array(8).fill(shot)] });
     expect(plan?.shots).toHaveLength(6);

@@ -82,15 +82,17 @@ size is fixed too (not configurable).
 ### LOGO_ICON_COLOR — the logo mark (frame) color
 OCEAN_BLUE = Pamba blue (#1C8BFD) · GRAY = the original gray (#9A9A9A) ·
 CLASSIC_BLUE = our original blue (#4F6FE0) · or any hex like #1C8BFD
-Default = OCEAN_BLUE
+Default = OCEAN_BLUE. Since 2026-10-20 the app mark is gray + blue and the browser-tab icon
+(public/curios_logo.svg) is the blue + red one.
 ```
-LOGO_ICON_COLOR = OCEAN_BLUE
+LOGO_ICON_COLOR = GRAY
 ```
 
 ### LOGO_DOT_COLOR — the small center square of the logo
-RED = #E5484D · ACCENT = follows the theme · or any hex. Default = RED
+RED = #E5484D · TAB_BLUE = #007BFF (the old tab icon's blue) · ACCENT = follows the theme ·
+or any hex. Default = RED
 ```
-LOGO_DOT_COLOR = RED
+LOGO_DOT_COLOR = TAB_BLUE
 ```
 
 ### LOGO_DOT_PULSE — the center slowly breathes (brighter / softer)

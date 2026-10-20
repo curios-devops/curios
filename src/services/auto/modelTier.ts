@@ -62,13 +62,12 @@ export async function decideTier(query: string): Promise<QuestionTier | null> {
 }
 
 /**
- * Video (generated and Cinematic): easy or medium questions → Luna; complex → Sol, or Astra
- * for Premium accounts only (no credit spent, no upgrade notice). Unknown tier → Luna.
+ * Video (generated and Cinematic): easy or medium questions → Luna; complex → Sol. Unknown
+ * tier → Luna. Astra only comes from the page's HD button (stepUp from Sol, 1 Pro Credit).
  */
-export function pickVideoModel(tier: QuestionTier | null, isPremium: boolean, models = appSettings.models): string {
+export function pickVideoModel(tier: QuestionTier | null, models = appSettings.models): string {
   if (!models.router) return models.sol;
-  if (tier !== 'complex') return models.luna;
-  return isPremium ? models.astra : models.sol;
+  return tier === 'complex' ? models.sol : models.luna;
 }
 
 /**

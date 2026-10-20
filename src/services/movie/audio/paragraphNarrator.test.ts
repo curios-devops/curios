@@ -32,7 +32,7 @@ describe('ParagraphNarrator audio session (iOS silent switch)', () => {
       play() { this.paused = false; return Promise.resolve(); }
       pause() { this.paused = true; }
     });
-    vi.stubGlobal('window', { AudioContext: class { state = 'running'; resume() { return Promise.resolve(); } close() { return Promise.resolve(); } } });
+    vi.stubGlobal('window', { AudioContext: class { state = 'running'; destination = {}; createGain() { return { gain: { value: 1 }, connect() {} }; } resume() { return Promise.resolve(); } close() { return Promise.resolve(); } } });
 
     const n = new ParagraphNarrator(['Hola.'], 'v', 'female', () => {});
     expect(audioSession.type).toBe('playback');

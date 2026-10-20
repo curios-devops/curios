@@ -12,6 +12,8 @@ export interface CinematicShot {
 export interface CinematicPlan {
   title: string;
   shots: CinematicShot[];
+  /** Up to 4 follow-up questions for "Continue exploring". */
+  related: string[];
 }
 export interface StockClip {
   id: number;
@@ -46,7 +48,13 @@ export function validatePlan(raw: unknown): CinematicPlan | null {
     .filter((s) => s.narration.length > 0 && s.search.length > 0)
     .slice(0, MAX_SHOTS);
   if (shots.length < MIN_SHOTS) return null;
-  return { title: typeof r.title === 'string' && r.title.trim() ? r.title.trim().slice(0, 90) : '', shots };
+  let related = (r as { related?: unknown }).related;
+  if (typeof related === 'string') { try { related = JSON.parse(related); } catch { related = []; } }
+  return {
+    title: typeof r.title === 'string' && r.title.trim() ? r.title.trim().slice(0, 90) : '',
+    shots,
+    related: Array.isArray(related) ? related.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim().slice(0, 90)).slice(0, 4) : [],
+  };
 }
 
 interface PexelsVideo {
@@ -128,15 +136,19 @@ export function chunkAt(chunks: string[][], elapsed: number, duration: number): 
   return chunks.length - 1;
 }
 
-export async function planCinematic(question: string): Promise<CinematicPlan> {
+/** `context`: fresh web results (Exa) so the narration is current and grounded. */
+export async function planCinematic(question: string, context: { title: string; snippet: string }[] = []): Promise<CinematicPlan> {
+  const facts = context.slice(0, 6).map((c, i) => `[${i + 1}] ${c.title}: ${c.snippet.slice(0, 300)}`).join('\n');
   const raw = await callMovieLLMJson<unknown>(
     'You are a documentary director making a 30-45 second short film out of real stock footage. ' +
       'Plan 5 shots that tell a clear story with a beginning, a middle and an end. ' +
       'Each shot has one narration sentence (12-24 words, factual, in the same language as the question) ' +
       'and one stock-footage search: 2-4 concrete English words describing what the camera sees ' +
-      '(e.g. "barcelona aerial city", "sagrada familia facade") — never abstract ideas, text, logos or charts.',
-    `Question: ${question}`,
-    { title: 'string: short film title in the question language', shots: 'array of objects { narration: string, search: string }' },
+      '(e.g. "barcelona aerial city", "sagrada familia facade") — never abstract ideas, text, logos or charts. ' +
+      'When web results are given, base the facts on them (they are recent). Also suggest 4 short follow-up questions ' +
+      'the viewer may want to watch next, in the question language.',
+    facts ? `Question: ${question}\n\nWeb results:\n${facts}` : `Question: ${question}`,
+    { title: 'string: short film title in the question language', shots: 'array of objects { narration: string, search: string }', related: 'array of 4 strings' },
     0.4,
   );
   const plan = validatePlan(raw);

@@ -27,6 +27,7 @@ export default function ToggleSwitch({ checked, onChange, disabled = false }: To
         after:top-0.5 
         after:left-[2px] 
         after:bg-white 
+        peer-checked:after:bg-[var(--ui-text-on-accent)] 
         after:rounded-full 
         after:h-5 
         after:w-5 

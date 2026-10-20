@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, Compass, Crown, FileText, Film, Link2, Loader2, Play, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronsUp, Compass, Crown, Film, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Share2, Sparkles } from 'lucide-react';
 
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -27,16 +27,20 @@ import type { MovieExperience, MovieMode, MovieProgress, MovieRelatedTopic, Movi
 import SocialShareRow from '../components/SocialShareRow.tsx';
 import SignUpModal from '../../../components/auth/SignUpModal.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
-import { decideTier, pickVideoModel } from '../../auto/modelTier.ts';
+import { decideTier, pickVideoModel, stepUp } from '../../auto/modelTier.ts';
+import { appSettings } from '../../../config/appSettings.ts';
+import { searchExa } from '../../search/providers/engines/exaService.ts';
+import type { WebSearchResult } from '../../search/providers/webSearchProvider.ts';
 import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, detectVideoType, movieModeFor, parseVideoType, resolveVideoType, type VideoType } from '../videoType.ts';
-import CinematicMontage from '../cinematic/CinematicMontage.tsx';
+import CinematicMontage, { type CinematicInfo } from '../cinematic/CinematicMontage.tsx';
 
-type MovieTab = 'video' | 'narrative' | 'sources';
+type MovieTab = 'video' | 'timeline' | 'images' | 'sources';
 
 const TABS: Array<{ id: MovieTab; label: string; icon: typeof Film }> = [
   { id: 'video', label: 'vidTab_video', icon: Film },
-  { id: 'narrative', label: 'vidTab_narrative', icon: FileText },
+  { id: 'timeline', label: 'vidTab_timeline', icon: ListOrdered },
+  { id: 'images', label: 'vidTab_images', icon: ImageIcon },
   { id: 'sources', label: 'vidTab_sources', icon: Link2 },
 ];
 
@@ -44,19 +48,25 @@ export default function MovieResults() {
   const location = useLocation();
   const navigate = useNavigate();
   const { session, isLoading: sessionLoading } = useSession();
-  const { requestProAccess, canUseProFeature, tier: proTier } = useProCredits();
+  const { requestProAccess, canUseProFeature } = useProCredits();
   const { t } = useTranslation();
 
   const query = useMemo(() => new URLSearchParams(location.search).get('q') || '', [location.search]);
   // Decisions rates the question: easy/medium → Luna, complex → Sol (Astra for Premium), and
   // complex questions get more time at the edge. Once per question.
+  // Only the HD button goes higher (Luna → Sol → Astra); it sets modelOverrideRef.
   const modelRef = useRef<{ key: string; ready: Promise<void> } | null>(null);
+  const modelOverrideRef = useRef<string | null>(null);
+  const [answerModel, setAnswerModel] = useState<string | null>(null);
   const chooseModel = (): Promise<void> => {
+    if (modelOverrideRef.current) return Promise.resolve();
     if (modelRef.current?.key !== query) {
       modelRef.current = {
         key: query,
         ready: decideTier(query).then((tier) => {
-          setMovieModel(pickVideoModel(tier, proTier === 'pro'), tier === 'complex' ? 110_000 : undefined);
+          const model = pickVideoModel(tier);
+          setMovieModel(model, tier === 'complex' ? 110_000 : undefined);
+          setAnswerModel(model);
         }),
       };
     }
@@ -90,6 +100,11 @@ export default function MovieResults() {
   const [videoType, setVideoType] = useState<VideoType | null>(null);
   const [typeNotice, setTypeNotice] = useState<string | null>(null);
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  // Cinematic's data for the shared sections; cineRun remounts it (HD regeneration).
+  const [cine, setCine] = useState<CinematicInfo | null>(null);
+  const [cineRun, setCineRun] = useState(0);
+  // Fresh web results (Exa) for every type: Images and Sources tabs, Cinematic's facts.
+  const [web, setWeb] = useState<WebSearchResult[] | null>(null);
   const typeMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!typeMenuOpen) return;
@@ -447,10 +462,101 @@ export default function MovieResults() {
     }
   };
 
+  // Web search once per question (also for saved videos opened by id).
+  const webQuery = displayQuery;
+  useEffect(() => {
+    if (!webQuery.trim()) return;
+    let alive = true;
+    setWeb(null);
+    searchExa(webQuery, 8).then((r) => { if (alive) setWeb(r); });
+    return () => { alive = false; };
+  }, [webQuery]);
+  const webImages = (web ?? []).filter((r, i, all) => r.image && all.findIndex((x) => x.image === r.image) === i);
+  const sourceList: { title: string; url: string; snippet: string }[] =
+    videoType !== 'cinematic' && (experience?.sources?.length ?? 0) > 0 ? experience!.sources : (web ?? []);
+  const exploreTopics: { title: string; imageUrl?: string }[] =
+    videoType === 'cinematic'
+      ? (cine?.related ?? []).map((title, i) => ({ title, imageUrl: cine?.credits[(i + 1) % cine.credits.length]?.image || undefined }))
+      : relatedTopics;
+
+  // HD / quality extension: rebuild this video one model up — Luna → Sol, Sol → Astra
+  // (Astra costs 1 Pro Credit). The only way Astra is ever used for Video.
+  const nextModel = answerModel ? stepUp(answerModel) : null;
+  const canStepUp = Boolean(nextModel && nextModel !== answerModel)
+    && (videoType === 'cinematic' ? Boolean(cine) : isComplete);
+  const stepUpQuality = async () => {
+    if (!canStepUp || !nextModel) return;
+    if (nextModel === appSettings.models.astra && !(await requestProAccess())) return;
+    modelOverrideRef.current = nextModel;
+    setMovieModel(nextModel, 110_000);
+    setAnswerModel(nextModel);
+    if (videoType === 'cinematic') {
+      setCine(null);
+      setCineRun((n) => n + 1);
+      return;
+    }
+    hasStartedRef.current = true;
+    resetForNewRun();
+    setProgress({ stage: 'enhancing', message: '', progress: 0 });
+    startGeneration(experienceRef.current?.question || query, mode ?? undefined);
+  };
+  const qualityButton = (
+    <button
+      type="button"
+      onClick={() => void stepUpQuality()}
+      disabled={!canStepUp}
+      title={answerModel && !nextModel ? '' : answerModel === appSettings.models.astra ? t('vidQualityMax') : t('vidQualityTip')}
+      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-default"
+      style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+    >
+      <ChevronsUp size={16} /> HD
+    </button>
+  );
+
+  // Shared under the player for every type: share, then the overview (shown, not collapsed).
+  const shareCard = videoType === 'cinematic'
+    ? (cine ? { title: cine.title, caption: cine.overview.split(/(?<=[.!?])\s/)[0], hashtags: [] as string[], url: `${window.location.origin}/movie-results?q=${encodeURIComponent(displayQuery)}&type=cinematic`, video: undefined } : null)
+    : (isComplete && experience?.viral ? { title: experience.viral.title, caption: experience.viral.caption, hashtags: experience.viral.hashtags, url: shareUrl, video: selectedSwipe?.videoUrl || experience.coreVideoUrl } : null);
+  const overview = videoType === 'cinematic' ? cine?.overview : experience?.narrative;
+  const sharedSections = (
+    <>
+      {shareCard && (
+        <div className="mt-6 rounded-xl p-5" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
+          <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--accent-primary)' }}>
+            <Share2 size={16} />
+            <span className="text-xs font-medium uppercase tracking-wide">{t('vidShare')}</span>
+          </div>
+          <h3 className="text-lg font-semibold">{shareCard.title}</h3>
+          {shareCard.caption && (
+            <p className="text-sm mt-1 mb-3" style={{ color: 'var(--ui-text-muted)' }}>{shareCard.caption}</p>
+          )}
+          {shareCard.hashtags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {shareCard.hashtags.map((tag) => (
+                <span key={tag} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--ui-bg-secondary)', color: 'var(--ui-text-secondary)' }}>
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+          <SocialShareRow shareUrl={shareCard.url} title={shareCard.title} caption={shareCard.caption} videoUrl={shareCard.video} onShared={handleShared} />
+        </div>
+      )}
+      {overview && (
+        <section className="mt-6 rounded-xl p-5 sm:p-6" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
+          <h3 className="text-xs font-medium uppercase tracking-wide mb-3" style={{ color: 'var(--accent-primary)' }}>{t('vidOverview')}</h3>
+          <div className="prose prose-base dark:prose-invert max-w-none">
+            <LightMarkdown>{overview}</LightMarkdown>
+          </div>
+        </section>
+      )}
+    </>
+  );
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
-      <TopBar query={displayQuery} timeAgo="" />
+      <TopBar query={displayQuery} timeAgo="" rightSlot={qualityButton} />
 
 
       {/* Tab navigation: Video / Narrative / Sources (every type uses this template) */}
@@ -534,12 +640,8 @@ export default function MovieResults() {
           </div>
         )}
 
-        {videoType === 'cinematic' ? (
-          <CinematicMontage question={query} tab={activeTab} onFail={fallbackToVideo} />
-        ) : (
-        <>
         {/* Progress bar while generating */}
-        {!isComplete && !error && (
+        {videoType !== 'cinematic' && !isComplete && !error && (
           <div className="mb-6">
             <div className="flex items-center gap-2 text-sm mb-2" style={{ color: 'var(--ui-text-secondary)' }}>
               <Loader2 size={16} className="animate-spin" />
@@ -554,8 +656,20 @@ export default function MovieResults() {
           </div>
         )}
 
-        {/* ── Video tab: main viewer + lateral swipe rail ─────────────────────── */}
-        {activeTab === 'video' && (
+        {/* ── Video tab: player + chapter rail, then share, overview (shared template) ── */}
+        {videoType === 'cinematic' ? (
+          <CinematicMontage
+            key={cineRun}
+            question={query || experience?.question || ''}
+            tab={activeTab === 'video' ? 'video' : activeTab === 'timeline' ? 'timeline' : 'hidden'}
+            context={web}
+            belowPlayer={sharedSections}
+            onReady={setCine}
+            onWatch={() => setActiveTab('video')}
+            onFail={fallbackToVideo}
+          />
+        ) : activeTab === 'video' && (
+          <>
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Main viewer (active swipe) */}
           <div className="flex-1 min-w-0">
@@ -644,7 +758,7 @@ export default function MovieResults() {
                       : { backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-secondary)', border: '1px solid var(--ui-bg-elevated)' }}
                   >
                     {isEnhancing ? <Loader2 size={12} className="animate-spin" /> : <Crown size={12} />}
-                    <span>HD</span>
+                    <span>{t('vidEnhance')}</span>
                   </button>
                 </div>
               </div>
@@ -666,36 +780,6 @@ export default function MovieResults() {
                 {selectedSwipe.narration && (
                   <p className="text-sm mt-1" style={{ color: 'var(--ui-text-muted)' }}>{selectedSwipe.narration}</p>
                 )}
-              </div>
-            )}
-
-            {/* Viral packaging + social row (when complete) */}
-            {isComplete && experience?.viral && (
-              <div className="mt-6 rounded-xl p-5" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
-                <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--accent-primary)' }}>
-                  <Sparkles size={16} />
-                  <span className="text-xs font-medium uppercase tracking-wide">{t('vidShare')}</span>
-                </div>
-                <h3 className="text-lg font-semibold">{experience.viral.title}</h3>
-                {experience.viral.caption && (
-                  <p className="text-sm mt-1 mb-3" style={{ color: 'var(--ui-text-muted)' }}>{experience.viral.caption}</p>
-                )}
-                {experience.viral.hashtags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {experience.viral.hashtags.map((tag) => (
-                      <span key={tag} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--ui-bg-secondary)', color: 'var(--ui-text-secondary)' }}>
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <SocialShareRow
-                  shareUrl={shareUrl}
-                  title={experience.viral.title}
-                  caption={experience.viral.caption}
-                  videoUrl={selectedSwipe?.videoUrl || experience.coreVideoUrl}
-                  onShared={handleShared}
-                />
               </div>
             )}
           </div>
@@ -764,29 +848,62 @@ export default function MovieResults() {
             </div>
           </aside>
         </div>
+        {sharedSections}
+          </>
         )}
 
-        {/* ── Narrative tab: the written explanation behind the swipes ─────────── */}
-        {activeTab === 'narrative' && (
-          <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
-            {experience?.narrative ? (
-              <div className="prose prose-base dark:prose-invert max-w-none">
-                <LightMarkdown>{experience.narrative}</LightMarkdown>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--ui-text-muted)' }}>
-                {!isComplete && <Loader2 size={14} className="animate-spin" />}
-                <span>{t(isComplete ? 'vidNoNarrative' : 'vidWritingNarrative')}</span>
-              </div>
+        {/* ── Timeline tab: the chapters in order ─────────────────────────────── */}
+        {activeTab === 'timeline' && videoType !== 'cinematic' && (
+          <ol className="space-y-3">
+            {swipes.map((s, i) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => { handleSelect(s); setActiveTab('video'); }}
+                  className="w-full flex gap-4 p-3 rounded-xl text-left transition-all hover:opacity-90"
+                  style={{ backgroundColor: 'var(--ui-bg-elevated)' }}
+                >
+                  {s.imageUrl && <img src={s.imageUrl} alt="" className="w-32 sm:w-40 aspect-video object-cover rounded-lg flex-shrink-0" loading="lazy" />}
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--accent-primary)' }}>
+                      {t('vidFrame').replace('{n}', String(i + 1)).replace('{total}', String(swipes.length))} · {roleLabel(s)}
+                    </p>
+                    <p className="text-sm font-semibold">{s.title}</p>
+                    {s.narration && <p className="text-sm mt-1" style={{ color: 'var(--ui-text-muted)' }}>{s.narration}</p>}
+                  </div>
+                </button>
+              </li>
+            ))}
+            {swipes.length === 0 && (
+              <li className="flex items-center gap-2 text-sm" style={{ color: 'var(--ui-text-muted)' }}>
+                <Loader2 size={14} className="animate-spin" /> {t('vidCreatingSwipes')}
+              </li>
             )}
-          </div>
+          </ol>
         )}
 
-        {/* ── Sources tab: what grounded this movie ────────────────────────────── */}
+        {/* ── Images tab: pictures from the web search (Exa) ──────────────────── */}
+        {activeTab === 'images' && (
+          webImages.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {webImages.map((r) => (
+                <a key={r.image} href={r.url} target="_blank" rel="noopener noreferrer" title={r.title} className="block rounded-xl overflow-hidden aspect-video" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
+                  <img src={r.image} alt={r.title} className="w-full h-full object-cover" loading="lazy" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }} />
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-muted)' }}>
+              {t(web === null ? 'vidCollectingSources' : 'vidNoImages')}
+            </div>
+          )
+        )}
+
+        {/* ── Sources tab: what grounded this video (+ footage credits for Cinematic) ── */}
         {activeTab === 'sources' && (
           <div className="space-y-3">
-            {(experience?.sources?.length ?? 0) > 0 ? (
-              experience!.sources.map((source, index) => {
+            {sourceList.length > 0 ? (
+              sourceList.map((source, index) => {
                 const domain = extractDomain(source.url);
                 return (
                   <a
@@ -819,22 +936,39 @@ export default function MovieResults() {
             ) : (
               <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
                 <p style={{ color: 'var(--ui-text-muted)' }}>
-                  {t(isComplete ? 'vidNoSources' : 'vidCollectingSources')}
+                  {t(web === null || (videoType !== 'cinematic' && !isComplete) ? 'vidCollectingSources' : 'vidNoSources')}
                 </p>
               </div>
+            )}
+            {videoType === 'cinematic' && cine && cine.credits.length > 0 && (
+              <>
+                <h3 className="pt-3 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--ui-text-muted)' }}>{t('vidFootage')}</h3>
+                {cine.credits.map((c) => (
+                  <a key={c.id} href={c.pageUrl} target="_blank" rel="noopener noreferrer" className="flex gap-4 p-4 rounded-xl transition-all hover:opacity-90" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
+                    {c.image && <img src={c.image} alt="" className="w-28 aspect-video object-cover rounded-lg flex-shrink-0" loading="lazy" />}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <img src="https://www.google.com/s2/favicons?domain=pexels.com&sz=32" alt="" className="w-4 h-4 rounded-sm" loading="lazy" />
+                        <span className="text-xs font-medium" style={{ color: 'var(--ui-text-muted)' }}>pexels.com</span>
+                      </div>
+                      <p className="text-sm font-semibold">{t('vidFootageBy').replace('{name}', c.credit)}</p>
+                    </div>
+                  </a>
+                ))}
+              </>
             )}
           </div>
         )}
 
-        {/* ── Continue Exploring: 4 related themes, each opens a new movie run ──── */}
-        {relatedTopics.length > 0 && (
+        {/* ── Continue exploring: related questions, each opens a new video ────── */}
+        {exploreTopics.length > 0 && (
           <section className="mt-6 rounded-xl p-4 sm:p-5" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
             <div className="flex items-center gap-2 mb-4" style={{ color: 'var(--accent-primary)' }}>
               <Compass size={16} />
               <h3 className="text-base font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('vidContinue')}</h3>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-              {relatedTopics.map((topic) => (
+              {exploreTopics.map((topic) => (
                 <button
                   key={topic.title}
                   onClick={() => navigate(`/movie-results?q=${encodeURIComponent(topic.title)}`)}
@@ -857,8 +991,6 @@ export default function MovieResults() {
               ))}
             </div>
           </section>
-        )}
-        </>
         )}
       </div>
 

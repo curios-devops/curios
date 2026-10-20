@@ -108,7 +108,8 @@ function silentWav(): string {
   return URL.createObjectURL(new Blob([buf.buffer], { type: 'audio/wav' }));
 }
 
-export type NarratorState = 'loading' | 'playing' | 'paused' | 'ended' | 'error';
+// 'held' = a paragraph finished and autoAdvance said stop (Cinematic with autoplay off).
+export type NarratorState = 'loading' | 'playing' | 'paused' | 'held' | 'ended' | 'error';
 
 export class ParagraphNarrator {
   private ctx: AudioContext;
@@ -117,6 +118,7 @@ export class ParagraphNarrator {
   private source: AudioBufferSourceNode | null = null;
   private stopped = false;
   private keepAlive: HTMLAudioElement | null = null;
+  private gain: GainNode;
 
   /** Construct synchronously inside the tap handler (before any await). */
   constructor(
@@ -126,6 +128,8 @@ export class ParagraphNarrator {
     private onState: (state: NarratorState) => void,
     /** Fires as each paragraph starts playing, with its audio length (Cinematic syncs shots to it). */
     private onParagraph?: (index: number, durationSec: number) => void,
+    /** Asked when a paragraph ends: false holds there instead of playing the next one. */
+    private autoAdvance?: () => boolean,
   ) {
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
@@ -136,6 +140,8 @@ export class ParagraphNarrator {
       void this.keepAlive.play().catch(() => {});
     } catch { /* no HTMLAudioElement */ }
     this.ctx = new Ctx();
+    this.gain = this.ctx.createGain();
+    this.gain.connect(this.ctx.destination);
     void this.ctx.resume();
   }
 
@@ -156,8 +162,12 @@ export class ParagraphNarrator {
       void this.fetchAt(i + 1); // generate the next paragraph while this one plays
       const source = this.ctx.createBufferSource();
       source.buffer = buffer;
-      source.connect(this.ctx.destination);
-      source.onended = () => { if (this.source === source) void this.start(i + 1); };
+      source.connect(this.gain);
+      source.onended = () => {
+        if (this.source !== source) return;
+        if (this.autoAdvance && !this.autoAdvance() && i + 1 < this.paragraphs.length) this.onState('held');
+        else void this.start(i + 1);
+      };
       this.source = source;
       source.start();
       this.onParagraph?.(i, buffer.duration);
@@ -166,6 +176,9 @@ export class ParagraphNarrator {
       if (!this.stopped) this.onState('error');
     }
   }
+
+  /** 0–1; 0 mutes. */
+  setVolume(v: number) { this.gain.gain.value = Math.max(0, Math.min(1, v)); }
 
   pause() { void this.ctx.suspend().then(() => this.onState('paused')); }
   resume() { void this.ctx.resume().then(() => this.onState('playing')); }

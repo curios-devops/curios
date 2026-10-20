@@ -1,24 +1,44 @@
-// Cinematic — real-footage montage, on the same template as Video (tabs Video / Narrative /
-// Sources; main viewer + shot rail). One Pexels clip per shot, cut on the narration: each shot's
-// sentence is spoken (ElevenLabs, sentence by sentence) while its clip plays. Captions are drawn
-// by the player — fixed type scale, max 2 lines, dark plate behind white text — never burned in,
-// and switched with a YouTube-style CC button in the player's control bar.
-import { useEffect, useRef, useState } from 'react';
-import { Captions, Loader2, Pause, Play, RotateCcw } from 'lucide-react';
+// Cinematic — real-footage montage on the Video page's template: this component draws the
+// player + chapter rail (Video tab) and the chapter list (Timeline tab); the page draws the
+// shared parts (share, overview, continue exploring, images, sources) from onReady's data.
+// One Pexels clip per chapter, cut on the narration (ElevenLabs, sentence by sentence). Captions
+// are drawn by the player — fixed type scale, max 2 lines, dark plate — never burned in. The
+// control bar copies YouTube: play, volume │ autoplay, captions, fullscreen — icons with tooltips.
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Captions, Loader2, Maximize, Minimize, Pause, Play, RotateCcw, Volume1, Volume2, VolumeX } from 'lucide-react';
 import { useSession } from '../../../hooks/useSession.ts';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { VOICES } from '../../character/voices.ts';
 import { ParagraphNarrator, type NarratorState } from '../audio/paragraphNarrator.ts';
 import { loadNarratorVoice } from '../audio/narratorPrefs.ts';
-import { captionChunks, captionFit, chunkAt, findClips, planCinematic, type CinematicScene } from './cinematicPlan.ts';
+import { captionChunks, captionFit, chunkAt, findClips, planCinematic, type CinematicScene, type StockClip } from './cinematicPlan.ts';
 
-const CAPTIONS_KEY = 'cinematicCaptions';
-const readCaptions = () => { try { return localStorage.getItem(CAPTIONS_KEY) !== 'off'; } catch { return true; } };
 const CONTROL_BAR = 44; // px — captions sit above it, as on YouTube
+const pref = (key: string, fallback: boolean) => { try { const v = localStorage.getItem(key); return v === null ? fallback : v === 'on'; } catch { return fallback; } };
+const savePref = (key: string, on: boolean) => { try { localStorage.setItem(key, on ? 'on' : 'off'); } catch { /* storage blocked */ } };
 
-export type CinematicTab = 'video' | 'narrative' | 'sources';
+export interface CinematicInfo {
+  title: string;
+  overview: string;
+  related: string[];
+  credits: StockClip[];
+}
 
-export default function CinematicMontage({ question, tab, onFail }: { question: string; tab: CinematicTab; onFail: (reason: string) => void }) {
+interface Props {
+  question: string;
+  /** 'hidden' while the page shows Images or Sources (stays mounted, keeps its state). */
+  tab: 'video' | 'timeline' | 'hidden';
+  /** Fresh web results (Exa) for grounding; null while they load. */
+  context: { title: string; snippet: string }[] | null;
+  /** Shared page sections shown under the player and chapter rail (share, overview). */
+  belowPlayer?: ReactNode;
+  onReady: (info: CinematicInfo) => void;
+  /** Timeline asks to watch a chapter → the page switches to the Video tab. */
+  onWatch: () => void;
+  onFail: (reason: string) => void;
+}
+
+export default function CinematicMontage({ question, tab, context, belowPlayer, onReady, onWatch, onFail }: Props) {
   const { session } = useSession();
   const { t } = useTranslation();
   const [stage, setStage] = useState<'planning' | 'footage' | 'ready'>('planning');
@@ -26,21 +46,28 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
   const [scenes, setScenes] = useState<CinematicScene[]>([]);
   const [shot, setShot] = useState(0);
   const [narration, setNarration] = useState<NarratorState | 'idle'>('idle');
-  const [captionsOn, setCaptionsOn] = useState(readCaptions);
+  const [captionsOn, setCaptionsOn] = useState(() => pref('cinematicCaptions', true));
+  const [autoplay, setAutoplay] = useState(() => pref('cinematicAutoplay', true));
+  const [volume, setVolume] = useState(1);
+  const [muted, setMuted] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [chunk, setChunk] = useState(0);
   const narratorRef = useRef<ParagraphNarrator | null>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const timing = useRef({ start: 0, duration: 0, pausedAt: 0 });
   const playerRef = useRef<HTMLDivElement | null>(null);
+  const autoplayRef = useRef(autoplay);
+  autoplayRef.current = autoplay;
   const [playerWidth, setPlayerWidth] = useState(800);
   const fit = captionFit(playerWidth);
-  const onFailRef = useRef(onFail);
-  onFailRef.current = onFail;
+  const cbRef = useRef({ onReady, onFail });
+  cbRef.current = { onReady, onFail };
 
   useEffect(() => {
+    if (context === null) return; // wait for the web results
     let alive = true;
     (async () => {
-      const plan = await planCinematic(question);
+      const plan = await planCinematic(question, context);
       if (!alive) return;
       setTitle(plan.title);
       setStage('footage');
@@ -48,11 +75,17 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
       if (!alive) return;
       setScenes(found);
       setStage('ready');
-    })().catch((err) => alive && onFailRef.current(err instanceof Error ? err.message : String(err)));
+      cbRef.current.onReady({
+        title: plan.title,
+        overview: found.map((s) => s.narration).join(' '),
+        related: plan.related,
+        credits: [...new Map(found.map((s) => [s.clip.credit, s.clip])).values()],
+      });
+    })().catch((err) => alive && cbRef.current.onFail(err instanceof Error ? err.message : String(err)));
     return () => { alive = false; narratorRef.current?.stop(); };
-  }, [question]);
+  }, [question, context]);
 
-  // Caption size and line length follow the player's real width.
+  // Caption size and line length follow the player's real width (also in fullscreen).
   useEffect(() => {
     const el = playerRef.current;
     if (!el) return;
@@ -65,12 +98,12 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
   useEffect(() => {
     videoRefs.current.forEach((v, i) => {
       if (!v) return;
-      if (i === shot && narration !== 'paused' && tab === 'video') void v.play().catch(() => {});
+      if (i === shot && narration !== 'paused' && narration !== 'held' && tab === 'video') void v.play().catch(() => {});
       else v.pause();
     });
   }, [shot, narration, scenes.length, tab]);
 
-  // Caption card follows the time spoken within the current shot.
+  // Caption card follows the time spoken within the current chapter.
   useEffect(() => {
     if (narration !== 'playing') return;
     const id = window.setInterval(() => {
@@ -81,7 +114,15 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
     return () => window.clearInterval(id);
   }, [narration, shot, scenes, fit.maxChars]);
 
-  /** Starts the film at `from` (0 = beginning; the rail jumps to a shot). */
+  useEffect(() => { narratorRef.current?.setVolume(muted ? 0 : volume); }, [volume, muted]);
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === playerRef.current);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  /** Starts the film at chapter `from` (the rail and the Timeline jump). */
   const play = (from = 0) => {
     narratorRef.current?.stop();
     const voice = loadNarratorVoice(session?.user);
@@ -99,7 +140,9 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
         const v = videoRefs.current[i];
         if (v) v.currentTime = 0;
       },
+      () => autoplayRef.current,
     );
+    narrator.setVolume(muted ? 0 : volume);
     narratorRef.current = narrator;
     setShot(from);
     void narrator.start(from);
@@ -108,6 +151,7 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
   const togglePause = () => {
     const n = narratorRef.current;
     if (!n || narration === 'ended') return play();
+    if (narration === 'held') return play(shot + 1); // autoplay off: next chapter on demand
     if (narration === 'playing') {
       timing.current.pausedAt = performance.now();
       n.pause();
@@ -117,17 +161,20 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
     }
   };
 
-  const toggleCaptions = () => {
-    setCaptionsOn((on) => {
-      try { localStorage.setItem(CAPTIONS_KEY, on ? 'off' : 'on'); } catch { /* storage blocked */ }
-      return !on;
-    });
-  };
-
   // Leaving the Video tab pauses the film (it resumes where it was).
   useEffect(() => {
     if (tab !== 'video' && narration === 'playing') togglePause();
   }, [tab]);
+
+  const toggleFullscreen = () => {
+    const el = playerRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else if (el.requestFullscreen) void el.requestFullscreen().catch(() => setFullscreen((f) => !f));
+    else setFullscreen((f) => !f); // iPhone Safari: no element fullscreen → fill the window
+  };
+
+  if (tab === 'hidden') return null;
 
   if (stage !== 'ready') {
     return (
@@ -138,53 +185,46 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
     );
   }
 
-  const credits = [...new Map(scenes.map((s) => [s.clip.credit, s.clip])).values()];
-
-  if (tab === 'narrative') {
+  if (tab === 'timeline') {
     return (
-      <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
-        {title && <h2 className="text-xl font-semibold mb-3">{title}</h2>}
-        <div className="space-y-3 text-base leading-relaxed">
-          {scenes.map((s, i) => <p key={i}>{s.narration}</p>)}
-        </div>
-      </div>
-    );
-  }
-
-  if (tab === 'sources') {
-    return (
-      <div className="space-y-3">
-        {credits.map((c) => (
-          <a
-            key={c.id}
-            href={c.pageUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex gap-4 p-4 rounded-xl transition-all hover:opacity-90"
-            style={{ backgroundColor: 'var(--ui-bg-elevated)' }}
-          >
-            {c.image && <img src={c.image} alt="" className="w-28 aspect-video object-cover rounded-lg flex-shrink-0" loading="lazy" />}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <img src="https://www.google.com/s2/favicons?domain=pexels.com&sz=32" alt="" className="w-4 h-4 rounded-sm" loading="lazy" />
-                <span className="text-xs font-medium" style={{ color: 'var(--ui-text-muted)' }}>pexels.com</span>
+      <ol className="space-y-3">
+        {scenes.map((s, i) => (
+          <li key={i}>
+            <button
+              type="button"
+              onClick={() => { onWatch(); play(i); }}
+              className="w-full flex gap-4 p-3 rounded-xl text-left transition-all hover:opacity-90"
+              style={{ backgroundColor: 'var(--ui-bg-elevated)' }}
+            >
+              {s.clip.image && <img src={s.clip.image} alt="" className="w-32 sm:w-40 aspect-video object-cover rounded-lg flex-shrink-0" loading="lazy" />}
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--accent-primary)' }}>
+                  {t('vidFrame').replace('{n}', String(i + 1)).replace('{total}', String(scenes.length))}
+                </p>
+                <p className="text-sm leading-relaxed">{s.narration}</p>
               </div>
-              <p className="text-sm font-semibold">{t('vidFootageBy').replace('{name}', c.credit)}</p>
-            </div>
-          </a>
+            </button>
+          </li>
         ))}
-      </div>
+      </ol>
     );
   }
 
   const started = narration !== 'idle';
   const lines = captionChunks(scenes[shot]?.narration ?? '', fit.maxChars)[chunk] ?? [];
   const playLabel = narration === 'playing' ? t('vidPause') : narration === 'ended' ? t('vidReplay') : t('vidPlay');
+  const level = muted ? 0 : volume;
+  const VolumeIcon = level === 0 ? VolumeX : level < 0.5 ? Volume1 : Volume2;
+  const iconBtn = 'p-1.5 hover:opacity-80';
 
   return (
+    <>
     <div className="flex flex-col lg:flex-row gap-6">
       <div className="flex-1 min-w-0">
-        <div ref={playerRef} className="relative rounded-xl overflow-hidden bg-black aspect-video">
+        <div
+          ref={playerRef}
+          className={fullscreen && !document.fullscreenElement ? 'fixed inset-0 z-[200] bg-black' : 'relative rounded-xl overflow-hidden bg-black aspect-video'}
+        >
           {scenes.map((s, i) => (
             <video
               key={`${s.clip.id}-${i}`}
@@ -195,7 +235,7 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
               loop
               playsInline
               preload={i <= shot + 1 ? 'auto' : 'none'}
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
+              className={`absolute inset-0 w-full h-full transition-opacity duration-700 ${fullscreen ? 'object-contain' : 'object-cover'}`}
               style={{ opacity: i === shot ? 1 : 0 }}
             />
           ))}
@@ -229,31 +269,83 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
             </div>
           )}
 
-          {/* Control bar, YouTube style: play/pause and shot count on the left, CC on the right. */}
+          {/* Control bar, YouTube style: play, volume │ autoplay, captions, fullscreen. */}
           {started && (
             <div
-              className="absolute inset-x-0 bottom-0 flex items-center justify-between px-3 text-white"
-              style={{ height: CONTROL_BAR, background: 'linear-gradient(to top, rgba(0,0,0,0.65), transparent)' }}
+              className="absolute inset-x-0 bottom-0 flex items-center justify-between px-2 text-white"
+              style={{ height: CONTROL_BAR, background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)' }}
             >
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={togglePause} aria-label={playLabel} title={playLabel} className="p-1.5 hover:opacity-80">
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={togglePause} aria-label={playLabel} title={playLabel} className={iconBtn}>
                   {narration === 'ended' ? <RotateCcw size={20} /> : narration === 'playing' ? <Pause size={20} /> : <Play size={20} />}
                 </button>
-                {narration === 'loading' && <Loader2 size={16} className="animate-spin opacity-80" />}
-                <span className="text-xs tabular-nums opacity-90">{shot + 1} / {scenes.length}</span>
+                <div className="group flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setMuted((m) => !m)}
+                    aria-label={level === 0 ? t('vidUnmute') : t('vidMute')}
+                    title={level === 0 ? t('vidUnmute') : t('vidMute')}
+                    className={iconBtn}
+                  >
+                    <VolumeIcon size={20} />
+                  </button>
+                  {/* The slider opens on hover, like YouTube (touch screens use the mute button). */}
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={level}
+                    onChange={(e) => { setVolume(Number(e.target.value)); setMuted(Number(e.target.value) === 0); }}
+                    aria-label={t('vidVolume')}
+                    title={t('vidVolume')}
+                    className="w-0 opacity-0 group-hover:w-20 group-hover:opacity-100 focus:w-20 focus:opacity-100 transition-all duration-200 accent-white cursor-pointer"
+                  />
+                </div>
+                {narration === 'loading' && <Loader2 size={16} className="animate-spin opacity-80 ml-1" />}
+                <span className="text-xs tabular-nums opacity-90 ml-1">{shot + 1} / {scenes.length}</span>
               </div>
-              <button
-                type="button"
-                onClick={toggleCaptions}
-                aria-pressed={captionsOn}
-                aria-label={t('vidCaptions')}
-                title={t('vidCaptions')}
-                className="relative p-1.5 hover:opacity-80"
-              >
-                <Captions size={22} />
-                {/* On = a bar under the icon, as on YouTube (in our accent) */}
-                {captionsOn && <span className="absolute left-1.5 right-1.5 -bottom-0.5 h-[3px] rounded-full" style={{ backgroundColor: 'var(--accent-primary)' }} />}
-              </button>
+              <div className="flex items-center gap-1">
+                {/* Autoplay switch: track + knob with a play glyph, like YouTube's */}
+                <button
+                  type="button"
+                  onClick={() => setAutoplay((a) => { savePref('cinematicAutoplay', !a); return !a; })}
+                  aria-pressed={autoplay}
+                  aria-label={autoplay ? t('vidAutoplayOn') : t('vidAutoplayOff')}
+                  title={autoplay ? t('vidAutoplayOn') : t('vidAutoplayOff')}
+                  className="p-1.5 hover:opacity-80"
+                >
+                  <span className="relative block w-8 h-3.5 rounded-full" style={{ backgroundColor: autoplay ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.35)' }}>
+                    <span
+                      className="absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full flex items-center justify-center transition-all"
+                      style={{ left: autoplay ? 14 : -2, backgroundColor: autoplay ? '#fff' : '#d4d4d4', color: '#111' }}
+                    >
+                      {autoplay ? <Play size={10} className="ml-px" fill="currentColor" /> : <Pause size={10} fill="currentColor" />}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCaptionsOn((on) => { savePref('cinematicCaptions', !on); return !on; })}
+                  aria-pressed={captionsOn}
+                  aria-label={t('vidCaptions')}
+                  title={t('vidCaptions')}
+                  className={`relative ${iconBtn}`}
+                >
+                  <Captions size={22} />
+                  {/* On = a bar under the icon, as on YouTube (in our accent) */}
+                  {captionsOn && <span className="absolute left-1.5 right-1.5 -bottom-0.5 h-[3px] rounded-full" style={{ backgroundColor: 'var(--accent-primary)' }} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  aria-label={fullscreen ? t('vidExitFullscreen') : t('vidFullscreen')}
+                  title={fullscreen ? t('vidExitFullscreen') : t('vidFullscreen')}
+                  className={iconBtn}
+                >
+                  {fullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -262,11 +354,11 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
         <p className="text-sm mt-1" style={{ color: 'var(--ui-text-muted)' }}>{scenes[shot]?.narration}</p>
       </div>
 
-      {/* Shot rail (vertical on desktop, horizontal on mobile) — same as the Video swipes rail */}
+      {/* Chapter rail (vertical on desktop, horizontal on mobile) — same as the Video rail */}
       <aside className="lg:w-64 flex-shrink-0">
         <div className="mb-2">
           <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--ui-text-muted)' }}>
-            {t('vidShots')} ({scenes.length})
+            {t('vidSwipes')} ({scenes.length})
           </span>
         </div>
         <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:max-h-[70vh] pb-2 lg:pb-0 scrollbar-hide">
@@ -285,5 +377,7 @@ export default function CinematicMontage({ question, tab, onFail }: { question: 
         </div>
       </aside>
     </div>
+    {belowPlayer}
+    </>
   );
 }

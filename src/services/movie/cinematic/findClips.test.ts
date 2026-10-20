@@ -7,6 +7,7 @@ vi.mock('../core/llm.ts', () => ({ callMovieLLMJson: vi.fn() }));
 const { findClips } = await import('./cinematicPlan.ts');
 
 const plan = {
+  related: [] as string[],
   title: 'Barcelona',
   shots: ['barcelona aerial city', 'sagrada familia facade', 'barceloneta beach', 'las ramblas crowd'].map((search) => ({ narration: `About ${search}.`, search })),
 };
