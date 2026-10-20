@@ -171,65 +171,108 @@ html[data-accent="space"] :is(h1, h2, h3).font-bricolage {
   letter-spacing: -0.03em;
 }
 
-/* Space NIGHT — the Tesla Roadster (SpaceX cold-gas thrusters) on the Home mode menu, after
-   x.com/almonk/status/2111151330467406148: four metal nozzles on the corners, white exhaust
-   plumes firing down, a lift-off, one full 3D spin with a small settle wobble, then a slow hover.
-   Monochrome on purpose (Space has no color). Other themes: thrusters hidden, no motion. */
-.rocket-thruster { display: none; }
+/* Every theme — the Tesla Roadster (SpaceX cold-gas thrusters) on the Home mode menu, after
+   x.com/almonk/status/2111151330467406148: four small chrome nozzles just outside the left and
+   right edges (top and bottom corners), all firing DOWN — a short dotted bright core opening
+   into a cone of smoke that billows, drifts and fades. Lift-off, one full 3D spin with a small
+   settle wobble, then a slow hover. Monochrome: white smoke at night, graphite by day. */
+.rocket-thruster {
+  --core: 255 255 255;
+  --core-2: 205 218 245;
+  --smoke: 226 231 240;
+  --smoke-2: 190 198 214;
+}
+html[data-theme="light"] .rocket-thruster {
+  --core: 96 100 108;
+  --core-2: 140 145 155;
+  --smoke: 120 124 132;
+  --smoke-2: 150 154 162;
+}
 
-html[data-accent="space"][data-theme="dark"] .rocket-menu {
+.rocket-menu {
   perspective: 1000px;
   animation:
     rocket-lift 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.15) both,
     rocket-hover 2.6s ease-in-out 1.9s infinite;
 }
-html[data-accent="space"][data-theme="dark"] .rocket-body {
+.rocket-body {
   transform-style: preserve-3d;
   animation: rocket-spin 1.2s cubic-bezier(0.45, 0.05, 0.25, 1) 0.55s both;
 }
 
-html[data-accent="space"][data-theme="dark"] .rocket-thruster {
+/* Nozzle: a chrome cylinder with a rounded cap and a dark ring near the mouth. Behind the panel
+   (z-index -1) so the smoke billows beside and under it, as in the video. */
+.rocket-thruster {
   display: block;
   position: absolute;
-  width: 5px;
-  height: 18px;
-  border-radius: 1px;
-  background: linear-gradient(90deg, #2b2b2b, #e6e6e6 45%, #6b6b6b 70%, #2b2b2b);
+  z-index: -1;
+  width: 7px;
+  height: 14px;
+  border-radius: 3.5px 3.5px 1.5px 1.5px;
+  background:
+    linear-gradient(transparent 68%, rgb(0 0 0 / 0.55) 68% 78%, transparent 78%),
+    linear-gradient(90deg, #3a3a3a, #f4f4f4 38%, #a0a0a0 62%, #2e2e2e);
   pointer-events: none;
 }
-html[data-accent="space"][data-theme="dark"] .rocket-thruster-tl { left: -2px; top: -12px; }
-html[data-accent="space"][data-theme="dark"] .rocket-thruster-tr { right: -2px; top: -12px; }
-html[data-accent="space"][data-theme="dark"] .rocket-thruster-bl { left: -2px; bottom: -12px; }
-html[data-accent="space"][data-theme="dark"] .rocket-thruster-br { right: -2px; bottom: -12px; }
+.rocket-thruster-tl { left: -11px; top: 8px; }
+.rocket-thruster-tr { right: -11px; top: 8px; }
+.rocket-thruster-bl { left: -11px; bottom: -9px; }
+.rocket-thruster-br { right: -11px; bottom: -9px; }
 
-/* Exhaust: a bright core at the nozzle opening into a soft white plume (bottom nozzles fire). */
-html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::before,
-html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::after {
+.rocket-thruster::before,
+.rocket-thruster::after {
   content: '';
   position: absolute;
   left: 50%;
-  top: 17px;
+  top: 13px;
   pointer-events: none;
   transform-origin: 50% 0;
 }
-html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::before {
-  width: 10px;
-  height: 48px;
-  margin-left: -5px;
+/* Core: short, dotted (shock diamonds), fading out within ~20px. */
+.rocket-thruster::before {
+  width: 5px;
+  height: 22px;
+  margin-left: -2.5px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(to bottom, rgb(var(--core) / 0.95) 0 3px, rgb(var(--core-2) / 0.5) 3px 6px);
+  -webkit-mask-image: linear-gradient(#000, transparent);
+  mask-image: linear-gradient(#000, transparent);
+  filter: blur(0.6px);
+  animation: rocket-flicker 0.09s steps(2, jump-none) infinite alternate;
+}
+/* Cone: soft grey haze widening downward. */
+.rocket-thruster::after {
+  width: 64px;
+  height: 175px;
+  margin-left: -32px;
+  background: radial-gradient(ellipse 50% 100% at 50% 0%, rgb(var(--smoke) / 0.42), rgb(var(--smoke-2) / 0.16) 45%, transparent 78%);
+  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+  filter: blur(6px);
+  animation: rocket-plume 0.6s ease-in-out infinite alternate;
+}
+/* Smoke: puffs leave the nozzle small and dense, then grow, drift and thin out. */
+.rocket-puff {
+  position: absolute;
+  left: 50%;
+  top: 16px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
   border-radius: 50%;
-  background: radial-gradient(ellipse 50% 100% at 50% 0%, #ffffff, rgb(255 255 255 / 0.85) 35%, transparent 80%);
-  filter: blur(1.5px);
-  animation: rocket-flicker 0.11s steps(2, jump-none) infinite alternate;
+  background: radial-gradient(circle, rgb(var(--smoke) / 0.6), rgb(var(--smoke-2) / 0.24) 50%, transparent 70%);
+  filter: blur(2.5px);
+  opacity: 0;
+  --dx: 0px;
+  animation: rocket-puff 1.9s cubic-bezier(0.3, 0.6, 0.5, 1) infinite;
 }
-html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::after {
-  width: 90px;
-  height: 190px;
-  margin-left: -45px;
-  background: radial-gradient(ellipse 42% 100% at 50% 0%, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.4) 30%, rgb(255 255 255 / 0.12) 55%, transparent 75%);
-  filter: blur(7px);
-  mix-blend-mode: screen;
-  animation: rocket-plume 0.17s ease-in-out infinite alternate;
-}
+.rocket-puff:nth-child(1) { animation-delay: -0.000s; --dx: -9px; }
+.rocket-puff:nth-child(2) { animation-delay: -0.237s; --dx: 7px; }
+.rocket-puff:nth-child(3) { animation-delay: -0.475s; --dx: -3px; }
+.rocket-puff:nth-child(4) { animation-delay: -0.712s; --dx: 11px; }
+.rocket-puff:nth-child(5) { animation-delay: -0.950s; --dx: -12px; }
+.rocket-puff:nth-child(6) { animation-delay: -1.188s; --dx: 4px; }
+.rocket-puff:nth-child(7) { animation-delay: -1.425s; --dx: -6px; }
+.rocket-puff:nth-child(8) { animation-delay: -1.662s; --dx: 9px; }
 
 @keyframes rocket-lift {
   from { opacity: 0; transform: translateY(22px) scale(0.97); }
@@ -246,16 +289,23 @@ html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-th
   50% { transform: translateY(-3px); }
 }
 @keyframes rocket-flicker {
-  from { opacity: 0.85; transform: scaleY(0.9); }
-  to { opacity: 1; transform: scaleY(1.08); }
+  from { opacity: 0.8; transform: scaleY(0.9); }
+  to { opacity: 1; transform: scaleY(1.1); }
 }
 @keyframes rocket-plume {
-  from { opacity: 0.8; transform: scale(0.94, 0.9); }
-  to { opacity: 1; transform: scale(1.04, 1.06); }
+  from { opacity: 0.75; transform: scale(0.92, 0.95) skewX(-2deg); }
+  to { opacity: 1; transform: scale(1.06, 1.04) skewX(2deg); }
+}
+@keyframes rocket-puff {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  10% { opacity: 0.85; }
+  55% { opacity: 0.45; }
+  100% { opacity: 0; transform: translate(var(--dx), 165px) scale(6.5); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-accent="space"][data-theme="dark"] :is(.rocket-menu, .rocket-body) { animation: none; }
-  html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::before,
-  html[data-accent="space"][data-theme="dark"] :is(.rocket-thruster-bl, .rocket-thruster-br)::after { animation: none; }
+  :is(.rocket-menu, .rocket-body) { animation: none; }
+  .rocket-thruster::before,
+  .rocket-thruster::after { animation: none; }
+  .rocket-puff { display: none; }
 }

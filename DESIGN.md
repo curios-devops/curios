@@ -81,6 +81,11 @@ themes. Read it before writing any UI. Every line here should change what you bu
 - Dropdowns: elevated surface, 1px border, `shadow-lg`; the active item in the accent with a dot.
 - Primary button: accent fill, `var(--ui-text-on-accent)` text, `rounded-full` pill or `rounded-lg`.
 - Icons: `lucide-react` strokes, 14–20px.
+- Home mode menu, every theme: the Tesla Roadster lift-off — four chrome nozzles just outside its
+  left and right edges, all firing down a short dotted core into billowing smoke (white at night,
+  graphite by day), one 3D spin with a small settle wobble, then a slow hover (`.rocket-menu` in
+  `themes.css`; after x.com/almonk/status/2111151330467406148). Monochrome, off with reduced
+  motion. The one place the design uses gradients for effect.
 
 ## Themes
 A **theme** sits on top of this design and wins over it; whatever it doesn't set is
@@ -158,10 +163,7 @@ tints are derived; everything else is the general design.
 - Type: **Inter** (Grok's fallback for Universal Sans) for display and body, headlines 600 −0.03em;
   labels and mono **Geist Mono**.
 - Shapes: X / Grok — `rounded-lg` 12px, `rounded-xl` 16px, `rounded-2xl` 24px; pills stay full.
-- Motion (dark only): the Home mode menu is the Tesla Roadster — four metal nozzles on its corners,
-  white exhaust plumes firing down, a lift-off, one 3D spin with a small settle wobble, then a slow
-  hover (`.rocket-menu` in `themes.css`; after x.com/almonk/status/2111151330467406148). Monochrome,
-  off with reduced motion, inert in every other theme. The one place a theme may add gradients.
+- Icon: the Auto mode shows the new Roadster (tilted 45° nose-up) instead of the rocket.
 
 **Adding a theme:** a base hex in `app-settings.md` → `THEME_DEFAULTS` / `curiosThemes` in
 `themeColors.ts`; only if it changes more than the accent, an `html[data-accent="<name>"]`

@@ -193,8 +193,8 @@ export default function ButtonBar({
           </button>
 
           {/* Mode dropdown menu */}
-          {/* Space NIGHT dresses this menu as the Tesla Roadster: it lifts off on four thrusters,
-              spins once and hovers (all CSS in themes.css → .rocket-menu; inert in other themes). */}
+          {/* The menu is the Tesla Roadster: it lifts off on four smoking thrusters, spins once
+              and hovers (all CSS in themes.css → .rocket-menu). */}
           {showModeMenu && (
             <div className={`rocket-menu absolute ${menuPlacement.up ? 'bottom-full mb-2' : 'top-full mt-2'} left-0 z-50`}>
               <div className="rocket-body relative">
@@ -215,7 +215,9 @@ export default function ButtonBar({
                   />
                 </div>
                 {(['tl', 'tr', 'bl', 'br'] as const).map((corner) => (
-                  <span key={corner} className={`rocket-thruster rocket-thruster-${corner}`} aria-hidden />
+                  <span key={corner} className={`rocket-thruster rocket-thruster-${corner}`} aria-hidden>
+                    {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => <i key={i} className="rocket-puff" />)}
+                  </span>
                 ))}
               </div>
             </div>
