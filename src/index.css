@@ -375,3 +375,11 @@ html[data-theme="dark"] .mosaic-card {
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.7);
 }
+
+/* Video page's last fallback: a still frame slowly pushed in when its clip couldn't be made. */
+.ken-burns { animation: ken-burns 14s ease-in-out infinite alternate; transform-origin: 60% 40%; }
+@keyframes ken-burns {
+  from { transform: scale(1); }
+  to { transform: scale(1.12) translate(-1.5%, 1%); }
+}
+@media (prefers-reduced-motion: reduce) { .ken-burns { animation: none; } }

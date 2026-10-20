@@ -12,6 +12,7 @@
 // Every routing answer also carries `language`: the question's language when it's one the app
 // speaks (else "other"); Body { query, only: "language" } asks just that. With Auto Detect on, the
 // client switches the interface to it.
+// Body { query, only: "video_style" } → { style: cinematic | video | animation } for the Video page.
 // Body { query, answer, only: "explore" } picks the best way to keep exploring a Search answer
 // (Decisions: watch / play / read) while Luna drafts the one-line pitch of each option.
 // Orchestration layer only — does not call any downstream mode.
@@ -112,6 +113,40 @@ function topLanguage(answers: Awaited<ReturnType<typeof decide>>): string | null
   if (!probs?.length) return null;
   const top = probs.reduce((a, b) => (b.probability > a.probability ? b : a));
   return LANGUAGE_CHOICES.some((c) => c.value === top.value) ? top.value : null;
+}
+
+// Video page: which production technique tells this story best (the "director" decision).
+// Only the automatic, affordable techniques are offered; HD, Character and Explore are the
+// user's explicit choice on the page.
+const VIDEO_STYLE_CHOICES: { value: string; description: string }[] = [
+  {
+    value: "cinematic",
+    description:
+      "Real footage montage: real places, cities, countries, travel, nature as it is, current events, history, real people, sports, culture, food, landmarks — anything real cameras have filmed and that should look authentic.",
+  },
+  {
+    value: "video",
+    description:
+      "New generated scenes: imaginary, fictional, futuristic or impossible things, 'what if', creative stories, fantasy, animals or objects doing unusual things, ads, scenes that do not exist in reality.",
+  },
+  {
+    value: "animation",
+    description:
+      "Animated explainer: how or why something works — science, the body, physics, space, chemistry, technology, math, processes, mechanisms, abstract concepts that are hard to film.",
+  },
+];
+const videoStyleQuestion = {
+  type: "choice" as const,
+  name: "video_style",
+  instructions: "A short-film director must choose how to make a 30-second video answering this request. Which technique tells it best?",
+  choices: VIDEO_STYLE_CHOICES,
+};
+
+function topVideoStyle(answers: Awaited<ReturnType<typeof decide>>): string | null {
+  const probs = answers?.video_style?.probabilities;
+  if (!probs?.length) return null;
+  const top = probs.reduce((a, b) => (b.probability > a.probability ? b : a));
+  return VIDEO_STYLE_CHOICES.some((c) => c.value === top.value) ? top.value : null;
 }
 
 function topTier(answers: Awaited<ReturnType<typeof decide>>): Tier | null {
@@ -324,6 +359,11 @@ Deno.serve(async (req: Request) => {
     if (body?.only === "language") {
       const answers = await decide(query, [languageQuestion], DECISIONS_TIMEOUT_MS);
       return jsonResponse({ language: topLanguage(answers), backend: answers ? "decisions" : "default" });
+    }
+
+    if (body?.only === "video_style") {
+      const answers = await decide(query, [videoStyleQuestion], 4000); // the Video page is loading anyway
+      return jsonResponse({ style: topVideoStyle(answers), backend: answers ? "decisions" : "default" });
     }
 
     if (body?.only === "tier") {

@@ -5,6 +5,11 @@
 // NO video is auto-rendered: even the core swipe waits for the user's Play (cost rule).
 // Changing the mode dropdown regenerates the movie in that style (1 Pro Credit); the
 // "Continue Exploring" topics are kept as-is across mode regenerations.
+// Type selector (?type=): Auto lets Decisions pick the technique (cinematic / video /
+// animation); Cinematic is a real-footage montage (CinematicMontage), Animation = the Cartoon
+// style, HD = Video + the premium (Veo/Omni) render of the core swipe, Character opens a
+// character with the question, Explore (world model) isn't connected → Video. Fallbacks:
+// any technique failing → Video; a Video clip failing → its still frame animated (Ken Burns).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -25,6 +30,8 @@ import SignUpModal from '../../../components/auth/SignUpModal.tsx';
 import { useAnswerModel } from '../../../hooks/useAnswerModel.ts';
 import AstraNotice from '../../../components/AstraNotice.tsx';
 import { setMovieModel } from '../core/llm.ts';
+import { VIDEO_TYPES, detectVideoType, movieModeFor, parseVideoType, resolveVideoType, type VideoType } from '../videoType.ts';
+import CinematicMontage from '../cinematic/CinematicMontage.tsx';
 
 type MovieTab = 'video' | 'narrative' | 'sources';
 
@@ -51,6 +58,7 @@ export default function MovieResults() {
   // Reopen a saved movie (Home "latest enhanced" card) — loads from Supabase, no regeneration.
   const projectIdParam = useMemo(() => new URLSearchParams(location.search).get('projectId') || '', [location.search]);
   // Opening frame painted by Search's Explore further (only our own storage / Cloudinary URLs).
+  const typeParam = useMemo(() => parseVideoType(new URLSearchParams(location.search).get('type')), [location.search]);
   const frameParam = useMemo(() => {
     const f = new URLSearchParams(location.search).get('frame') || '';
     return /^https:\/\/([a-z0-9-]+\.supabase\.co|res\.cloudinary\.com)\//.test(f) ? f : undefined;
@@ -69,6 +77,11 @@ export default function MovieResults() {
   const [mode, setMode] = useState<MovieMode | null>(modeParam ?? null);
   // Kept in its own state so mode regenerations reuse it untouched.
   const [relatedTopics, setRelatedTopics] = useState<MovieRelatedTopic[]>([]);
+  // The technique actually running (after Auto / availability / fallbacks).
+  const [videoType, setVideoType] = useState<VideoType | null>(null);
+  const [typeNotice, setTypeNotice] = useState<string | null>(null);
+  // HD: once the core swipe has its frame, its premium render starts by itself.
+  const hdPendingRef = useRef(false);
 
   const hasStartedRef = useRef(false);
   const experienceRef = useRef<MovieExperience | null>(null);
@@ -202,7 +215,7 @@ export default function MovieResults() {
       // Reload/back-navigation with the same question → serve the stored movie
       // (text, frames, videos) instead of paying for a new generation.
       // (Skipped when the user chose "Continue with Astra" — that's an explicit regeneration.)
-      if (session?.user?.id && !forcedAstra) {
+      if (session?.user?.id && !forcedAstra && typeParam === 'auto') {
         const existingId = await new MoviePersistenceService()
           .findLatestByQuestion(session.user.id, query)
           .catch(() => null);
@@ -212,9 +225,32 @@ export default function MovieResults() {
         }
       }
 
-      startGeneration(query, modeParam);
+      const picked = typeParam === 'auto' ? await detectVideoType(query) : typeParam;
+      const { type, notice } = resolveVideoType(picked);
+      if (notice) setTypeNotice(notice);
+      if (type === 'character') {
+        navigate(`/character?q=${encodeURIComponent(query)}`, { replace: true });
+        return;
+      }
+      setVideoType(type);
+      if (type === 'cinematic') return; // CinematicMontage takes it from here
+      hdPendingRef.current = type === 'hd';
+      startGeneration(query, modeParam ?? movieModeFor(type));
     })();
   }, [query, modeParam, projectIdParam, session?.user?.id, sessionLoading]);
+
+  // Cinematic found no usable footage (or failed) → the default technique, Video.
+  const fallbackToVideo = (reason: string) => {
+    logger.warn('[MovieResults] Cinematic fell back to Video', { reason });
+    setTypeNotice('Not enough real footage for this story — making a Video instead.');
+    setVideoType('video');
+    startGeneration(query, modeParam);
+  };
+
+  const chooseType = (id: string) => {
+    if (!query.trim()) return;
+    window.location.assign(`/movie-results?q=${encodeURIComponent(query)}&type=${id}`);
+  };
 
   const isComplete = progress.stage === 'complete';
   const selectedSwipe = swipes.find((s) => s.id === selectedSwipeId) || swipes.find((s) => s.isCore) || swipes[0];
@@ -374,6 +410,15 @@ export default function MovieResults() {
     }
   };
 
+  // HD: start the premium render of the core swipe as soon as it has a frame (Pro, once).
+  useEffect(() => {
+    if (!hdPendingRef.current) return;
+    const core = swipes.find((s) => s.isCore && s.imageUrl);
+    if (!core) return;
+    hdPendingRef.current = false;
+    void requestEnhance(core);
+  }, [swipes]);
+
   const shareUrl = experience?.id && !experience.id.startsWith('local-')
     ? `${window.location.origin}/movie/share/${experience.id}`
     : window.location.href;
@@ -439,6 +484,32 @@ export default function MovieResults() {
         }
       />
 
+      {/* Type selector: how the video is made. Auto = Curios decides (Decisions). */}
+      <div className="max-w-7xl mx-auto px-4 pt-3">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          {VIDEO_TYPES.map((t) => {
+            const active = t.id === typeParam;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => !active && chooseType(t.id)}
+                title={t.hint}
+                className="px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0"
+                style={active
+                  ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }
+                  : { backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-secondary)' }}
+              >
+                {t.label}
+                {active && t.id === 'auto' && videoType && (
+                  <span className="opacity-80"> · {VIDEO_TYPES.find((v) => v.id === videoType)?.label}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {answerModel?.astraBlocked && (
         <div className="max-w-7xl mx-auto px-4 pt-4">
           <AstraNotice onContinueWithAstra={continueWithAstra} />
@@ -446,6 +517,7 @@ export default function MovieResults() {
       )}
 
       {/* Tab navigation (same pattern as Cinematic: Video / Narrative / Sources) */}
+      {videoType !== 'cinematic' && (
       <div className="border-b" style={{ borderColor: 'var(--ui-bg-elevated)' }}>
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
@@ -469,6 +541,7 @@ export default function MovieResults() {
           </nav>
         </div>
       </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {error && (
@@ -484,6 +557,16 @@ export default function MovieResults() {
           </div>
         )}
 
+        {typeNotice && (
+          <div className="mb-4 rounded-lg p-4 text-sm" style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-secondary)' }}>
+            {typeNotice}
+          </div>
+        )}
+
+        {videoType === 'cinematic' ? (
+          <CinematicMontage question={query} onFail={fallbackToVideo} />
+        ) : (
+        <>
         {/* Progress bar while generating */}
         {!isComplete && !error && (
           <div className="mb-6">
@@ -508,6 +591,19 @@ export default function MovieResults() {
             <div className="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
               {selectedSwipe?.videoUrl ? (
                 <video src={selectedSwipe.videoUrl} controls autoPlay loop className="w-full h-full object-contain" />
+              ) : selectedSwipe?.imageUrl && selectedSwipe.status === 'error' && !isGenerating ? (
+                <>
+                  {/* Last fallback: the clip couldn't be made — animate the still frame instead. */}
+                  <img src={selectedSwipe.imageUrl} alt={selectedSwipe.title} className="w-full h-full object-cover ken-burns" />
+                  <button
+                    type="button"
+                    onClick={() => selectedSwipe && requestRenderSwipe({ ...selectedSwipe, status: 'image_ready' })}
+                    className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff' }}
+                  >
+                    <Play size={12} /> Retry video
+                  </button>
+                </>
               ) : selectedSwipe?.imageUrl ? (
                 <>
                   <img src={selectedSwipe.imageUrl} alt={selectedSwipe.title} className="w-full h-full object-contain" />
@@ -805,6 +901,8 @@ export default function MovieResults() {
               ))}
             </div>
           </section>
+        )}
+        </>
         )}
       </div>
 

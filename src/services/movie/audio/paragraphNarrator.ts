@@ -124,6 +124,8 @@ export class ParagraphNarrator {
     private voiceId: string,
     private gender: 'female' | 'male',
     private onState: (state: NarratorState) => void,
+    /** Fires as each paragraph starts playing, with its audio length (Cinematic syncs shots to it). */
+    private onParagraph?: (index: number, durationSec: number) => void,
   ) {
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
@@ -158,6 +160,7 @@ export class ParagraphNarrator {
       source.onended = () => { if (this.source === source) void this.start(i + 1); };
       this.source = source;
       source.start();
+      this.onParagraph?.(i, buffer.duration);
       this.onState(this.ctx.state === 'suspended' ? 'paused' : 'playing');
     } catch {
       if (!this.stopped) this.onState('error');
