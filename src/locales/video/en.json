@@ -64,5 +64,10 @@
   "vidFullscreen": "Full screen",
   "vidExitFullscreen": "Exit full screen",
   "vidFootage": "Footage",
-  "vidEnhance": "Enhance"
+  "vidEnhance": "Enhance",
+  "vidShareAction": "Share",
+  "vidLike": "Like",
+  "vidUnlike": "Unlike",
+  "vidLikeGuest": "Sign up to save your favorite videos.",
+  "vidSignUp": "Sign up"
 }

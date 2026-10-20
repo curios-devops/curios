@@ -64,5 +64,10 @@
   "vidFullscreen": "全画面",
   "vidExitFullscreen": "全画面を終了",
   "vidFootage": "映像素材",
-  "vidEnhance": "高画質化"
+  "vidEnhance": "高画質化",
+  "vidShareAction": "共有",
+  "vidLike": "いいね",
+  "vidUnlike": "いいねを取り消す",
+  "vidLikeGuest": "登録してお気に入りの動画を保存しましょう。",
+  "vidSignUp": "登録"
 }

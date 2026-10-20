@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Linkedin, Facebook, MessageCircle, Music2, Link2, Check } from 'lucide-react';
 import { shareOrDownloadVideo } from '../../../utils/videoShare.ts';
+import { openWhatsApp } from '../../../components/share/openWhatsApp.ts';
 
 interface SocialShareRowProps {
   shareUrl: string;
@@ -107,7 +108,7 @@ export default function SocialShareRow({ shareUrl, title, caption, videoUrl, onS
         aria-label="Share on WhatsApp"
         className={btn}
         style={btnStyle}
-        onClick={() => open(`https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`)}
+        onClick={() => { onShared?.(); openWhatsApp(shareUrl); }}
       >
         <MessageCircle size={18} />
       </button>

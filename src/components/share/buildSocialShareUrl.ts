@@ -53,8 +53,8 @@ function isPlainSearch(link: string, query: string): boolean {
   return url.pathname === '/fast-search' && [...url.searchParams.keys()].join() === 'q' && url.searchParams.get('q') === query;
 }
 
-// Crawler-friendly URL that renders OG meta tags for X / LinkedIn / Facebook.
-function buildCrawlerShareUrl(payload: SharePayload): string {
+// Crawler-friendly URL that renders OG meta tags for X / LinkedIn / Facebook / WhatsApp.
+export function buildCrawlerShareUrl(payload: SharePayload): string {
   // Curiosity Share links (/s/:slug) are already short AND serve OG tags via the
   // node-share-og edge function, so share them directly — no long wrapper needed.
   const deep = payload.deepLink || '';
@@ -93,7 +93,8 @@ export function buildShareHref(network: SocialNetwork, payload: SharePayload): s
     case 'facebook':
       return `https://www.facebook.com/sharer/sharer.php?u=${crawlerUrl}`;
     case 'whatsapp':
-      return `https://api.whatsapp.com/send?text=${encodedTitle}%0A${encodedDeepLink}`;
+      // Link only — the preview card already carries the title (see openWhatsApp).
+      return `https://api.whatsapp.com/send?text=${crawlerUrl}`;
     case 'reddit':
       return `https://www.reddit.com/submit?url=${crawlerUrl}&title=${encodedTitle}`;
     case 'email':

@@ -6,7 +6,8 @@
 import { useState, type ReactNode } from 'react';
 import { Linkedin, Facebook, Mail, Link2, Check } from 'lucide-react';
 import { shareConfig, type ServiceType, type SocialNetwork, type SharePayload } from './shareConfig';
-import { buildShareHref } from './buildSocialShareUrl';
+import { buildCrawlerShareUrl, buildShareHref } from './buildSocialShareUrl';
+import { openWhatsApp } from './openWhatsApp';
 
 // X (Twitter) has no lucide glyph that reads as "X"; small inline mark.
 function XIcon({ size = 18 }: { size?: number }) {
@@ -107,6 +108,10 @@ export default function DynamicShareRow({ serviceType, payload, trailing, onShar
     onShare?.();
     if (network === 'copy') {
       handleCopy();
+      return;
+    }
+    if (network === 'whatsapp') {
+      openWhatsApp(buildCrawlerShareUrl(payload));
       return;
     }
     const href = buildShareHref(network, payload);

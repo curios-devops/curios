@@ -64,5 +64,10 @@
   "vidFullscreen": "Plein écran",
   "vidExitFullscreen": "Quitter le plein écran",
   "vidFootage": "Images vidéo",
-  "vidEnhance": "Améliorer"
+  "vidEnhance": "Améliorer",
+  "vidShareAction": "Partager",
+  "vidLike": "J'aime",
+  "vidUnlike": "Je n'aime plus",
+  "vidLikeGuest": "Inscris-toi pour enregistrer tes vidéos préférées.",
+  "vidSignUp": "S'inscrire"
 }

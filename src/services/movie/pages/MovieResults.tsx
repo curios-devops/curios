@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronsUp, Compass, Crown, Film, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Share2, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronsUp, Compass, Crown, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Share2, Sparkles } from 'lucide-react';
 
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -25,6 +25,7 @@ import { MoviePersistenceService } from '../video/MoviePersistenceService.ts';
 import { normalizeMovieMode } from '../config/movieModes.ts';
 import type { MovieExperience, MovieMode, MovieProgress, MovieRelatedTopic, MovieSwipe } from '../types.ts';
 import SocialShareRow from '../components/SocialShareRow.tsx';
+import { buildCrawlerShareUrl } from '../../../components/share/buildSocialShareUrl.ts';
 import SignUpModal from '../../../components/auth/SignUpModal.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { decideTier, pickVideoModel, stepUp } from '../../auto/modelTier.ts';
@@ -91,6 +92,11 @@ export default function MovieResults() {
   const [enhancingIds, setEnhancingIds] = useState<Set<string>>(new Set());
   const [enhanceNotice, setEnhanceNotice] = useState<string | null>(null);
   const [showSignUp, setShowSignUp] = useState(false);
+  const [signUpSubtitle, setSignUpSubtitle] = useState<string | null>(null);
+  // Share line: the share card opens from its button; the heart is the video's popularity.
+  const [shareOpen, setShareOpen] = useState(false);
+  const [like, setLike] = useState<{ count: number; liked: boolean } | null>(null);
+  const [likeGuestNote, setLikeGuestNote] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<MovieTab>('video');
   const [mode, setMode] = useState<MovieMode | null>(modeParam ?? null);
@@ -393,6 +399,7 @@ export default function MovieResults() {
     if (enhancingIds.has(swipe.id) || swipe.enhanced) return;
     // Guests must sign in to keep the enhanced video (it surfaces on their Home).
     if (!session?.user?.id) {
+      setSignUpSubtitle(null);
       setShowSignUp(true);
       return;
     }
@@ -438,13 +445,31 @@ export default function MovieResults() {
     void requestEnhance(core);
   }, [swipes]);
 
-  const shareUrl = experience?.id && !experience.id.startsWith('local-')
-    ? `${window.location.origin}/movie/share/${experience.id}`
-    : window.location.href;
+  const savedId = experience?.id && !experience.id.startsWith('local-') ? experience.id : null;
 
   const handleShared = () => {
-    if (experience?.id && !experience.id.startsWith('local-')) {
-      new MoviePersistenceService().incrementShareCount(experience.id).catch(() => undefined);
+    if (savedId) new MoviePersistenceService().incrementShareCount(savedId).catch(() => undefined);
+  };
+
+  // Likes live on the saved video (movie_project_likes: video + who liked; the video row
+  // carries its creator and like_count). Cinematic films aren't saved, so they have no heart.
+  const userId = session?.user?.id;
+  useEffect(() => {
+    setLike(null);
+    if (!savedId) return;
+    let alive = true;
+    new MoviePersistenceService().getLikeState(savedId, userId).then((s) => { if (alive) setLike(s); }).catch(() => undefined);
+    return () => { alive = false; };
+  }, [savedId, userId]);
+  const toggleLike = async () => {
+    if (!savedId || !like) return;
+    if (!userId) { setLikeGuestNote(true); return; }
+    const liked = !like.liked;
+    setLike({ liked, count: Math.max(0, like.count + (liked ? 1 : -1)) });
+    try {
+      await new MoviePersistenceService().toggleLike(savedId, userId);
+    } catch {
+      setLike(like);
     }
   };
 
@@ -514,14 +539,66 @@ export default function MovieResults() {
   );
 
   // Shared under the player for every type: share, then the overview (shown, not collapsed).
+  // Links go through curiosai.com/share so WhatsApp, X, LinkedIn… show this video's own
+  // title, caption and frame (the SPA page only has the generic site tags); people who
+  // open it are sent on to the video.
+  const site = 'https://curiosai.com';
+  const shareLink = (title: string, caption: string, image: string | undefined, deepLink: string) =>
+    buildCrawlerShareUrl({ title, description: caption, imageUrls: image ? [image] : [], deepLink });
+  const coreImage = swipes.find((s) => s.isCore)?.imageUrl || selectedSwipe?.imageUrl;
   const shareCard = videoType === 'cinematic'
-    ? (cine ? { title: cine.title, caption: cine.overview.split(/(?<=[.!?])\s/)[0], hashtags: [] as string[], url: `${window.location.origin}/movie-results?q=${encodeURIComponent(displayQuery)}&type=cinematic`, video: undefined } : null)
-    : (isComplete && experience?.viral ? { title: experience.viral.title, caption: experience.viral.caption, hashtags: experience.viral.hashtags, url: shareUrl, video: selectedSwipe?.videoUrl || experience.coreVideoUrl } : null);
+    ? (cine ? (() => {
+        const caption = cine.overview.split(/(?<=[.!?])\s/)[0];
+        return { title: cine.title, caption, hashtags: [] as string[], video: undefined,
+          url: shareLink(cine.title, caption, cine.credits[0]?.image, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=cinematic`) };
+      })() : null)
+    : (isComplete && experience?.viral ? {
+        title: experience.viral.title, caption: experience.viral.caption, hashtags: experience.viral.hashtags,
+        video: selectedSwipe?.videoUrl || experience.coreVideoUrl,
+        url: shareLink(experience.viral.title, experience.viral.caption, coreImage,
+          savedId ? `${site}/movie/share/${savedId}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}`),
+      } : null);
   const overview = videoType === 'cinematic' ? cine?.overview : experience?.narrative;
+  const lineBtn = 'inline-flex items-center gap-2 h-10 px-4 rounded-full border text-sm font-medium transition-colors';
+  const lineBtnStyle = { borderColor: 'var(--ui-border-default)', backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-primary)' } as const;
   const sharedSections = (
     <>
       {shareCard && (
-        <div className="mt-6 rounded-xl p-5" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <button type="button" onClick={() => setShareOpen((o) => !o)} aria-expanded={shareOpen} className={lineBtn} style={lineBtnStyle}>
+            <Share2 size={16} /> {t('vidShareAction')}
+          </button>
+          {savedId && like && (
+            <button
+              type="button"
+              onClick={() => void toggleLike()}
+              aria-pressed={like.liked}
+              title={like.liked ? t('vidUnlike') : t('vidLike')}
+              aria-label={like.liked ? t('vidUnlike') : t('vidLike')}
+              className={lineBtn}
+              style={{ ...lineBtnStyle, color: like.liked ? 'var(--accent-primary)' : lineBtnStyle.color }}
+            >
+              <Heart size={16} fill={like.liked ? 'currentColor' : 'none'} />
+              {like.count > 0 && <span>{like.count}</span>}
+            </button>
+          )}
+          {likeGuestNote && (
+            <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>
+              {t('vidLikeGuest')}{' '}
+              <button
+                type="button"
+                onClick={() => { setSignUpSubtitle(t('vidLikeGuest')); setShowSignUp(true); }}
+                className="font-medium underline"
+                style={{ color: 'var(--accent-primary)' }}
+              >
+                {t('vidSignUp')}
+              </button>
+            </p>
+          )}
+        </div>
+      )}
+      {shareCard && shareOpen && (
+        <div className="mt-3 rounded-xl p-5" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
           <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--accent-primary)' }}>
             <Share2 size={16} />
             <span className="text-xs font-medium uppercase tracking-wide">{t('vidShare')}</span>
@@ -998,7 +1075,7 @@ export default function MovieResults() {
         isOpen={showSignUp}
         onClose={() => setShowSignUp(false)}
         context="pro"
-        subtitle="You need to be signed in to view your saved video."
+        subtitle={signUpSubtitle ?? 'You need to be signed in to view your saved video.'}
       />
     </div>
   );

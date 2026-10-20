@@ -237,6 +237,18 @@ export class MoviePersistenceService {
     return data as boolean;
   }
 
+  /** The video's like count and whether this viewer (when signed in) has liked it. */
+  async getLikeState(projectId: string, userId?: string): Promise<{ count: number; liked: boolean }> {
+    if (!this.isValidUuid(projectId)) return { count: 0, liked: false };
+    const [project, mine] = await Promise.all([
+      supabase.from('movie_projects').select('like_count').eq('id', projectId).maybeSingle(),
+      userId
+        ? supabase.from('movie_project_likes').select('project_id').eq('project_id', projectId).eq('user_id', userId).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    return { count: (project.data?.like_count as number | undefined) ?? 0, liked: Boolean(mine.data) };
+  }
+
   async toggleSave(projectId: string, userId: string): Promise<boolean> {
     const { data, error } = await supabase.rpc('toggle_movie_save', { project_uuid: projectId, user_uuid: userId });
     if (error) throw error;

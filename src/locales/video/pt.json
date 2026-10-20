@@ -64,5 +64,10 @@
   "vidFullscreen": "Tela cheia",
   "vidExitFullscreen": "Sair da tela cheia",
   "vidFootage": "Imagens de vídeo",
-  "vidEnhance": "Melhorar"
+  "vidEnhance": "Melhorar",
+  "vidShareAction": "Compartilhar",
+  "vidLike": "Curtir",
+  "vidUnlike": "Descurtir",
+  "vidLikeGuest": "Cadastre-se para salvar seus vídeos favoritos.",
+  "vidSignUp": "Cadastre-se"
 }

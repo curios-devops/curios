@@ -64,5 +64,10 @@
   "vidFullscreen": "Pantalla completa",
   "vidExitFullscreen": "Surt de la pantalla completa",
   "vidFootage": "Imatges de vídeo",
-  "vidEnhance": "Millora"
+  "vidEnhance": "Millora",
+  "vidShareAction": "Comparteix",
+  "vidLike": "M'agrada",
+  "vidUnlike": "Ja no m'agrada",
+  "vidLikeGuest": "Registra't per desar els teus vídeos preferits.",
+  "vidSignUp": "Registra't"
 }
