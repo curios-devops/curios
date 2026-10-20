@@ -1,0 +1,9 @@
+{
+  "creditsTitle": "クレジット",
+  "creditsDesc": "Proクレジットを上部に表示し、見た目を選べます。",
+  "creditsBattery": "バッテリー",
+  "creditsGauge": "メーター",
+  "creditsRing": "リング",
+  "creditsDigital": "デジタル",
+  "creditsAnalog": "アナログ"
+}

@@ -160,6 +160,8 @@ HEADER_THEME_TOGGLE = OFF
 
 ### CREDITS — the Pro-credits indicator
 BATTERY = little battery · DIAL = round gauge · OFF = hidden. Default = BATTERY
+This is only the starting look: each visitor can change it in Settings → Credits
+(on/off, battery · gauge · ring, digital · analog), saved in their browser.
 ```
 CREDITS = DIAL
 ```

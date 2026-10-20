@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Monitor, Moon, Sun, X, type LucideIcon } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext.tsx';
+import CreditsSetting from '../settings/CreditsSetting.tsx';
 import ToggleSwitch from '../settings/ToggleSwitch.tsx';
 import LanguageSelector from '../settings/LanguageSelector.tsx';
 import NarratorVoiceSelect from '../settings/NarratorVoiceSelect.tsx';
@@ -165,6 +166,9 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
               <LanguageSelector openUp />
             </div>
           </div>
+
+          {/* Credits: on/off, then the drawing and digital/analog. */}
+          <CreditsSetting compact />
 
           {/* Narrator voice */}
           <div className="py-5 flex items-center justify-between gap-4">

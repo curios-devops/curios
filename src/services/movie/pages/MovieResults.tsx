@@ -35,6 +35,7 @@ import type { WebSearchResult } from '../../search/providers/webSearchProvider.t
 import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, detectVideoType, movieModeFor, parseVideoType, resolveVideoType, type VideoType } from '../videoType.ts';
 import CinematicMontage, { type CinematicInfo } from '../cinematic/CinematicMontage.tsx';
+import { getFilmLikeState, saveCinematicFilm, toggleCinematicLike } from '../cinematic/cinematicFilms.ts';
 
 type MovieTab = 'video' | 'timeline' | 'images' | 'sources';
 
@@ -451,23 +452,39 @@ export default function MovieResults() {
     if (savedId) new MoviePersistenceService().incrementShareCount(savedId).catch(() => undefined);
   };
 
-  // Likes live on the saved video (movie_project_likes: video + who liked; the video row
-  // carries its creator and like_count). Cinematic films aren't saved, so they have no heart.
+  // Hearts. A generated video's live on its saved row (movie_project_likes; the row carries
+  // its creator and like_count). A Cinematic film gets its own row (cinematic_films) once the
+  // signed-in creator's film is ready; a shared link brings the film id (?film=).
   const userId = session?.user?.id;
+  const filmParam = useMemo(() => new URLSearchParams(location.search).get('film'), [location.search]);
+  const [filmId, setFilmId] = useState<string | null>(filmParam);
+  useEffect(() => {
+    if (videoType !== 'cinematic' || !cine || filmParam || !userId) return;
+    let alive = true;
+    saveCinematicFilm(userId, query, cine.title, cine.credits[0]?.image).then((id) => { if (alive && id) setFilmId(id); });
+    return () => { alive = false; };
+  }, [videoType, cine, filmParam, userId, query]);
+  const likeTarget = videoType === 'cinematic'
+    ? (filmId ? { kind: 'film' as const, id: filmId } : null)
+    : (savedId ? { kind: 'movie' as const, id: savedId } : null);
   useEffect(() => {
     setLike(null);
-    if (!savedId) return;
+    if (!likeTarget) return;
     let alive = true;
-    new MoviePersistenceService().getLikeState(savedId, userId).then((s) => { if (alive) setLike(s); }).catch(() => undefined);
+    const load = likeTarget.kind === 'film'
+      ? getFilmLikeState(likeTarget.id, userId)
+      : new MoviePersistenceService().getLikeState(likeTarget.id, userId);
+    load.then((s) => { if (alive) setLike(s); }).catch(() => undefined);
     return () => { alive = false; };
-  }, [savedId, userId]);
+  }, [likeTarget?.kind, likeTarget?.id, userId]);
   const toggleLike = async () => {
-    if (!savedId || !like) return;
     if (!userId) { setLikeGuestNote(true); return; }
+    if (!likeTarget || !like) return;
     const liked = !like.liked;
     setLike({ liked, count: Math.max(0, like.count + (liked ? 1 : -1)) });
     try {
-      await new MoviePersistenceService().toggleLike(savedId, userId);
+      if (likeTarget.kind === 'film') await toggleCinematicLike(likeTarget.id);
+      else await new MoviePersistenceService().toggleLike(likeTarget.id, userId);
     } catch {
       setLike(like);
     }
@@ -550,7 +567,7 @@ export default function MovieResults() {
     ? (cine ? (() => {
         const caption = cine.overview.split(/(?<=[.!?])\s/)[0];
         return { title: cine.title, caption, hashtags: [] as string[], video: undefined,
-          url: shareLink(cine.title, caption, cine.credits[0]?.image, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=cinematic`) };
+          url: shareLink(cine.title, caption, cine.credits[0]?.image, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=cinematic${filmId ? `&film=${filmId}` : ''}`) };
       })() : null)
     : (isComplete && experience?.viral ? {
         title: experience.viral.title, caption: experience.viral.caption, hashtags: experience.viral.hashtags,
@@ -565,23 +582,32 @@ export default function MovieResults() {
     <>
       {shareCard && (
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <button type="button" onClick={() => setShareOpen((o) => !o)} aria-expanded={shareOpen} className={lineBtn} style={lineBtnStyle}>
-            <Share2 size={16} /> {t('vidShareAction')}
-          </button>
-          {savedId && like && (
+          {/* Heart on the left: guests always see it (tapping asks them to sign up). */}
+          {(like || !userId) && (
             <button
               type="button"
               onClick={() => void toggleLike()}
-              aria-pressed={like.liked}
-              title={like.liked ? t('vidUnlike') : t('vidLike')}
-              aria-label={like.liked ? t('vidUnlike') : t('vidLike')}
-              className={lineBtn}
-              style={{ ...lineBtnStyle, color: like.liked ? 'var(--accent-primary)' : lineBtnStyle.color }}
+              aria-pressed={Boolean(like?.liked)}
+              title={like?.liked ? t('vidUnlike') : t('vidLike')}
+              aria-label={like?.liked ? t('vidUnlike') : t('vidLike')}
+              className={`${lineBtn} ${like && like.count > 0 ? '' : '!px-0 w-10 justify-center'}`}
+              style={{ ...lineBtnStyle, color: like?.liked ? 'var(--accent-primary)' : lineBtnStyle.color }}
             >
-              <Heart size={16} fill={like.liked ? 'currentColor' : 'none'} />
-              {like.count > 0 && <span>{like.count}</span>}
+              <Heart size={16} fill={like?.liked ? 'currentColor' : 'none'} />
+              {like && like.count > 0 && <span>{like.count}</span>}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setShareOpen((o) => !o)}
+            aria-expanded={shareOpen}
+            title={t('vidShareAction')}
+            aria-label={t('vidShareAction')}
+            className={`${lineBtn} !px-0 w-10 justify-center`}
+            style={lineBtnStyle}
+          >
+            <Share2 size={16} />
+          </button>
           {likeGuestNote && (
             <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>
               {t('vidLikeGuest')}{' '}

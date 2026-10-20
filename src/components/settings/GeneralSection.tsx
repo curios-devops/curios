@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Moon, Sun, Monitor, type LucideIcon } from 'lucide-react';
+import CreditsSetting from './CreditsSetting';
 import ToggleSwitch from './ToggleSwitch';
 import LanguageSelector from './LanguageSelector';
 import NarratorVoiceSelect from './NarratorVoiceSelect';
@@ -154,6 +155,9 @@ export default function GeneralSection() {
               <LanguageSelector />
             </div>
           </div>
+
+          {/* Credits: on/off, then the drawing and digital/analog. */}
+          <CreditsSetting />
 
           {/* Narrator voice */}
           <div className="py-6">

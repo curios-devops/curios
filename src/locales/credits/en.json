@@ -1,0 +1,9 @@
+{
+  "creditsTitle": "Credits",
+  "creditsDesc": "Show your Pro Credits in the header, and choose how they look.",
+  "creditsBattery": "Battery",
+  "creditsGauge": "Gauge",
+  "creditsRing": "Ring",
+  "creditsDigital": "Digital",
+  "creditsAnalog": "Analog"
+}
