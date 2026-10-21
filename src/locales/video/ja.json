@@ -74,7 +74,6 @@
   "vidType_tour": "360°ツアー",
   "vidTourDesigning": "場所をデザイン中…",
   "vidTourBuilding": "3Dツアーを作成中…",
-  "vidTourSignIn": "360°ツアーを作成するにはログインしてください。",
   "vidTourFailed": "ツアーを作成できませんでした。もう一度お試しください。",
   "vidTourLimit": "今日の新しいツアーの上限に達しました。",
   "vidTour360": "360°で見回す",
@@ -83,5 +82,10 @@
   "vidTourHint3d": "ドラッグで向きを変える · WASDまたは矢印キーで歩く",
   "vidTourLoading3d": "3Dシーンを読み込み中…",
   "vidTourCredit": "シーン：Viggle",
-  "vidTourCost": "新しいツアーはProクレジットを1つ使います"
+  "vidTourCost": "新しいツアーはProクレジットを1つ使います",
+  "vidTourNoCreditsGuest": "今日のクレジットを使い切りました。登録するともっと360°ツアーを作れます。",
+  "vidTourNoCreditsFree": "今日のクレジットを使い切りました。Proにするともっと360°ツアーを作れます。",
+  "vidTourNoCreditsPro": "今日のクレジットを使い切りました。明日また新しいツアーを作れます。",
+  "vidTourSaveGuest": "このツアーは気に入りましたか？登録すると保存できます。",
+  "vidGoPro": "Proにする"
 }

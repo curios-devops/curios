@@ -1,13 +1,15 @@
 // The 360 Tour on the Video page (same template as the other types: player, then share,
 // overview and Continue exploring from the page). A tour already made for the question opens
-// at once and free; a new one needs an account and 1 Pro Credit, and takes ~20-30 s.
+// at once and free. A new one (a Viggle "session") costs 1 Pro Credit — guests included — and
+// takes ~25 s; with no credits left the viewer is asked to sign up (guest) or go Pro. A guest
+// who spent their last credit on it is offered to sign up to keep it; on sign-in it's claimed.
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Loader2, Maximize, Minimize, Rotate3d } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { findRelatedPosters } from '../cinematic/cinematicPlan.ts';
-import { findTour, makeTour, planTour, tourKey, type Tour } from './tourPlan.ts';
+import { claimTour, findTour, guestTours, makeTour, planTour, rememberGuestTour, tourKey, type Tour } from './tourPlan.ts';
 import type { TourMode } from './TourViewer.tsx';
 
 const TourViewer = lazy(() => import('./TourViewer.tsx'));
@@ -30,12 +32,14 @@ interface Props {
   onNeedSignIn: () => void;
 }
 
-type Stage = 'looking' | 'signin' | 'designing' | 'building' | 'ready' | 'limit' | 'failed';
+type Stage = 'looking' | 'nocredits' | 'designing' | 'building' | 'ready' | 'limit' | 'failed';
 
 export default function TourScene({ question, tab, context, belowPlayer, onReady, onNeedSignIn }: Props) {
   const { t } = useTranslation();
   const { session, isLoading: sessionLoading } = useSession();
-  const { requestProAccess } = useProCredits();
+  const { requestProAccess, promptUpgrade, tier, remaining } = useProCredits();
+  // One charge per tour, even if the page re-runs (web facts arriving, signing in midway).
+  const chargedRef = useRef<string | null>(null);
   const [stage, setStage] = useState<Stage>('looking');
   const [tour, setTour] = useState<Tour | null>(null);
   const [mode, setMode] = useState<TourMode>('360');
@@ -63,13 +67,24 @@ export default function TourScene({ question, tab, context, belowPlayer, onReady
     (async () => {
       const existing = await findTour(key).catch(() => null);
       if (controller.signal.aborted) return;
-      if (existing) return show(existing);
-      if (!signedIn) return setStage('signin');
+      if (existing) {
+        // A guest's tour, now signed in → it's saved to their account.
+        if (signedIn && !existing.owned && guestTours().includes(key)) {
+          void claimTour(key).then(() => rememberGuestTour(key, false), () => undefined);
+        }
+        return show(existing);
+      }
       if (context === null) return; // wait for the web facts (the effect runs again)
+      if (chargedRef.current !== key) {
+        // 1 Pro Credit per new tour; none left → the tier's modal (sign up / go Pro) opens.
+        if (!(await requestProAccess())) return setStage('nocredits');
+        chargedRef.current = key;
+        if (!signedIn) rememberGuestTour(key);
+      }
+      if (controller.signal.aborted) return;
       setStage('designing');
       const plan = await planTour(question, context);
       if (controller.signal.aborted) return;
-      if (!(await requestProAccess())) return setStage('failed');
       setStage('building');
       show(await makeTour(key, question, plan, controller.signal));
     })().catch((err) => {
@@ -101,6 +116,9 @@ export default function TourScene({ question, tab, context, belowPlayer, onReady
     : stage === 'limit' ? t('vidTourLimit')
     : stage === 'failed' ? t('vidTourFailed')
     : null;
+  const noCredits = tier === 'guest' ? t('vidTourNoCreditsGuest') : tier === 'free' ? t('vidTourNoCreditsFree') : t('vidTourNoCreditsPro');
+  // After the tour: a guest who just used their last credit is offered to keep it.
+  const offerSave = stage === 'ready' && !signedIn && remaining <= 0 && guestTours().includes(tourKey(question));
   const pseudoFull = fullscreen && !document.fullscreenElement;
 
   return (
@@ -150,13 +168,15 @@ export default function TourScene({ question, tab, context, belowPlayer, onReady
           </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-white/80">
-            {stage === 'signin' ? (
+            {stage === 'nocredits' ? (
               <>
                 <Rotate3d size={32} />
-                <p className="text-sm">{t('vidTourSignIn')}</p>
-                <button type="button" onClick={onNeedSignIn} className="px-4 py-2 rounded-full text-sm font-semibold" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}>
-                  {t('vidSignUp')}
-                </button>
+                <p className="text-sm max-w-sm">{noCredits}</p>
+                {tier !== 'pro' && (
+                  <button type="button" onClick={promptUpgrade} className="px-4 py-2 rounded-full text-sm font-semibold" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}>
+                    {tier === 'guest' ? t('vidSignUp') : t('vidGoPro')}
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -168,6 +188,15 @@ export default function TourScene({ question, tab, context, belowPlayer, onReady
           </div>
         )}
       </div>
+      {offerSave && (
+        <div className="mt-4 rounded-xl p-4 flex flex-wrap items-center gap-3" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
+          <Rotate3d size={18} style={{ color: 'var(--accent-primary)' }} />
+          <p className="text-sm flex-1 min-w-[12rem]">{t('vidTourSaveGuest')}</p>
+          <button type="button" onClick={onNeedSignIn} className="px-4 py-2 rounded-full text-sm font-semibold" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}>
+            {t('vidSignUp')}
+          </button>
+        </div>
+      )}
       {belowPlayer}
     </>
   );

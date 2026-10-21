@@ -861,7 +861,7 @@ export default function MovieResults() {
             context={web}
             belowPlayer={sharedSections}
             onReady={setTourInfo}
-            onNeedSignIn={() => { setSignUpSubtitle(t('vidTourSignIn')); setShowSignUp(true); }}
+            onNeedSignIn={() => { setSignUpSubtitle(t('vidTourSaveGuest')); setShowSignUp(true); }}
           />
         ) : activeTab === 'video' && (
           <>

@@ -5,9 +5,11 @@
 //
 // Body { action }:
 //   lookup  { key }                         → { ready: true, tour } | { ready: false }
-//   create  { key, question, prompt, title, overview, related } — signed-in users only, at most
-//           DAILY_CAP new scenes per person per day → { taskId }
-//   status  { taskId, key }                 → { status } | { ready: true, tour } (copies + saves on ready)
+//   create  { key, question, prompt, title, overview, related } → { taskId, meta }
+//           Anyone with a Pro Credit (the page charges it). Spend caps per 24 h: USER_CAP per
+//           account, GUEST_CAP per guest connection (hashed IP), GLOBAL_CAP for everyone.
+//   status  { taskId, key, meta }           → { status } | { ready: true, tour } (copies + saves on ready)
+//   claim   { key }                         → links a tour a guest made to the account they just made
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
@@ -20,7 +22,9 @@ const json = (body: unknown, status = 200) =>
 // @ts-ignore: Deno env
 const env = (k: string) => (Deno.env.get(k) ?? "").trim();
 const VIGGLE = "https://apis.viggle.ai/v1/scenes";
-const DAILY_CAP = 10;
+const USER_CAP = 10;
+const GUEST_CAP = 3;
+const GLOBAL_CAP = 100; // ≈ $6 a day at most
 const BUCKET = "movie-assets";
 const QUALITY = "medium";
 
@@ -37,8 +41,15 @@ async function userId(req: Request): Promise<string | null> {
 
 const toTour = (r: Record<string, unknown>) => ({
   question: r.question, title: r.title, overview: r.overview, related: r.related,
-  spzUrl: r.spz_url, panoramaUrl: r.panorama_url,
+  spzUrl: r.spz_url, panoramaUrl: r.panorama_url, owned: Boolean(r.user_id),
 });
+
+/** A guest's connection, hashed — counted for the guest cap, never stored in clear. */
+async function ipHash(req: Request): Promise<string> {
+  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || req.headers.get("cf-connecting-ip") || "unknown";
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${ip}|${env("SUPABASE_URL")}`));
+  return [...new Uint8Array(digest)].slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 async function copyToStorage(url: string, path: string, contentType: string): Promise<string> {
   const res = await fetch(url);
@@ -65,11 +76,14 @@ Deno.serve(async (req: Request) => {
 
     if (body.action === "create") {
       const uid = await userId(req);
-      if (!uid) return json({ error: "sign_in_required" }, 401);
       if (!env("VIGGLE_API_KEY")) return json({ error: "VIGGLE_API_KEY not configured" }, 500);
       const since = new Date(Date.now() - 864e5).toISOString();
-      const { count } = await db().from("scene_tours").select("id", { count: "exact", head: true }).eq("user_id", uid).gte("created_at", since);
-      if ((count ?? 0) >= DAILY_CAP) return json({ error: "daily_limit" }, 429);
+      const recent = () => db().from("scene_tours").select("id", { count: "exact", head: true }).gte("created_at", since);
+      const [{ count: all }, { count: mine }] = await Promise.all([
+        recent(),
+        uid ? recent().eq("user_id", uid) : recent().eq("creator_ip_hash", await ipHash(req)),
+      ]);
+      if ((all ?? 0) >= GLOBAL_CAP || (mine ?? 0) >= (uid ? USER_CAP : GUEST_CAP)) return json({ error: "daily_limit" }, 429);
       const prompt = String(body.prompt ?? "").trim().slice(0, 1000);
       if (!prompt) return json({ error: "prompt is required" }, 400);
       const sessionId = `curios-${crypto.randomUUID()}`;
@@ -106,10 +120,21 @@ Deno.serve(async (req: Request) => {
         question_key: key, question: meta.question || key, title: meta.title ?? "", overview: meta.overview ?? "",
         scene_prompt: meta.prompt ?? "", related: meta.related ?? [], spz_url: spzUrl, panorama_url: panoramaUrl,
         user_id: await userId(req), // the creator, from their own session (never from the request body)
+        creator_ip_hash: (await userId(req)) ? null : await ipHash(req),
       };
       const { data, error } = await db().from("scene_tours").upsert(row, { onConflict: "question_key" }).select("*").single();
       if (error) throw new Error(error.message);
       return json({ ready: true, tour: toTour(data) });
+    }
+
+    if (body.action === "claim") {
+      const uid = await userId(req);
+      if (!uid) return json({ error: "sign_in_required" }, 401);
+      const { error } = await db().from("scene_tours").update({ user_id: uid, creator_ip_hash: null })
+        .eq("question_key", key).is("user_id", null)
+        .eq("creator_ip_hash", await ipHash(req)); // only the guest who made it (same connection)
+      if (error) throw new Error(error.message);
+      return json({ ok: true });
     }
 
     return json({ error: "unknown action" }, 400);

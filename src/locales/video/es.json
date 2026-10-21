@@ -74,7 +74,6 @@
   "vidType_tour": "Recorrido 360°",
   "vidTourDesigning": "Diseñando el lugar…",
   "vidTourBuilding": "Construyendo tu recorrido 3D…",
-  "vidTourSignIn": "Inicia sesión para crear recorridos 360°.",
   "vidTourFailed": "No se pudo crear el recorrido. Inténtalo de nuevo.",
   "vidTourLimit": "Llegaste al máximo de recorridos nuevos por hoy.",
   "vidTour360": "Mirar en 360°",
@@ -83,5 +82,10 @@
   "vidTourHint3d": "Arrastra para girar · WASD o flechas para caminar",
   "vidTourLoading3d": "Cargando la escena 3D…",
   "vidTourCredit": "Escena: Viggle",
-  "vidTourCost": "Un recorrido nuevo usa 1 crédito Pro"
+  "vidTourCost": "Un recorrido nuevo usa 1 crédito Pro",
+  "vidTourNoCreditsGuest": "Te quedaste sin créditos por hoy. Regístrate para crear más recorridos 360°.",
+  "vidTourNoCreditsFree": "Ya usaste tus créditos de hoy. Hazte Pro para crear más recorridos 360°.",
+  "vidTourNoCreditsPro": "Ya usaste tus créditos de hoy. Mañana puedes crear nuevos recorridos.",
+  "vidTourSaveGuest": "¿Te gustó este recorrido? Regístrate para guardarlo junto con los próximos.",
+  "vidGoPro": "Hazte Pro"
 }

@@ -22,6 +22,8 @@ export interface Tour {
   related: { question: string; search?: string }[];
   spzUrl: string;
   panoramaUrl: string;
+  /** Linked to an account (a guest's tour isn't until they sign up and claim it). */
+  owned?: boolean;
 }
 
 /** One tour per question: case, spacing and punctuation don't make a new one. */
@@ -116,4 +118,20 @@ export async function makeTour(key: string, question: string, plan: TourPlan, si
     if (s.status && s.status !== 'queued' && s.status !== 'processing') throw new Error(`Viggle scene ${s.status}`);
   }
   throw new Error(signal.aborted ? 'aborted' : 'The tour took too long');
+}
+
+/** Links a tour this guest made to the account they've just signed in with. */
+export async function claimTour(key: string): Promise<void> {
+  await call({ action: 'claim', key });
+}
+
+// Tours made as a guest on this device, so signing up can save them to the new account.
+const GUEST_TOURS = 'curios_guest_tours';
+export function guestTours(): string[] {
+  try { return JSON.parse(localStorage.getItem(GUEST_TOURS) || '[]') as string[]; } catch { return []; }
+}
+export function rememberGuestTour(key: string, keep = true) {
+  const list = guestTours().filter((k) => k !== key);
+  if (keep) list.push(key);
+  try { localStorage.setItem(GUEST_TOURS, JSON.stringify(list.slice(-20))); } catch { /* storage blocked */ }
 }

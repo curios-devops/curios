@@ -74,7 +74,6 @@
   "vidType_tour": "Recorregut 360°",
   "vidTourDesigning": "Dissenyant el lloc…",
   "vidTourBuilding": "Construint el teu recorregut 3D…",
-  "vidTourSignIn": "Inicia sessió per crear recorreguts 360°.",
   "vidTourFailed": "No s'ha pogut crear el recorregut. Torna-ho a provar.",
   "vidTourLimit": "Has arribat al màxim de recorreguts nous per avui.",
   "vidTour360": "Mirar en 360°",
@@ -83,5 +82,10 @@
   "vidTourHint3d": "Arrossega per girar · WASD o fletxes per caminar",
   "vidTourLoading3d": "Carregant l'escena 3D…",
   "vidTourCredit": "Escena: Viggle",
-  "vidTourCost": "Un recorregut nou fa servir 1 crèdit Pro"
+  "vidTourCost": "Un recorregut nou fa servir 1 crèdit Pro",
+  "vidTourNoCreditsGuest": "T'has quedat sense crèdits avui. Registra't per crear més recorreguts 360°.",
+  "vidTourNoCreditsFree": "Ja has fet servir els crèdits d'avui. Fes-te Pro per crear més recorreguts 360°.",
+  "vidTourNoCreditsPro": "Ja has fet servir els crèdits d'avui. Demà en pots crear de nous.",
+  "vidTourSaveGuest": "T'ha agradat aquest recorregut? Registra't per desar-lo amb els propers.",
+  "vidGoPro": "Fes-te Pro"
 }

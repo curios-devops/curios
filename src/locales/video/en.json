@@ -74,7 +74,6 @@
   "vidType_tour": "360° Tour",
   "vidTourDesigning": "Designing the place…",
   "vidTourBuilding": "Building your 3D tour…",
-  "vidTourSignIn": "Sign in to create 360° tours.",
   "vidTourFailed": "The tour couldn't be created. Try again.",
   "vidTourLimit": "You've reached today's limit of new tours.",
   "vidTour360": "Look around 360°",
@@ -83,5 +82,10 @@
   "vidTourHint3d": "Drag to turn · WASD or arrow keys to walk",
   "vidTourLoading3d": "Loading the 3D scene…",
   "vidTourCredit": "Scene: Viggle",
-  "vidTourCost": "A new tour uses 1 Pro Credit"
+  "vidTourCost": "A new tour uses 1 Pro Credit",
+  "vidTourNoCreditsGuest": "You're out of credits for today. Sign up to create more 360° tours.",
+  "vidTourNoCreditsFree": "You've used today's credits. Go Pro to create more 360° tours.",
+  "vidTourNoCreditsPro": "You've used today's credits. New tours are back tomorrow.",
+  "vidTourSaveGuest": "Like this tour? Sign up to keep it and your next ones.",
+  "vidGoPro": "Go Pro"
 }

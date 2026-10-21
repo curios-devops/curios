@@ -74,7 +74,6 @@
   "vidType_tour": "Visite 360°",
   "vidTourDesigning": "Conception du lieu…",
   "vidTourBuilding": "Construction de ta visite 3D…",
-  "vidTourSignIn": "Connecte-toi pour créer des visites 360°.",
   "vidTourFailed": "La visite n'a pas pu être créée. Réessaie.",
   "vidTourLimit": "Tu as atteint la limite de nouvelles visites pour aujourd'hui.",
   "vidTour360": "Regarder en 360°",
@@ -83,5 +82,10 @@
   "vidTourHint3d": "Fais glisser pour tourner · ZQSD/WASD ou flèches pour marcher",
   "vidTourLoading3d": "Chargement de la scène 3D…",
   "vidTourCredit": "Scène : Viggle",
-  "vidTourCost": "Une nouvelle visite utilise 1 crédit Pro"
+  "vidTourCost": "Une nouvelle visite utilise 1 crédit Pro",
+  "vidTourNoCreditsGuest": "Tu n'as plus de crédits aujourd'hui. Inscris-toi pour créer d'autres visites 360°.",
+  "vidTourNoCreditsFree": "Tu as utilisé tes crédits du jour. Passe Pro pour créer d'autres visites 360°.",
+  "vidTourNoCreditsPro": "Tu as utilisé tes crédits du jour. Tu pourras en créer de nouvelles demain.",
+  "vidTourSaveGuest": "Cette visite t'a plu ? Inscris-toi pour la garder avec les suivantes.",
+  "vidGoPro": "Passer Pro"
 }
