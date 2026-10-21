@@ -4,6 +4,7 @@
 // The model only writes words and search terms; sizes, timing and layout are decided in code.
 import { supabase } from '../../../lib/supabase.ts';
 import { callMovieLLMJson } from '../core/llm.ts';
+import { captionText, cleanDelivery, VOICE_DIRECTION_GUIDE } from '../audio/voiceDirection.ts';
 
 export interface CinematicShot {
   narration: string;
@@ -34,32 +35,8 @@ export const MIN_SHOTS = 3;
 export const MAX_SHOTS = 6;
 const MAX_NARRATION = 220;
 
-// How to say it: ElevenLabs v4 reads bracketed audio tags in the script as delivery directions
-// (no SSML; `speed` is ignored — verified 2026-10-21). The director may use only these,
-// documented by ElevenLabs and tested in Spanish with eleven_v4_turbo (never read aloud).
-// Anything else is dropped: an unknown tag can come out as a sound effect.
-export const DELIVERY_TAGS = [
-  'excited', 'curious', 'awe', 'serious', 'warm', 'playful',
-  'whispers', 'softly', 'shouts',
-  'slowly', 'drawn out', 'rushed', 'pause', 'long pause',
-  'laughs', 'sighs',
-] as const;
-
-/** Keeps only allowed delivery tags (lower-cased) and tidies the spacing around them. */
-export function cleanDelivery(text: string): string {
-  return text
-    .replace(/\[([^\]]{1,24})\]/g, (_m, tag: string) => {
-      const t = tag.trim().toLowerCase();
-      return (DELIVERY_TAGS as readonly string[]).includes(t) ? `[${t}]` : '';
-    })
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/** What the captions and the page show: the words, without the delivery tags. */
-export function captionText(narration: string): string {
-  return narration.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
-}
+// How each line is said: the shared voice palette (audio tags, verified with eleven_v4_turbo).
+export { captionText, cleanDelivery } from '../audio/voiceDirection.ts';
 
 /** Keeps only usable shots and caps the film's length; null when it can't make a film. */
 export function validatePlan(raw: unknown): CinematicPlan | null {
@@ -179,11 +156,11 @@ export async function planCinematic(question: string, context: { title: string; 
       '(e.g. "barcelona aerial city", "sagrada familia facade") — never abstract ideas, text, logos or charts. ' +
       'When web results are given, base the facts on them (they are recent). Also suggest 4 short follow-up questions ' +
       'the viewer may want to watch next, in the question language. ' +
-      'You also direct HOW each line is read aloud: add 0-2 audio tags per narration, in square brackets, ' +
-      'placed right before the words they color — e.g. "[curious] Why does it hover? [pause] [excited] Eighty wingbeats a second!". ' +
-      `Use only these tags: ${DELIVERY_TAGS.map((t) => `[${t}]`).join(' ')}. One emotion per phrase; ` +
-      'vary the delivery across the film (a hushed opening, an excited reveal, a slow, warm ending) and let punctuation help ' +
-      '(... slows down, ! adds energy). Tags are not counted in the 12-24 words.',
+      'You also direct HOW each line is read aloud. First pick the film\'s voice for this subject ' +
+      '(documentary, story, mystery, wonder, sad/historical, fun, news — whatever your creative instinct says fits), ' +
+      'then shape every line with audio tags: vary pace, volume and pauses across the film so it has a real arc ' +
+      '(e.g. a hushed opening, a building middle, a louder reveal, a slow warm ending). Tags are not counted in the 12-24 words.\n\n' +
+      VOICE_DIRECTION_GUIDE,
     facts ? `Question: ${question}\n\nWeb results:\n${facts}` : `Question: ${question}`,
     { title: 'string: short film title in the question language', shots: 'array of objects { narration: string (with optional audio tags), search: string }', related: 'array of 4 strings' },
     0.4,

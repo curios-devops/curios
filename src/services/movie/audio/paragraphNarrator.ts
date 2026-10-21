@@ -11,6 +11,7 @@
 // narration was only audible once the trailer's <video> was unmuted. In the tap we ask
 // for the "playback" session (Safari 16.4+) and, for older iOS, loop a silent <audio>
 // element, which also moves the page to "playback".
+import { BASE_LEVEL, captionText, levelOf } from './voiceDirection.ts';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -75,7 +76,8 @@ function base64ToBuffer(b64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-async function tts(text: string, voiceId: string, gender: 'female' | 'male', signal: AbortSignal): Promise<ArrayBuffer> {
+/** One line of speech (ElevenLabs v4 Turbo, OpenAI TTS fallback). Also used by the Cinematic download. */
+export async function tts(text: string, voiceId: string, gender: 'female' | 'male', signal: AbortSignal): Promise<ArrayBuffer> {
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` };
   const post = (fn: string, body: object) =>
     fetch(`${SUPABASE_URL}/functions/v1/${fn}`, { method: 'POST', headers, body: JSON.stringify(body), signal })
@@ -89,7 +91,7 @@ async function tts(text: string, voiceId: string, gender: 'female' | 'male', sig
   }
   // Fallback: OpenAI TTS with a voice of the same gender. It would read ElevenLabs' delivery
   // tags ([excited], [pause]…) aloud, so they're removed.
-  const d = await post('openai-tts', { text: text.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim(), voice: gender === 'male' ? 'onyx' : 'nova', speed: 1, model: 'tts-1-hd' });
+  const d = await post('openai-tts', { text: captionText(text), voice: gender === 'male' ? 'onyx' : 'nova', speed: 1, model: 'tts-1-hd' });
   const b64 = d.audioBase64 || d.audio;
   if (b64) return base64ToBuffer(b64);
   const url = d.audioUrl || d.url;
@@ -120,6 +122,8 @@ export class ParagraphNarrator {
   private stopped = false;
   private keepAlive: HTMLAudioElement | null = null;
   private gain: GainNode;
+  /** Each line's playback level ([louder] / [quieter], see voiceDirection). */
+  private levels = new Map<number, number>();
 
   /** Construct synchronously inside the tap handler (before any await). */
   constructor(
@@ -131,6 +135,11 @@ export class ParagraphNarrator {
     private onParagraph?: (index: number, durationSec: number) => void,
     /** Asked when a paragraph ends: false holds there instead of playing the next one. */
     private autoAdvance?: () => boolean,
+    /**
+     * The voice director's tags for each paragraph (directVoice). The first paragraph never
+     * waits for them (fast first audio); the rest use them when they're in, plain otherwise.
+     */
+    private delivery?: Promise<string[]>,
   ) {
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
@@ -148,7 +157,20 @@ export class ParagraphNarrator {
 
   private fetchAt(i: number): Promise<ArrayBuffer> | undefined {
     if (i >= this.paragraphs.length) return undefined;
-    if (!this.pending.has(i)) this.pending.set(i, tts(this.paragraphs[i], this.voiceId, this.gender, this.controller.signal));
+    if (!this.pending.has(i)) {
+      const plain = this.paragraphs[i];
+      const directed = i === 0 || !this.delivery
+        ? Promise.resolve(plain)
+        : Promise.race([
+            this.delivery.then((tags) => (tags[i] ? `${tags[i]} ${plain}` : plain), () => plain),
+            new Promise<string>((resolve) => setTimeout(() => resolve(plain), 5000)),
+          ]);
+      this.pending.set(i, directed.then((text) => {
+        const { text: spoken, gain } = levelOf(text);
+        this.levels.set(i, gain);
+        return tts(spoken, this.voiceId, this.gender, this.controller.signal);
+      }));
+    }
     return this.pending.get(i);
   }
 
@@ -163,7 +185,10 @@ export class ParagraphNarrator {
       void this.fetchAt(i + 1); // generate the next paragraph while this one plays
       const source = this.ctx.createBufferSource();
       source.buffer = buffer;
-      source.connect(this.gain);
+      const level = this.ctx.createGain();
+      level.gain.value = this.levels.get(i) ?? BASE_LEVEL;
+      source.connect(level);
+      level.connect(this.gain);
       source.onended = () => {
         if (this.source !== source) return;
         if (this.autoAdvance && !this.autoAdvance() && i + 1 < this.paragraphs.length) this.onState('held');

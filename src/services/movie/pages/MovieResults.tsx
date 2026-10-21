@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronsUp, Compass, Crown, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Share2, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronsUp, Compass, Crown, Download, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Share2, Sparkles } from 'lucide-react';
 
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -36,6 +36,9 @@ import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, detectVideoType, movieModeFor, parseVideoType, resolveVideoType, type VideoType } from '../videoType.ts';
 import CinematicMontage, { type CinematicInfo } from '../cinematic/CinematicMontage.tsx';
 import { getFilmLikeState, saveCinematicFilm, toggleCinematicLike } from '../cinematic/cinematicFilms.ts';
+import { exportCinematic, saveFilm } from '../cinematic/exportCinematic.ts';
+import { loadNarratorVoice } from '../audio/narratorPrefs.ts';
+import { VOICES } from '../../character/voices.ts';
 
 type MovieTab = 'video' | 'timeline' | 'images' | 'sources';
 
@@ -98,6 +101,11 @@ export default function MovieResults() {
   const [shareOpen, setShareOpen] = useState(false);
   const [like, setLike] = useState<{ count: number; liked: boolean } | null>(null);
   const [likeGuestNote, setLikeGuestNote] = useState(false);
+  // Cinematic download: composed in the browser in real time (0–1 while it records).
+  const [exportProgress, setExportProgress] = useState<number | null>(null);
+  const [exportFailed, setExportFailed] = useState(false);
+  const exportAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => exportAbortRef.current?.abort(), []);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<MovieTab>('video');
   const [mode, setMode] = useState<MovieMode | null>(modeParam ?? null);
@@ -601,6 +609,33 @@ export default function MovieResults() {
           savedId ? `${site}/movie/share/${savedId}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}`),
       } : null);
   const overview = videoType === 'cinematic' ? cine?.overview : (experience?.narrative ?? draftNarrative);
+  const downloadFilm = async () => {
+    if (!cine || exportProgress !== null) return;
+    const controller = new AbortController();
+    exportAbortRef.current = controller;
+    setExportFailed(false);
+    setExportProgress(0);
+    try {
+      const voiceId = loadNarratorVoice(session?.user);
+      const film = await exportCinematic({
+        title: cine.title,
+        scenes: cine.scenes,
+        voiceId,
+        gender: VOICES.find((v) => v.id === voiceId)?.gender === 'male' ? 'male' : 'female',
+        captions: (() => { try { return localStorage.getItem('cinematicCaptions') !== 'off'; } catch { return true; } })(),
+        onProgress: setExportProgress,
+        signal: controller.signal,
+      });
+      saveFilm(film, cine.title);
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        logger.warn('[MovieResults] Cinematic download failed', { error: err instanceof Error ? err.message : String(err) });
+        setExportFailed(true);
+      }
+    } finally {
+      setExportProgress(null);
+    }
+  };
   const lineBtn = 'inline-flex items-center gap-2 h-10 px-4 rounded-full border text-sm font-medium transition-colors';
   const lineBtnStyle = { borderColor: 'var(--ui-border-default)', backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-primary)' } as const;
   const sharedSections = (
@@ -622,6 +657,23 @@ export default function MovieResults() {
               {like && like.count > 0 && <span>{like.count}</span>}
             </button>
           )}
+          {videoType === 'cinematic' && cine && (
+            <button
+              type="button"
+              onClick={() => void downloadFilm()}
+              disabled={exportProgress !== null}
+              title={exportProgress !== null ? t('vidDownloading') : t('vidDownload')}
+              aria-label={t('vidDownload')}
+              className={`${lineBtn} ${exportProgress !== null ? '' : '!px-0 w-10 justify-center'} disabled:cursor-wait`}
+              style={lineBtnStyle}
+            >
+              {exportProgress !== null ? (
+                <><Loader2 size={16} className="animate-spin" /><span className="tabular-nums">{Math.round(exportProgress * 100)}%</span></>
+              ) : (
+                <Download size={16} />
+              )}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShareOpen((o) => !o)}
@@ -633,6 +685,12 @@ export default function MovieResults() {
           >
             <Share2 size={16} />
           </button>
+          {exportProgress !== null && (
+            <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidDownloadKeepOpen')}</p>
+          )}
+          {exportFailed && (
+            <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidDownloadFailed')}</p>
+          )}
           {likeGuestNote && (
             <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>
               {t('vidLikeGuest')}{' '}

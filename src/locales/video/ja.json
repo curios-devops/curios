@@ -69,5 +69,9 @@
   "vidLike": "いいね",
   "vidUnlike": "いいねを取り消す",
   "vidLikeGuest": "登録してお気に入りの動画を保存しましょう。",
-  "vidSignUp": "登録"
+  "vidSignUp": "登録",
+  "vidDownload": "動画をダウンロード",
+  "vidDownloading": "動画を準備中…",
+  "vidDownloadKeepOpen": "このタブは開いたままにしてください。動画はリアルタイムで録画されます（再生時間と同じだけかかります）。",
+  "vidDownloadFailed": "ダウンロードを作成できませんでした。もう一度お試しください。"
 }

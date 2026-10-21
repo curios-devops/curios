@@ -69,5 +69,9 @@
   "vidLike": "Curtir",
   "vidUnlike": "Descurtir",
   "vidLikeGuest": "Cadastre-se para salvar seus vídeos favoritos.",
-  "vidSignUp": "Cadastre-se"
+  "vidSignUp": "Cadastre-se",
+  "vidDownload": "Baixar vídeo",
+  "vidDownloading": "Preparando seu vídeo…",
+  "vidDownloadKeepOpen": "Deixe esta aba aberta: o vídeo é gravado em tempo real (leva o mesmo tempo que dura).",
+  "vidDownloadFailed": "Não foi possível preparar o download. Tente de novo."
 }

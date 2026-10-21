@@ -15,7 +15,7 @@ export function getMovieModel(): string {
   return movieModel;
 }
 
-async function fetchOpenAI(promptPayload: Record<string, unknown>): Promise<string> {
+export async function fetchOpenAI(promptPayload: Record<string, unknown>): Promise<string> {
   const endpoint = import.meta.env.VITE_OPENAI_API_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, Headphones, Loader2, Pause, Play, type LucideIcon } from 'lucide-react';
 import { useProCredits } from '../../providers/ProCreditsProvider.tsx';
 import { ParagraphNarrator, toParagraphs, type NarratorState } from '../../services/movie/audio/paragraphNarrator.ts';
+import { directVoice } from '../../services/movie/audio/voiceDirection.ts';
 import { loadNarratorVoice, narratorGender } from '../../services/movie/audio/narratorPrefs.ts';
 import { useSession } from '../../hooks/useSession.ts';
 import { useTranslation } from '../../hooks/useTranslation.ts';
@@ -203,7 +204,10 @@ export function AboutSection({ title, text, done }: { title: string; text: strin
 
     // Created synchronously in the tap (unlocks audio on mobile), before any await.
     const voiceId = loadNarratorVoice(session?.user);
-    const narrator = new ParagraphNarrator(toParagraphs(text), voiceId, narratorGender(voiceId), setNarration);
+    const paragraphs = toParagraphs(text);
+    // The voice director decides how each paragraph is said (tags only; the words stay).
+    const delivery = directVoice(paragraphs, 'factsheet').catch(() => [] as string[]);
+    const narrator = new ParagraphNarrator(paragraphs, voiceId, narratorGender(voiceId), setNarration, undefined, undefined, delivery);
     narratorRef.current = narrator;
     setNarration('loading');
     // Out of credits: the modal says why, in this situation's words.

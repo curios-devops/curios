@@ -69,5 +69,9 @@
   "vidLike": "M'agrada",
   "vidUnlike": "Ja no m'agrada",
   "vidLikeGuest": "Registra't per desar els teus vídeos preferits.",
-  "vidSignUp": "Registra't"
+  "vidSignUp": "Registra't",
+  "vidDownload": "Descarregar el vídeo",
+  "vidDownloading": "Preparant el teu vídeo…",
+  "vidDownloadKeepOpen": "Deixa aquesta pestanya oberta: el vídeo es grava en temps real (triga el que dura).",
+  "vidDownloadFailed": "No s'ha pogut preparar la descàrrega. Torna-ho a provar."
 }

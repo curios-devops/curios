@@ -22,6 +22,8 @@ export interface CinematicInfo {
   overview: string;
   related: string[];
   credits: StockClip[];
+  /** The chapters as played (clip + narration with its delivery tags) — for the download. */
+  scenes: CinematicScene[];
 }
 
 interface Props {
@@ -80,6 +82,7 @@ export default function CinematicMontage({ question, tab, context, belowPlayer, 
         overview: found.map((s) => captionText(s.narration)).join(' '),
         related: plan.related,
         credits: [...new Map(found.map((s) => [s.clip.credit, s.clip])).values()],
+        scenes: found,
       });
     })().catch((err) => alive && cbRef.current.onFail(err instanceof Error ? err.message : String(err)));
     return () => { alive = false; narratorRef.current?.stop(); };

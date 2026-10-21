@@ -69,5 +69,9 @@
   "vidLike": "Like",
   "vidUnlike": "Unlike",
   "vidLikeGuest": "Sign up to save your favorite videos.",
-  "vidSignUp": "Sign up"
+  "vidSignUp": "Sign up",
+  "vidDownload": "Download video",
+  "vidDownloading": "Preparing your video…",
+  "vidDownloadKeepOpen": "Keep this tab open — the video records in real time (about as long as the film).",
+  "vidDownloadFailed": "The download couldn't be made. Try again."
 }

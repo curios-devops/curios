@@ -69,5 +69,9 @@
   "vidLike": "Me gusta",
   "vidUnlike": "Ya no me gusta",
   "vidLikeGuest": "Regístrate para guardar tus videos favoritos.",
-  "vidSignUp": "Regístrate"
+  "vidSignUp": "Regístrate",
+  "vidDownload": "Descargar video",
+  "vidDownloading": "Preparando tu video…",
+  "vidDownloadKeepOpen": "Deja esta pestaña abierta: el video se graba en tiempo real (tarda lo mismo que dura).",
+  "vidDownloadFailed": "No se pudo preparar la descarga. Inténtalo de nuevo."
 }

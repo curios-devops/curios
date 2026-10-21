@@ -8,6 +8,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { generateArticleImage, extractArticleSummary } from '../services/stories/agents/imageGenerationService';
 import { ParagraphNarrator, toSentences, type NarratorState } from '../services/movie/audio/paragraphNarrator';
+import { directVoice } from '../services/movie/audio/voiceDirection';
 import { NanoBananaProvider } from '../services/movie/providers/NanoBananaProvider';
 import { getCached, setCached } from '../services/search/searchCache';
 import CuriosLogo from './common/CuriosLogo';
@@ -221,7 +222,9 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
     if (!sentences.length) return;
     // Created synchronously in the tap so the browser lets the audio play.
     const gender = ELEVENLABS_VOICES.find((v) => v.id === selectedVoice)?.gender ?? 'female';
-    const narrator = new ParagraphNarrator(sentences, selectedVoice, gender, setNarration);
+    // The voice director decides how each sentence of the story is said (tags only; the words stay).
+    const delivery = directVoice(sentences, 'magazine').catch(() => [] as string[]);
+    const narrator = new ParagraphNarrator(sentences, selectedVoice, gender, setNarration, undefined, undefined, delivery);
     narratorRef.current = narrator;
     void narrator.start(0);
   };
