@@ -12,7 +12,10 @@ export interface Meter {
   cycleEnd?: string;
   burnPerDay?: number;
 }
-export interface Provider { id: string; name: string; reachable: boolean | null; meters: Meter[]; note?: string }
+export interface Provider { id: string; name: string; section?: string; reachable: boolean | null; meters: Meter[]; note?: string }
+
+/** The .env sections, in order — the API table is grouped the same way. */
+export const SECTIONS = ['General', 'Search', 'Video', 'Magazine', 'Character', 'Otros modos'];
 
 export type Level = 'ok' | 'warn' | 'critical' | 'na' | 'down';
 export interface Assessment {

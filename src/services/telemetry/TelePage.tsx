@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabase.ts';
 import { languages } from '../../types/language.ts';
-import { assessMeter, providerLevel, type Level, type Meter, type Provider } from './assess.ts';
+import { assessMeter, providerLevel, SECTIONS, type Level, type Meter, type Provider } from './assess.ts';
 
 interface Stats {
   users: { total: number; new7: number; new30: number; active30: number; pro: number };
@@ -133,7 +133,9 @@ export default function TelePage() {
 
   const { stats, providers } = data;
   const now = new Date(data.at);
-  const sorted = [...providers].sort((a, b) => RANK[providerLevel(a, now)] - RANK[providerLevel(b, now)]);
+  // Grouped by .env section; inside each, the most urgent first.
+  const sectionIndex = (p: Provider) => { const i = SECTIONS.indexOf(p.section ?? 'General'); return i < 0 ? SECTIONS.length : i; };
+  const sorted = [...providers].sort((a, b) => sectionIndex(a) - sectionIndex(b) || RANK[providerLevel(a, now)] - RANK[providerLevel(b, now)]);
   const counts = sorted.reduce<Record<Level, number>>((c, p) => ({ ...c, [providerLevel(p, now)]: c[providerLevel(p, now)] + 1 }), { ok: 0, warn: 0, critical: 0, down: 0, na: 0 });
   // Every day of the range, zeros included, so one busy day is one thin bar.
   const perDay = new Map(stats.daily.map((d) => [d.day, d.n]));
@@ -248,10 +250,16 @@ export default function TelePage() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((p) => {
+                {sorted.map((p, pi) => {
                   const level = providerLevel(p, now);
                   const rows = p.meters.length ? p.meters : [null];
-                  return rows.map((m, i) => {
+                  const section = p.section ?? 'General';
+                  const header = pi === 0 || (sorted[pi - 1].section ?? 'General') !== section ? (
+                    <tr key={`section-${section}`}>
+                      <td colSpan={7} className="pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ui-text-muted)' }}>{section}</td>
+                    </tr>
+                  ) : null;
+                  return [header, ...rows.map((m, i) => {
                     const a = m ? assessMeter(m, now) : null;
                     const bar = a?.level === 'critical' ? 'bg-red-500' : a?.level === 'warn' ? 'bg-yellow-500' : 'bg-green-500';
                     return (
@@ -283,7 +291,7 @@ export default function TelePage() {
                         <td className="py-1.5 min-w-[12rem] max-w-xs break-words" style={{ color: 'var(--ui-text-secondary)' }}>{i === 0 ? p.note ?? '' : ''}</td>
                       </tr>
                     );
-                  });
+                  })];
                 })}
               </tbody>
             </table>

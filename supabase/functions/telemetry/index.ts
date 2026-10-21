@@ -1,10 +1,14 @@
 // Telemetry for the hidden /tele dashboard. Only accounts in TELE_ADMIN_EMAILS (comma list)
 // get data; anyone else gets a plain 404, as if the function did not exist.
 //
+import { getVertexAccessToken, vertexModelUrl } from "../_shared/vertex.ts";
+
 // Body { from, to } (ISO) → { stats, providers, at }
 //   stats      our own numbers from the database (tele_stats: users, visits, sizes)
 //   providers  one entry per API in use: reachable or not, and its raw meters (used / limit /
-//              billing cycle). The page turns meters into %, month projection and colors.
+//              billing cycle), grouped by `section` the same way .env is (General · Search ·
+//              Video · Magazine · Character · Otros modos). The page turns meters into %,
+//              month projection and colors.
 // Every probe is a free account/usage endpoint, except Brave (no usage endpoint: one search
 // per dashboard load, read from its rate-limit headers).
 
@@ -34,7 +38,18 @@ interface Meter {
   /** balance only: spend per day, for "days left" */
   burnPerDay?: number;
 }
-interface Provider { id: string; name: string; reachable: boolean | null; meters: Meter[]; note?: string }
+interface Provider { id: string; name: string; section?: string; reachable: boolean | null; meters: Meter[]; note?: string }
+
+// Where each API lives — the .env sections, in order.
+const SECTIONS = ["General", "Search", "Video", "Magazine", "Character", "Otros modos"] as const;
+const SECTION_OF: Record<string, (typeof SECTIONS)[number]> = {
+  supabase: "General", openai: "General", gemini: "General", "gemini-studio": "General", stripe: "General", apify: "General",
+  serpapi: "Search", "serpapi-news": "Search", tavily: "Search", brave: "Search", exa: "Search", rapidapi: "Search",
+  vertex: "Video", runpod: "Video", wavespeed: "Video", pruna: "Video", viggle: "Video", cloudinary: "Video",
+  pexels: "Magazine", pixabay: "Magazine",
+  elevenlabs: "Character", anam: "Character", characterai: "Character",
+  tmdb: "Otros modos", omdb: "Otros modos", rawg: "Otros modos", lastfm: "Otros modos",
+};
 
 const monthCycle = () => {
   const n = new Date();
@@ -77,6 +92,11 @@ const ping = (url: string, init: RequestInit = {}, note = "Conectado; la API no 
 const FREE = { db: 500 * 1024 ** 2, storage: 1024 ** 3, mau: 50_000 };
 
 async function providers(stats: any): Promise<Provider[]> {
+  const list = await probes(stats);
+  return list.map((p) => ({ ...p, section: SECTION_OF[p.id] ?? "General" }));
+}
+
+async function probes(stats: any): Promise<Provider[]> {
   const month = monthCycle();
   return Promise.all([
     probe("supabase", "Supabase (Free)", [], async () => ({
@@ -157,6 +177,28 @@ async function providers(stats: any): Promise<Provider[]> {
       return { reachable: true, meters: [{ label: "Saldo prepago", used: r.body.data.balance, limit: null, unit: "usd", kind: "balance" }] };
     }),
     probe("pruna", "Pruna", ["PRUNA_API_KEY"], async () => ({ reachable: null, meters: [], note: "Sin API de uso conocida" })),
+    // 3D scenes for the Tour video type. Prepaid credits (1 credit = $0.01; a scene from a prompt = 6).
+    probe("viggle", "Viggle (escenas 3D)", ["VIGGLE_API_KEY"], async () => {
+      const r = await get("https://apis.viggle.ai/v1/credits", { headers: { Authorization: `Bearer ${env("VIGGLE_API_KEY")}` } });
+      if (!r.ok || typeof r.body?.balance !== "number") fail(r);
+      return {
+        reachable: true,
+        meters: [{ label: "Saldo prepago", used: r.body.balance / 100, limit: null, unit: "usd", kind: "balance" }],
+        note: `${r.body.balance} créditos ≈ ${Math.floor(r.body.balance / 6)} escenas nuevas (6 créditos c/u)`,
+      };
+    }),
+    // Swipe frames (Nano Banana) and Veo (Mejorar). countTokens is free and fails the same way a
+    // real call would — e.g. billing disabled on the project.
+    probe("vertex", "Vertex AI (imágenes · Veo)", ["VERTEX_AI_SERVICE_ACCOUNT_EMAIL", "VERTEX_AI_PRIVATE_KEY"], async () => {
+      const token = await getVertexAccessToken();
+      const r = await get(`${vertexModelUrl("gemini-2.5-flash", "global")}:countTokens`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "ping" }] }] }),
+      });
+      if (!r.ok) fail(r);
+      return { reachable: true, meters: [], note: "Conectado; el consumo se ve en Google Cloud Billing" };
+    }),
     probe("anam", "Anam", ["ANAM_API_KEY"], ping("https://api.anam.ai/v1/personas", { headers: { Authorization: `Bearer ${env("ANAM_API_KEY")}` } })),
     probe("cloudinary", "Cloudinary", ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"], async () => {
       const auth = btoa(`${env("CLOUDINARY_API_KEY")}:${env("CLOUDINARY_API_SECRET")}`);
@@ -194,7 +236,13 @@ async function providers(stats: any): Promise<Provider[]> {
       const limit = Number(r.headers.get("x-ratelimit-limit")), left = Number(r.headers.get("x-ratelimit-remaining"));
       return { reachable: true, meters: limit ? [{ label: "Consultas del mes", used: limit - left, limit, unit: "requests", kind: "quota", ...month }] : [] };
     }),
-    probe("pixabay", "Pixabay", ["PIXABAY_API_KEY"], ping(`https://pixabay.com/api/?key=${env("PIXABAY_API_KEY")}&q=sky&per_page=3`, {}, "Conectado; solo límite por minuto (100/min)")),
+    // Two keys: PIXABAY_API_KEY_2 serves, PIXABAY_API_KEY is its fallback (same catalog; 100/min each).
+    probe("pixabay", "Pixabay", ["PIXABAY_API_KEY_2", "PIXABAY_API_KEY"], async () => {
+      const check = async (k: string) => (await get(`https://pixabay.com/api/?key=${env(k)}&q=sky&per_page=3`)).ok;
+      const [main, backup] = await Promise.all([check("PIXABAY_API_KEY_2"), check("PIXABAY_API_KEY")]);
+      if (!main && !backup) throw new Error("Ninguna llave responde");
+      return { reachable: true, meters: [], note: `Llave principal ${main ? "OK" : "FALLA"} · respaldo ${backup ? "OK" : "FALLA"}; 100 consultas/min cada una` };
+    }),
     probe("tmdb", "TMDB", ["TMDB_API_KEY"], ping(`https://api.themoviedb.org/3/configuration?api_key=${env("TMDB_API_KEY")}`, {}, "Conectado; sin cuota mensual")),
     probe("omdb", "OMDb", ["OMDB_API_KEY"], async () => {
       const r = await get(`https://www.omdbapi.com/?apikey=${env("OMDB_API_KEY")}&i=tt0111161`);
