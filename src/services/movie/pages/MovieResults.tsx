@@ -33,8 +33,9 @@ import { appSettings } from '../../../config/appSettings.ts';
 import { searchExa } from '../../search/providers/engines/exaService.ts';
 import type { WebSearchResult } from '../../search/providers/webSearchProvider.ts';
 import { setMovieModel } from '../core/llm.ts';
-import { VIDEO_TYPES, detectVideoType, movieModeFor, parseVideoType, resolveVideoType, type VideoType } from '../videoType.ts';
+import { VIDEO_TYPES, detectVideoType, movieModeFor, parseVideoType, type VideoType } from '../videoType.ts';
 import CinematicMontage, { type CinematicInfo } from '../cinematic/CinematicMontage.tsx';
+import TourScene, { type TourInfo } from '../tour/TourScene.tsx';
 import { getFilmLikeState, saveCinematicFilm, toggleCinematicLike } from '../cinematic/cinematicFilms.ts';
 import { exportCinematic, saveFilm } from '../cinematic/exportCinematic.ts';
 import { loadNarratorVoice } from '../audio/narratorPrefs.ts';
@@ -120,6 +121,8 @@ export default function MovieResults() {
   // Cinematic's data for the shared sections; cineRun remounts it (HD regeneration).
   const [cine, setCine] = useState<CinematicInfo | null>(null);
   const [cineRun, setCineRun] = useState(0);
+  // 360 Tour's data for the shared sections.
+  const [tourInfo, setTourInfo] = useState<TourInfo | null>(null);
   // Fresh web results (Exa) for every type: Images and Sources tabs, Cinematic's facts.
   const [web, setWeb] = useState<WebSearchResult[] | null>(null);
   const typeMenuRef = useRef<HTMLDivElement>(null);
@@ -129,8 +132,6 @@ export default function MovieResults() {
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
   }, [typeMenuOpen]);
-  // HD: once the core swipe has its frame, its premium render starts by itself.
-  const hdPendingRef = useRef(false);
 
   const hasStartedRef = useRef(false);
   const experienceRef = useRef<MovieExperience | null>(null);
@@ -288,15 +289,13 @@ export default function MovieResults() {
         typeParam === 'auto' ? detectVideoType(query) : Promise.resolve(typeParam),
         chooseModel(),
       ]);
-      const { type, noticeKey } = resolveVideoType(picked);
-      if (noticeKey) setTypeNotice(t(noticeKey));
+      const type = picked;
       if (type === 'character') {
         navigate(`/character?q=${encodeURIComponent(query)}`, { replace: true });
         return;
       }
       setVideoType(type);
-      if (type === 'cinematic') return; // CinematicMontage takes it from here
-      hdPendingRef.current = type === 'hd';
+      if (type === 'cinematic' || type === 'tour') return; // CinematicMontage / TourScene take it from here
       startGeneration(query, modeParam ?? movieModeFor(type));
     })();
   }, [query, modeParam, projectIdParam, session?.user?.id, sessionLoading]);
@@ -457,15 +456,6 @@ export default function MovieResults() {
     }
   };
 
-  // HD: start the premium render of the core swipe as soon as it has a frame (Pro, once).
-  useEffect(() => {
-    if (!hdPendingRef.current) return;
-    const core = swipes.find((s) => s.isCore && s.imageUrl);
-    if (!core) return;
-    hdPendingRef.current = false;
-    void requestEnhance(core);
-  }, [swipes]);
-
   const savedId = experience?.id && !experience.id.startsWith('local-') ? experience.id : null;
 
   const handleShared = () => {
@@ -539,7 +529,9 @@ export default function MovieResults() {
   const exploreTopics: { title: string; imageUrl?: string }[] =
     videoType === 'cinematic'
       ? (cine?.related ?? []).map((title, i) => ({ title, imageUrl: cine?.relatedImages?.[i] }))
-      : relatedTopics;
+      : videoType === 'tour'
+        ? (tourInfo?.related ?? []).map((title, i) => ({ title, imageUrl: tourInfo?.relatedImages?.[i] }))
+        : relatedTopics;
 
   // HD / quality extension: rebuild this video one model up — Luna → Sol, Sol → Astra
   // (Astra costs 1 Pro Credit). The only way Astra is ever used for Video.
@@ -596,7 +588,13 @@ export default function MovieResults() {
   const shareLink = (title: string, caption: string, image: string | undefined, deepLink: string) =>
     buildCrawlerShareUrl({ title, description: caption, imageUrls: image ? [image] : [], deepLink });
   const coreImage = swipes.find((s) => s.isCore)?.imageUrl || selectedSwipe?.imageUrl;
-  const shareCard = videoType === 'cinematic'
+  const shareCard = videoType === 'tour'
+    ? (tourInfo ? (() => {
+        const caption = tourInfo.overview.split(/(?<=[.!?])\s/)[0];
+        return { title: tourInfo.title, caption, hashtags: [] as string[], video: undefined,
+          url: shareLink(tourInfo.title, caption, tourInfo.panoramaUrl, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=tour`) };
+      })() : null)
+    : videoType === 'cinematic'
     ? (cine ? (() => {
         const caption = cine.overview.split(/(?<=[.!?])\s/)[0];
         return { title: cine.title, caption, hashtags: [] as string[], video: undefined,
@@ -608,7 +606,7 @@ export default function MovieResults() {
         url: shareLink(experience.viral.title, experience.viral.caption, coreImage,
           savedId ? `${site}/movie/share/${savedId}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}`),
       } : null);
-  const overview = videoType === 'cinematic' ? cine?.overview : (experience?.narrative ?? draftNarrative);
+  const overview = videoType === 'cinematic' ? cine?.overview : videoType === 'tour' ? tourInfo?.overview : (experience?.narrative ?? draftNarrative);
   const downloadFilm = async () => {
     if (!cine || exportProgress !== null) return;
     const controller = new AbortController();
@@ -742,7 +740,7 @@ export default function MovieResults() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
-      <TopBar query={displayQuery} timeAgo="" rightSlot={videoType === 'cinematic' ? qualityButton : enhanceButton} />
+      <TopBar query={displayQuery} timeAgo="" rightSlot={videoType === 'cinematic' ? qualityButton : videoType === 'tour' ? <span /> : enhanceButton} />
 
 
       {/* Tab navigation: Video / Narrative / Sources (every type uses this template) */}
@@ -783,6 +781,7 @@ export default function MovieResults() {
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border bg-transparent text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-opacity hover:opacity-80"
               style={{ color: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
             >
+              {(() => { const Icon = VIDEO_TYPES.find((v) => v.id === videoType)?.icon; return Icon ? <Icon size={14} /> : null; })()}
               {t(`vidType_${videoType}`)}
               <ChevronDown size={14} className={`transition-transform ${typeMenuOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -796,9 +795,10 @@ export default function MovieResults() {
                     key={v.id}
                     type="button"
                     onClick={() => chooseType(v.id)}
-                    className="w-full px-4 py-2.5 text-sm text-left transition-colors hover:bg-[var(--ui-bg-secondary)]"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors hover:bg-[var(--ui-bg-secondary)]"
                     style={{ color: 'var(--ui-text-primary)' }}
                   >
+                    <v.icon size={16} />
                     {t(`vidType_${v.id}`)}
                   </button>
                 ))}
@@ -827,7 +827,7 @@ export default function MovieResults() {
         )}
 
         {/* Progress bar while generating */}
-        {videoType !== 'cinematic' && !isComplete && !error && (
+        {videoType !== 'cinematic' && videoType !== 'tour' && !isComplete && !error && (
           <div className="mb-6">
             <div className="flex items-center gap-2 text-sm mb-2" style={{ color: 'var(--ui-text-secondary)' }}>
               <Loader2 size={16} className="animate-spin" />
@@ -853,6 +853,15 @@ export default function MovieResults() {
             onReady={setCine}
             onWatch={() => setActiveTab('video')}
             onFail={fallbackToVideo}
+          />
+        ) : videoType === 'tour' ? (
+          <TourScene
+            question={query || experience?.question || ''}
+            tab={activeTab === 'video' ? 'video' : 'hidden'}
+            context={web}
+            belowPlayer={sharedSections}
+            onReady={setTourInfo}
+            onNeedSignIn={() => { setSignUpSubtitle(t('vidTourSignIn')); setShowSignUp(true); }}
           />
         ) : activeTab === 'video' && (
           <>

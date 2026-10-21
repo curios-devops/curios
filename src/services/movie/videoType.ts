@@ -2,44 +2,38 @@
 // type selector; otherwise Auto asks Decisions (classify-intent, only:"video_style"), which
 // chooses among the affordable automatic techniques: cinematic, video, animation.
 //
-// Fallback chain: any technique that fails or isn't connected → Video (the default);
-// if Video can't render a clip, the viewer animates its still frame (Ken Burns).
+// Fallback chain: any technique that fails → Video (the default); if Video can't render a
+// clip, the viewer animates its still frame (Ken Burns). Tour (Viggle 3D scene) is chosen by
+// hand only — it costs a Pro Credit and needs an account.
 import { supabase } from '../../lib/supabase.ts';
 import type { MovieMode } from './types.ts';
+import { Clapperboard, Film, Palette, PersonStanding, Rotate3d, type LucideIcon } from 'lucide-react';
+import AutoModeIcon from '../../components/icons/AutoModeIcon.tsx';
 
-export type VideoType = 'video' | 'cinematic' | 'animation' | 'hd' | 'character' | 'explore';
+export type VideoType = 'video' | 'cinematic' | 'animation' | 'character' | 'tour';
 export type VideoTypeChoice = VideoType | 'auto';
 
-// Labels are locale keys vidType_<id>; hints document the intent.
-export const VIDEO_TYPES: { id: VideoTypeChoice; label: string; hint: string }[] = [
-  { id: 'auto', label: 'Auto', hint: 'Curios picks the best technique for your question' },
-  { id: 'video', label: 'Video', hint: 'New generated scenes' },
-  { id: 'cinematic', label: 'Cinematic', hint: 'Real footage montage with narration and captions' },
-  { id: 'animation', label: 'Animation', hint: 'Animated explainer' },
-  { id: 'hd', label: 'HD', hint: 'Premium video (Veo) — 1 Pro Credit' },
-  { id: 'character', label: 'Character', hint: 'A character tells you the answer' },
-  { id: 'explore', label: 'Explore', hint: 'Walk through it (world model)' },
+// Labels are locale keys vidType_<id>; hints document the intent; icons show in the type menu.
+// (HD left the menu: the premium Veo render is "Mejorar" in the top bar.)
+export const VIDEO_TYPES: { id: VideoTypeChoice; label: string; hint: string; icon: LucideIcon | typeof AutoModeIcon }[] = [
+  { id: 'auto', label: 'Auto', hint: 'Curios picks the best technique for your question', icon: AutoModeIcon },
+  { id: 'video', label: 'Video', hint: 'New generated scenes', icon: Film },
+  { id: 'cinematic', label: 'Cinematic', hint: 'Real footage montage with narration and captions', icon: Clapperboard },
+  { id: 'animation', label: 'Animation', hint: 'Animated explainer', icon: Palette },
+  { id: 'character', label: 'Character', hint: 'A character tells you the answer', icon: PersonStanding },
+  { id: 'tour', label: '360 Tour', hint: 'Walk through the place — 360° panorama and 3D scene (Viggle)', icon: Rotate3d },
 ];
 
 const AUTO_TYPES: VideoType[] = ['cinematic', 'video', 'animation'];
 
 export function parseVideoType(value: string | null | undefined): VideoTypeChoice {
+  if (value === 'explore') return 'tour'; // old links to the world-model placeholder
   return VIDEO_TYPES.some((t) => t.id === value) ? (value as VideoTypeChoice) : 'auto';
 }
-
-// No world-model provider is connected yet (WORLD_MODEL_API_KEY in .env is a placeholder).
-// Explore says so and falls back to Video instead of passing a normal clip off as a world.
-export const EXPLORE_AVAILABLE = false;
 
 /** Animation reuses the generated-video pipeline in the Cartoon style. */
 export function movieModeFor(type: VideoType): MovieMode | undefined {
   return type === 'animation' ? 'cartoon' : undefined;
-}
-
-/** The technique that actually runs, and the notice (locale key) when it had to change. */
-export function resolveVideoType(type: VideoType): { type: VideoType; noticeKey?: string } {
-  if (type === 'explore' && !EXPLORE_AVAILABLE) return { type: 'video', noticeKey: 'vidNoticeExplore' };
-  return { type };
 }
 
 /** Auto: ask Decisions; anything unexpected (or a timeout) means Video. */

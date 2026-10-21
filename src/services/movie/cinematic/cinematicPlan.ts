@@ -228,7 +228,7 @@ export function relevance(description: string, query: string): number {
  * the same twice: Pexels and Pixabay are searched in parallel and the clip that best matches
  * the card's search wins (stock engines often fill a page with loosely related footage).
  */
-export async function findRelatedPosters(plan: CinematicPlan, scenes: CinematicScene[]): Promise<(string | undefined)[]> {
+export async function findRelatedPosters(plan: Pick<CinematicPlan, 'related' | 'relatedSearch'>, scenes: CinematicScene[]): Promise<(string | undefined)[]> {
   const used = new Set(scenes.map((s) => `pexels:${s.clip.id}`));
   const candidates = await Promise.all(plan.related.map(async (question, i) => {
     const query = plan.relatedSearch[i] || question;

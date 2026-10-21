@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { movieModeFor, parseVideoType, resolveVideoType } from './videoType.ts';
+import { movieModeFor, parseVideoType, VIDEO_TYPES } from './videoType.ts';
 
 describe('video type', () => {
   it('treats a missing or unknown ?type= as Auto (Decisions picks)', () => {
@@ -8,11 +8,10 @@ describe('video type', () => {
     expect(parseVideoType('cinematic')).toBe('cinematic');
   });
 
-  it('never passes an ordinary clip off as a world model: Explore falls back to Video with a notice', () => {
-    const r = resolveVideoType('explore');
-    expect(r.type).toBe('video');
-    expect(r.noticeKey).toBe('vidNoticeExplore');
-    expect(resolveVideoType('cinematic')).toEqual({ type: 'cinematic' });
+  it('sends old ?type=explore links to the 360 Tour, and no longer offers HD (it is Mejorar now)', () => {
+    expect(parseVideoType('explore')).toBe('tour');
+    expect(parseVideoType('hd')).toBe('auto');
+    expect(VIDEO_TYPES.map((v) => v.id)).not.toContain('hd');
   });
 
   it('makes Animation with the generated-video pipeline in the Cartoon style', () => {
