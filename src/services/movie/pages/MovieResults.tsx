@@ -31,6 +31,7 @@ import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { decideTier, pickVideoModel, stepUp } from '../../auto/modelTier.ts';
 import { appSettings } from '../../../config/appSettings.ts';
 import { searchExa } from '../../search/providers/engines/exaService.ts';
+import { searchImages, type ImageResult } from '../../search/providers/mediaSearchProvider.ts';
 import type { WebSearchResult } from '../../search/providers/webSearchProvider.ts';
 import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, detectVideoType, movieModeFor, parseVideoType, type VideoType } from '../videoType.ts';
@@ -125,6 +126,8 @@ export default function MovieResults() {
   const [tourInfo, setTourInfo] = useState<TourInfo | null>(null);
   // Fresh web results (Exa) for every type: Images and Sources tabs, Cinematic's facts.
   const [web, setWeb] = useState<WebSearchResult[] | null>(null);
+  // Images tab: the same image search as Search (SerpAPI → Brave), then Exa's page images.
+  const [searchImgs, setSearchImgs] = useState<ImageResult[] | null>(null);
   const typeMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!typeMenuOpen) return;
@@ -520,10 +523,15 @@ export default function MovieResults() {
     if (!webQuery.trim()) return;
     let alive = true;
     setWeb(null);
+    setSearchImgs(null);
     searchExa(webQuery, 8).then((r) => { if (alive) setWeb(r); });
+    searchImages(webQuery).catch(() => [] as ImageResult[]).then((r) => { if (alive) setSearchImgs(r); });
     return () => { alive = false; };
   }, [webQuery]);
-  const webImages = (web ?? []).filter((r, i, all) => r.image && all.findIndex((x) => x.image === r.image) === i);
+  const webImages = [
+    ...(searchImgs ?? []).map((r) => ({ image: r.url, title: r.title, url: r.url })),
+    ...(web ?? []).filter((r) => r.image).map((r) => ({ image: r.image as string, title: r.title, url: r.url })),
+  ].filter((r, i, all) => all.findIndex((x) => x.image === r.image) === i);
   const sourceList: { title: string; url: string; snippet: string }[] =
     videoType !== 'cinematic' && (experience?.sources?.length ?? 0) > 0 ? experience!.sources : (web ?? []);
   const exploreTopics: { title: string; imageUrl?: string }[] =
@@ -747,7 +755,7 @@ export default function MovieResults() {
       <div className="border-b" style={{ borderColor: 'var(--ui-bg-elevated)' }}>
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
-            {TABS.map((tab) => {
+            {TABS.filter((tab) => !(videoType === 'tour' && tab.id === 'timeline')).map((tab) => { // a tour has no chapters
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
@@ -771,7 +779,7 @@ export default function MovieResults() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* The video's type, Magazine-style: the current one in a framed button; the menu
             regenerates the video as another type. */}
-        {videoType && (
+        {videoType && activeTab === 'video' && (
           <div className="mb-4 relative inline-block" ref={typeMenuRef}>
             <button
               type="button"
@@ -1063,7 +1071,7 @@ export default function MovieResults() {
           </ol>
         )}
 
-        {/* ── Images tab: pictures from the web search (Exa) ──────────────────── */}
+        {/* ── Images tab: the search images (as in Search), then Exa page images ── */}
         {activeTab === 'images' && (
           webImages.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -1075,7 +1083,7 @@ export default function MovieResults() {
             </div>
           ) : (
             <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-muted)' }}>
-              {t(web === null ? 'vidCollectingSources' : 'vidNoImages')}
+              {t(web === null || searchImgs === null ? 'vidCollectingSources' : 'vidNoImages')}
             </div>
           )
         )}
@@ -1142,7 +1150,7 @@ export default function MovieResults() {
         )}
 
         {/* ── Continue exploring: related questions, each opens a new video ────── */}
-        {exploreTopics.length > 0 && (
+        {activeTab === 'video' && exploreTopics.length > 0 && (
           <section className="mt-6 rounded-xl p-4 sm:p-5" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
             <div className="flex items-center gap-2 mb-4" style={{ color: 'var(--accent-primary)' }}>
               <Compass size={16} />
