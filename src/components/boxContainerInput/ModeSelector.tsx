@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BookOpen, Clapperboard, Search, PersonStanding, Popcorn, Gamepad2, Music, ChevronDown, ChevronUp } from 'lucide-react';
 import AutoModeIcon from '../icons/AutoModeIcon.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
@@ -50,6 +50,13 @@ export default function ModeSelector({ selectedMode, onModeSelect, onClose }: Mo
   const [showMore, setShowMore] = useState(() => moreModes.some((m) => m.id === selectedMode));
   const shown = showMore ? [...modes, ...moreModes] : modes;
   const MoreIcon = showMore ? ChevronUp : ChevronDown;
+  // Opening "More" scrolls the menu so the modes it adds (Music is last) are in view.
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const opened = useRef(showMore);
+  useEffect(() => {
+    if (showMore && !opened.current) moreRef.current?.scrollIntoView({ block: 'nearest' });
+    opened.current = showMore;
+  }, [showMore]);
 
   const handleModeClick = (modeId: ModeType) => {
     onModeSelect(modeId);
@@ -101,6 +108,7 @@ export default function ModeSelector({ selectedMode, onModeSelect, onClose }: Mo
         );
       })}
       <button
+        ref={moreRef}
         type="button"
         onClick={() => setShowMore((v) => !v)}
         aria-expanded={showMore}

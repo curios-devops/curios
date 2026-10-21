@@ -94,7 +94,9 @@ export default function ButtonBar({
   const toggleModeMenu = () => {
     const r = modeMenuRef.current?.getBoundingClientRect();
     if (r) {
-      const above = r.top - 12, below = window.innerHeight - r.bottom - 12;
+      // Above, the fixed top bar covers the first ~56px — the menu must stop below it
+      // (on phones it slid under it, hiding Auto and pushing the last modes out of view).
+      const above = r.top - 12 - 56, below = window.innerHeight - r.bottom - 12;
       setMenuPlacement({ up: above >= below, maxHeight: Math.max(above, below) });
     }
     setShowModeMenu(!showModeMenu);
