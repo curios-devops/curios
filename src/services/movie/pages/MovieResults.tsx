@@ -538,7 +538,7 @@ export default function MovieResults() {
     videoType !== 'cinematic' && (experience?.sources?.length ?? 0) > 0 ? experience!.sources : (web ?? []);
   const exploreTopics: { title: string; imageUrl?: string }[] =
     videoType === 'cinematic'
-      ? (cine?.related ?? []).map((title, i) => ({ title, imageUrl: cine?.credits[(i + 1) % cine.credits.length]?.image || undefined }))
+      ? (cine?.related ?? []).map((title, i) => ({ title, imageUrl: cine?.relatedImages?.[i] }))
       : relatedTopics;
 
   // HD / quality extension: rebuild this video one model up — Luna → Sol, Sol → Astra

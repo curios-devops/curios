@@ -21,6 +21,12 @@ describe('validatePlan', () => {
     expect(validatePlan({ title: 'x', shots: 'not json' })).toBeNull();
   });
 
+  it('reads follow-ups with their own stock search (and plain questions from simpler replies)', () => {
+    const plan = validatePlan({ title: 'x', shots: [shot, shot, shot], related: [{ question: '¿Por qué?', search: 'hummingbird nest' }, 'Otra'] });
+    expect(plan?.related).toEqual(['¿Por qué?', 'Otra']);
+    expect(plan?.relatedSearch).toEqual(['hummingbird nest', '']);
+  });
+
   it('keeps at most 4 follow-up questions for Continue exploring (and none when missing)', () => {
     expect(validatePlan({ title: 'x', shots: [shot, shot, shot], related: ['a', 'b', 'c', 'd', 'e', 3] })?.related).toEqual(['a', 'b', 'c', 'd']);
     expect(validatePlan({ title: 'x', shots: [shot, shot, shot] })?.related).toEqual([]);

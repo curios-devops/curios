@@ -15,6 +15,8 @@ export interface CinematicPlan {
   shots: CinematicShot[];
   /** Up to 4 follow-up questions for "Continue exploring". */
   related: string[];
+  /** A stock-footage search per follow-up (same order), so each card gets its own picture. */
+  relatedSearch: string[];
 }
 export interface StockClip {
   id: number;
@@ -59,10 +61,16 @@ export function validatePlan(raw: unknown): CinematicPlan | null {
   if (shots.length < MIN_SHOTS) return null;
   let related = (r as { related?: unknown }).related;
   if (typeof related === 'string') { try { related = JSON.parse(related); } catch { related = []; } }
+  // Each follow-up is { question, search } (or, from older/simpler replies, just the question).
+  const follow = (Array.isArray(related) ? related : [])
+    .map((x) => (typeof x === 'string' ? { question: x, search: '' } : (x ?? {}) as { question?: unknown; search?: unknown }))
+    .filter((x): x is { question: string; search: unknown } => typeof x.question === 'string' && x.question.trim().length > 0)
+    .slice(0, 4);
   return {
     title: typeof r.title === 'string' && r.title.trim() ? r.title.trim().slice(0, 90) : '',
     shots,
-    related: Array.isArray(related) ? related.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim().slice(0, 90)).slice(0, 4) : [],
+    related: follow.map((x) => x.question.trim().slice(0, 90)),
+    relatedSearch: follow.map((x) => (typeof x.search === 'string' ? x.search.trim().slice(0, 60) : '')),
   };
 }
 
@@ -162,7 +170,7 @@ export async function planCinematic(question: string, context: { title: string; 
       '(e.g. a hushed opening, a building middle, a louder reveal, a slow warm ending). Tags are not counted in the 12-24 words.\n\n' +
       VOICE_DIRECTION_GUIDE,
     facts ? `Question: ${question}\n\nWeb results:\n${facts}` : `Question: ${question}`,
-    { title: 'string: short film title in the question language', shots: 'array of objects { narration: string (with optional audio tags), search: string }', related: 'array of 4 strings' },
+    { title: 'string: short film title in the question language', shots: 'array of objects { narration: string (with optional audio tags), search: string }', related: 'array of 4 objects { question: string in the question language, search: 2-4 concrete English stock-footage words for it }' },
     0.4,
   );
   const plan = validatePlan(raw);
@@ -199,4 +207,46 @@ export async function findClips(plan: CinematicPlan): Promise<CinematicScene[]> 
   const found = clips.filter((c): c is StockClip => Boolean(c));
   if (found.length < MIN_SHOTS) throw new Error('Not enough real footage for this story');
   return plan.shots.map((shot, i) => ({ ...shot, clip: clips[i] ?? found[i % found.length] }));
+}
+
+type PixabayVideo = { id: number; image: string; width: number; height: number; tags?: string };
+
+async function searchPixabayVideos(query: string): Promise<PixabayVideo[]> {
+  const { data, error } = await supabase.functions.invoke('pixabay-search', { body: { query, type: 'videos', perPage: 8 } });
+  if (error) throw error;
+  return ((data as { videos?: PixabayVideo[] } | null)?.videos) ?? [];
+}
+
+/** How many of the search's words a clip's description has (Pexels: its page slug; Pixabay: its tags). */
+export function relevance(description: string, query: string): number {
+  const text = description.toLowerCase();
+  return query.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3 && text.includes(w)).length;
+}
+
+/**
+ * A picture for each "Continue exploring" card, never one of the film's own clips and never
+ * the same twice: Pexels and Pixabay are searched in parallel and the clip that best matches
+ * the card's search wins (stock engines often fill a page with loosely related footage).
+ */
+export async function findRelatedPosters(plan: CinematicPlan, scenes: CinematicScene[]): Promise<(string | undefined)[]> {
+  const used = new Set(scenes.map((s) => `pexels:${s.clip.id}`));
+  const candidates = await Promise.all(plan.related.map(async (question, i) => {
+    const query = plan.relatedSearch[i] || question;
+    const [pexels, pixabay] = await Promise.all([
+      searchVideos(query).catch(() => [] as PexelsVideo[]),
+      searchPixabayVideos(query).catch(() => [] as PixabayVideo[]),
+    ]);
+    return [
+      ...pexels.map((v, rank) => ({ key: `pexels:${v.id}`, image: v.image || '', landscape: v.width > v.height, score: relevance(v.url, query), rank })),
+      ...pixabay.map((v, rank) => ({ key: `pixabay:${v.id}`, image: v.image, landscape: v.width > v.height, score: relevance(v.tags || '', query), rank: rank + 0.5 })),
+    ].filter((c) => c.image && c.landscape)
+      .sort((a, b) => b.score - a.score || a.rank - b.rank);
+  }));
+  // Picked in order so two cards never land on the same clip.
+  return candidates.map((list) => {
+    const pick = list.find((c) => !used.has(c.key));
+    if (!pick) return undefined;
+    used.add(pick.key);
+    return pick.image;
+  });
 }

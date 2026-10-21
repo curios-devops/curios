@@ -33,6 +33,7 @@
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.544.0",
+    "mediabunny": "^1.62.0",
     "openai": "^6.2.0",
     "puppeteer": "^24.37.1",
     "puppeteer-core": "23.0.2",

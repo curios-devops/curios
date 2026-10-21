@@ -16,6 +16,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
   "types": ["react", "react-dom"],
+    // Mediabunny's own types pull in @types/dom-webcodecs (clashes with the DOM lib) — see types/mediabunny.d.ts.
+    "paths": { "mediabunny": ["./types/mediabunny.d.ts"] },
 
     /* Linting */
     "strict": true,

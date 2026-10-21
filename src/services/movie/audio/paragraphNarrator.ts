@@ -76,8 +76,25 @@ function base64ToBuffer(b64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+// Lines already spoken, by voice + text: replaying, or downloading a Cinematic film that was
+// played, costs no new TTS and no wait. decodeAudioData detaches its buffer, so callers get copies.
+const spoken = new Map<string, Promise<ArrayBuffer>>();
+const SPOKEN_MAX = 120;
+
 /** One line of speech (ElevenLabs v4 Turbo, OpenAI TTS fallback). Also used by the Cinematic download. */
-export async function tts(text: string, voiceId: string, gender: 'female' | 'male', signal: AbortSignal): Promise<ArrayBuffer> {
+export function tts(text: string, voiceId: string, gender: 'female' | 'male', signal: AbortSignal): Promise<ArrayBuffer> {
+  const key = `${voiceId}|${text}`;
+  let audio = spoken.get(key);
+  if (!audio) {
+    audio = synthesize(text, voiceId, gender, signal);
+    spoken.set(key, audio);
+    audio.catch(() => spoken.delete(key)); // an aborted or failed line is generated again next time
+    if (spoken.size > SPOKEN_MAX) spoken.delete(spoken.keys().next().value!);
+  }
+  return audio.then((b) => b.slice(0));
+}
+
+async function synthesize(text: string, voiceId: string, gender: 'female' | 'male', signal: AbortSignal): Promise<ArrayBuffer> {
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` };
   const post = (fn: string, body: object) =>
     fetch(`${SUPABASE_URL}/functions/v1/${fn}`, { method: 'POST', headers, body: JSON.stringify(body), signal })

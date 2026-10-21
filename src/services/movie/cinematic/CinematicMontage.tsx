@@ -11,7 +11,7 @@ import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { VOICES } from '../../character/voices.ts';
 import { ParagraphNarrator, type NarratorState } from '../audio/paragraphNarrator.ts';
 import { loadNarratorVoice } from '../audio/narratorPrefs.ts';
-import { captionChunks, captionFit, captionText, chunkAt, findClips, planCinematic, type CinematicScene, type StockClip } from './cinematicPlan.ts';
+import { captionChunks, captionFit, captionText, chunkAt, findClips, findRelatedPosters, planCinematic, type CinematicScene, type StockClip } from './cinematicPlan.ts';
 
 const CONTROL_BAR = 44; // px — captions sit above it, as on YouTube
 const pref = (key: string, fallback: boolean) => { try { const v = localStorage.getItem(key); return v === null ? fallback : v === 'on'; } catch { return fallback; } };
@@ -24,6 +24,8 @@ export interface CinematicInfo {
   credits: StockClip[];
   /** The chapters as played (clip + narration with its delivery tags) — for the download. */
   scenes: CinematicScene[];
+  /** A picture per related question, never one of the chapters' clips (arrives after onReady). */
+  relatedImages?: (string | undefined)[];
 }
 
 interface Props {
@@ -83,6 +85,17 @@ export default function CinematicMontage({ question, tab, context, belowPlayer, 
         related: plan.related,
         credits: [...new Map(found.map((s) => [s.clip.credit, s.clip])).values()],
         scenes: found,
+      });
+      // Continue exploring gets its own footage, without holding the film back.
+      void findRelatedPosters(plan, found).then((relatedImages) => {
+        if (alive) cbRef.current.onReady({
+          title: plan.title,
+          overview: found.map((s) => captionText(s.narration)).join(' '),
+          related: plan.related,
+          credits: [...new Map(found.map((s) => [s.clip.credit, s.clip])).values()],
+          scenes: found,
+          relatedImages,
+        });
       });
     })().catch((err) => alive && cbRef.current.onFail(err instanceof Error ? err.message : String(err)));
     return () => { alive = false; narratorRef.current?.stop(); };
