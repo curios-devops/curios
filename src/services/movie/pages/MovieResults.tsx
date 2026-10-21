@@ -103,6 +103,8 @@ export default function MovieResults() {
   const [mode, setMode] = useState<MovieMode | null>(modeParam ?? null);
   // Kept in its own state so mode regenerations reuse it untouched.
   const [relatedTopics, setRelatedTopics] = useState<MovieRelatedTopic[]>([]);
+  // The narrative as soon as it's written (Overview shows before the movie completes).
+  const [draftNarrative, setDraftNarrative] = useState<string | null>(null);
   // The technique actually running (after Auto / availability / fallbacks).
   const [videoType, setVideoType] = useState<VideoType | null>(null);
   const [typeNotice, setTypeNotice] = useState<string | null>(null);
@@ -142,6 +144,7 @@ export default function MovieResults() {
   const resetForNewRun = () => {
     setSwipes([]);
     setExperience(null);
+    setDraftNarrative(null);
     setSelectedSwipeId(null);
     setGeneratingIds(new Set());
     setEnhancingIds(new Set());
@@ -171,7 +174,16 @@ export default function MovieResults() {
       isEnhanceRequested: (swipe) => enhanceRequestedRef.current.has(swipe.id),
       onProgress: (p) => {
         setProgress(p);
-        if (p.swipes) setSwipes([...p.swipes].sort((a, b) => a.order - b.order));
+        if (p.swipes) {
+          setSwipes([...p.swipes].sort((a, b) => a.order - b.order));
+          // Select the core swipe right away: its title and script show while its frame paints.
+          const core = p.swipes.find((s) => s.isCore) ?? p.swipes[0];
+          if (core) setSelectedSwipeId((cur) => cur ?? core.id);
+        }
+      },
+      onPartial: (patch) => {
+        if (patch.narrative) setDraftNarrative(patch.narrative);
+        if (patch.relatedTopics) setRelatedTopics(patch.relatedTopics);
       },
       onSwipeReady: (swipe) => {
         upsertSwipe(swipe);
@@ -542,6 +554,19 @@ export default function MovieResults() {
     setProgress({ stage: 'enhancing', message: '', progress: 0 });
     startGeneration(experienceRef.current?.question || query, mode ?? undefined);
   };
+  // Video types: "Mejorar" (premium Veo render of the chapter on screen) lives up here.
+  const enhanceButton = (
+    <button
+      type="button"
+      onClick={() => selectedSwipe && requestEnhance(selectedSwipe)}
+      disabled={!selectedSwipe || isEnhancing || isEnhanced}
+      title={t('vidHdTip')}
+      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-default"
+      style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+    >
+      {isEnhancing ? <Loader2 size={16} className="animate-spin" /> : <Crown size={16} />} {t('vidEnhance')}
+    </button>
+  );
   const qualityButton = (
     <button
       type="button"
@@ -575,7 +600,7 @@ export default function MovieResults() {
         url: shareLink(experience.viral.title, experience.viral.caption, coreImage,
           savedId ? `${site}/movie/share/${savedId}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}`),
       } : null);
-  const overview = videoType === 'cinematic' ? cine?.overview : experience?.narrative;
+  const overview = videoType === 'cinematic' ? cine?.overview : (experience?.narrative ?? draftNarrative);
   const lineBtn = 'inline-flex items-center gap-2 h-10 px-4 rounded-full border text-sm font-medium transition-colors';
   const lineBtnStyle = { borderColor: 'var(--ui-border-default)', backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-primary)' } as const;
   const sharedSections = (
@@ -659,7 +684,7 @@ export default function MovieResults() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
-      <TopBar query={displayQuery} timeAgo="" rightSlot={qualityButton} />
+      <TopBar query={displayQuery} timeAgo="" rightSlot={videoType === 'cinematic' ? qualityButton : enhanceButton} />
 
 
       {/* Tab navigation: Video / Narrative / Sources (every type uses this template) */}
@@ -830,8 +855,7 @@ export default function MovieResults() {
               )}
             </div>
 
-            {/* Frame indicator + HD switch (the relocated Enhance — premium re-render of
-                the ACTIVE swipe in the movie's visual mode, 1 Pro Credit) */}
+            {/* Frame indicator (Mejorar — the premium re-render of the active swipe — is in the top bar) */}
             {swipes.length > 0 && (
               <div className="mt-3 flex items-center justify-between">
                 <div className="text-xs font-medium" style={{ color: 'var(--ui-text-muted)' }}>
@@ -850,19 +874,6 @@ export default function MovieResults() {
                       />
                     ))}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => selectedSwipe && requestEnhance(selectedSwipe)}
-                    disabled={!selectedSwipe || isEnhancing || isEnhanced}
-                    title={t('vidHdTip')}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer hover:opacity-90 disabled:cursor-default"
-                    style={isEnhanced
-                      ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }
-                      : { backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-secondary)', border: '1px solid var(--ui-bg-elevated)' }}
-                  >
-                    {isEnhancing ? <Loader2 size={12} className="animate-spin" /> : <Crown size={12} />}
-                    <span>{t('vidEnhance')}</span>
-                  </button>
                 </div>
               </div>
             )}

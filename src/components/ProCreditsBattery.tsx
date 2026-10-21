@@ -11,7 +11,8 @@ import { useLocation } from 'react-router-dom';
 import { useProCredits } from '../providers/ProCreditsProvider.tsx';
 import type { BatteryLevel } from '../services/proCreditsService.ts';
 import { BARS, creditBars, creditTone } from '../services/creditsLook.ts';
-import { useCreditsDisplay } from '../hooks/useCreditsDisplay.ts';
+import { useCreditsDisplay, useLoadCreditsDisplay } from '../hooks/useCreditsDisplay.ts';
+import { useSession } from '../hooks/useSession.ts';
 
 // A first-time guest doesn't see the counter on Home; once they open any service
 // page it appears and stays (remembered in localStorage).
@@ -28,6 +29,7 @@ const TRACK = 'rgba(148,163,184,0.30)';
 export default function ProCreditsBattery() {
   const { remaining, max, loading, tier, promptUpgrade } = useProCredits();
   const [display] = useCreditsDisplay();
+  useLoadCreditsDisplay(useSession().session?.user?.id);
   const isHome = useLocation().pathname === '/';
 
   if (!display.on) return null;

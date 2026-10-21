@@ -1,10 +1,10 @@
 // Movie Mode orchestrator (swipe-based).
-// Pipeline: enhance → research → narrative → swipe set → CORE frame (Nano Banana 2 Lite)
-// → CORE video (LTX) kicked immediately + the 4 secondary frames generated in the background
-// (staggered, non-blocking) → narration (optional) → viral → persist.
+// Pipeline: enhance → research → narrative → swipe set → then, all at once: every frame
+// (Nano Banana 2 Lite, core first, paced), the Continue-exploring images and the viral
+// packaging; the CORE video (LTX) chains only on the core frame → persist.
 //
-// Speed rule: the core video only needs the core frame, so we never wait on the secondary
-// frames to start it. Secondary swipes stay as image previews and lazy-generate their video
+// Speed rule: only chain a step on what it actually needs; everything else runs in
+// parallel and reaches the page as soon as it's ready (onSwipeReady / onPartial). Secondary swipes stay as image previews and lazy-generate their video
 // on demand via renderSwipeVideo(). Premium "Enhance" (gpt-image-2 + Omni) is a separate
 // server-owned background job — see the enhance-swipe edge function + enhancedVideosService.
 // No final stitch — each swipe is a standalone shareable unit.
@@ -37,9 +37,11 @@ import type {
 
 const DEFAULT_USER_ID = 'curios-guest';
 
-// Measured in prod (2026-07-10): 250ms spacing tripped Vertex RESOURCE_EXHAUSTED on the
-// 4th/5th frame — this project's per-minute image quota needs ~1s between requests.
-const SECONDARY_IMAGE_STAGGER_MS = 1000;
+// Spacing between image requests. Vertex serves Gemini from a dynamic shared quota (no fixed
+// per-project RPM; a 429 means momentary contention, and gemini-image retries it with backoff
+// and reports `throttled`). 2026-07-10: 250ms tripped 429s on the 4th/5th frame (before the
+// retries existed). 2026-10-21: 9 frames at 1s spacing → 0 throttled, ~15s each.
+const FRAME_STAGGER_MS = 1000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -118,9 +120,37 @@ export async function generateMovie(
 
   // Step 3 — narrative (reuse cinematic narrator)
   emit?.({ stage: 'directing', message: 'Writing the swipe script...', progress: 30 });
-  const narrative = await streamNarrative(question, sources);
+  // Streams straight into the page's Overview while it's written.
+  const narrative = await streamNarrative(question, sources, (_chunk, full) => options.onPartial?.({ narrative: full }));
 
-  // Step 4 — swipe set (1 core + 4 secondary)
+  // Cheap/fast default image model (Nano Banana 2 Lite). gpt-image-2 is reserved for the
+  // premium Enhance job (enhance-swipe edge function), not the default generation.
+  const imageProvider = new NanoBananaProvider();
+  // Image requests leave FRAME_STAGGER_MS apart (see the constant for the measurements).
+  // One shared timetable: each request takes the next free slot, counted from now or from the
+  // previous slot — never stacking delays on top of time already spent waiting.
+  let nextFree = 0;
+  const nextSlot = () => {
+    const now = Date.now();
+    const at = Math.max(now, nextFree);
+    nextFree = at + FRAME_STAGGER_MS;
+    return delay(at - now);
+  };
+  const generateFrame = async (prompt: string, wait: Promise<unknown>) => {
+    await wait;
+    const referenceImageUrl = await referenceImagePromise;
+    return imageProvider.generate(prompt, {
+      userId,
+      referenceImageUrl,
+      realismScore: enhanced.realismScore,
+      grounding: modeSpec.grounding,
+    });
+  };
+  // Frames started while the storyboard is still being written, by their exact prompt.
+  const earlyFrames = new Map<string, Promise<string>>();
+
+  // Step 4 — swipe set (1 core + 4 secondary). It streams: each swipe's frame starts
+  // painting as soon as that swipe is written, not when the whole storyboard is done.
   emit?.({ stage: 'storyboard', message: 'Designing your swipes...', progress: 42 });
   const { title, description, narratorGender, swipes, relatedTopics: relatedTopicTitles } = await buildSwipeSet({
     question,
@@ -129,22 +159,43 @@ export async function generateMovie(
     sources,
     realismScore: enhanced.realismScore,
     mode: modeSpec,
+    onSwipeWritten: ({ imagePrompt, isCore }) => {
+      if (isCore && options.coreFrameUrl) return; // the opening frame was already painted
+      if (earlyFrames.has(imagePrompt)) return;
+      const frame = generateFrame(imagePrompt, nextSlot());
+      frame.catch(() => undefined); // awaited (and its error handled) by paintFrame
+      earlyFrames.set(imagePrompt, frame);
+    },
   });
 
   const styleSeed = Math.floor(Math.random() * 1_000_000); // shared seed → style consistency
 
-  // Cheap/fast default image model (Nano Banana 2 Lite). gpt-image-2 is reserved for the
-  // premium Enhance job (enhance-swipe edge function), not the default generation.
-  const imageProvider = new NanoBananaProvider();
   const coreSwipe = swipes.find((s) => s.isCore) || swipes[0];
   const secondarySwipes = swipes.filter((s) => s.id !== coreSwipe?.id);
 
-  // Step 5 — CORE frame first: it's the only thing the core video (image-to-video) needs,
-  // so we get it before anything else and don't wait on the secondary frames.
-  emit?.({ stage: 'images', message: 'Creating your core frame...', progress: 50, swipes });
-  const referenceImageUrl = await referenceImagePromise; // resolved during steps 2-4
-  if (referenceImageUrl) logger.info('[MovieService] Grounding frames on real photo', { referenceImageUrl });
-  if (coreSwipe) {
+  // From here everything that doesn't need something else runs at once, and each piece
+  // shows up on the page as soon as it's ready. Only true dependencies are chained:
+  // core video ← core frame. Viral packaging only needs the swipe titles, so it starts now.
+  emit?.({ stage: 'images', message: 'Creating your frames...', progress: 50, swipes });
+  options.onPartial?.({ title, description, narrative, relatedTopics: options.relatedTopics ?? relatedTopicTitles.map((t) => ({ title: t })) });
+  const viralPromise = packageForVirality({ question, narrative, swipes });
+  void referenceImagePromise.then((url) => { if (url) logger.info('[MovieService] Grounding frames on real photo', { referenceImageUrl: url }); });
+
+  // A frame already painting from the streamed storyboard is reused; otherwise paint it now.
+  const paintFrame = async (swipe: MovieSwipe) => {
+    try {
+      swipe.imageUrl = await (earlyFrames.get(swipe.imagePrompt) ?? generateFrame(swipe.imagePrompt, nextSlot()));
+      swipe.status = 'image_ready';
+    } catch (error) {
+      swipe.status = 'error';
+      swipe.error = error instanceof Error ? error.message : String(error);
+    }
+  };
+
+  // Core frame → (only then) core video.
+  const ltx = new RunPodLTXProvider();
+  const corePromise: Promise<void> = (async () => {
+    if (!coreSwipe) return;
     if (options.coreFrameUrl) {
       // Explore further (Search) already painted the opening frame the user tapped.
       coreSwipe.imageUrl = options.coreFrameUrl;
@@ -153,103 +204,74 @@ export async function generateMovie(
       // User already queued the premium Enhance for this swipe — don't spend the default render.
       logger.info('[MovieService] Core frame skipped: Enhance queued', { swipeId: coreSwipe.id });
     } else {
-      try {
-        coreSwipe.imageUrl = await imageProvider.generate(coreSwipe.imagePrompt, {
-          userId,
-          referenceImageUrl,
-          realismScore: enhanced.realismScore,
-          grounding: modeSpec.grounding,
-        });
-        coreSwipe.status = 'image_ready';
-      } catch (error) {
-        coreSwipe.status = 'error';
-        coreSwipe.error = error instanceof Error ? error.message : String(error);
-      }
+      await paintFrame(coreSwipe);
     }
     options.onSwipeReady?.(coreSwipe);
-  }
+    if (!renderCoreVideo || !coreSwipe.imageUrl || coreSwipe.status === 'error' || options.isEnhanceRequested?.(coreSwipe)) return;
+    emit?.({ stage: 'rendering', message: 'Rendering your core swipe...', progress: 64, swipes });
+    coreSwipe.status = 'rendering';
+    options.onSwipeReady?.(coreSwipe);
+    try {
+      const { videoUrl } = await ltx.generate({
+        imageUrl: coreSwipe.imageUrl,
+        prompt: buildLtxPrompt(coreSwipe, enhanced.realismScore, mode),
+        duration: coreSwipe.durationSeconds,
+        seed: styleSeed,
+        userId,
+        sceneId: coreSwipe.id,
+      });
+      coreSwipe.videoUrl = videoUrl;
+      coreSwipe.status = 'ready';
+    } catch (error) {
+      coreSwipe.status = 'error';
+      coreSwipe.error = error instanceof Error ? error.message : String(error);
+      logger.error('[MovieService] Core swipe video failed', { error: coreSwipe.error });
+    }
+    options.onSwipeReady?.(coreSwipe);
+  })();
 
-  // Step 6 — kick the CORE video NOW, without awaiting. The secondary frames must not
-  // block the video the user is waiting on; both run concurrently below.
-  const ltx = new RunPodLTXProvider();
-  const coreVideoPromise: Promise<void> =
-    renderCoreVideo && coreSwipe?.imageUrl && coreSwipe.status !== 'error' && !options.isEnhanceRequested?.(coreSwipe)
-      ? (async () => {
-          emit?.({ stage: 'rendering', message: 'Rendering your core swipe...', progress: 64, swipes });
-          coreSwipe.status = 'rendering';
-          options.onSwipeReady?.(coreSwipe);
-          try {
-            const { videoUrl } = await ltx.generate({
-              imageUrl: coreSwipe.imageUrl!,
-              prompt: buildLtxPrompt(coreSwipe, enhanced.realismScore, mode),
-              duration: coreSwipe.durationSeconds,
-              seed: styleSeed,
-              userId,
-              sceneId: coreSwipe.id,
-            });
-            coreSwipe.videoUrl = videoUrl;
-            coreSwipe.status = 'ready';
-          } catch (error) {
-            coreSwipe.status = 'error';
-            coreSwipe.error = error instanceof Error ? error.message : String(error);
-            logger.error('[MovieService] Core swipe video failed', { error: coreSwipe.error });
-          }
-          options.onSwipeReady?.(coreSwipe);
-        })()
-      : Promise.resolve();
-
-  // Step 7 — secondary frames in the background, staggered ~1s apart (Gemini rate limit),
-  // each surfacing as soon as it's ready. Their video stays lazy/on-demand (renderSwipeVideo).
+  // Secondary frames, alongside the core one, each surfacing as soon as it's ready. Their
+  // video stays lazy/on-demand (renderSwipeVideo).
   const secondaryImagesPromise = Promise.all(
-    secondarySwipes.map(async (swipe, index) => {
-      await delay(index * SECONDARY_IMAGE_STAGGER_MS);
+    secondarySwipes.map(async (swipe) => {
       if (options.isEnhanceRequested?.(swipe)) {
         options.onSwipeReady?.(swipe);
         return;
       }
-      try {
-        swipe.imageUrl = await imageProvider.generate(swipe.imagePrompt, {
-          userId,
-          referenceImageUrl,
-          realismScore: enhanced.realismScore,
-          grounding: modeSpec.grounding,
-        });
-        swipe.status = 'image_ready';
-      } catch (error) {
-        swipe.status = 'error';
-        swipe.error = error instanceof Error ? error.message : String(error);
-      }
+      await paintFrame(swipe);
       options.onSwipeReady?.(swipe);
-      emit?.({ stage: 'images', message: 'Adding more swipe frames...', progress: 74, swipes });
     }),
   );
 
   // "Continue Exploring": 4 related themes, each with a small generated image (same
   // NanoBanana logic as the swipe frames — no reference grounding, style-neutral teaser).
+  // Each one shows up on the page as soon as its image is ready.
   // On a mode regeneration the caller passes the existing topics through untouched.
   const relatedTopicsPromise: Promise<MovieRelatedTopic[]> = options.relatedTopics?.length
     ? Promise.resolve(options.relatedTopics)
-    : Promise.all(
-        relatedTopicTitles.map(async (topic, index): Promise<MovieRelatedTopic> => {
-          // Queue behind the secondary frames so we never trip the per-minute image quota.
-          await delay((secondarySwipes.length + index) * SECONDARY_IMAGE_STAGGER_MS);
-          try {
-            const imageUrl = await imageProvider.generate(
-              `A striking, curiosity-sparking 16:9 teaser image for the topic: ${topic}. One clear subject, bold composition, no text.`,
-              { userId },
-            );
-            return { title: topic, imageUrl };
-          } catch (error) {
-            logger.warn('[MovieService] Related topic image failed (non-fatal)', {
-              topic,
-              error: error instanceof Error ? error.message : String(error),
-            });
-            return { title: topic };
-          }
-        }),
-      );
+    : (() => {
+        const topics: MovieRelatedTopic[] = relatedTopicTitles.map((t) => ({ title: t }));
+        return Promise.all(
+          relatedTopicTitles.map(async (topic, index): Promise<void> => {
+            await nextSlot();
+            try {
+              const imageUrl = await imageProvider.generate(
+                `A striking, curiosity-sparking 16:9 teaser image for the topic: ${topic}. One clear subject, bold composition, no text.`,
+                { userId },
+              );
+              topics[index] = { title: topic, imageUrl };
+              options.onPartial?.({ relatedTopics: [...topics] });
+            } catch (error) {
+              logger.warn('[MovieService] Related topic image failed (non-fatal)', {
+                topic,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }),
+        ).then(() => topics);
+      })();
 
-  const [, , relatedTopics] = await Promise.all([coreVideoPromise, secondaryImagesPromise, relatedTopicsPromise]);
+  const [, , relatedTopics, viral] = await Promise.all([corePromise, secondaryImagesPromise, relatedTopicsPromise, viralPromise]);
 
   // Optional narration (disabled by default in the UI) — needs the frames, so it runs here.
   if (options.enableNarration) {
@@ -293,9 +315,8 @@ export async function generateMovie(
     fullVideoUrl: coreSwipe?.videoUrl,
   };
 
-  // Step 8 — viral packaging
-  emit?.({ stage: 'viral', message: 'Optimizing for virality...', progress: 92, swipes });
-  experience.viral = await packageForVirality({ question, narrative, swipes });
+  // Viral packaging ran alongside the frames.
+  experience.viral = viral;
 
   // Persist
   try {

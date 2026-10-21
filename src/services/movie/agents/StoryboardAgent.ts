@@ -6,6 +6,7 @@
 // into every image prompt so the swipes stay visually coherent.
 
 import { callMovieLLMJson } from '../core/llm';
+import { completedItems, stringField } from '../core/partialJson';
 import { logger } from '../../../utils/logger';
 import type { MovieModeSpec } from '../config/movieModes';
 import type { MovieSwipe, MovieSource, SwipeRole } from '../types';
@@ -92,6 +93,11 @@ export async function buildSwipeSet(params: {
   sources: MovieSource[];
   realismScore?: number;
   mode?: MovieModeSpec;
+  /**
+   * Called while the reply streams, once per swipe as soon as it's fully written, with the
+   * exact frame prompt the final swipe will have — so its frame can start painting early.
+   */
+  onSwipeWritten?: (swipe: { imagePrompt: string; isCore: boolean }) => void;
 }): Promise<{
   title: string;
   description: string;
@@ -127,6 +133,25 @@ ${params.narrative}
 Research facts:
 ${factLines || '(none)'}`;
 
+  let announced = 0;
+  const onText = params.onSwipeWritten && ((soFar: string) => {
+    // The style anchor is written before the swipes; without it the prompt isn't final yet.
+    const anchor = stringField(soFar, 'styleAnchor');
+    if (anchor === undefined) return;
+    const items = completedItems(soFar, 'swipes');
+    for (; announced < items.length && announced < 5; announced++) {
+      try {
+        const w = JSON.parse(items[announced]) as { imagePrompt?: unknown; role?: unknown };
+        if (typeof w.imagePrompt !== 'string' || !w.imagePrompt) continue;
+        const anchorText = anchor.trim();
+        params.onSwipeWritten!({
+          imagePrompt: anchorText ? `${w.imagePrompt}. Consistent style: ${anchorText}` : w.imagePrompt,
+          isCore: normalizeRole(typeof w.role === 'string' ? w.role : undefined, announced) === 'core',
+        });
+      } catch { /* malformed item — it'll just paint after the reply */ }
+    }
+  });
+
   const raw = await callMovieLLMJson<RawSwipeSet>(
     SYSTEM_PROMPT,
     userPrompt,
@@ -139,6 +164,7 @@ ${factLines || '(none)'}`;
       swipes: 'array of { role, title, narration, imagePrompt, videoPrompt, transitionStyle, durationSeconds }',
     },
     0.6,
+    onText || undefined,
   );
 
   const narratorGender: 'male' | 'female' =

@@ -41,14 +41,48 @@ async function fetchOpenAI(promptPayload: Record<string, unknown>): Promise<stri
   return data.text || data.content || data.output_text || '';
 }
 
-/** Call the LLM and parse a JSON object response. */
+// Streamed reply: `onText` gets the text so far after every chunk; resolves with the full text.
+async function fetchOpenAIStreamed(promptPayload: Record<string, unknown>, onText: (soFar: string) => void): Promise<string> {
+  const response = await fetch(import.meta.env.VITE_OPENAI_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
+    body: JSON.stringify({ prompt: JSON.stringify(promptPayload), stream: true }),
+  });
+  if (!response.ok || !response.body) throw new Error(`OpenAI streaming edge call failed (${response.status})`);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let text = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      try {
+        const chunk = (JSON.parse(line.slice(6).trim()) as { content?: unknown }).content;
+        if (typeof chunk === 'string' && chunk) { text += chunk; onText(text); }
+      } catch { /* [DONE] or a keep-alive */ }
+    }
+  }
+  return text;
+}
+
+/**
+ * Call the LLM and parse a JSON object response. With `onText` the reply streams and
+ * `onText` sees the text so far (read pieces early with partialJson); if the stream fails
+ * it falls back to the normal call.
+ */
 export async function callMovieLLMJson<T>(
   systemPrompt: string,
   userPrompt: string,
   schemaHint: Record<string, string>,
   temperature = 0.5,
+  onText?: (soFar: string) => void,
 ): Promise<T> {
-  const request = (model: string) => fetchOpenAI({
+  const request = (model: string) => (onText ? (p: Record<string, unknown>) => fetchOpenAIStreamed(p, onText).then((t) => t || fetchOpenAI(p), () => fetchOpenAI(p)) : fetchOpenAI)({
     messages: [
       { role: 'system', content: systemPrompt },
       {

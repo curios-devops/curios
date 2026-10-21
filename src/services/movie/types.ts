@@ -131,6 +131,8 @@ export interface GenerateMovieOptions {
   isEnhanceRequested?: (swipe: MovieSwipe) => boolean;
   onProgress?: (progress: MovieProgress) => void;
   onSwipeReady?: (swipe: MovieSwipe) => void;
+  /** Pieces of the movie as they're ready (narrative, title, Continue exploring topics). */
+  onPartial?: (patch: Partial<Pick<MovieExperience, 'title' | 'description' | 'narrative' | 'relatedTopics'>>) => void;
 }
 
 /** Options for lazy, on-demand rendering of a secondary swipe's video. */

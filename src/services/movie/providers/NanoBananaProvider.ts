@@ -46,7 +46,11 @@ export class NanoBananaProvider {
       throw new Error(`gemini-image error: ${error.message}`);
     }
 
-    const payload = data as { url?: string; error?: string };
+    const payload = data as { url?: string; error?: string; throttled?: number; fallback?: boolean; vertexError?: string };
+    // Vertex 429s / OpenAI fallback — what the frame pacing in movieService is tuned against.
+    if (payload?.throttled || payload?.fallback) {
+      logger.warn('[Movie/NanoBanana] Image throttled', { throttled: payload.throttled ?? 0, fallback: Boolean(payload.fallback), vertexError: payload.vertexError });
+    }
     if (payload?.error) {
       throw new Error(payload.error);
     }

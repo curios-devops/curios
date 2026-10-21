@@ -145,6 +145,11 @@ Deno.serve(async (req: Request) => {
     // Rate-limit 429s (RESOURCE_EXHAUSTED without `limit: 0`) are transient — retry with
     // backoff instead of failing the frame. A `limit: 0` body means no quota at all: no retry.
     let response: Response | null = null;
+    // Reported back (throttled = 429s seen, fallback = served by OpenAI) so callers can verify
+    // their pacing against Vertex's shared quota instead of guessing.
+    let throttled = 0;
+    let fallback = false;
+    let vertexError: string | undefined;
     for (let attempt = 0; attempt < 3; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 2000));
       const controller = new AbortController();
@@ -157,6 +162,7 @@ Deno.serve(async (req: Request) => {
       });
       clearTimeout(timeoutId);
       if (response.status !== 429) break;
+      throttled++;
       const peek = await response.clone().text();
       if (peek.includes('"limit": 0') || peek.includes('"limit":0')) break; // no quota — retrying is useless
       console.warn(`Vertex image 429 (attempt ${attempt + 1}/3) — backing off`);
@@ -166,17 +172,22 @@ Deno.serve(async (req: Request) => {
     if (response && response.ok) {
       const data = await response.json();
       b64 = extractImageBase64(data);
-      if (!b64) console.error("No image data in Vertex response");
+      if (!b64) {
+        console.error("No image data in Vertex response");
+        const cand = data?.candidates?.[0];
+        vertexError = `no image: ${cand?.finishReason ?? data?.promptFeedback?.blockReason ?? 'unknown'} ${JSON.stringify(cand?.content?.parts?.map((p: { text?: string }) => p.text).filter(Boolean) ?? []).slice(0, 200)}`;
+      }
     } else {
       const error = response ? await response.text() : "no response";
       console.error("Vertex image API error:", { status: response?.status, error });
+      vertexError = `${response?.status ?? 'no response'}: ${error.slice(0, 300)}`;
     }
 
     // Vertex exhausted/failed/refused → gpt-image-2 fallback rather than failing the frame.
     if (!b64) {
       console.warn("Falling back to OpenAI", FALLBACK_IMAGE_MODEL);
       const fb = await openaiFallback(prompt, body.aspectRatio || "16:9", reference);
-      if (fb) b64 = fb;
+      if (fb) { b64 = fb; fallback = true; }
     }
     if (!b64) {
       return new Response(JSON.stringify({ error: "Image generation failed on both providers" }), {
@@ -200,10 +211,10 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify({ error: `Image upload failed: ${upErr.message}` }), { status: 500, headers: corsHeaders });
       }
       const url = supabase.storage.from(body.storageBucket).getPublicUrl(path).data.publicUrl;
-      return new Response(JSON.stringify({ url }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ url, throttled, fallback, vertexError }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    return new Response(JSON.stringify({ url: `data:image/png;base64,${b64}` }), {
+    return new Response(JSON.stringify({ url: `data:image/png;base64,${b64}`, throttled, fallback, vertexError }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

@@ -400,8 +400,9 @@ Deno.serve(async (req: Request) => {
     if (gpt5 && useResponsesApi) {
       payload.max_output_tokens = parsedPrompt.max_output_tokens || 2000;
       payload.reasoning = normalizeReasoning(model, parsedPrompt.reasoning);
-      // JSON mode on the Responses API lives under text.format.
-      if (!enableStreaming && parsedPrompt.response_format?.type === 'json_object') {
+      // JSON mode on the Responses API lives under text.format (works streamed too: Movie's
+      // storyboard streams so each swipe's frame can start as soon as that swipe is written).
+      if (parsedPrompt.response_format?.type === 'json_object') {
         payload.text = { format: { type: 'json_object' } };
       }
 
