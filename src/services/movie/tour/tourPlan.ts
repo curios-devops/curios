@@ -85,7 +85,7 @@ export async function planTour(question: string, context: { title: string; snipp
   return plan;
 }
 
-type Answer = { ready?: boolean; tour?: Tour; taskId?: string; meta?: string; status?: string; error?: unknown };
+type Answer = { ready?: boolean; tour?: Tour; left?: number; taskId?: string; meta?: string; status?: string; error?: unknown };
 
 async function call(body: Record<string, unknown>): Promise<Answer> {
   const { data, error } = await supabase.functions.invoke('viggle-scene', { body });
@@ -98,10 +98,13 @@ async function call(body: Record<string, unknown>): Promise<Answer> {
   return data as Answer;
 }
 
-/** The tour already made for this question, if any (free). */
-export async function findTour(key: string): Promise<Tour | null> {
+/**
+ * The tour already made for this question (free), or how many new tours the viewer may still
+ * make today — checked before a credit is charged.
+ */
+export async function findTour(key: string): Promise<{ tour: Tour | null; left: number }> {
   const a = await call({ action: 'lookup', key });
-  return a.ready && a.tour ? a.tour : null;
+  return a.ready && a.tour ? { tour: a.tour, left: 0 } : { tour: null, left: a.left ?? 1 };
 }
 
 /** Makes a new tour (signed-in; the caller has charged the Pro Credit) and waits until it's ready. */

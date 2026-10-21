@@ -1,8 +1,9 @@
 // The 360 Tour on the Video page (same template as the other types: player, then share,
 // overview and Continue exploring from the page). A tour already made for the question opens
 // at once and free. A new one (a Viggle "session") costs 1 Pro Credit — guests included — and
-// takes ~25 s; with no credits left the viewer is asked to sign up (guest) or go Pro. A guest
-// who spent their last credit on it is offered to sign up to keep it; on sign-in it's claimed.
+// takes ~25 s. No credits left: a guest is asked to sign up, a free account to go Pro; Pro
+// stops at 10 new tours a day ("today's maximum"). A guest who spent their last credit on a
+// tour is offered to sign up to keep it; on sign-in it's claimed.
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Loader2, Maximize, Minimize, Rotate3d } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
@@ -65,7 +66,8 @@ export default function TourScene({ question, tab, context, belowPlayer, onReady
         .then((relatedImages) => { if (!controller.signal.aborted) cb.current.onReady({ ...info, relatedImages }); });
     };
     (async () => {
-      const existing = await findTour(key).catch(() => null);
+      const found = await findTour(key).catch(() => ({ tour: null, left: 1 }));
+      const existing = found.tour;
       if (controller.signal.aborted) return;
       if (existing) {
         // A guest's tour, now signed in → it's saved to their account.
@@ -75,6 +77,8 @@ export default function TourScene({ question, tab, context, belowPlayer, onReady
         return show(existing);
       }
       if (context === null) return; // wait for the web facts (the effect runs again)
+      // Today's tour cap for this tier (guest 1, free 3, Pro 10) — before any credit is charged.
+      if (chargedRef.current !== key && found.left <= 0) return setStage(tier === 'pro' ? 'limit' : 'nocredits');
       if (chargedRef.current !== key) {
         // 1 Pro Credit per new tour; none left → the tier's modal (sign up / go Pro) opens.
         if (!(await requestProAccess())) return setStage('nocredits');

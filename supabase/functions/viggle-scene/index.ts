@@ -4,10 +4,11 @@
 // so the same question never pays twice — Viggle's own URLs expire in 3 hours.
 //
 // Body { action }:
-//   lookup  { key }                         → { ready: true, tour } | { ready: false }
+//   lookup  { key }                         → { ready: true, tour } | { ready: false, left }
+//           `left` = new tours the caller may still make today (checked before the page charges a credit)
 //   create  { key, question, prompt, title, overview, related } → { taskId, meta }
-//           Anyone with a Pro Credit (the page charges it). Spend caps per 24 h: USER_CAP per
-//           account, GUEST_CAP per guest connection (hashed IP), GLOBAL_CAP for everyone.
+//           Anyone with a Pro Credit (the page charges it). Daily caps mirror the credit allowance
+//           (app-settings): guest 1 per connection (hashed IP), free 3, Pro 10; GLOBAL_CAP overall.
 //   status  { taskId, key, meta }           → { status } | { ready: true, tour } (copies + saves on ready)
 //   claim   { key }                         → links a tour a guest made to the account they just made
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
@@ -22,9 +23,8 @@ const json = (body: unknown, status = 200) =>
 // @ts-ignore: Deno env
 const env = (k: string) => (Deno.env.get(k) ?? "").trim();
 const VIGGLE = "https://apis.viggle.ai/v1/scenes";
-const USER_CAP = 10;
-const GUEST_CAP = 3;
-const GLOBAL_CAP = 100; // ≈ $6 a day at most
+const CAP = { guest: 1, free: 3, pro: 10 } as const;
+const GLOBAL_CAP = 100; // ≈ $6 a day at most, whatever happens
 const BUCKET = "movie-assets";
 const QUALITY = "medium";
 
@@ -43,6 +43,19 @@ const toTour = (r: Record<string, unknown>) => ({
   question: r.question, title: r.title, overview: r.overview, related: r.related,
   spzUrl: r.spz_url, panoramaUrl: r.panorama_url, owned: Boolean(r.user_id),
 });
+
+/** New tours the caller may still make in the last 24 h, by tier (and the global cap). */
+async function toursLeft(req: Request, uid: string | null): Promise<number> {
+  const since = new Date(Date.now() - 864e5).toISOString();
+  const recent = () => db().from("scene_tours").select("id", { count: "exact", head: true }).gte("created_at", since);
+  const [{ count: all }, { count: mine }, profile] = await Promise.all([
+    recent(),
+    uid ? recent().eq("user_id", uid) : recent().eq("creator_ip_hash", await ipHash(req)),
+    uid ? db().from("profiles").select("is_pro").eq("id", uid).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  const cap = !uid ? CAP.guest : (profile.data as { is_pro?: boolean } | null)?.is_pro ? CAP.pro : CAP.free;
+  return Math.max(0, Math.min(cap - (mine ?? 0), GLOBAL_CAP - (all ?? 0)));
+}
 
 /** A guest's connection, hashed — counted for the guest cap, never stored in clear. */
 async function ipHash(req: Request): Promise<string> {
@@ -71,19 +84,13 @@ Deno.serve(async (req: Request) => {
 
     if (body.action === "lookup") {
       const { data } = await db().from("scene_tours").select("*").eq("question_key", key).maybeSingle();
-      return json(data ? { ready: true, tour: toTour(data) } : { ready: false });
+      return json(data ? { ready: true, tour: toTour(data) } : { ready: false, left: await toursLeft(req, await userId(req)) });
     }
 
     if (body.action === "create") {
       const uid = await userId(req);
       if (!env("VIGGLE_API_KEY")) return json({ error: "VIGGLE_API_KEY not configured" }, 500);
-      const since = new Date(Date.now() - 864e5).toISOString();
-      const recent = () => db().from("scene_tours").select("id", { count: "exact", head: true }).gte("created_at", since);
-      const [{ count: all }, { count: mine }] = await Promise.all([
-        recent(),
-        uid ? recent().eq("user_id", uid) : recent().eq("creator_ip_hash", await ipHash(req)),
-      ]);
-      if ((all ?? 0) >= GLOBAL_CAP || (mine ?? 0) >= (uid ? USER_CAP : GUEST_CAP)) return json({ error: "daily_limit" }, 429);
+      if ((await toursLeft(req, uid)) <= 0) return json({ error: "daily_limit" }, 429);
       const prompt = String(body.prompt ?? "").trim().slice(0, 1000);
       if (!prompt) return json({ error: "prompt is required" }, 400);
       const sessionId = `curios-${crypto.randomUUID()}`;
