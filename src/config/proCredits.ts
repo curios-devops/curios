@@ -6,9 +6,10 @@
 // a config ↔ service import cycle. It must stay in sync with ProTier in that file.
 type ProTier = 'guest' | 'free' | 'pro';
 
-const readInt = (key: string, fallback: number): number => {
-  const raw = typeof import.meta !== 'undefined' ? import.meta.env?.[key] : undefined;
-  const parsed = raw != null ? Number(raw) : NaN;
+// Each variable is read by its literal name: a dynamic import.meta.env[key] makes Vite inline
+// the WHOLE env object into the bundle — every VITE_ value, keys included.
+const readInt = (raw: string | undefined, fallback: number): number => {
+  const parsed = raw != null && raw !== '' ? Number(raw) : NaN;
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
@@ -21,15 +22,15 @@ export interface TierConfig {
 
 export const PRO_CREDITS_CONFIG: Record<ProTier, TierConfig> = {
   guest: {
-    dailyCredits: readInt('VITE_GUEST_DAILY_PRO_CREDITS', 1),
+    dailyCredits: readInt(import.meta.env.VITE_GUEST_DAILY_PRO_CREDITS, 1),
     warningThreshold: 0, // guests have a single credit; no separate warning band
   },
   free: {
-    dailyCredits: readInt('VITE_FREE_DAILY_PRO_CREDITS', 3),
-    warningThreshold: readInt('VITE_FREE_WARNING_THRESHOLD', 1),
+    dailyCredits: readInt(import.meta.env.VITE_FREE_DAILY_PRO_CREDITS, 3),
+    warningThreshold: readInt(import.meta.env.VITE_FREE_WARNING_THRESHOLD, 1),
   },
   pro: {
-    dailyCredits: readInt('VITE_PRO_DAILY_PRO_CREDITS', 25),
-    warningThreshold: readInt('VITE_PRO_WARNING_THRESHOLD', 10),
+    dailyCredits: readInt(import.meta.env.VITE_PRO_DAILY_PRO_CREDITS, 25),
+    warningThreshold: readInt(import.meta.env.VITE_PRO_WARNING_THRESHOLD, 10),
   },
 };
