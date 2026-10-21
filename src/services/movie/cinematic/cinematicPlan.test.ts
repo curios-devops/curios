@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { captionChunks, captionFit, chunkAt, pickClip, validatePlan } from './cinematicPlan.ts';
+import { captionChunks, captionFit, captionText, chunkAt, cleanDelivery, pickClip, validatePlan } from './cinematicPlan.ts';
 
 const video = (id: number, w: number, h: number, duration: number, fileWidths: number[]) => ({
   id, width: w, height: h, duration, url: `https://pexels.com/video/${id}`, user: { name: `user${id}` },
@@ -80,5 +80,21 @@ describe('captionFit', () => {
     const desktop = captionFit(1056);
     expect(desktop.fontPx).toBe(30);
     expect(desktop.maxChars).toBeLessThanOrEqual(42);
+  });
+});
+
+describe('delivery tags (how the narrator says it)', () => {
+  it('keeps only the tags ElevenLabs v4 understands — an unknown one could come out as a sound effect', () => {
+    expect(cleanDelivery('[Whispers] Look... [explosion] [excited] Eighty a second!')).toBe('[whispers] Look... [excited] Eighty a second!');
+  });
+
+  it('never shows tags in captions or on the page', () => {
+    expect(captionText('[curious] Why does it hover? [pause] [excited] Eighty wingbeats!')).toBe('Why does it hover? Eighty wingbeats!');
+  });
+
+  it('does not count tags toward the caption length limit', () => {
+    const words = 'a '.repeat(105).trim(); // 209 chars
+    const plan = validatePlan({ title: 'x', shots: Array(3).fill({ narration: `[awe] ${words} [pause]`, search: 'q' }) });
+    expect(plan!.shots[0].narration.startsWith('[awe]')).toBe(true);
   });
 });

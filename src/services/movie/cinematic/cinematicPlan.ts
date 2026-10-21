@@ -34,6 +34,33 @@ export const MIN_SHOTS = 3;
 export const MAX_SHOTS = 6;
 const MAX_NARRATION = 220;
 
+// How to say it: ElevenLabs v4 reads bracketed audio tags in the script as delivery directions
+// (no SSML; `speed` is ignored — verified 2026-10-21). The director may use only these,
+// documented by ElevenLabs and tested in Spanish with eleven_v4_turbo (never read aloud).
+// Anything else is dropped: an unknown tag can come out as a sound effect.
+export const DELIVERY_TAGS = [
+  'excited', 'curious', 'awe', 'serious', 'warm', 'playful',
+  'whispers', 'softly', 'shouts',
+  'slowly', 'drawn out', 'rushed', 'pause', 'long pause',
+  'laughs', 'sighs',
+] as const;
+
+/** Keeps only allowed delivery tags (lower-cased) and tidies the spacing around them. */
+export function cleanDelivery(text: string): string {
+  return text
+    .replace(/\[([^\]]{1,24})\]/g, (_m, tag: string) => {
+      const t = tag.trim().toLowerCase();
+      return (DELIVERY_TAGS as readonly string[]).includes(t) ? `[${t}]` : '';
+    })
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** What the captions and the page show: the words, without the delivery tags. */
+export function captionText(narration: string): string {
+  return narration.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
+}
+
 /** Keeps only usable shots and caps the film's length; null when it can't make a film. */
 export function validatePlan(raw: unknown): CinematicPlan | null {
   const r = raw as { title?: unknown; shots?: unknown } | null;
@@ -44,8 +71,13 @@ export function validatePlan(raw: unknown): CinematicPlan | null {
   const shots = list
     .map((s) => s as { narration?: unknown; search?: unknown })
     .filter((s) => typeof s.narration === 'string' && typeof s.search === 'string')
-    .map((s) => ({ narration: (s.narration as string).trim().slice(0, MAX_NARRATION), search: (s.search as string).trim().slice(0, 60) }))
-    .filter((s) => s.narration.length > 0 && s.search.length > 0)
+    .map((s) => {
+      // Tags don't count toward the caption limit; a script too long loses its tags first.
+      let narration = cleanDelivery(s.narration as string);
+      if (captionText(narration).length > MAX_NARRATION) narration = captionText(narration).slice(0, MAX_NARRATION);
+      return { narration, search: (s.search as string).trim().slice(0, 60) };
+    })
+    .filter((s) => captionText(s.narration).length > 0 && s.search.length > 0)
     .slice(0, MAX_SHOTS);
   if (shots.length < MIN_SHOTS) return null;
   let related = (r as { related?: unknown }).related;
@@ -146,9 +178,14 @@ export async function planCinematic(question: string, context: { title: string; 
       'and one stock-footage search: 2-4 concrete English words describing what the camera sees ' +
       '(e.g. "barcelona aerial city", "sagrada familia facade") — never abstract ideas, text, logos or charts. ' +
       'When web results are given, base the facts on them (they are recent). Also suggest 4 short follow-up questions ' +
-      'the viewer may want to watch next, in the question language.',
+      'the viewer may want to watch next, in the question language. ' +
+      'You also direct HOW each line is read aloud: add 0-2 audio tags per narration, in square brackets, ' +
+      'placed right before the words they color — e.g. "[curious] Why does it hover? [pause] [excited] Eighty wingbeats a second!". ' +
+      `Use only these tags: ${DELIVERY_TAGS.map((t) => `[${t}]`).join(' ')}. One emotion per phrase; ` +
+      'vary the delivery across the film (a hushed opening, an excited reveal, a slow, warm ending) and let punctuation help ' +
+      '(... slows down, ! adds energy). Tags are not counted in the 12-24 words.',
     facts ? `Question: ${question}\n\nWeb results:\n${facts}` : `Question: ${question}`,
-    { title: 'string: short film title in the question language', shots: 'array of objects { narration: string, search: string }', related: 'array of 4 strings' },
+    { title: 'string: short film title in the question language', shots: 'array of objects { narration: string (with optional audio tags), search: string }', related: 'array of 4 strings' },
     0.4,
   );
   const plan = validatePlan(raw);

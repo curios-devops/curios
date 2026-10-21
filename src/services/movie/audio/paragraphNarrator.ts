@@ -87,8 +87,9 @@ async function tts(text: string, voiceId: string, gender: 'female' | 'male', sig
   } catch (e) {
     if (signal.aborted) throw e;
   }
-  // Fallback: OpenAI TTS with a voice of the same gender.
-  const d = await post('openai-tts', { text, voice: gender === 'male' ? 'onyx' : 'nova', speed: 1, model: 'tts-1-hd' });
+  // Fallback: OpenAI TTS with a voice of the same gender. It would read ElevenLabs' delivery
+  // tags ([excited], [pause]…) aloud, so they're removed.
+  const d = await post('openai-tts', { text: text.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim(), voice: gender === 'male' ? 'onyx' : 'nova', speed: 1, model: 'tts-1-hd' });
   const b64 = d.audioBase64 || d.audio;
   if (b64) return base64ToBuffer(b64);
   const url = d.audioUrl || d.url;

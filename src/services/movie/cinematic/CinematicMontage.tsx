@@ -11,7 +11,7 @@ import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { VOICES } from '../../character/voices.ts';
 import { ParagraphNarrator, type NarratorState } from '../audio/paragraphNarrator.ts';
 import { loadNarratorVoice } from '../audio/narratorPrefs.ts';
-import { captionChunks, captionFit, chunkAt, findClips, planCinematic, type CinematicScene, type StockClip } from './cinematicPlan.ts';
+import { captionChunks, captionFit, captionText, chunkAt, findClips, planCinematic, type CinematicScene, type StockClip } from './cinematicPlan.ts';
 
 const CONTROL_BAR = 44; // px — captions sit above it, as on YouTube
 const pref = (key: string, fallback: boolean) => { try { const v = localStorage.getItem(key); return v === null ? fallback : v === 'on'; } catch { return fallback; } };
@@ -77,7 +77,7 @@ export default function CinematicMontage({ question, tab, context, belowPlayer, 
       setStage('ready');
       cbRef.current.onReady({
         title: plan.title,
-        overview: found.map((s) => s.narration).join(' '),
+        overview: found.map((s) => captionText(s.narration)).join(' '),
         related: plan.related,
         credits: [...new Map(found.map((s) => [s.clip.credit, s.clip])).values()],
       });
@@ -108,7 +108,7 @@ export default function CinematicMontage({ question, tab, context, belowPlayer, 
     if (narration !== 'playing') return;
     const id = window.setInterval(() => {
       const { start, duration } = timing.current;
-      const chunks = captionChunks(scenes[shot]?.narration ?? '', fit.maxChars);
+      const chunks = captionChunks(captionText(scenes[shot]?.narration ?? ''), fit.maxChars);
       setChunk(chunkAt(chunks, (performance.now() - start) / 1000, duration));
     }, 150);
     return () => window.clearInterval(id);
@@ -201,7 +201,7 @@ export default function CinematicMontage({ question, tab, context, belowPlayer, 
                 <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--accent-primary)' }}>
                   {t('vidFrame').replace('{n}', String(i + 1)).replace('{total}', String(scenes.length))}
                 </p>
-                <p className="text-sm leading-relaxed">{s.narration}</p>
+                <p className="text-sm leading-relaxed">{captionText(s.narration)}</p>
               </div>
             </button>
           </li>
@@ -211,7 +211,7 @@ export default function CinematicMontage({ question, tab, context, belowPlayer, 
   }
 
   const started = narration !== 'idle';
-  const lines = captionChunks(scenes[shot]?.narration ?? '', fit.maxChars)[chunk] ?? [];
+  const lines = captionChunks(captionText(scenes[shot]?.narration ?? ''), fit.maxChars)[chunk] ?? [];
   const playLabel = narration === 'playing' ? t('vidPause') : narration === 'ended' ? t('vidReplay') : t('vidPlay');
   const level = muted ? 0 : volume;
   const VolumeIcon = level === 0 ? VolumeX : level < 0.5 ? Volume1 : Volume2;
@@ -351,7 +351,7 @@ export default function CinematicMontage({ question, tab, context, belowPlayer, 
         </div>
 
         {title && <h2 className="mt-3 text-base font-semibold">{title}</h2>}
-        <p className="text-sm mt-1" style={{ color: 'var(--ui-text-muted)' }}>{scenes[shot]?.narration}</p>
+        <p className="text-sm mt-1" style={{ color: 'var(--ui-text-muted)' }}>{captionText(scenes[shot]?.narration ?? '')}</p>
       </div>
 
       {/* Chapter rail (vertical on desktop, horizontal on mobile) — same as the Video rail */}
