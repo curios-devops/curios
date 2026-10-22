@@ -37,6 +37,7 @@ import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, detectVideoType, movieModeFor, parseVideoType, type VideoType } from '../videoType.ts';
 import CinematicMontage, { type CinematicInfo } from '../cinematic/CinematicMontage.tsx';
 import TourScene, { type TourInfo } from '../tour/TourScene.tsx';
+import ClipScene, { type ClipInfo } from '../clip/ClipScene.tsx';
 import { getFilmLikeState, saveCinematicFilm, toggleCinematicLike } from '../cinematic/cinematicFilms.ts';
 import { exportCinematic, saveFilm } from '../cinematic/exportCinematic.ts';
 import { loadNarratorVoice } from '../audio/narratorPrefs.ts';
@@ -124,6 +125,8 @@ export default function MovieResults() {
   const [cineRun, setCineRun] = useState(0);
   // 360 Tour's data for the shared sections.
   const [tourInfo, setTourInfo] = useState<TourInfo | null>(null);
+  // Clips' data for the shared sections.
+  const [clipInfo, setClipInfo] = useState<ClipInfo | null>(null);
   // Fresh web results (Exa) for every type: Images and Sources tabs, Cinematic's facts.
   const [web, setWeb] = useState<WebSearchResult[] | null>(null);
   // Images tab: the same image search as Search (SerpAPI → Brave), then Exa's page images.
@@ -298,7 +301,7 @@ export default function MovieResults() {
         return;
       }
       setVideoType(type);
-      if (type === 'cinematic' || type === 'tour') return; // CinematicMontage / TourScene take it from here
+      if (type === 'cinematic' || type === 'tour' || type === 'clip') return; // CinematicMontage / TourScene / ClipScene take it from here
       startGeneration(query, modeParam ?? movieModeFor(type));
     })();
   }, [query, modeParam, projectIdParam, session?.user?.id, sessionLoading]);
@@ -533,13 +536,16 @@ export default function MovieResults() {
     ...(web ?? []).filter((r) => r.image).map((r) => ({ image: r.image as string, title: r.title, url: r.url })),
   ].filter((r, i, all) => all.findIndex((x) => x.image === r.image) === i);
   const sourceList: { title: string; url: string; snippet: string }[] =
-    videoType !== 'cinematic' && (experience?.sources?.length ?? 0) > 0 ? experience!.sources : (web ?? []);
+    videoType === 'clip' && clipInfo?.source.url ? [clipInfo.source, ...(web ?? [])]
+      : videoType !== 'cinematic' && (experience?.sources?.length ?? 0) > 0 ? experience!.sources : (web ?? []);
   const exploreTopics: { title: string; imageUrl?: string }[] =
     videoType === 'cinematic'
       ? (cine?.related ?? []).map((title, i) => ({ title, imageUrl: cine?.relatedImages?.[i] }))
       : videoType === 'tour'
         ? (tourInfo?.related ?? []).map((title, i) => ({ title, imageUrl: tourInfo?.relatedImages?.[i] }))
-        : relatedTopics;
+        : videoType === 'clip'
+          ? (clipInfo?.related ?? []).map((title, i) => ({ title, imageUrl: clipInfo?.relatedImages?.[i] }))
+          : relatedTopics;
 
   // HD / quality extension: rebuild this video one model up — Luna → Sol, Sol → Astra
   // (Astra costs 1 Pro Credit). The only way Astra is ever used for Video.
@@ -596,7 +602,13 @@ export default function MovieResults() {
   const shareLink = (title: string, caption: string, image: string | undefined, deepLink: string) =>
     buildCrawlerShareUrl({ title, description: caption, imageUrls: image ? [image] : [], deepLink });
   const coreImage = swipes.find((s) => s.isCore)?.imageUrl || selectedSwipe?.imageUrl;
-  const shareCard = videoType === 'tour'
+  const shareCard = videoType === 'clip'
+    ? (clipInfo ? (() => {
+        const caption = clipInfo.overview.split(/(?<=[.!?])\s/)[0];
+        return { title: clipInfo.title, caption, hashtags: [] as string[], video: undefined,
+          url: shareLink(clipInfo.title, caption, clipInfo.thumbnail, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=clip`) };
+      })() : null)
+    : videoType === 'tour'
     ? (tourInfo ? (() => {
         const caption = tourInfo.overview.split(/(?<=[.!?])\s/)[0];
         return { title: tourInfo.title, caption, hashtags: [] as string[], video: undefined,
@@ -614,7 +626,7 @@ export default function MovieResults() {
         url: shareLink(experience.viral.title, experience.viral.caption, coreImage,
           savedId ? `${site}/movie/share/${savedId}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}`),
       } : null);
-  const overview = videoType === 'cinematic' ? cine?.overview : videoType === 'tour' ? tourInfo?.overview : (experience?.narrative ?? draftNarrative);
+  const overview = videoType === 'cinematic' ? cine?.overview : videoType === 'tour' ? tourInfo?.overview : videoType === 'clip' ? clipInfo?.overview : (experience?.narrative ?? draftNarrative);
   const downloadFilm = async () => {
     if (!cine || exportProgress !== null) return;
     const controller = new AbortController();
@@ -748,7 +760,7 @@ export default function MovieResults() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
-      <TopBar query={displayQuery} timeAgo="" rightSlot={videoType === 'cinematic' ? qualityButton : videoType === 'tour' ? <span /> : enhanceButton} />
+      <TopBar query={displayQuery} timeAgo="" rightSlot={videoType === 'cinematic' ? qualityButton : videoType === 'tour' || videoType === 'clip' ? <span /> : enhanceButton} />
 
 
       {/* Tab navigation: Video / Narrative / Sources (every type uses this template) */}
@@ -835,7 +847,7 @@ export default function MovieResults() {
         )}
 
         {/* Progress bar while generating */}
-        {videoType !== 'cinematic' && videoType !== 'tour' && !isComplete && !error && (
+        {videoType !== 'cinematic' && videoType !== 'tour' && videoType !== 'clip' && !isComplete && !error && (
           <div className="mb-6">
             <div className="flex items-center gap-2 text-sm mb-2" style={{ color: 'var(--ui-text-secondary)' }}>
               <Loader2 size={16} className="animate-spin" />
@@ -861,6 +873,16 @@ export default function MovieResults() {
             onReady={setCine}
             onWatch={() => setActiveTab('video')}
             onFail={fallbackToVideo}
+          />
+        ) : videoType === 'clip' ? (
+          <ClipScene
+            question={query || experience?.question || ''}
+            tab={activeTab === 'video' ? 'video' : activeTab === 'timeline' ? 'timeline' : 'hidden'}
+            context={web}
+            belowPlayer={sharedSections}
+            onReady={setClipInfo}
+            onWatch={() => setActiveTab('video')}
+            onNeedSignIn={() => { setSignUpSubtitle(t('vidClipSaveGuest')); setShowSignUp(true); }}
           />
         ) : videoType === 'tour' ? (
           <TourScene
@@ -1042,7 +1064,7 @@ export default function MovieResults() {
         )}
 
         {/* ── Timeline tab: the chapters in order ─────────────────────────────── */}
-        {activeTab === 'timeline' && videoType !== 'cinematic' && (
+        {activeTab === 'timeline' && videoType !== 'cinematic' && videoType !== 'clip' && (
           <ol className="space-y-3">
             {swipes.map((s, i) => (
               <li key={s.id}>
@@ -1125,7 +1147,7 @@ export default function MovieResults() {
             ) : (
               <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
                 <p style={{ color: 'var(--ui-text-muted)' }}>
-                  {t(web === null || (videoType !== 'cinematic' && !isComplete) ? 'vidCollectingSources' : 'vidNoSources')}
+                  {t(web === null || (videoType !== 'cinematic' && videoType !== 'tour' && videoType !== 'clip' && !isComplete) ? 'vidCollectingSources' : 'vidNoSources')}
                 </p>
               </div>
             )}
