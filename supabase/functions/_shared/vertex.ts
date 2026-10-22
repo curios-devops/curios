@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-import-prefix
 // Shared Vertex AI auth for edge functions. Mints a Google OAuth access token from the
 // service-account secrets (VERTEX_AI_SERVICE_ACCOUNT_EMAIL / VERTEX_AI_PRIVATE_KEY) — the
-// same credentials veo-generate-video uses. Billed via the curios-vertex project, so it is
+// same credentials the Veo calls use. Billed via the curios-vertex project, so it is
 // NOT subject to the AI-Studio free-tier limits or the leaked API-key block.
 
 // @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
