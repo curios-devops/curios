@@ -271,6 +271,12 @@ async function serpVideos(q: string) {
   })).filter((r: { videoId: string | null }) => r.videoId);
 }
 
+/** YouTube's oEmbed answers 401/403 for videos whose owner disabled embedding — free, no key. */
+async function embeddable(videoId: string): Promise<boolean> {
+  const res = await fetch(`https://www.youtube.com/oembed?format=json&url=https://www.youtube.com/watch?v=${videoId}`, { signal: AbortSignal.timeout(5000) }).catch(() => null);
+  return !res || ![401, 403, 404].includes(res.status); // unsure → keep it
+}
+
 // Supadata's plan allows ~1 request a second: calls are spaced and a 429 is retried once.
 const SUPADATA_GAP_MS = 1100;
 async function supadata(videoId: string, retry = true): Promise<Line[]> {
@@ -332,7 +338,10 @@ Deno.serve(async (req: Request) => {
       if (!searches.length) return json({ error: "searches required" }, 400);
       let found = (await Promise.all(searches.map(braveVideos))).flat();
       if (new Set(found.map((v) => v.videoId)).size < 2) found = [...found, ...(await serpVideos(searches[0]))];
-      const unique = found.filter((v, i) => found.findIndex((x) => x.videoId === v.videoId) === i).slice(0, 3);
+      const distinct = found.filter((v, i) => found.findIndex((x) => x.videoId === v.videoId) === i).slice(0, 6);
+      // Only videos that can play inside Curios (embedding allowed).
+      const ok = await Promise.all(distinct.map((v) => embeddable(v.videoId!)));
+      const unique = distinct.filter((_, i) => ok[i]).slice(0, 3);
       const withText = await Promise.all(unique.map(async (v, i) => {
         await sleep(i * SUPADATA_GAP_MS);
         return { ...v, transcript: await supadata(v.videoId!) };

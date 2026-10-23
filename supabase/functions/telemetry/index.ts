@@ -46,7 +46,7 @@ const SECTION_OF: Record<string, (typeof SECTIONS)[number]> = {
   supabase: "General", openai: "General", gemini: "General", "gemini-studio": "General", stripe: "General", apify: "General",
   serpapi: "Search", "serpapi-news": "Search", tavily: "Search", brave: "Search", exa: "Search", rapidapi: "Search",
   vertex: "Video", runpod: "Video", wavespeed: "Video", pruna: "Video", viggle: "Video", cloudinary: "Video",
-  "find-scene": "Video", "find-scene-k": "Video", supadata: "Video",
+  "find-scene": "Video", "find-scene-k": "Video", supadata: "Video", tunelio: "Video", vidkraken: "Video",
   pexels: "Magazine", pixabay: "Magazine",
   elevenlabs: "Character", anam: "Character", characterai: "Character",
   tmdb: "Otros modos", omdb: "Otros modos", rawg: "Otros modos", lastfm: "Otros modos",
@@ -206,6 +206,26 @@ async function probes(stats: any): Promise<Provider[]> {
       const r = await get("https://api.supadata.ai/v1/me", { headers: { "x-api-key": env("SUPADATA_API_KEY") } });
       if (!r.ok || typeof r.body?.maxCredits !== "number") fail(r);
       return { reachable: true, meters: [{ label: "Créditos del mes", used: r.body.usedCredits, limit: r.body.maxCredits, unit: "credits", kind: "quota", ...month }], note: `Plan ${r.body.plan}` };
+    }),
+    // Clips: YouTube downloads for the real paused frame + last 5 s (Tunelio first, VidKraken fallback).
+    probe("tunelio", "Tunelio (descargas YouTube)", ["TUNELIO_API_KEY"], async () => {
+      const r = await get("https://tunelio.dev/credits", { headers: { Authorization: `Bearer ${env("TUNELIO_API_KEY")}` } });
+      if (!r.ok || typeof r.body?.credits !== "number") fail(r);
+      return { reachable: true, meters: [{ label: "Créditos restantes", used: r.body.credits, limit: null, unit: "credits", kind: "balance" }], note: `Plan ${r.body.plan}` };
+    }),
+    probe("vidkraken", "VidKraken (respaldo descargas)", ["VIDKRAKEN_API_KEY"], async () => {
+      const r = await get("https://vidkraken.com/api/v2/me", { headers: { Authorization: `Bearer ${env("VIDKRAKEN_API_KEY")}` } });
+      const b = r.body?.balances;
+      if (!r.ok || !b?.download_count) fail(r);
+      const MB = 1024 * 1024;
+      return {
+        reachable: true,
+        meters: [
+          { label: "Descargas", used: b.download_count.used, limit: b.download_count.unlimited ? null : b.download_count.granted, unit: "requests", kind: "quota" },
+          { label: "Ancho de banda", used: b.bandwidth_mb.used * MB, limit: b.bandwidth_mb.unlimited ? null : b.bandwidth_mb.granted * MB, unit: "bytes", kind: "quota" },
+        ],
+        note: `Plan ${r.body.plan?.id ?? "?"}${b.download_count.resetsAt ? ` · se renueva ${String(b.download_count.resetsAt).slice(0, 10)}` : ""}`,
+      };
     }),
     // Swipe frames (Nano Banana) and Veo (Mejorar). countTokens is free and fails the same way a
     // real call would — e.g. billing disabled on the project.
