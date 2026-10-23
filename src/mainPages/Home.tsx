@@ -295,7 +295,7 @@ export default function Home() {
           {/* Big logo mark above the title, only on the welcome screen (first time on Home this
               visit) — absolute so the title/input keep their position. */}
           {isWelcome && (
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6" data-logo-mark>
               <CuriosLogo
                 size={56}
                 frameColor={appSettings.logoMark.iconColor}

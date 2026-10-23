@@ -71,7 +71,7 @@
   "vidDownloading": "Dein Video wird vorbereitet…",
   "vidDownloadKeepOpen": "Lass diesen Tab offen – das Video wird in Echtzeit aufgenommen (so lange, wie es dauert).",
   "vidDownloadFailed": "Der Download konnte nicht erstellt werden. Versuche es erneut.",
-  "vidType_tour": "Erlebnis",
+  "vidType_tour": "Immersion",
   "vidType_clip": "Clips",
   "vidTourDesigning": "Der Ort wird entworfen…",
   "vidTourBuilding": "Deine 3D-Tour wird gebaut…",
@@ -111,5 +111,13 @@
   "vidClipAskCost": "Jede Frage kostet 1 Credit.",
   "vidClipScreenHint": "Teile diesen Tab, dann startet die Antwort mit dem exakten Bild des Videos.",
   "vidClipSource": "Original ansehen",
-  "vidClipResume": "Weiterschauen"
+  "vidClipResume": "Weiterschauen",
+  "vidImmCasting": "Die Welt wird bevölkert…",
+  "vidImmLenses": "Erlebe diese Welt mit anderen Augen",
+  "vidImmLive": "Live-Perspektive",
+  "vidImmTalk": "Mit {name} sprechen",
+  "vidImmControls": "WASD · bewegen   Ziehen · schauen   Shift · rennen   E · sprechen",
+  "vidImmControlsTouch": "Joystick zum Bewegen",
+  "vidImmMute": "Stimmen stumm",
+  "vidImmUnmute": "Stimmen an"
 }

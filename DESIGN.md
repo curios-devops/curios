@@ -160,8 +160,12 @@ tints are derived; everything else is the general design.
 | Text on accent | white | `#050505` |
 
 - Neutrals: Grok's pure gray scale (no warm or blue tint).
-- Type: **Inter** (Grok's fallback for Universal Sans) for display and body, headlines 600 −0.03em;
-  labels and mono **Geist Mono**.
+- Type (2026-10-23, quieter, after xgenlabs.ai): **D-DIN** (Datto, SIL OFL, self-hosted in
+  `public/fonts/d-din`, Regular + Bold) for display, body and labels; headlines 700 −0.035em; labels
+  small uppercase 11px +0.08em; mono stays **Geist Mono**.
+- Logo: the mark is hidden for now (`[data-logo-mark]`), the "Curios AI" wordmark alone.
+- Background: on the dark Home, the Nebula sky — a few tiny stars drifting almost imperceptibly
+  (`.nebula-sky`, off with reduced motion).
 - Shapes: X / Grok — `rounded-lg` 12px, `rounded-xl` 16px, `rounded-2xl` 24px; pills stay full.
 - Icon: the Auto mode shows the new Roadster (tilted 45° nose-up) instead of the rocket.
 

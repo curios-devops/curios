@@ -36,7 +36,7 @@ const AGE_ORDER: VoiceAge[] = ['child', 'young', 'middle_aged', 'old'];
  * Pick the best voice: gender must match (neutral falls back to any), then the
  * closest age, then the most vibe-word overlap. Deterministic for a given input.
  */
-export function pickVoice(traits: { gender?: string; age?: string; vibe?: string }): string {
+export function pickVoice(traits: { gender?: string; age?: string; vibe?: string }, exclude: string[] = []): string {
   const gender: VoiceGender = traits.gender === 'female' || traits.gender === 'male' ? traits.gender : 'neutral';
   const age: VoiceAge = (AGE_ORDER as string[]).includes(traits.age ?? '') ? (traits.age as VoiceAge) : 'young';
   const vibeWords = (traits.vibe ?? '').toLowerCase().split(/[^a-z]+/).filter(Boolean);
@@ -50,5 +50,6 @@ export function pickVoice(traits: { gender?: string; age?: string; vibe?: string
       v.vibes.filter((w) => vibeWords.includes(w)).length,
   }));
   scored.sort((a, b) => b.score - a.score);
-  return scored[0].v.id;
+  // `exclude`: voices already taken (an Immersion cast never shares one), unless none is left.
+  return (scored.find((s) => !exclude.includes(s.v.id)) ?? scored[0]).v.id;
 }

@@ -71,7 +71,7 @@
   "vidDownloading": "Preparant el teu vídeo…",
   "vidDownloadKeepOpen": "Deixa aquesta pestanya oberta: el vídeo es grava en temps real (triga el que dura).",
   "vidDownloadFailed": "No s'ha pogut preparar la descàrrega. Torna-ho a provar.",
-  "vidType_tour": "Experiència",
+  "vidType_tour": "Immersió",
   "vidType_clip": "Clips",
   "vidTourDesigning": "Dissenyant el lloc…",
   "vidTourBuilding": "Construint el teu recorregut 3D…",
@@ -111,5 +111,13 @@
   "vidClipAskCost": "Cada pregunta fa servir 1 crèdit.",
   "vidClipScreenHint": "Si comparteixes aquesta pestanya, la resposta parteix de la imatge exacta del vídeo.",
   "vidClipSource": "Veure l'original",
-  "vidClipResume": "Continuar mirant"
+  "vidClipResume": "Continuar mirant",
+  "vidImmCasting": "Poblant el món…",
+  "vidImmLenses": "Explora aquest món amb mirades diferents",
+  "vidImmLive": "Perspectiva en directe",
+  "vidImmTalk": "Parlar amb {name}",
+  "vidImmControls": "WASD · moure't   Arrossega · mirar   Shift · córrer   E · parlar",
+  "vidImmControlsTouch": "Joystick per moure't",
+  "vidImmMute": "Silenciar veus",
+  "vidImmUnmute": "Activar veus"
 }

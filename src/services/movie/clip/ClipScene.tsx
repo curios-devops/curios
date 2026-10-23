@@ -4,7 +4,7 @@
 // the video and the viewer asks; the answer plays over the player, labelled as AI generated, and
 // the original continues (1 Pro Credit per question).
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Clapperboard, ExternalLink, Loader2, MessageCircle, Mic, Send, Sparkles, X } from 'lucide-react';
+import { Clapperboard, ExternalLink, Loader2, Maximize, MessageCircle, Mic, Minimize, Pause, Play, Send, Sparkles, Volume1, Volume2, VolumeX, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import CuriosLogo from '../../../components/common/CuriosLogo.tsx';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
@@ -127,6 +127,26 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerBoxRef = useRef<HTMLDivElement>(null);
   const [sceneSize, setSceneSize] = useState({ w: 16, h: 9 });
+  // Player controls, YouTube style (as in Cinematic): play, volume with a hover slider, fullscreen.
+  // The volume also drives the generated answers (their voices and the narrator).
+  const [playing, setPlaying] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [soundOff, setSoundOff] = useState(false);
+  const level = soundOff ? 0 : volume;
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => { if (videoRef.current) videoRef.current.volume = level; if (audioRef.current) audioRef.current.volume = level; });
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === playerBoxRef.current);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+  const toggleFullscreen = () => {
+    const el = playerBoxRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else if (el.requestFullscreen) void el.requestFullscreen().catch(() => setFullscreen((f) => !f));
+    else setFullscreen((f) => !f); // iPhone: no element fullscreen → fill the window
+  };
   useEffect(() => {
     if (!clip || clip.source !== 'youtube' || !clip.videoId || !ytHostRef.current) return;
     let player: YTPlayer | null = null;
@@ -295,7 +315,7 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
         </ol>
       )}
       <div className={tab === 'video' ? '' : 'hidden'}>
-        <div ref={playerBoxRef} className="relative overflow-hidden bg-black rounded-xl aspect-video">
+        <div ref={playerBoxRef} className={`relative overflow-hidden bg-black ${fullscreen && !document.fullscreenElement ? 'fixed inset-0 z-[200]' : 'rounded-xl aspect-video'}`}>
           {stage === 'ready' && clip ? (
             <>
               {clip.source === 'youtube'
@@ -311,14 +331,16 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
                         ref={videoRef}
                         src={clip.videoUrl ?? undefined}
                         crossOrigin="anonymous"
-                        controls
                         playsInline
                         autoPlay
+                        onPlay={() => setPlaying(true)}
+                        onPause={() => setPlaying(false)}
+                        onClick={() => player[playing ? 'pause' : 'play']()}
                         onLoadedMetadata={(e) => setSceneSize({ w: e.currentTarget.videoWidth || 16, h: e.currentTarget.videoHeight || 9 })}
                         className="absolute left-0 bottom-0 w-full h-auto"
                       />
-                      <span className="absolute top-2 left-2 inline-flex items-center gap-1 text-[11px] font-semibold text-white pointer-events-none" style={{ opacity: 0.75, textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-                        <CuriosLogo size={14} frameColor="#FFFFFF" colorOverride="#FFFFFF" /> Curios
+                      <span className="absolute top-2 left-2 pointer-events-none" style={{ opacity: 0.3 }}>
+                        <CuriosLogo size={18} frameColor="#FFFFFF" colorOverride="#FFFFFF" />
                       </span>
                     </div>
                   </div>
@@ -330,7 +352,8 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
                     src={playable[shotIndex]}
                     autoPlay
                     playsInline
-                    muted={answerShots.narrated}
+                    muted={answerShots.narrated || level === 0}
+                    ref={(el) => { if (el) el.volume = level; }}
                     onEnded={nextShot}
                     onError={nextShot}
                     className="w-full h-full object-contain"
@@ -344,6 +367,36 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
                   </button>
                 </div>
               )}
+              {/* Scene clips: our own control bar (YouTube brings its own). */}
+              {clip.source === 'scene' && !answerShots && (
+                <div className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-1 px-2 py-1 text-white" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65), transparent)' }}>
+                  <button type="button" onClick={() => player[playing ? 'pause' : 'play']()} aria-label={playing ? t('vidPause') : t('vidPlay')} title={playing ? t('vidPause') : t('vidPlay')} className="p-2 hover:opacity-80">
+                    {playing ? <Pause size={20} /> : <Play size={20} />}
+                  </button>
+                  <div className="group flex items-center">
+                    <button type="button" onClick={() => setSoundOff((m) => !m)} aria-label={level === 0 ? t('vidUnmute') : t('vidMute')} title={level === 0 ? t('vidUnmute') : t('vidMute')} className="p-2 hover:opacity-80">
+                      {level === 0 ? <VolumeX size={20} /> : level < 0.5 ? <Volume1 size={20} /> : <Volume2 size={20} />}
+                    </button>
+                    {/* The slider opens on hover, like YouTube (touch screens use the mute button). */}
+                    <input
+                      type="range" min={0} max={1} step={0.05} value={level}
+                      onChange={(e) => { setVolume(Number(e.target.value)); setSoundOff(Number(e.target.value) === 0); }}
+                      aria-label={t('vidVolume')} title={t('vidVolume')}
+                      className="w-0 opacity-0 group-hover:w-20 group-hover:opacity-100 focus:w-20 focus:opacity-100 transition-all duration-200 accent-white cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                aria-label={fullscreen ? t('vidExitFullscreen') : t('vidFullscreen')}
+                title={fullscreen ? t('vidExitFullscreen') : t('vidFullscreen')}
+                className={`absolute z-20 p-2 rounded-full text-white hover:opacity-80 ${clip.source === 'scene' && !answerShots ? 'bottom-1 right-2' : 'top-3 right-14 sm:right-auto sm:left-1/2 sm:-translate-x-1/2'}`}
+                style={clip.source === 'scene' && !answerShots ? undefined : { backgroundColor: 'rgba(0,0,0,0.55)' }}
+              >
+                {fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+              </button>
               {!answerShots && (
                 <button
                   type="button"

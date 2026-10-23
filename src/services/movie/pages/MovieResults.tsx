@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronsUp, Compass, Crown, Download, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Share2, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronsUp, Clapperboard, Compass, Crown, Download, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Share2, Sparkles } from 'lucide-react';
 
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -612,7 +612,7 @@ export default function MovieResults() {
     ? (tourInfo ? (() => {
         const caption = tourInfo.overview.split(/(?<=[.!?])\s/)[0];
         return { title: tourInfo.title, caption, hashtags: [] as string[], video: undefined,
-          url: shareLink(tourInfo.title, caption, tourInfo.panoramaUrl, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=tour`) };
+          url: shareLink(tourInfo.title, caption, tourInfo.panoramaUrl, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=immersion`) };
       })() : null)
     : videoType === 'cinematic'
     ? (cine ? (() => {
@@ -768,7 +768,9 @@ export default function MovieResults() {
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
             {TABS.filter((tab) => !(videoType === 'tour' && tab.id === 'timeline')).map((tab) => { // a tour has no chapters
-              const Icon = tab.icon;
+              // Clips: the first tab is the clip itself, named Clips (its type needs no button).
+              const isClipTab = videoType === 'clip' && tab.id === 'video';
+              const Icon = isClipTab ? Clapperboard : tab.icon;
               const isActive = activeTab === tab.id;
               return (
                 <button
@@ -780,7 +782,7 @@ export default function MovieResults() {
                     : { borderColor: 'transparent', color: 'var(--ui-text-muted)' }}
                 >
                   <Icon size={16} />
-                  {t(tab.label)}
+                  {isClipTab ? t('clips') : t(tab.label)}
                 </button>
               );
             })}
@@ -791,7 +793,7 @@ export default function MovieResults() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* The video's type, Magazine-style: the current one in a framed button; the menu
             regenerates the video as another type. */}
-        {videoType && activeTab === 'video' && (
+        {videoType && videoType !== 'clip' && activeTab === 'video' && (
           <div className="mb-4 relative inline-block" ref={typeMenuRef}>
             <button
               type="button"

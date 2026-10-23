@@ -11,6 +11,10 @@
 //           (app-settings): guest 1 per connection (hashed IP), free 3, Pro 10; GLOBAL_CAP overall.
 //   status  { taskId, key, meta }           → { status } | { ready: true, tour } (copies + saves on ready)
 //   claim   { key }                         → links a tour a guest made to the account they just made
+//   cast    { key, cast }                   → { tour } Immersion: the director's 3-6 characters get a transparent
+//           full-body cutout and first-person hands, once per tour. Images: Nano Banana 2 Lite, then Gemini
+//           2.5 Flash Image (AI Studio key; both need billing), then Viggle Image (all on green, keyed out
+//           here), then gpt-image-1-mini (transparent WebP)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
@@ -41,8 +45,87 @@ async function userId(req: Request): Promise<string | null> {
 
 const toTour = (r: Record<string, unknown>) => ({
   question: r.question, title: r.title, overview: r.overview, related: r.related,
-  spzUrl: r.spz_url, panoramaUrl: r.panorama_url, owned: Boolean(r.user_id),
+  spzUrl: r.spz_url, panoramaUrl: r.panorama_url, owned: Boolean(r.user_id), cast: r.cast_members ?? [],
 });
+
+const GREEN = "on a solid pure chroma-key green (#00FF00) background, flat even green, no shadow, no floor";
+
+/** Green-screen image → transparent WebP: green-dominant pixels go, soft edges, green spill removed. */
+async function keyOut(bytes: Uint8Array): Promise<Uint8Array> {
+  // Loaded on use, so the function still boots if the module can't load (that provider is skipped).
+  const { decode } = await import("npm:imagescript@1.3.0");
+  const img = await decode(bytes) as any; // deno-lint-ignore no-explicit-any
+  for (const [x, y, c] of img.iterateWithColors()) {
+    const r = (c >>> 24) & 255, g = (c >>> 16) & 255, b = (c >>> 8) & 255;
+    const excess = g - Math.max(r, b);
+    const a = excess > 90 ? 0 : excess > 40 ? Math.round((255 * (90 - excess)) / 50) : 255;
+    const g2 = excess > 0 ? Math.max(r, b) + Math.round(excess * 0.15) : g;
+    img.setPixelAt(x, y, ((r << 24) | (Math.min(255, g2) << 16) | (b << 8) | a) >>> 0);
+  }
+  return await img.encodeWEBP(80);
+}
+
+/** Nano Banana 2 Lite / Gemini 2.5 Flash Image (AI Studio key) on green. */
+async function geminiImage(model: string, prompt: string, aspect: string): Promise<Uint8Array | null> {
+  if (!env("GEMINI_STUDIO_API_KEY")) return null;
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env("GEMINI_STUDIO_API_KEY")}`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: `${prompt}, ${GREEN}` }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: aspect } } }),
+    signal: AbortSignal.timeout(60000),
+  }).catch(() => null);
+  const data = res?.ok ? await res.json().catch(() => null) : null;
+  const part = (data?.candidates?.[0]?.content?.parts ?? []).find((p: Record<string, any>) => p.inlineData ?? p.inline_data);
+  const b64 = (part?.inlineData ?? part?.inline_data)?.data;
+  if (!b64) { console.error("gemini image", model, res?.status); return null; }
+  return await keyOut(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));
+}
+
+/** Viggle Image (qwen, $0.01 at 1K, ~15 s) on green. */
+async function viggleImage(prompt: string, aspect: string): Promise<Uint8Array | null> {
+  if (!env("VIGGLE_API_KEY")) return null;
+  const headers = { Authorization: `Bearer ${env("VIGGLE_API_KEY")}` };
+  const form = new FormData();
+  form.append("prompt", `${prompt}, ${GREEN}`);
+  form.append("aspect_ratio", aspect);
+  form.append("resolution", "1K");
+  form.append("n", "1");
+  let job = await fetch("https://apis.viggle.ai/v1/images", { method: "POST", headers, body: form }).then((r) => r.json()).catch(() => null);
+  const deadline = Date.now() + 90_000;
+  while (job && (job.status === "queued" || job.status === "processing") && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 3000));
+    job = await fetch(`https://apis.viggle.ai/v1/images/${job.id}`, { headers }).then((r) => r.json()).catch(() => null);
+  }
+  const url = job?.status === "ready" ? job.images?.[0]?.url : null;
+  if (!url) { console.error("viggle image", job?.status, JSON.stringify(job?.error ?? null)); return null; }
+  return await keyOut(new Uint8Array(await (await fetch(url)).arrayBuffer()));
+}
+
+/** gpt-image-1-mini, transparent WebP directly — the last resort. */
+async function openaiImage(prompt: string, size: string): Promise<Uint8Array | null> {
+  const res = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env("OPENAI_API_KEY")}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "gpt-image-1-mini", prompt, size, quality: "low", background: "transparent", output_format: "webp", output_compression: 80, n: 1 }),
+    signal: AbortSignal.timeout(90000),
+  }).catch(() => null);
+  const data = res?.ok ? await res.json().catch(() => null) : null;
+  const b64 = data?.data?.[0]?.b64_json;
+  if (!b64) { console.error("openai image", res?.status, JSON.stringify(data).slice(0, 200)); return null; }
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+/** A transparent WebP (cutouts and hands are laid over the 3D world), stored. */
+async function cutout(prompt: string, portrait: boolean, path: string): Promise<string | null> {
+  const aspect = portrait ? "2:3" : "3:2";
+  const bytes = await geminiImage("gemini-3.1-flash-lite-image", prompt, aspect).catch(() => null)
+    ?? await geminiImage("gemini-2.5-flash-image", prompt, aspect).catch(() => null)
+    ?? await viggleImage(prompt, aspect).catch(() => null)
+    ?? await openaiImage(`${prompt}, isolated, transparent background`, portrait ? "1024x1536" : "1536x1024").catch(() => null);
+  if (!bytes) return null;
+  const client = db();
+  const { error } = await client.storage.from(BUCKET).upload(path, bytes, { contentType: "image/webp", upsert: true });
+  return error ? null : client.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+}
 
 /** New tours the caller may still make in the last 24 h, by tier (and the global cap). */
 async function toursLeft(req: Request, uid: string | null): Promise<number> {
@@ -142,6 +225,33 @@ Deno.serve(async (req: Request) => {
         .eq("creator_ip_hash", await ipHash(req)); // only the guest who made it (same connection)
       if (error) throw new Error(error.message);
       return json({ ok: true });
+    }
+
+    if (body.action === "cast") {
+      const { data: row } = await db().from("scene_tours").select("*").eq("question_key", key).maybeSingle();
+      if (!row) return json({ error: "tour not found" }, 404);
+      if (Array.isArray(row.cast_members) && row.cast_members.length) return json({ tour: toTour(row) }); // made once
+      const str = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
+      const cast = (Array.isArray(body.cast) ? body.cast : []).slice(0, 6);
+      if (cast.length < 2) return json({ error: "cast required" }, 400);
+      const folder = `tours/cast/${row.id}`;
+      const members = await Promise.all(cast.map(async (c: Record<string, unknown>, i: number) => {
+        const look = str(c.look, 500), hands = str(c.hands, 400);
+        const [bodyUrl, handsUrl] = await Promise.all([
+          cutout(`Full-body photo of ${look}, standing, facing the viewer, whole figure from head to feet, realistic film-still lighting`, true, `${folder}/${i}-body.webp`),
+          cutout(`First-person view through the eyes of ${look}: only the viewer's own two forearms and hands rising from the bottom edge of the frame, ${hands}; only the hands, sleeves and the object they hold — no table, wall, surface, body or scenery, realistic`, false, `${folder}/${i}-hands.webp`),
+        ]);
+        return {
+          name: str(c.name, 40), role: str(c.role, 60), tagline: str(c.tagline, 160), voiceId: str(c.voiceId, 40),
+          gender: c.gender === "male" ? "male" : "female", lines: (Array.isArray(c.lines) ? c.lines : []).map((l) => str(l, 300)).filter(Boolean).slice(0, 4),
+          bodyUrl, handsUrl,
+        };
+      }));
+      const usable = members.filter((m) => m.bodyUrl);
+      if (usable.length < 2) return json({ error: "images failed" }, 502);
+      const { data, error } = await db().from("scene_tours").update({ cast_members: usable }).eq("id", row.id).select("*").single();
+      if (error) throw new Error(error.message);
+      return json({ tour: toTour(data) });
     }
 
     return json({ error: "unknown action" }, 400);

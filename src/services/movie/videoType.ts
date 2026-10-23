@@ -3,8 +3,8 @@
 // chooses among the affordable automatic techniques: cinematic, video, animation.
 //
 // Fallback chain: any technique that fails → Video (the default); if Video can't render a
-// clip, the viewer animates its still frame (Ken Burns). Experience (the 'tour' id: Viggle 3D
-// scene) and Clips (a real video's moment) are chosen by hand only — each costs a Pro Credit.
+// clip, the viewer animates its still frame (Ken Burns). Immersion (the 'tour' id: a Viggle 3D
+// world with its people) and Clips (a real video's moment) are chosen by hand only — each costs a Pro Credit.
 import { supabase } from '../../lib/supabase.ts';
 import type { MovieMode } from './types.ts';
 import { Clapperboard, Film, Palette, PersonStanding, Rotate3d, Video, type LucideIcon } from 'lucide-react';
@@ -21,14 +21,14 @@ export const VIDEO_TYPES: { id: VideoTypeChoice; label: string; hint: string; ic
   { id: 'cinematic', label: 'Cinematic', hint: 'Real footage montage with narration and captions', icon: Video },
   { id: 'animation', label: 'Animation', hint: 'Animated explainer', icon: Palette },
   { id: 'character', label: 'Character', hint: 'A character tells you the answer', icon: PersonStanding },
-  { id: 'tour', label: 'Experience', hint: 'Walk through the place — 360° panorama and 3D scene (Viggle)', icon: Rotate3d },
+  { id: 'tour', label: 'Immersion', hint: 'Step into the world (Viggle 3D) and live it through the eyes of its people', icon: Rotate3d },
   { id: 'clip', label: 'Clips', hint: 'The moment of a real video that answers — and you can talk to it', icon: Clapperboard },
 ];
 
 const AUTO_TYPES: VideoType[] = ['cinematic', 'video', 'animation'];
 
 export function parseVideoType(value: string | null | undefined): VideoTypeChoice {
-  if (value === 'explore' || value === 'experience') return 'tour'; // old placeholder links / the Experience name
+  if (value === 'explore' || value === 'experience' || value === 'immersion') return 'tour'; // older names / Immersion
   return VIDEO_TYPES.some((t) => t.id === value) ? (value as VideoTypeChoice) : 'auto';
 }
 

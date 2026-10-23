@@ -53,5 +53,9 @@
   "phEx_games_2": "Un juego de palabras para jugar ahora",
   "phEx_music_1": "Bohemian Rhapsody de Queen",
   "phEx_music_2": "Discos esenciales de Soda Stereo",
-  "homeHintClips": "Clips: encuentra el momento exacto de un video y háblale"
+  "homeHintClips": "Clips: encuentra el momento exacto de un video y háblale",
+  "phMode_immersion": "Entra en un mundo 3D y vívelo con los ojos de su gente...",
+  "phEx_immersion_1": "Un pueblo del lejano oeste en 1880",
+  "phEx_immersion_2": "El mercado de Tenochtitlán",
+  "homeHintImmersion": "Inmersión: entra al mundo de tu pregunta"
 }
