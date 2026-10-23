@@ -6,20 +6,22 @@
 // Starting image (best available):
 //   film/TV clip (our MP4)   → the paused frame (canvas) + its last 5 s → p-video-2-pro-reference
 //                              continues the scene (p-video-2 from the frame as fallback)
-//   YouTube                  → Tunelio (TUNELIO_API_KEY) gives the page a download link: it reads the
-//                              real frame + last 5 s itself; else a frame captured from the screen
-//                              (desktop, with permission), or CLIP_DOWNLOADER_URL (placeholder), or
-//                              Gemini describes that second and the image model recreates it
+//   YouTube                  → the video comes down here (Tunelio, then VidKraken) and its last 5 s
+//                              before the pause are cut (Mediabunny, no re-encode) into our storage;
+//                              the page reads the real frame from it. Else a frame captured from the
+//                              screen (desktop), or CLIP_DOWNLOADER_URL (placeholder), or Gemini
+//                              describes that second and the image model recreates it
 // Who speaks: fiction → the character (Pruna speech + lip-sync); real people → never: the shots
 // illustrate the answer and the page's narrator (ElevenLabs) reads it.
 //
 // Body { action }:
-//   start  { clipId, at, question, frame?, video? } → { questionId, frameUrl?, videoUrl?, scene }
-//          frame = JPEG and video = MP4 as base64. Daily caps: guest 1 per connection, free 3, Pro 10.
+//   start  { clipId, at, question, frame?, video?, videoUrl? } → { questionId, frameUrl?, videoUrl?, scene }
+//          frame = JPEG and video = MP4 as base64; videoUrl = a segment already in our storage. Daily caps: guest 1 per connection, free 3, Pro 10.
 //   shot   { questionId, prompt, line?, speaks, frameUrl?, videoUrl?, imagePrompt? } → { videoUrl }
 //   record { questionId, answer }                   → { ok }
-//   tunnel { videoId }                              → { url } a 720p download link (Tunelio) for a saved clip's video
+//   segment { videoId, at }                         → { url } the 5 s before `at` of a saved clip's YouTube video, in our storage
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { ALL_FORMATS, BufferSource, BufferTarget, Conversion, Input, Mp4OutputFormat, Output, UrlSource } from "npm:mediabunny@1.62.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -127,6 +129,52 @@ async function pruna(model: string, input: Record<string, unknown>, path: string
   return await store(new Uint8Array(await file.arrayBuffer()), path, "video/mp4");
 }
 
+// ── YouTube downloads (for the real paused frame and last seconds) ─────────────────────────────
+type Source = { url: string; ranges: boolean; size: number | null };
+const MAX_FULL_DOWNLOAD = 120_000_000; // a stream without Range is read whole; keep it in memory bounds
+
+/** Tunelio: a 720p stream link at once (~1 s; the file streams fast) — no Range, so read whole. */
+async function tunelio(youtube: string): Promise<Source | null> {
+  if (!env("TUNELIO_API_KEY")) return null;
+  const res = await fetch(`https://tunelio.dev/create?${new URLSearchParams({ quality: "720p", url: youtube })}`, {
+    headers: { Authorization: `Bearer ${env("TUNELIO_API_KEY")}` }, signal: AbortSignal.timeout(30000),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (data?.status !== "ok" || typeof data.url !== "string") throw new Error(`tunelio ${res.status} ${JSON.stringify(data).slice(0, 200)}`);
+  const size = Number(data.file_size) || null;
+  return size && size > MAX_FULL_DOWNLOAD ? null : { url: data.url, ranges: false, size };
+}
+
+/** VidKraken: a download job (~15 s for a few minutes of video); its file allows Range reads. */
+async function vidkraken(youtube: string): Promise<Source | null> {
+  if (!env("VIDKRAKEN_API_KEY")) return null;
+  const headers = { Authorization: `Bearer ${env("VIDKRAKEN_API_KEY")}`, "Content-Type": "application/json" };
+  const submit = await fetch("https://vidkraken.com/api/v2/download", { method: "POST", headers, body: JSON.stringify({ url: youtube, format: "720" }), signal: AbortSignal.timeout(30000) });
+  const job = await submit.json().catch(() => ({}));
+  if (!job?.jobId) throw new Error(`vidkraken ${submit.status} ${JSON.stringify(job).slice(0, 200)}`);
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    await sleep(2500);
+    const poll = await fetch(`https://vidkraken.com/api/v2/download/${job.jobId}`, { headers }).then((r) => r.json()).catch(() => ({}));
+    if (poll?.status === "COMPLETED" && typeof poll.downloadUrl === "string") return { url: poll.downloadUrl, ranges: true, size: Number(poll.fileSize) || null };
+    if (poll?.status === "FAILED" || poll?.status === "CANCELLED") throw new Error(`vidkraken ${poll.status}`);
+  }
+  throw new Error("vidkraken timeout");
+}
+
+/** The 5 s before `at`, copied without re-encoding (starts at the keyframe before). */
+async function cut(source: Source, at: number): Promise<Uint8Array | null> {
+  const input = new Input({
+    source: source.ranges ? new UrlSource(source.url) : new BufferSource(new Uint8Array(await (await fetch(source.url)).arrayBuffer())),
+    formats: ALL_FORMATS,
+  });
+  const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target: new BufferTarget() });
+  const conversion = await Conversion.init({ input, output, trim: { start: Math.max(0, at - 5), end: at } });
+  if (!conversion.isValid) return null;
+  await conversion.execute();
+  return output.target.buffer ? new Uint8Array(output.target.buffer) : null;
+}
+
 // @ts-ignore: Deno runtime
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -151,6 +199,7 @@ Deno.serve(async (req: Request) => {
       let videoUrl: string | null = null;
       if (typeof body.frame === "string" && body.frame.length < 6_000_000) frameUrl = await store(b64bytes(body.frame), `${folder}/frame.jpg`, "image/jpeg");
       if (typeof body.video === "string" && body.video.length < 20_000_000) videoUrl = await store(b64bytes(body.video), `${folder}/last5.mp4`, "video/mp4");
+      else videoUrl = ours(body.videoUrl);
       // YouTube without a captured frame: a download service when configured (placeholder).
       if (!frameUrl && clip.source === "youtube" && env("CLIP_DOWNLOADER_URL")) {
         const res = await fetch(env("CLIP_DOWNLOADER_URL"), {
@@ -198,20 +247,25 @@ Deno.serve(async (req: Request) => {
       return shot ? json({ videoUrl: shot }) : json({ error: "pruna" }, 502);
     }
 
-    if (body.action === "tunnel") {
+    if (body.action === "segment") {
       const videoId = String(body.videoId ?? "");
-      if (!/^[\w-]{11}$/.test(videoId)) return json({ error: "bad videoId" }, 400);
-      if (!env("TUNELIO_API_KEY")) return json({ error: "not_configured" }, 501);
-      // Only for videos that are a saved clip — the quota isn't an open downloader.
+      const at = Math.max(0, Number(body.at) || 0);
+      if (!/^[\w-]{11}$/.test(videoId) || at < 1.5) return json({ error: "bad request" }, 400);
+      // Only for videos that are a saved clip — the download quota isn't an open downloader.
       const { data: known } = await db().from("clip_answers").select("id").eq("video_id", videoId).limit(1).maybeSingle();
       if (!known) return json({ error: "unknown video" }, 404);
-      const res = await fetch(`https://tunelio.dev/create?${new URLSearchParams({ quality: "720p", url: `https://www.youtube.com/watch?v=${videoId}` })}`, {
-        headers: { Authorization: `Bearer ${env("TUNELIO_API_KEY")}` }, signal: AbortSignal.timeout(45000),
-      }).catch(() => null);
-      const data = res ? await res.json().catch(() => ({})) : {};
-      return data?.status === "ok" && typeof data.url === "string"
-        ? json({ url: data.url, size: data.file_size_str ?? null })
-        : json({ error: "tunnel", detail: data?.error ?? data?.message ?? res?.status ?? "unreachable" }, 502);
+      const path = `clips/segments/${videoId}-${Math.floor(at * 10)}.mp4`;
+      const cached = db().storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+      if (!body.via && (await fetch(cached, { method: "HEAD" }).catch(() => null))?.ok) return json({ url: cached });
+      const youtube = `https://www.youtube.com/watch?v=${videoId}`;
+      // `via` picks one provider (to check the fallback); normally Tunelio, then VidKraken.
+      for (const download of [tunelio, vidkraken].filter((d) => !body.via || d.name === body.via)) {
+        const source = await download(youtube).catch((e) => { console.error(download.name, String(e)); return null; });
+        if (!source) continue;
+        const bytes = await cut(source, at).catch((e) => { console.error("cut", download.name, String(e)); return null; });
+        if (bytes) return json({ url: await store(bytes, path, "video/mp4"), via: download.name });
+      }
+      return json({ error: "no_download" }, 502);
     }
 
     if (body.action === "record") {

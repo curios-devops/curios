@@ -1,9 +1,9 @@
 // Clips: the paused moment as a starting point for the generated answer.
 //   Our MP4 (a film/TV scene): the frame straight from the <video>, and its last 5 s cut in the
 //   browser (Mediabunny) — find-scene's watermark sits in the top 10 %, so both are cropped below it.
-//   YouTube: its player's pixels can't be read by the page. A Tunelio download link is read with
-//   Mediabunny instead (frame + last 5 s); else, on desktop, the viewer can share this tab once
-//   (getDisplayMedia) and the player's region is cut from it; otherwise the server recreates it.
+//   YouTube: its player's pixels can't be read by the page. The server cuts the 5 s before the pause
+//   into our storage (Tunelio / VidKraken) and its last frame is read here; else, on desktop, the
+//   viewer can share this tab once (getDisplayMedia); otherwise the server recreates the frame.
 
 /** find-scene stamps its name in the top-left corner: keep a 16:9 region below it. */
 export function belowWatermark(width: number, height: number) {
@@ -35,17 +35,18 @@ export function videoFrame(video: HTMLVideoElement, cropWatermark: boolean): Pro
   return jpeg(canvas);
 }
 
-/** The frame at `at` of a video URL, decoded with Mediabunny (no <video>, no tainted canvas). */
+/** The frame at `at` (Infinity = the last one) of a video URL, decoded with Mediabunny. */
 export async function frameAt(url: string, at: number): Promise<string | null> {
   try {
     const { ALL_FORMATS, CanvasSink, Input, UrlSource } = await import('mediabunny');
     const input = new Input({ source: new UrlSource(url), formats: ALL_FORMATS });
     const track = await input.getPrimaryVideoTrack();
     if (!track) return null;
+    const time = Number.isFinite(at) ? at : Math.max(0, (await track.computeDuration()) - 0.1);
     const sink = new CanvasSink(track, { width: Math.min(1280, track.displayWidth) });
     let image: string | null = null;
     const read = (async () => {
-      for await (const wrapped of sink.canvasesAtTimestamps([at])) {
+      for await (const wrapped of sink.canvasesAtTimestamps([time])) {
         if (!wrapped) continue;
         const c = wrapped.canvas;
         const blob = c instanceof HTMLCanvasElement

@@ -91,8 +91,12 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
 
 export interface AskStart { questionId: string; frameUrl: string | null; videoUrl: string | null; scene: string; thumbnail: string }
 
+/** `video` is a base64 MP4 cut in the browser, or the URL of a segment already in our storage. */
 export const startAsk = (clipId: string, at: number, question: string, frame: string | null, video: string | null) =>
-  call<AskStart>({ action: 'start', clipId, at, question, ...(frame ? { frame } : {}), ...(video ? { video } : {}) });
+  call<AskStart>({
+    action: 'start', clipId, at, question, ...(frame ? { frame } : {}),
+    ...(video ? (/^https?:/.test(video) ? { videoUrl: video } : { video }) : {}),
+  });
 
 /** One shot; resolves to its video URL (or null when it failed — the others still play). */
 export function makeShot(start: AskStart, shot: ClipShot, n: number, speaks: boolean): Promise<string | null> {
@@ -103,9 +107,9 @@ export function makeShot(start: AskStart, shot: ClipShot, n: number, speaks: boo
   }).then((r) => r.videoUrl ?? null, () => null);
 }
 
-/** A 720p download link for a saved YouTube clip (Tunelio), so the page can read the real frame. Null if unavailable. */
-export const openTunnel = (videoId: string) =>
-  call<{ url?: string }>({ action: 'tunnel', videoId }).then((r) => r.url ?? null, () => null);
+/** The 5 s before `at` of a saved YouTube clip, cut on the server (Tunelio / VidKraken) into our storage. Null if unavailable. */
+export const openSegment = (videoId: string, at: number) =>
+  call<{ url?: string }>({ action: 'segment', videoId, at }).then((r) => r.url ?? null, () => null);
 
 export const recordAsk = (questionId: string, answer: unknown) =>
   call<{ ok: boolean }>({ action: 'record', questionId, answer }).catch(() => undefined);

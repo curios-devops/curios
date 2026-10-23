@@ -15,7 +15,7 @@ import { tts } from '../audio/paragraphNarrator.ts';
 import { loadNarratorVoice } from '../audio/narratorPrefs.ts';
 import { VOICES } from '../../character/voices.ts';
 import { claimClip, clipKey, findClip, guestClips, makeClip, planClip, rememberGuestClip, type Clip, type ClipStage } from './clipPlan.ts';
-import { directAnswer, makeShot, openTunnel, recordAsk, startAsk } from './clipAsk.ts';
+import { directAnswer, makeShot, openSegment, recordAsk, startAsk } from './clipAsk.ts';
 import { canCaptureScreen, frameAt, lastSeconds, screenRegion, videoFrame } from './clipFrames.ts';
 
 export interface ClipInfo {
@@ -163,12 +163,17 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
   const busy = turns.some((x) => x.state === 'thinking' || x.state === 'rendering');
   const update = (i: number, patch: Partial<Turn>) => setTurns((all) => all.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
-  // YouTube: the download link is asked for as soon as the viewer opens the question box.
-  const tunnelRef = useRef<Promise<string | null> | null>(null);
+  // YouTube: the paused 5 s are cut on the server while the viewer types the question.
+  const segmentRef = useRef<{ at: number; url: Promise<string | null> } | null>(null);
+  const segmentAt = (at: number) => {
+    if (clip?.source !== 'youtube' || !clip.videoId) return Promise.resolve(null);
+    if (!segmentRef.current || Math.abs(segmentRef.current.at - at) > 0.5) segmentRef.current = { at, url: openSegment(clip.videoId, at) };
+    return segmentRef.current.url;
+  };
   const openAsk = () => {
     player.pause();
     setAsking(true);
-    if (clip?.source === 'youtube' && clip.videoId && !tunnelRef.current) tunnelRef.current = openTunnel(clip.videoId);
+    void segmentAt(player.time());
   };
 
   const listen = () => {
@@ -194,17 +199,16 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
     const at = player.time();
     if (!(await requestProAccess())) { update(i, { state: 'failed', answer: t('vidClipAskNoCredits') }); return; }
     try {
-      // The paused moment: our MP4's frame + last 5 s; YouTube → its Tunelio download (frame + last
-      // 5 s), else the shared tab (desktop), else the server recreates it.
+      // The paused moment: our MP4's frame + last 5 s; YouTube → the 5 s cut on the server (Tunelio /
+      // VidKraken) and its last frame, else the shared tab (desktop), else the server recreates it.
       const ownVideo = clip.source === 'scene' ? videoRef.current : null;
       let frame: string | null = null;
       let last5: string | null = null;
       if (ownVideo) {
         [frame, last5] = await Promise.all([videoFrame(ownVideo, true).catch(() => null), clip.fiction ? lastSeconds(clip.videoUrl!, at, 5, true) : Promise.resolve(null)]);
       } else {
-        const tunnel = await (tunnelRef.current ??= clip.videoId ? openTunnel(clip.videoId) : Promise.resolve(null));
-        if (tunnel) [frame, last5] = await Promise.all([frameAt(tunnel, at), clip.fiction ? lastSeconds(tunnel, at, 5, false) : Promise.resolve(null)]);
-        if (!frame) tunnelRef.current = null; // expired or unreadable: a fresh link next time
+        const segment = await segmentAt(at);
+        if (segment) { frame = await frameAt(segment, Infinity); last5 = clip.fiction ? segment : null; }
         if (!frame && playerBoxRef.current) frame = await screenRegion(playerBoxRef.current);
       }
       const start = await startAsk(clip.id, at, q, frame, last5);
