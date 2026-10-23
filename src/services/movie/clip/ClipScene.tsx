@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Clapperboard, ExternalLink, Loader2, MessageCircle, Mic, Send, Sparkles, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
+import CuriosLogo from '../../../components/common/CuriosLogo.tsx';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -14,8 +15,8 @@ import { tts } from '../audio/paragraphNarrator.ts';
 import { loadNarratorVoice } from '../audio/narratorPrefs.ts';
 import { VOICES } from '../../character/voices.ts';
 import { claimClip, clipKey, findClip, guestClips, makeClip, planClip, rememberGuestClip, type Clip, type ClipStage } from './clipPlan.ts';
-import { directAnswer, makeShot, recordAsk, startAsk } from './clipAsk.ts';
-import { canCaptureScreen, lastSeconds, screenRegion, videoFrame } from './clipFrames.ts';
+import { directAnswer, makeShot, openTunnel, recordAsk, startAsk } from './clipAsk.ts';
+import { canCaptureScreen, frameAt, lastSeconds, screenRegion, videoFrame } from './clipFrames.ts';
 
 export interface ClipInfo {
   title: string;
@@ -125,6 +126,7 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
   const ytRef = useRef<YTPlayer | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerBoxRef = useRef<HTMLDivElement>(null);
+  const [sceneSize, setSceneSize] = useState({ w: 16, h: 9 });
   useEffect(() => {
     if (!clip || clip.source !== 'youtube' || !clip.videoId || !ytHostRef.current) return;
     let player: YTPlayer | null = null;
@@ -161,7 +163,13 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
   const busy = turns.some((x) => x.state === 'thinking' || x.state === 'rendering');
   const update = (i: number, patch: Partial<Turn>) => setTurns((all) => all.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
-  const openAsk = () => { player.pause(); setAsking(true); };
+  // YouTube: the download link is asked for as soon as the viewer opens the question box.
+  const tunnelRef = useRef<Promise<string | null> | null>(null);
+  const openAsk = () => {
+    player.pause();
+    setAsking(true);
+    if (clip?.source === 'youtube' && clip.videoId && !tunnelRef.current) tunnelRef.current = openTunnel(clip.videoId);
+  };
 
   const listen = () => {
     const W = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike };
@@ -186,11 +194,19 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
     const at = player.time();
     if (!(await requestProAccess())) { update(i, { state: 'failed', answer: t('vidClipAskNoCredits') }); return; }
     try {
-      // The paused moment: our MP4's frame + last 5 s; YouTube → the shared tab (desktop) or the server.
+      // The paused moment: our MP4's frame + last 5 s; YouTube → its Tunelio download (frame + last
+      // 5 s), else the shared tab (desktop), else the server recreates it.
       const ownVideo = clip.source === 'scene' ? videoRef.current : null;
-      const [frame, last5] = ownVideo
-        ? await Promise.all([videoFrame(ownVideo, true).catch(() => null), clip.fiction ? lastSeconds(clip.videoUrl!, at, 5, true) : Promise.resolve(null)])
-        : [playerBoxRef.current ? await screenRegion(playerBoxRef.current) : null, null];
+      let frame: string | null = null;
+      let last5: string | null = null;
+      if (ownVideo) {
+        [frame, last5] = await Promise.all([videoFrame(ownVideo, true).catch(() => null), clip.fiction ? lastSeconds(clip.videoUrl!, at, 5, true) : Promise.resolve(null)]);
+      } else {
+        const tunnel = await (tunnelRef.current ??= clip.videoId ? openTunnel(clip.videoId) : Promise.resolve(null));
+        if (tunnel) [frame, last5] = await Promise.all([frameAt(tunnel, at), clip.fiction ? lastSeconds(tunnel, at, 5, false) : Promise.resolve(null)]);
+        if (!frame) tunnelRef.current = null; // expired or unreadable: a fresh link next time
+        if (!frame && playerBoxRef.current) frame = await screenRegion(playerBoxRef.current);
+      }
       const start = await startAsk(clip.id, at, q, frame, last5);
       const plan = await directAnswer(clip, at, q, start.scene);
       update(i, { answer: plan.answer, state: 'rendering' });
@@ -280,7 +296,29 @@ export default function ClipScene({ question, tab, context, belowPlayer, onReady
             <>
               {clip.source === 'youtube'
                 ? <div ref={ytHostRef} className="absolute inset-0 [&>div]:w-full [&>div]:h-full [&_iframe]:w-full [&_iframe]:h-full" />
-                : <video ref={videoRef} src={clip.videoUrl ?? undefined} crossOrigin="anonymous" controls playsInline autoPlay className="absolute inset-0 w-full h-full object-contain" />}
+                : (
+                  // find-scene stamps its name in the top 10 %: the clip is shown from below it, with our mark.
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div
+                      className="relative overflow-hidden"
+                      style={{ aspectRatio: `${sceneSize.w} / ${sceneSize.h * 0.9}`, ...(sceneSize.w / (sceneSize.h * 0.9) >= 16 / 9 ? { width: '100%' } : { height: '100%' }) }}
+                    >
+                      <video
+                        ref={videoRef}
+                        src={clip.videoUrl ?? undefined}
+                        crossOrigin="anonymous"
+                        controls
+                        playsInline
+                        autoPlay
+                        onLoadedMetadata={(e) => setSceneSize({ w: e.currentTarget.videoWidth || 16, h: e.currentTarget.videoHeight || 9 })}
+                        className="absolute left-0 bottom-0 w-full h-auto"
+                      />
+                      <span className="absolute top-2 left-2 inline-flex items-center gap-1 text-[11px] font-semibold text-white pointer-events-none" style={{ opacity: 0.75, textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+                        <CuriosLogo size={14} frameColor="#FFFFFF" colorOverride="#FFFFFF" /> Curios
+                      </span>
+                    </div>
+                  </div>
+                )}
               {answerShots && playable.length > 0 && (
                 <div className="absolute inset-0 z-10 bg-black">
                   <video

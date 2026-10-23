@@ -103,5 +103,9 @@ export function makeShot(start: AskStart, shot: ClipShot, n: number, speaks: boo
   }).then((r) => r.videoUrl ?? null, () => null);
 }
 
+/** A 720p download link for a saved YouTube clip (Tunelio), so the page can read the real frame. Null if unavailable. */
+export const openTunnel = (videoId: string) =>
+  call<{ url?: string }>({ action: 'tunnel', videoId }).then((r) => r.url ?? null, () => null);
+
 export const recordAsk = (questionId: string, answer: unknown) =>
   call<{ ok: boolean }>({ action: 'record', questionId, answer }).catch(() => undefined);

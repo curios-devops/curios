@@ -259,6 +259,18 @@ async function braveVideos(q: string) {
   })).filter((r: { videoId: string | null }) => r.videoId);
 }
 
+/** SerpAPI's YouTube engine — the fallback when Brave finds too few videos. */
+async function serpVideos(q: string) {
+  if (!env("SERPAPI_API_KEY")) return [];
+  const res = await fetch(`https://serpapi.com/search.json?${new URLSearchParams({ engine: "youtube", search_query: q, api_key: env("SERPAPI_API_KEY") })}`, { signal: AbortSignal.timeout(10000) }).catch(() => null);
+  if (!res?.ok) return [];
+  const data = await res.json().catch(() => ({}));
+  return (data.video_results ?? []).slice(0, 8).map((r: Record<string, any>) => ({
+    videoId: youtubeId(String(r.link ?? "")), title: String(r.title ?? ""), url: String(r.link ?? ""),
+    channel: String(r.channel?.name ?? ""), thumbnail: String(r.thumbnail?.static ?? ""),
+  })).filter((r: { videoId: string | null }) => r.videoId);
+}
+
 // Supadata's plan allows ~1 request a second: calls are spaced and a 429 is retried once.
 const SUPADATA_GAP_MS = 1100;
 async function supadata(videoId: string, retry = true): Promise<Line[]> {
@@ -318,7 +330,8 @@ Deno.serve(async (req: Request) => {
       if ((await clipsLeft(req, await userId(req))) <= 0) return json({ error: "daily_limit" }, 429);
       const searches = (Array.isArray(body.searches) ? body.searches : []).map(String).filter(Boolean).slice(0, 2);
       if (!searches.length) return json({ error: "searches required" }, 400);
-      const found = (await Promise.all(searches.map(braveVideos))).flat();
+      let found = (await Promise.all(searches.map(braveVideos))).flat();
+      if (new Set(found.map((v) => v.videoId)).size < 2) found = [...found, ...(await serpVideos(searches[0]))];
       const unique = found.filter((v, i) => found.findIndex((x) => x.videoId === v.videoId) === i).slice(0, 3);
       const withText = await Promise.all(unique.map(async (v, i) => {
         await sleep(i * SUPADATA_GAP_MS);

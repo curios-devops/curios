@@ -6,9 +6,10 @@
 // Starting image (best available):
 //   film/TV clip (our MP4)   → the paused frame (canvas) + its last 5 s → p-video-2-pro-reference
 //                              continues the scene (p-video-2 from the frame as fallback)
-//   YouTube                  → a frame the page captured from the screen (desktop, with permission),
-//                              or CLIP_DOWNLOADER_URL (placeholder: a yt-dlp service), or Gemini
-//                              describes that second and the image model recreates it
+//   YouTube                  → Tunelio (TUNELIO_API_KEY) gives the page a download link: it reads the
+//                              real frame + last 5 s itself; else a frame captured from the screen
+//                              (desktop, with permission), or CLIP_DOWNLOADER_URL (placeholder), or
+//                              Gemini describes that second and the image model recreates it
 // Who speaks: fiction → the character (Pruna speech + lip-sync); real people → never: the shots
 // illustrate the answer and the page's narrator (ElevenLabs) reads it.
 //
@@ -17,6 +18,7 @@
 //          frame = JPEG and video = MP4 as base64. Daily caps: guest 1 per connection, free 3, Pro 10.
 //   shot   { questionId, prompt, line?, speaks, frameUrl?, videoUrl?, imagePrompt? } → { videoUrl }
 //   record { questionId, answer }                   → { ok }
+//   tunnel { videoId }                              → { url } a 720p download link (Tunelio) for a saved clip's video
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
@@ -186,12 +188,30 @@ Deno.serve(async (req: Request) => {
         if (!frameUrl) return json({ error: "no_image" }, 502);
       }
       const out = `${folder}/shot-${n}.mp4`;
-      // A scene's own last seconds keep motion and look (pro-reference); a frame works everywhere.
-      const shot = (videoUrl && !body.imagePrompt
+      // The first shot continues the scene from its own last seconds (pro-reference keeps motion and
+      // look, ~$0.48: $0.035/s out + $0.06/s of reference video); the rest start from the frame
+      // with p-video-2 (~$0.13), which already matches the look.
+      const shot = (videoUrl && n === 0 && !body.imagePrompt
         ? await pruna("p-video-2-pro-reference", { prompt: `Continue this clip. ${prompt}`, video: [videoUrl], image: [frameUrl], duration: 5, resolution: "768p", mode: "speed", aspect_ratio: "16:9" }, out)
         : null)
         ?? await pruna("p-video-2", { prompt, image: frameUrl, duration: 5, resolution: "720p", aspect_ratio: "16:9" }, out);
       return shot ? json({ videoUrl: shot }) : json({ error: "pruna" }, 502);
+    }
+
+    if (body.action === "tunnel") {
+      const videoId = String(body.videoId ?? "");
+      if (!/^[\w-]{11}$/.test(videoId)) return json({ error: "bad videoId" }, 400);
+      if (!env("TUNELIO_API_KEY")) return json({ error: "not_configured" }, 501);
+      // Only for videos that are a saved clip — the quota isn't an open downloader.
+      const { data: known } = await db().from("clip_answers").select("id").eq("video_id", videoId).limit(1).maybeSingle();
+      if (!known) return json({ error: "unknown video" }, 404);
+      const res = await fetch(`https://tunelio.dev/create?${new URLSearchParams({ quality: "720p", url: `https://www.youtube.com/watch?v=${videoId}` })}`, {
+        headers: { Authorization: `Bearer ${env("TUNELIO_API_KEY")}` }, signal: AbortSignal.timeout(45000),
+      }).catch(() => null);
+      const data = res ? await res.json().catch(() => ({})) : {};
+      return data?.status === "ok" && typeof data.url === "string"
+        ? json({ url: data.url, size: data.file_size_str ?? null })
+        : json({ error: "tunnel", detail: data?.error ?? data?.message ?? res?.status ?? "unreachable" }, 502);
     }
 
     if (body.action === "record") {
