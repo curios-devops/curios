@@ -9,7 +9,7 @@
 // No credits left: a guest is asked to sign up, a free account to go Pro; Pro stops at 10 new
 // worlds a day. A guest who spent their last credit is offered to sign up to keep it.
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Loader2, Maximize, MessageCircle, Minimize, Rotate3d, Volume2, VolumeX } from 'lucide-react';
+import { Loader2, Maximize, MessageCircle, Minimize, Rotate3d, Volume1, Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -139,6 +139,9 @@ export default function TourScene({ question, tab, context, belowPlayer, onReady
   const [moving, setMoving] = useState(false);
   const [speech, setSpeech] = useState<{ name: string; text: string } | null>(null);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const level = muted ? 0 : volume;
+  useEffect(() => { if (audioRef.current) audioRef.current.volume = level; });
   const lineRef = useRef<Record<number, number>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stick = useRef({ x: 0, y: 0 });
@@ -158,11 +161,12 @@ export default function TourScene({ question, tab, context, belowPlayer, onReady
     const line = c.lines[n % c.lines.length];
     setSpeech({ name: c.name, text: captionText(line) });
     audioRef.current?.pause();
-    if (muted) return;
+    if (level === 0) return;
     try {
       const sound = await tts(line, c.voiceId, c.gender, new AbortController().signal);
       const url = URL.createObjectURL(new Blob([sound], { type: 'audio/mpeg' }));
       const audio = new Audio(url);
+      audio.volume = level;
       audioRef.current = audio;
       audio.onended = () => { URL.revokeObjectURL(url); setSpeech((s) => (s?.text === captionText(line) ? null : s)); };
       await audio.play();
@@ -300,9 +304,18 @@ export default function TourScene({ question, tab, context, belowPlayer, onReady
               </span>
               <span className="ml-auto text-[10px] text-white/60 whitespace-nowrap">{t('vidTourCredit')}</span>
               {cast.length > 0 && (
-                <button type="button" onClick={() => { setMuted((m) => !m); audioRef.current?.pause(); }} className="p-1" aria-label={muted ? t('vidImmUnmute') : t('vidImmMute')} title={muted ? t('vidImmUnmute') : t('vidImmMute')}>
-                  {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                </button>
+                // The voices' volume, YouTube style: mute button + a slider that opens on hover.
+                <div className="group flex items-center">
+                  <input
+                    type="range" min={0} max={1} step={0.05} value={level}
+                    onChange={(e) => { setVolume(Number(e.target.value)); setMuted(Number(e.target.value) === 0); }}
+                    aria-label={t('vidVolume')} title={t('vidVolume')}
+                    className="w-0 opacity-0 group-hover:w-20 group-hover:opacity-100 focus:w-20 focus:opacity-100 transition-all duration-200 accent-white cursor-pointer"
+                  />
+                  <button type="button" onClick={() => setMuted((m) => !m)} className="p-1" aria-label={level === 0 ? t('vidImmUnmute') : t('vidImmMute')} title={level === 0 ? t('vidImmUnmute') : t('vidImmMute')}>
+                    {level === 0 ? <VolumeX size={18} /> : level < 0.5 ? <Volume1 size={18} /> : <Volume2 size={18} />}
+                  </button>
+                </div>
               )}
               <button type="button" onClick={toggleFullscreen} title={fullscreen ? t('vidExitFullscreen') : t('vidFullscreen')} aria-label={fullscreen ? t('vidExitFullscreen') : t('vidFullscreen')} className="p-1">
                 {fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
