@@ -14,6 +14,12 @@ describe('video type', () => {
     expect(VIDEO_TYPES.map((v) => v.id)).not.toContain('hd');
   });
 
+  it('opens ?type=experience as the Experience (tour id) and ?type=clip as Clips', () => {
+    expect(parseVideoType('experience')).toBe('tour');
+    expect(parseVideoType('tour')).toBe('tour');
+    expect(parseVideoType('clip')).toBe('clip');
+  });
+
   it('makes Animation with the generated-video pipeline in the Cartoon style', () => {
     expect(movieModeFor('animation')).toBe('cartoon');
     expect(movieModeFor('video')).toBeUndefined();

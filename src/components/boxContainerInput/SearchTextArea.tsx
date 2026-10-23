@@ -8,46 +8,46 @@ interface SearchTextAreaProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
   className?: string;
   mode?: ModeType;
-  /** Rotate the empty Auto placeholder with the "tap Auto" hint (Home, after the title types). */
+  /** Rotate the empty placeholder (Home, after the title types): Auto goes through the modes,
+   *  every other mode alternates what it does with two example questions. */
   rotateHint?: boolean;
 }
 
-// Placeholder rotation: main prompt (6s) alternates with each hint (4s); lines slide up and out.
+// Placeholder rotation: main prompt (6s) alternates with each hint or example (4s); lines slide up and out.
 const MAIN_MS = 6000;
 const HINT_MS = 4000;
-const HINT_KEYS = ['homeAutoHint', 'homeHintSearch', 'homeHintStories', 'homeHintVideo', 'homeHintCharacter'];
+const HINT_KEYS = ['homeAutoHint', 'homeHintSearch', 'homeHintStories', 'homeHintVideo', 'homeHintClips', 'homeHintCharacter'];
 
-// Get placeholder based on mode
-const getPlaceholderKey = (mode: ModeType): string => {
+// The mode's key in phMode_<key> / phEx_<key>_1|2 (what it does + two example questions).
+const placeholderMode = (mode: ModeType): string => {
   switch (mode) {
-    case 'auto':
-      return 'placeholderAuto';
     case 'search':
-      return 'placeholderSearch';
-    case 'stories':
-      return 'placeholderStories';
-    case 'movie':
-      return 'placeholderMovie';
+    case 'fastsearch':
+      return 'search';
     case 'avatar':
-      return 'placeholderAvatar';
+      return 'character';
     default:
-      return 'placeholderSearch';
+      return mode;
   }
 };
 
 export default function SearchTextArea({ value, onChange, onKeyDown, className, mode = 'search', rotateHint = false }: SearchTextAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
-  const placeholderKey = getPlaceholderKey(mode);
+  const key = placeholderMode(mode);
+  const placeholderKey = `phMode_${key}`;
   const prefersReduced =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const rotating = rotateHint && mode === 'auto' && !value && !prefersReduced;
-  // main, hint 1, main, hint 2, … — even indexes are the main prompt.
-  const lines = HINT_KEYS.flatMap((key) => [t(placeholderKey), t(key)]);
+  const rotating = rotateHint && !value && !prefersReduced;
+  // main, hint/example 1, main, hint/example 2, … — even indexes are the main prompt.
+  const extras = mode === 'auto' ? HINT_KEYS : [`phEx_${key}_1`, `phEx_${key}_2`];
+  const lines = extras.flatMap((extra) => [t(placeholderKey), t(extra)]);
   const [lineIndex, setLineIndex] = useState(0);
   // -1 until the first switch, so the very first line appears without animating in.
   const [prevIndex, setPrevIndex] = useState(-1);
+  // A new mode starts its own rotation from its main prompt.
+  useEffect(() => { setLineIndex(0); setPrevIndex(-1); }, [mode]);
 
   useEffect(() => {
     if (!rotating) return;

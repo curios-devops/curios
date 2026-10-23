@@ -242,11 +242,12 @@ export async function findRelatedPosters(plan: Pick<CinematicPlan, 'related' | '
     ].filter((c) => c.image && c.landscape)
       .sort((a, b) => b.score - a.score || a.rank - b.rank);
   }));
-  // Picked in order so two cards never land on the same clip.
+  // Picked in order so two cards never land on the same clip (or the same poster under another id).
   return candidates.map((list) => {
-    const pick = list.find((c) => !used.has(c.key));
+    const pick = list.find((c) => !used.has(c.key) && !used.has(c.image));
     if (!pick) return undefined;
     used.add(pick.key);
+    used.add(pick.image);
     return pick.image;
   });
 }

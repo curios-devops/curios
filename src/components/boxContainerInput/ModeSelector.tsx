@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { BookOpen, Clapperboard, Search, PersonStanding, Popcorn, Gamepad2, Music, ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpen, Clapperboard, Film, Search, PersonStanding, Popcorn, Gamepad2, Music, ChevronDown, ChevronUp } from 'lucide-react';
 import AutoModeIcon from '../icons/AutoModeIcon.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
 
 // 'movies' = Movie 🍿 forced on (TEMPORARY test entry; normally Movie is auto-detected inside Video/Auto).
-export type ModeType = 'auto' | 'search' | 'stories' | 'movie' | 'movies' | 'games' | 'music' | 'character' | 'avatar' | 'fastsearch';
+export type ModeType = 'auto' | 'search' | 'stories' | 'movie' | 'clips' | 'movies' | 'games' | 'music' | 'character' | 'avatar' | 'fastsearch';
 
 interface Mode {
   id: ModeType;
@@ -15,13 +15,15 @@ interface Mode {
 
 // 'fastsearch' is the new primary "Search" (default). Legacy 'search' is kept in
 // the type for old routes but is no longer offered in the dropdown.
-// The menu shows Auto, Search, Video, Magazine and Character; "More" opens the rest. Auto
+// The menu shows Auto, Search, Video, Clips, Magazine and Character; "More" opens the rest. Auto
 // reaches every mode by itself (movies, games and music included).
 const modes: Mode[] = [
   { id: 'auto', label: 'auto', icon: AutoModeIcon }, // the Roadster on the Space theme
   { id: 'fastsearch', label: 'search', icon: Search },
   // Video = Movie mode (question → explainer video); Cinematic was merged into it.
-  { id: 'movie', label: 'video', icon: Clapperboard },
+  { id: 'movie', label: 'video', icon: Film },
+  // Clips: the moment of a real video (YouTube, a film scene) that answers, and you can talk to it.
+  { id: 'clips', label: 'clips', icon: Clapperboard },
   // Magazine (route 'stories'): the answer as a magazine story.
   { id: 'stories', label: 'stories', icon: BookOpen },
   // Avatar was merged into Character (half-body option inside the page).

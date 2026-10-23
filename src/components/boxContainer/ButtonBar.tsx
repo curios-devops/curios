@@ -133,6 +133,8 @@ export default function ButtonBar({
         return t('video') || 'Video';
       case 'movies':
         return t('movies') || 'Movies';
+      case 'clips':
+        return t('clips') || 'Clips';
       case 'games':
         return t('games') || 'Games';
       case 'music':

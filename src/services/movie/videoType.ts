@@ -3,14 +3,14 @@
 // chooses among the affordable automatic techniques: cinematic, video, animation.
 //
 // Fallback chain: any technique that fails → Video (the default); if Video can't render a
-// clip, the viewer animates its still frame (Ken Burns). Tour (Viggle 3D scene) is chosen by
-// hand only — it costs a Pro Credit and needs an account.
+// clip, the viewer animates its still frame (Ken Burns). Experience (the 'tour' id: Viggle 3D
+// scene) and Clips (a real video's moment) are chosen by hand only — each costs a Pro Credit.
 import { supabase } from '../../lib/supabase.ts';
 import type { MovieMode } from './types.ts';
-import { Clapperboard, Film, Palette, PersonStanding, Rotate3d, type LucideIcon } from 'lucide-react';
+import { Clapperboard, Film, Palette, PersonStanding, Rotate3d, Video, type LucideIcon } from 'lucide-react';
 import AutoModeIcon from '../../components/icons/AutoModeIcon.tsx';
 
-export type VideoType = 'video' | 'cinematic' | 'animation' | 'character' | 'tour';
+export type VideoType = 'video' | 'cinematic' | 'animation' | 'character' | 'tour' | 'clip';
 export type VideoTypeChoice = VideoType | 'auto';
 
 // Labels are locale keys vidType_<id>; hints document the intent; icons show in the type menu.
@@ -18,16 +18,17 @@ export type VideoTypeChoice = VideoType | 'auto';
 export const VIDEO_TYPES: { id: VideoTypeChoice; label: string; hint: string; icon: LucideIcon | typeof AutoModeIcon }[] = [
   { id: 'auto', label: 'Auto', hint: 'Curios picks the best technique for your question', icon: AutoModeIcon },
   { id: 'video', label: 'Video', hint: 'New generated scenes', icon: Film },
-  { id: 'cinematic', label: 'Cinematic', hint: 'Real footage montage with narration and captions', icon: Clapperboard },
+  { id: 'cinematic', label: 'Cinematic', hint: 'Real footage montage with narration and captions', icon: Video },
   { id: 'animation', label: 'Animation', hint: 'Animated explainer', icon: Palette },
   { id: 'character', label: 'Character', hint: 'A character tells you the answer', icon: PersonStanding },
-  { id: 'tour', label: '360 Tour', hint: 'Walk through the place — 360° panorama and 3D scene (Viggle)', icon: Rotate3d },
+  { id: 'tour', label: 'Experience', hint: 'Walk through the place — 360° panorama and 3D scene (Viggle)', icon: Rotate3d },
+  { id: 'clip', label: 'Clips', hint: 'The moment of a real video that answers — and you can talk to it', icon: Clapperboard },
 ];
 
 const AUTO_TYPES: VideoType[] = ['cinematic', 'video', 'animation'];
 
 export function parseVideoType(value: string | null | undefined): VideoTypeChoice {
-  if (value === 'explore') return 'tour'; // old links to the world-model placeholder
+  if (value === 'explore' || value === 'experience') return 'tour'; // old placeholder links / the Experience name
   return VIDEO_TYPES.some((t) => t.id === value) ? (value as VideoTypeChoice) : 'auto';
 }
 
