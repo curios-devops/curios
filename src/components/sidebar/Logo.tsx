@@ -41,6 +41,7 @@ export default function Logo({ isCollapsed, variant = 'sidebar' }: { isCollapsed
         className={`flex shrink-0 overflow-hidden transition-all duration-500 ${onHome ? 'opacity-0' : 'opacity-100'}`}
         style={{ width: onHome ? 0 : iconPx, marginRight: onHome || isCollapsed ? 0 : 8 }}
         aria-hidden={onHome}
+        data-logo-mark={isCollapsed ? undefined : ''} // the Space theme shows the wordmark alone (themes.css)
       >
         <CuriosLogo
           size={iconPx}
