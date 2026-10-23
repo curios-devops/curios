@@ -135,6 +135,8 @@ export default function ButtonBar({
         return t('movies') || 'Movies';
       case 'clips':
         return t('clips') || 'Clips';
+      case 'immersion':
+        return t('immersion') || 'Immersion';
       case 'games':
         return t('games') || 'Games';
       case 'music':

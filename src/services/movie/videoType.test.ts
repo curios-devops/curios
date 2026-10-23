@@ -14,7 +14,8 @@ describe('video type', () => {
     expect(VIDEO_TYPES.map((v) => v.id)).not.toContain('hd');
   });
 
-  it('opens ?type=experience as the Experience (tour id) and ?type=clip as Clips', () => {
+  it('opens ?type=immersion (and the older experience/tour links) as Immersion, and ?type=clip as Clips', () => {
+    expect(parseVideoType('immersion')).toBe('tour');
     expect(parseVideoType('experience')).toBe('tour');
     expect(parseVideoType('tour')).toBe('tour');
     expect(parseVideoType('clip')).toBe('clip');

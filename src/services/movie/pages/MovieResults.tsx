@@ -612,7 +612,7 @@ export default function MovieResults() {
     ? (tourInfo ? (() => {
         const caption = tourInfo.overview.split(/(?<=[.!?])\s/)[0];
         return { title: tourInfo.title, caption, hashtags: [] as string[], video: undefined,
-          url: shareLink(tourInfo.title, caption, tourInfo.panoramaUrl, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=tour`) };
+          url: shareLink(tourInfo.title, caption, tourInfo.panoramaUrl, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=immersion`) };
       })() : null)
     : videoType === 'cinematic'
     ? (cine ? (() => {

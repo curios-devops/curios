@@ -53,5 +53,9 @@
   "phEx_games_2": "A word game to play right now",
   "phEx_music_1": "Bohemian Rhapsody by Queen",
   "phEx_music_2": "Essential Radiohead albums",
-  "homeHintClips": "Clips: find the exact moment in a video and talk to it"
+  "homeHintClips": "Clips: find the exact moment in a video and talk to it",
+  "phMode_immersion": "Step into a 3D world and live it through its people's eyes...",
+  "phEx_immersion_1": "A Wild West town in 1880",
+  "phEx_immersion_2": "The market of Tenochtitlan",
+  "homeHintImmersion": "Immersion: step into the world of your question"
 }

@@ -71,7 +71,7 @@
   "vidDownloading": "Preparando seu vídeo…",
   "vidDownloadKeepOpen": "Deixe esta aba aberta: o vídeo é gravado em tempo real (leva o mesmo tempo que dura).",
   "vidDownloadFailed": "Não foi possível preparar o download. Tente de novo.",
-  "vidType_tour": "Experiência",
+  "vidType_tour": "Imersão",
   "vidType_clip": "Clips",
   "vidTourDesigning": "Desenhando o lugar…",
   "vidTourBuilding": "Construindo seu tour 3D…",
@@ -111,5 +111,13 @@
   "vidClipAskCost": "Cada pergunta usa 1 crédito.",
   "vidClipScreenHint": "Compartilhe esta aba e a resposta parte da imagem exata do vídeo.",
   "vidClipSource": "Ver original",
-  "vidClipResume": "Continuar assistindo"
+  "vidClipResume": "Continuar assistindo",
+  "vidImmCasting": "Povoando o mundo…",
+  "vidImmLenses": "Explore este mundo com olhares diferentes",
+  "vidImmLive": "Perspectiva ao vivo",
+  "vidImmTalk": "Falar com {name}",
+  "vidImmControls": "WASD · mover   Arraste · olhar   Shift · correr   E · falar",
+  "vidImmControlsTouch": "Joystick para se mover",
+  "vidImmMute": "Silenciar vozes",
+  "vidImmUnmute": "Ativar vozes"
 }
