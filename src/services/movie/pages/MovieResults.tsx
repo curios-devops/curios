@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronsUp, Compass, Crown, Download, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Share2, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronsUp, Clapperboard, Compass, Crown, Download, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Rotate3d, Share2, Sparkles } from 'lucide-react';
 
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -31,7 +31,8 @@ import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { decideTier, pickVideoModel, stepUp } from '../../auto/modelTier.ts';
 import { appSettings } from '../../../config/appSettings.ts';
 import { searchExa } from '../../search/providers/engines/exaService.ts';
-import { searchImages, type ImageResult } from '../../search/providers/mediaSearchProvider.ts';
+import { searchImages, type ImageResult, type VideoResult } from '../../search/providers/mediaSearchProvider.ts';
+import { searchBraveVideos } from '../../search/providers/engines/braveAdapter.ts';
 import type { WebSearchResult } from '../../search/providers/webSearchProvider.ts';
 import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, detectVideoType, movieModeFor, parseVideoType, type VideoType } from '../videoType.ts';
@@ -43,11 +44,12 @@ import { exportCinematic, saveFilm } from '../cinematic/exportCinematic.ts';
 import { loadNarratorVoice } from '../audio/narratorPrefs.ts';
 import { VOICES } from '../../character/voices.ts';
 
-type MovieTab = 'video' | 'timeline' | 'images' | 'sources';
+type MovieTab = 'video' | 'timeline' | 'videos' | 'images' | 'sources';
 
 const TABS: Array<{ id: MovieTab; label: string; icon: typeof Film }> = [
   { id: 'video', label: 'vidTab_video', icon: Film },
   { id: 'timeline', label: 'vidTab_timeline', icon: ListOrdered },
+  { id: 'videos', label: 'vidTab_video', icon: Film },
   { id: 'images', label: 'vidTab_images', icon: ImageIcon },
   { id: 'sources', label: 'vidTab_sources', icon: Link2 },
 ];
@@ -131,6 +133,8 @@ export default function MovieResults() {
   const [web, setWeb] = useState<WebSearchResult[] | null>(null);
   // Images tab: the same image search as Search (SerpAPI → Brave), then Exa's page images.
   const [searchImgs, setSearchImgs] = useState<ImageResult[] | null>(null);
+  // Immersion: Brave's videos of the place, in their own Video tab when there are more than 3.
+  const [braveVids, setBraveVids] = useState<VideoResult[]>([]);
   const typeMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!typeMenuOpen) return;
@@ -531,6 +535,13 @@ export default function MovieResults() {
     searchImages(webQuery).catch(() => [] as ImageResult[]).then((r) => { if (alive) setSearchImgs(r); });
     return () => { alive = false; };
   }, [webQuery]);
+  useEffect(() => {
+    setBraveVids([]);
+    if (videoType !== 'tour' || !webQuery.trim()) return;
+    let alive = true;
+    searchBraveVideos(webQuery).then((r) => { if (alive) setBraveVids(r); });
+    return () => { alive = false; };
+  }, [webQuery, videoType]);
   const webImages = [
     ...(searchImgs ?? []).map((r) => ({ image: r.url, title: r.title, url: r.url })),
     ...(web ?? []).filter((r) => r.image).map((r) => ({ image: r.image as string, title: r.title, url: r.url })),
@@ -612,7 +623,7 @@ export default function MovieResults() {
     ? (tourInfo ? (() => {
         const caption = tourInfo.overview.split(/(?<=[.!?])\s/)[0];
         return { title: tourInfo.title, caption, hashtags: [] as string[], video: undefined,
-          url: shareLink(tourInfo.title, caption, tourInfo.panoramaUrl, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=tour`) };
+          url: shareLink(tourInfo.title, caption, tourInfo.panoramaUrl, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=immersion`) };
       })() : null)
     : videoType === 'cinematic'
     ? (cine ? (() => {
@@ -767,8 +778,12 @@ export default function MovieResults() {
       <div className="border-b" style={{ borderColor: 'var(--ui-bg-elevated)' }}>
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
-            {TABS.filter((tab) => !(videoType === 'tour' && tab.id === 'timeline')).map((tab) => { // a tour has no chapters
-              const Icon = tab.icon;
+            {TABS.filter((tab) => !(videoType === 'tour' && tab.id === 'timeline') // a tour has no chapters
+              && (tab.id !== 'videos' || (videoType === 'tour' && braveVids.length > 3))).map((tab) => {
+              // Clips and Immersion: the first tab is the clip / the world itself, named after it (no type button).
+              const isClipTab = videoType === 'clip' && tab.id === 'video';
+              const isImmTab = videoType === 'tour' && tab.id === 'video';
+              const Icon = isClipTab ? Clapperboard : isImmTab ? Rotate3d : tab.icon;
               const isActive = activeTab === tab.id;
               return (
                 <button
@@ -780,7 +795,7 @@ export default function MovieResults() {
                     : { borderColor: 'transparent', color: 'var(--ui-text-muted)' }}
                 >
                   <Icon size={16} />
-                  {t(tab.label)}
+                  {isClipTab ? t('clips') : isImmTab ? t('immersion') : t(tab.label)}
                 </button>
               );
             })}
@@ -791,7 +806,7 @@ export default function MovieResults() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* The video's type, Magazine-style: the current one in a framed button; the menu
             regenerates the video as another type. */}
-        {videoType && activeTab === 'video' && (
+        {videoType && videoType !== 'clip' && videoType !== 'tour' && activeTab === 'video' && (
           <div className="mb-4 relative inline-block" ref={typeMenuRef}>
             <button
               type="button"
@@ -1091,6 +1106,23 @@ export default function MovieResults() {
               </li>
             )}
           </ol>
+        )}
+
+        {/* ── Videos tab (Immersion): Brave's videos of the place, as in Search ── */}
+        {activeTab === 'videos' && (
+          <div className="grid gap-3">
+            {braveVids.map((v) => (
+              <a key={v.url} href={v.url} target="_blank" rel="noopener noreferrer" className="flex gap-4 p-3 rounded-xl" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
+                <div className="flex-shrink-0 w-36 aspect-video rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--ui-bg-primary)' }}>
+                  {v.thumbnail && <img src={v.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium line-clamp-2" style={{ color: 'var(--ui-text-primary)' }}>{v.title}</span>
+                  <p className="text-xs mt-1" style={{ color: 'var(--ui-text-muted)' }}>{[v.source, v.duration].filter(Boolean).join(' · ')}</p>
+                </div>
+              </a>
+            ))}
+          </div>
         )}
 
         {/* ── Images tab: the search images (as in Search), then Exa page images ── */}

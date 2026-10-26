@@ -71,7 +71,7 @@
   "vidDownloading": "Préparation de ta vidéo…",
   "vidDownloadKeepOpen": "Garde cet onglet ouvert : la vidéo s'enregistre en temps réel (aussi longtemps qu'elle dure).",
   "vidDownloadFailed": "Le téléchargement n'a pas pu être préparé. Réessaie.",
-  "vidType_tour": "Expérience",
+  "vidType_tour": "Immersion",
   "vidType_clip": "Clips",
   "vidTourDesigning": "Conception du lieu…",
   "vidTourBuilding": "Construction de ta visite 3D…",
@@ -111,5 +111,13 @@
   "vidClipAskCost": "Chaque question utilise 1 crédit.",
   "vidClipScreenHint": "Partage cet onglet et la réponse part de l'image exacte de la vidéo.",
   "vidClipSource": "Voir l'original",
-  "vidClipResume": "Continuer à regarder"
+  "vidClipResume": "Continuer à regarder",
+  "vidImmCasting": "Le monde prend vie…",
+  "vidImmLenses": "Explore ce monde à travers d'autres yeux",
+  "vidImmLive": "Perspective en direct",
+  "vidImmTalk": "Parler à {name}",
+  "vidImmControls": "WASD · avancer   Glisser · regarder   Shift · courir   E · parler",
+  "vidImmControlsTouch": "Joystick pour avancer",
+  "vidImmMute": "Couper les voix",
+  "vidImmUnmute": "Activer les voix"
 }

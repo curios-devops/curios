@@ -5,6 +5,8 @@
 import { supabase } from '../../../lib/supabase.ts';
 import { appSettings } from '../../../config/appSettings.ts';
 import { fetchOpenAI } from '../core/llm.ts';
+import { pickVoice } from '../../character/voices.ts';
+import { VOICE_DIRECTION_GUIDE } from '../audio/voiceDirection.ts';
 
 export interface TourPlan {
   title: string;
@@ -24,6 +26,94 @@ export interface Tour {
   panoramaUrl: string;
   /** Linked to an account (a guest's tour isn't until they sign up and claim it). */
   owned?: boolean;
+  /** Immersion: the people of this world (empty until the cast is made). */
+  cast?: CastMember[];
+}
+
+export interface CastMember {
+  name: string;
+  role: string;
+  /** One line, like "Experience the town through the eyes of a tavern regular." */
+  tagline: string;
+  voiceId: string;
+  gender: 'female' | 'male';
+  /** What they say to whoever comes close, in character (ElevenLabs v4 delivery tags allowed). */
+  lines: string[];
+  /** Transparent full-body cutout, stood in the 3D world. */
+  bodyUrl: string;
+  /** Transparent first-person hands, shown when you explore as them. */
+  handsUrl?: string | null;
+}
+
+export interface CastPlan {
+  name: string;
+  role: string;
+  tagline: string;
+  look: string;
+  hands: string;
+  gender: 'female' | 'male';
+  age: string;
+  vibe: string;
+  lines: string[];
+}
+
+/** Keeps 3-6 usable characters with distinct names. */
+export function validateCast(raw: unknown): CastPlan[] {
+  const list = (raw as { characters?: unknown } | null)?.characters;
+  const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  const out: CastPlan[] = [];
+  for (const c of Array.isArray(list) ? list : []) {
+    const r = (c ?? {}) as Record<string, unknown>;
+    const name = str(r.name, 40);
+    const lines = (Array.isArray(r.lines) ? r.lines : []).map((l) => str(l, 300)).filter(Boolean).slice(0, 4);
+    if (!name || !str(r.look, 500) || !lines.length || out.some((x) => x.name.toLowerCase() === name.toLowerCase())) continue;
+    out.push({
+      name, role: str(r.role, 60), tagline: str(r.tagline, 160), look: str(r.look, 500), hands: str(r.hands, 400),
+      gender: r.gender === 'male' ? 'male' : 'female', age: str(r.age, 20), vibe: str(r.vibe, 60), lines,
+    });
+  }
+  return out.slice(0, 6);
+}
+
+/**
+ * Immersion: the director peoples the world — 3 to 6 characters who belong there, each a way to
+ * experience it (XGEN's "lenses"), with their own voice and a few lines said to the visitor.
+ */
+export async function planCast(tour: Pick<Tour, 'question' | 'title' | 'overview'>, scenePrompt = ''): Promise<CastPlan[]> {
+  const system =
+    'You are the director of an immersive world. Create 3 to 6 characters who naturally belong in this place (era, culture, trade), ' +
+    'each a different way to experience it — like a coachman, a baker, an elder, a musician in a frontier town. For each: name, role ' +
+    '(question language), tagline (one sentence ENTIRELY in the question language, e.g. in Spanish "Vive el pueblo a través de los ojos de …"), look (English, ' +
+    'full-body appearance: age, clothes, build — for an image), hands (English: the one object their hands hold, seen in first person — ' +
+    'a tool, an instrument, a cup; never a surface, wall or scene), ' +
+    'gender (female|male), age (young|middle_aged|old), vibe (2-3 English words for their voice), and 3 lines (question language) ' +
+    'they say to a visitor who walks up: in character, vivid, about this place and their life in it, each ≤ 25 words; they can mention ' +
+    'the other characters. Make them distinct and entertaining.\n' + VOICE_DIRECTION_GUIDE;
+  const text = await fetchOpenAI({
+    model: appSettings.models.luna,
+    reasoning: { effort: 'none' },
+    temperature: 0.8,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: `Question: ${tour.question}\nWorld: ${tour.title}. ${tour.overview}\n${scenePrompt ? `Scene: ${scenePrompt}\n` : ''}\nReturn valid JSON only: {"characters": [{"name","role","tagline","look","hands","gender","age","vibe","lines": ["…"]}]}` },
+    ],
+  });
+  let raw: unknown = null;
+  try { raw = JSON.parse(text); } catch { /* invalid JSON → no cast */ }
+  const cast = validateCast(raw);
+  if (cast.length < 2) throw new Error('The director could not cast this world');
+  return cast;
+}
+
+/** Each character gets a voice of their own (never shared), by gender, age and vibe. */
+export function castVoices(cast: Pick<CastPlan, 'gender' | 'age' | 'vibe'>[]): string[] {
+  const taken: string[] = [];
+  return cast.map((c) => {
+    const id = pickVoice({ gender: c.gender, age: c.age, vibe: c.vibe }, taken);
+    taken.push(id);
+    return id;
+  });
 }
 
 /** One tour per question: case, spacing and punctuation don't make a new one. */
@@ -121,6 +211,14 @@ export async function makeTour(key: string, question: string, plan: TourPlan, si
     if (s.status && s.status !== 'queued' && s.status !== 'processing') throw new Error(`Viggle scene ${s.status}`);
   }
   throw new Error(signal.aborted ? 'aborted' : 'The tour took too long');
+}
+
+/** Makes the cast's images once per tour (the server keeps it) and returns the tour with its cast. */
+export async function makeCast(key: string, cast: CastPlan[]): Promise<Tour> {
+  const voices = castVoices(cast);
+  const a = await call({ action: 'cast', key, cast: cast.map((c, i) => ({ ...c, voiceId: voices[i] })) });
+  if (!a.tour) throw new Error('no cast');
+  return a.tour;
 }
 
 /** Links a tour this guest made to the account they've just signed in with. */

@@ -71,7 +71,7 @@
   "vidDownloading": "動画を準備中…",
   "vidDownloadKeepOpen": "このタブは開いたままにしてください。動画はリアルタイムで録画されます（再生時間と同じだけかかります）。",
   "vidDownloadFailed": "ダウンロードを作成できませんでした。もう一度お試しください。",
-  "vidType_tour": "体験",
+  "vidType_tour": "没入",
   "vidType_clip": "クリップ",
   "vidTourDesigning": "場所をデザイン中…",
   "vidTourBuilding": "3Dツアーを作成中…",
@@ -111,5 +111,13 @@
   "vidClipAskCost": "質問ごとに1クレジットを使います。",
   "vidClipScreenHint": "このタブを共有すると、動画の正確な画面から答えが始まります。",
   "vidClipSource": "元の動画を見る",
-  "vidClipResume": "続きを見る"
+  "vidClipResume": "続きを見る",
+  "vidImmCasting": "世界に人々を配置しています…",
+  "vidImmLenses": "さまざまな視点でこの世界を体験",
+  "vidImmLive": "ライブ視点",
+  "vidImmTalk": "{name}と話す",
+  "vidImmControls": "WASD・移動   ドラッグ・見回す   Shift・走る   E・話す",
+  "vidImmControlsTouch": "ジョイスティックで移動",
+  "vidImmMute": "声をミュート",
+  "vidImmUnmute": "声をオン"
 }

@@ -105,7 +105,8 @@ html[data-accent="nebula"] :is(h1, h2, h3).font-bricolage {
 /* Nebula NIGHT background: a few tiny stars over true black, drifting almost imperceptibly
    (one tile per ~7 minutes). Painted as the Home page's own background, so it sits behind
    everything and never tints the black. Off for reduced motion. */
-html[data-accent="nebula"][data-theme="dark"] .nebula-sky {
+html[data-accent="nebula"][data-theme="dark"] .nebula-sky,
+html[data-accent="space"][data-theme="dark"] .nebula-sky {
   background-image:
     radial-gradient(1px 1px at 40px 60px, rgb(255 255 255 / 0.55), transparent 60%),
     radial-gradient(1px 1px at 190px 130px, rgb(255 255 255 / 0.35), transparent 60%),
@@ -125,12 +126,19 @@ html[data-accent="nebula"][data-theme="dark"] .nebula-sky {
   to { background-position: -600px 600px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  html[data-accent="nebula"][data-theme="dark"] .nebula-sky { animation: none; }
+  html[data-accent="nebula"][data-theme="dark"] .nebula-sky,
+  html[data-accent="space"][data-theme="dark"] .nebula-sky { animation: none; }
 }
 
-/* Space — grok.com + x.com. Black and white only: true black / white grounds, Grok's pure gray
-   scale, ink-colored buttons (white on night, black on day). Inter (Grok's fallback for its
-   Universal Sans), Geist Mono, X/Grok pills and soft cards. */
+/* D-DIN (Datto, SIL OFL — public/fonts/d-din/COPYING.txt): the Space theme's face, after xgenlabs.ai.
+   Regular and Bold only, as there. */
+@font-face { font-family: 'D-DIN'; src: url('/fonts/d-din/D-DIN.woff2') format('woff2'); font-weight: 100 600; font-display: swap; }
+@font-face { font-family: 'D-DIN'; src: url('/fonts/d-din/D-DIN-Bold.woff2') format('woff2'); font-weight: 700 900; font-display: swap; }
+
+/* Space — grok.com + x.com, made quieter after xgenlabs.ai: black and white only, true black /
+   white grounds, Grok's pure gray scale, ink-colored buttons (white on night, black on day).
+   D-DIN for everything (headlines bold and tight, labels small uppercase), no logo mark
+   (just the wordmark) and a sky that barely moves. X/Grok pills and soft cards. */
 html[data-accent="space"] {
   --gray-50: 247 247 247;   /* #F7F7F7 Grok neutral-50 */
   --gray-100: 242 242 242;  /* #F2F2F2 */
@@ -156,20 +164,23 @@ html[data-accent="space"] {
   --radius-xl: 16px;
   --radius-2xl: 24px;
 
-  --font-display: 'Inter', system-ui, sans-serif;
-  --font-label: 'Geist Mono', ui-monospace, monospace;
+  --font-display: 'D-DIN', 'Inter', system-ui, sans-serif;
+  --font-label: 'D-DIN', 'Inter', system-ui, sans-serif;
   --label-size: 11px;
-  --label-weight: 500;
-  --label-tracking: 0.12em;
-  --font-ui: 'Inter', system-ui, sans-serif;
+  --label-weight: 400;
+  --label-tracking: 0.08em;
+  --font-ui: 'D-DIN', 'Inter', system-ui, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
 }
 
-/* Grok / X headlines: semibold, tight. */
+/* xgenlabs headlines: bold and tight (92px → -3.5%). */
 html[data-accent="space"] :is(h1, h2, h3).font-bricolage {
-  font-weight: 600;
-  letter-spacing: -0.03em;
+  font-weight: 700;
+  letter-spacing: -0.035em;
 }
+
+/* No logo mark for now — the wordmark alone, as xgenlabs' "XGEN Labs". */
+html[data-accent="space"] [data-logo-mark] { display: none !important; }
 
 /* Every theme — the Tesla Roadster (SpaceX cold-gas thrusters) on the Home mode menu, after
    x.com/almonk/status/2111151330467406148: four small chrome nozzles just outside the left and
@@ -337,3 +348,14 @@ html[data-theme="light"] .rocket-thruster {
   .rocket-thruster::after { animation: none; }
   .rocket-puff { display: none; }
 }
+
+/* Immersion (TourScene): the first-person hands move with the character — they sway with each step
+   while walking, gesture a little while someone talks, and barely breathe when still. Off for
+   reduced motion. */
+.imm-hands-walk { animation: imm-walk 0.62s ease-in-out infinite alternate; }
+.imm-hands-talk { animation: imm-talk 1.1s ease-in-out infinite alternate; }
+.imm-hands-idle { animation: imm-idle 3.2s ease-in-out infinite alternate; }
+@keyframes imm-walk { from { transform: translate(-1.2%, 0) rotate(-0.6deg); } to { transform: translate(1.2%, 3%) rotate(0.6deg); } }
+@keyframes imm-idle { from { transform: translateY(0); } to { transform: translateY(1.2%); } }
+@keyframes imm-talk { from { transform: translateY(2%) rotate(-0.8deg); } to { transform: translateY(-1.5%) rotate(0.8deg); } }
+@media (prefers-reduced-motion: reduce) { .imm-hands-walk, .imm-hands-talk, .imm-hands-idle { animation: none; } }

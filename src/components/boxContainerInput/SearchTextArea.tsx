@@ -16,7 +16,7 @@ interface SearchTextAreaProps {
 // Placeholder rotation: main prompt (6s) alternates with each hint or example (4s); lines slide up and out.
 const MAIN_MS = 6000;
 const HINT_MS = 4000;
-const HINT_KEYS = ['homeAutoHint', 'homeHintSearch', 'homeHintStories', 'homeHintVideo', 'homeHintClips', 'homeHintCharacter'];
+const HINT_KEYS = ['homeAutoHint', 'homeHintSearch', 'homeHintStories', 'homeHintVideo', 'homeHintClips', 'homeHintImmersion', 'homeHintCharacter'];
 
 // The mode's key in phMode_<key> / phEx_<key>_1|2 (what it does + two example questions).
 const placeholderMode = (mode: ModeType): string => {
