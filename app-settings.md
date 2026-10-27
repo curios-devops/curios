@@ -11,8 +11,8 @@ Only lines written as `KEY = value` are read. Everything else — these notes, t
 Sizes use **L / M / S** (M is the everyday size; L is bigger, S smaller).
 
 
-====================================================================
-====================== GENERAL =====================================
+===============================================================
+================= GENERAL =====================================
 ====================================================================
 
 ### THEME — light or dark background for first-time visitors
@@ -37,9 +37,9 @@ BANNER_TEXT = 🖤 Black Friday — Pro 90% OFF · $1/month · $10/year · Limit
 ```
 
 
-====================================================================
-====================== THEMES ======================================
-====================================================================
+===============================================================
+================= THEMES ======================================
+===============================================================
 A theme is the accent color used everywhere (active buttons, links, labels,
 focus). Visitors can switch between the five themes in Settings; this picks the
 one they start with.
@@ -72,9 +72,9 @@ CLASSIC_BLUE = #4F6FE0
 ```
 
 
-====================================================================
-====================== LOGO ========================================
-====================================================================
+===============================================================
+================= LOGO ========================================
+===============================================================
 Everything about the "CuriosAI" logo — font, color, and per-place text sizes — in
 one place. The word "Curios" itself is fixed (it can't be renamed). The logo icon
 size is fixed too (not configurable).
@@ -147,9 +147,9 @@ SIDEBAR_LOGO_AI_SIZE = M
 ```
 
 
-====================================================================
-====================== HOME PAGE HEADER ============================
-====================================================================
+===============================================================
+================= HOME PAGE HEADER ============================
+===============================================================
 The top header controls (logo sizes for the header live in the LOGO section above).
 
 ### HEADER_THEME_TOGGLE — show or hide the light/dark toggle in the header
@@ -178,9 +178,9 @@ GET_STARTED_TEXT = Get Started
 ```
 
 
-====================================================================
-====================== PRICING MODAL ===============================
-====================================================================
+===============================================================
+================= PRICING MODAL ===============================
+===============================================================
 The Pro pricing window. Use these during a promo so the price reads as a deal,
 not "the price of CuriosAI". Set the promo lines to OFF when the promo ends.
 
@@ -227,9 +227,9 @@ PROMO_REGULAR_MONTHLY = $10
 ```
 
 
-====================================================================
-====================== MODELS ======================================
-====================================================================
+===============================================================
+================= MODELS ======================================
+===============================================================
 Which AI models answer questions. Every question is first rated by the
 OpenAI Decisions API as easy / normal / complex, and the matching tier
 answers it, in every mode (Search, Stories, Video, Character):
