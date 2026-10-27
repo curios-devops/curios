@@ -106,5 +106,16 @@
   "songVotePrompt": "T’ha agradat la cançó?",
   "songClose": "Tancar",
   "songExplains": "Explica {topic}",
-  "songStyle_auto": "Automàtic"
+  "songStyle_auto": "Automàtic",
+  "musicListen": "Reconèixer cançó",
+  "musicListening": "Escoltant…",
+  "musicListeningHint": "Acosta el telèfon a la música",
+  "musicSearching": "Buscant la cançó…",
+  "musicNotHeard": "No he reconegut la cançó",
+  "musicNotHeardHint": "Prova-ho més a prop de la música o amb menys soroll.",
+  "musicTryAgain": "Tornar-ho a provar",
+  "musicMicDenied": "Necessito permís per usar el micròfon",
+  "musicListenLimit": "Has arribat al límit de cançons d'avui",
+  "musicListenSignIn": "Inicia sessió per continuar reconeixent cançons",
+  "musicListenError": "Ara no he pogut escoltar. Torna-ho a provar."
 }

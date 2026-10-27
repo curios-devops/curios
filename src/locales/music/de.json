@@ -106,5 +106,16 @@
   "songVotePrompt": "Hat dir der Song gefallen?",
   "songClose": "Schließen",
   "songExplains": "Erklärt {topic}",
-  "songStyle_auto": "Automatisch"
+  "songStyle_auto": "Automatisch",
+  "musicListen": "Song erkennen",
+  "musicListening": "Hört zu…",
+  "musicListeningHint": "Halte dein Handy in die Nähe der Musik",
+  "musicSearching": "Suche den Song…",
+  "musicNotHeard": "Song nicht erkannt",
+  "musicNotHeardHint": "Versuch es näher an der Musik oder mit weniger Lärm.",
+  "musicTryAgain": "Nochmal versuchen",
+  "musicMicDenied": "Ich brauche Zugriff auf das Mikrofon",
+  "musicListenLimit": "Du hast das heutige Song-Limit erreicht",
+  "musicListenSignIn": "Melde dich an, um weiter Songs zu erkennen",
+  "musicListenError": "Zuhören hat gerade nicht geklappt. Versuch es nochmal."
 }

@@ -106,5 +106,16 @@
   "songVotePrompt": "La chanson t’a plu ?",
   "songClose": "Fermer",
   "songExplains": "Explique {topic}",
-  "songStyle_auto": "Auto"
+  "songStyle_auto": "Auto",
+  "musicListen": "Reconnaître la chanson",
+  "musicListening": "À l'écoute…",
+  "musicListeningHint": "Approchez le téléphone de la musique",
+  "musicSearching": "Recherche de la chanson…",
+  "musicNotHeard": "Je n'ai pas reconnu la chanson",
+  "musicNotHeardHint": "Essayez plus près de la musique ou avec moins de bruit.",
+  "musicTryAgain": "Réessayer",
+  "musicMicDenied": "J'ai besoin d'accéder au micro",
+  "musicListenLimit": "Vous avez atteint la limite de chansons du jour",
+  "musicListenSignIn": "Connectez-vous pour continuer à reconnaître des chansons",
+  "musicListenError": "Je n'ai pas pu écouter. Réessayez."
 }

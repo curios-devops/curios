@@ -1,4 +1,4 @@
-import { type LucideIcon, Plus, Image as ImageIcon, Search, ChevronDown } from 'lucide-react';
+import { type LucideIcon, AudioLines, Plus, Image as ImageIcon, Search, ChevronDown } from 'lucide-react';
 import AutoModeIcon from '../icons/AutoModeIcon.tsx';
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +6,7 @@ import ActionButton from '../boxContainerInput/ActionButton.tsx';
 import ModeSelector from '../boxContainerInput/ModeSelector.tsx';
 import type { ModeType } from '../boxContainerInput/ModeSelector.tsx';
 import SearchButton from '../boxContainerInput/SearchButton.tsx';
+import SongListener from '../../services/music/listen/SongListener.tsx';
 import type { ReverseImageSearchHandle } from './ReverseImageSearch.tsx';
 import { useTranslation } from '../../hooks/useTranslation.ts';
 import { useAccentColor } from '../../hooks/useAccentColor.ts';
@@ -50,6 +51,7 @@ interface ButtonBarProps {
   onVoiceClick: () => void;
   isRecording: boolean;
   isTranscribing: boolean;
+  onSignInRequired: () => void;
 }
 
 export default function ButtonBar({
@@ -65,11 +67,14 @@ export default function ButtonBar({
   attachMenuRef,
   onVoiceClick,
   isRecording,
+  onSignInRequired,
 }: ButtonBarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate(); // Voice mode → live Character with the mic open
   const accentColor = useAccentColor();
   const [showModeMenu, setShowModeMenu] = useState(false);
+  // Music mode: "listen" recognizes the song playing around the phone (Shazam-like).
+  const [listening, setListening] = useState(false);
   // Picking a mode rolls the Roadster once before the menu closes (skipped with reduced motion).
   const [spinning, setSpinning] = useState(false);
   const spinningRef = useRef(false);
@@ -262,13 +267,23 @@ export default function ButtonBar({
               onClick={onVoiceClick}
               className={isRecording ? 'animate-pulse' : ''}
             />
-            <ActionButton
-              icon={AudioBarsIcon}
-              label={t('voiceMode') || 'Voice mode'}
-              tooltip={t('voiceMode') || 'Voice mode'}
-              onClick={() => navigate('/character?mic=1')}
-              accent
-            />
+            {selectedMode === 'music' ? (
+              <ActionButton
+                icon={AudioLines}
+                label={t('musicListen')}
+                tooltip={t('musicListen')}
+                onClick={() => setListening(true)}
+                accent
+              />
+            ) : (
+              <ActionButton
+                icon={AudioBarsIcon}
+                label={t('voiceMode') || 'Voice mode'}
+                tooltip={t('voiceMode') || 'Voice mode'}
+                onClick={() => navigate('/character?mic=1')}
+                accent
+              />
+            )}
           </>
         ) : (
           // Has text: Show Search/Submit button
@@ -280,6 +295,7 @@ export default function ButtonBar({
           />
         )}
       </div>
+      {listening && <SongListener onClose={() => setListening(false)} onNeedSignIn={onSignInRequired} />}
     </div>
   );
 }

@@ -106,5 +106,16 @@
   "songVotePrompt": "Did you like the song?",
   "songClose": "Close",
   "songExplains": "Explains {topic}",
-  "songStyle_auto": "Auto"
+  "songStyle_auto": "Auto",
+  "musicListen": "Recognize song",
+  "musicListening": "Listening…",
+  "musicListeningHint": "Hold your phone near the music",
+  "musicSearching": "Finding the song…",
+  "musicNotHeard": "Couldn't recognize the song",
+  "musicNotHeardHint": "Try closer to the music or with less noise.",
+  "musicTryAgain": "Try again",
+  "musicMicDenied": "I need permission to use the microphone",
+  "musicListenLimit": "You've reached today's song limit",
+  "musicListenSignIn": "Sign in to keep recognizing songs",
+  "musicListenError": "I couldn't listen right now. Try again."
 }

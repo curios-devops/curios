@@ -45,7 +45,7 @@ export interface MusicInfo {
 }
 
 /** What a link inside the page opens: no need to interpret free text again. */
-export interface MusicTarget { kind: MusicKind; artist: string; title?: string }
+export interface MusicTarget { kind: MusicKind; artist: string; title?: string; /** A recognized song's album (the one Shazam heard) and year. */ album?: string; year?: string }
 
 /** Null when nothing matches (or the function is unavailable). */
 export async function fetchMusicInfo(query: string, uiLang: string, target?: MusicTarget | null): Promise<MusicInfo | null> {
