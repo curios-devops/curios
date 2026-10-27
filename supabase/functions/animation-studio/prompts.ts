@@ -3,11 +3,18 @@
 // readouts, controls — in its own design, and drives the stage through a small bridge
 // (window.curios, injected by the page before the model's code runs).
 
+// Curios' night look, sampled from a Kurzgesagt-style AI explainer that sits well on the black theme.
+const NIGHT = `deep indigo night (ground gradient #14053c → #2b0b5c, silhouettes #1c054b / #43226c), a hot horizon glow
+(#ff5a3c → #c2185b) behind the subject, the hero in warm yellow #e2b230 (shade #b08557), motion and particles in cyan
+#5ad1e6, light and energy white with a violet glow (#b39dff); data as magenta pills (#c2187a, white bold text, a thin
+white leader line ending in a dot on the thing: "~0.000003 s", "surface of the Sun", "×5 hotter"); soft radial glows,
+slow parallax clouds and twinkling stars that never stop`;
+
 const BRIDGE = `
 THE BRIDGE (already on the page as window.curios — never redefine it):
 - curios.theme = { dark: boolean, ground, surface, ink, muted, accent, font } and the same as CSS variables
   --ground --surface --ink --muted --accent --font on :root. The stage background is var(--ground); in-scene
-  labels use var(--font), var(--ink) on var(--surface). The art itself keeps its own palette.
+  labels use var(--font), var(--ink) on var(--surface) unless the style gives them their own look. The art keeps its palette.
 - curios.on('beat', (i) => Promise): play beat i (0-based) and resolve when its motion has finished. Beats are
   played in order but may be replayed; the stage keeps the state reached (beat 3 starts where 2 ended).
   Between beats keep gentle idle motion (never freeze).
@@ -59,16 +66,18 @@ PRINCIPLES
 - Look: soft, premium, toy-like realism (rounded edges: LatheGeometry, ExtrudeGeometry with bevel, TubeGeometry;
   MeshPhysicalMaterial — brushed metal, painted shells, glass with transmission, rubber); RoomEnvironment for
   reflections, a key DirectionalLight with soft shadows, a round plinth under the machine with a contact shadow
-  (plinth and floor in the theme's tones — var(--surface) on var(--ground) — so they sit calmly in dark and light);
+  (plinth and floor in the night look's indigo);
   ACES/AgX tone mapping. Moving parts in groups (shafts, pistons, needles) driven from the model; particles
   (air, water, sparks, bubbles) as instanced points. ≤ 200k triangles, pixel ratio ≤ 2.
 - In-scene labels: HTML elements positioned each frame from projected 3D points.
+- Palette and backdrop — the Curios night look, whatever the theme (the stage paints its own night over var(--ground)):
+  ${NIGHT}. Materials stay real (metal, glass, paint) but are lit by it: a yellow key, a magenta-coral rim, cyan particles.
 ${BRIDGE}`;
 
 export const STORY_STYLES: Record<string, string> = {
-  kurzgesagt: `Kurzgesagt – In a Nutshell: flat vector shapes without outlines, rich saturated palettes (deep night
-purples and blues, teal, warm orange/yellow accents), soft radial glows for light, simple round characters (big
-simple eyes), layered parallax backgrounds (hills, clouds, stars), sparkles; labels as small rounded tags with a thin line.`,
+  kurzgesagt: `Kurzgesagt – In a Nutshell: flat vector shapes without outlines, soft radial glows for light, simple round
+characters (round heads, warm skin #875447, simple eyes and brows that act, a bright yellow coat), layered parallax
+backgrounds (hills, clouds, stars, rain), sparkles. Palette — always, whatever the theme: ${NIGHT}.`,
   paper: `TED-Ed style paper cut-out: warm muted palette, paper textures drawn with SVG filters (feTurbulence grain),
 slightly irregular hand-cut shapes, stylised characters with long limbs, layered depth with soft drop shadows, ink-stamp details.`,
   chalk: `3Blue1Brown style mathematics: dark slate ground, clean thin strokes in a few luminous colours (blue, yellow,
