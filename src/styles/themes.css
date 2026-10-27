@@ -359,3 +359,10 @@ html[data-theme="light"] .rocket-thruster {
 @keyframes imm-idle { from { transform: translateY(0); } to { transform: translateY(1.2%); } }
 @keyframes imm-talk { from { transform: translateY(2%) rotate(-0.8deg); } to { transform: translateY(-1.5%) rotate(0.8deg); } }
 @media (prefers-reduced-motion: reduce) { .imm-hands-walk, .imm-hands-talk, .imm-hands-idle { animation: none; } }
+
+/* Animation (Video type): the next step pulses in Manual; the surprise callout pops in. */
+.anim-next { animation: anim-next 1.6s ease-in-out infinite; }
+.anim-callout { animation: anim-callout 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes anim-next { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-primary) 45%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-primary) 0%, transparent); } }
+@keyframes anim-callout { from { opacity: 0; transform: scale(0.6) translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .anim-next, .anim-callout { animation: none; } }
