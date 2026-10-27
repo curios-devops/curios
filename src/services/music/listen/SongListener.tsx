@@ -1,15 +1,20 @@
 // Music mode's "listen" button, full screen: it hears the music around the phone like Shazam and
 // opens the Music page of the song. It sends what it has heard at 6 s (most songs are found there)
-// and, only if that missed, the whole 12 s clip. The mic's voice processing is off: echo
-// cancellation and noise suppression treat music as noise and wipe it out.
+// and, only if that missed, the whole 12 s clip. Meanwhile it says where it is, like Shazam:
+// listening → searching → expanding search → this is tough (last try) → no result. The mic's voice
+// processing is off: echo cancellation and noise suppression treat music as noise and wipe it out.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { AudioLines, X } from 'lucide-react';
+import { AudioLines, CircleAlert, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { recognizeSong, songPage, TRY_AT_MS, type HeardSong, type Recognition } from './songRecognition.ts';
 
-type Stage = 'listening' | 'searching' | 'found' | 'missed' | 'denied' | 'limit' | 'signin' | 'error';
+type Stage = 'listening' | 'searching' | 'expanding' | 'tough' | 'found' | 'missed' | 'denied' | 'limit' | 'signin' | 'error';
+
+// What the screen says while no song is found yet: searching once the first try goes out, the
+// last try (the full clip) is the tough one.
+const SAYS_AT: [number, Stage][] = [[TRY_AT_MS[0], 'searching'], [(TRY_AT_MS[0] + TRY_AT_MS[1]) / 2, 'expanding'], [TRY_AT_MS[1], 'tough']];
 
 interface Props {
   onClose: () => void;
@@ -50,6 +55,7 @@ export default function SongListener({ onClose, onNeedSignIn }: Props) {
       };
       stopRef.current = () => { over = true; stop(); };
       recorder.start(1000);
+      SAYS_AT.forEach(([at, next]) => setTimeout(() => { if (!over) setStage(next); }, at));
 
       // The first answer that settles it (a song, or no more tries today) wins.
       const finish = (r: Recognition) => {
@@ -74,7 +80,7 @@ export default function SongListener({ onClose, onNeedSignIn }: Props) {
         elapsed = at;
         if (over) return;
         const last = i === TRY_AT_MS.length - 1;
-        if (last) { stop(); await stopped; setStage('searching'); }
+        if (last) { stop(); await stopped; }
         tries.push(recognizeSong(clip()).then((r) => { if (r.status === 'found' || r.status === 'limit') finish(r); return r; }));
       }
       const results = await Promise.all(tries);
@@ -84,10 +90,12 @@ export default function SongListener({ onClose, onNeedSignIn }: Props) {
   }, [round, navigate]);
 
   const close = () => { stopRef.current(); clearTimeout(openTimer.current); onClose(); };
-  const busy = stage === 'listening' || stage === 'searching';
+  const busy = stage === 'listening' || stage === 'searching' || stage === 'expanding' || stage === 'tough';
   const title = {
     listening: t('musicListening'),
     searching: t('musicSearching'),
+    expanding: t('musicExpanding'),
+    tough: t('musicTough'),
     found: song?.title ?? '',
     missed: t('musicNotHeard'),
     denied: t('musicMicDenied'),
@@ -95,7 +103,14 @@ export default function SongListener({ onClose, onNeedSignIn }: Props) {
     signin: t('musicListenSignIn'),
     error: t('musicListenError'),
   }[stage];
-  const hint = stage === 'listening' ? t('musicListeningHint') : stage === 'found' ? song?.artist : stage === 'missed' ? t('musicNotHeardHint') : '';
+  const hint = {
+    listening: t('musicListeningHint'),
+    searching: t('musicSearchingHint'),
+    expanding: t('musicExpandingHint'),
+    tough: t('musicToughHint'),
+    found: song?.artist ?? '',
+    missed: t('musicNotHeardHint'),
+  }[stage as string] ?? '';
 
   return createPortal(
     <div
@@ -123,12 +138,22 @@ export default function SongListener({ onClose, onNeedSignIn }: Props) {
             {busy && [0, 1, 2].map((i) => (
               <span key={i} aria-hidden className="song-ring absolute inset-0 rounded-full" style={{ animationDelay: `${i * 0.8}s` }} />
             ))}
-            <span
-              className="relative w-28 h-28 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
-            >
-              <AudioLines size={48} className={busy ? 'song-bars' : ''} />
-            </span>
+            {busy || stage === 'found' ? (
+              <span
+                className="relative w-28 h-28 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+              >
+                <AudioLines size={48} className={busy ? 'song-bars' : ''} />
+              </span>
+            ) : (
+              // No result (or no mic, no tries left): a quiet sign instead of the accent button.
+              <span
+                className="relative w-28 h-28 rounded-full flex items-center justify-center border"
+                style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)', color: 'var(--ui-text-secondary)' }}
+              >
+                <CircleAlert size={48} />
+              </span>
+            )}
           </>
         )}
       </div>
