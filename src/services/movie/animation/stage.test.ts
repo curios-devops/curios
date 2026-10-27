@@ -27,6 +27,16 @@ describe('Animation stage', () => {
     expect(m?.controls.map((c) => c.id)).toEqual(['power']);
   });
 
+  it("keeps a simulation's picker only with real options, and lets a simulation have no steps", () => {
+    const m = readManifest(page({ title: 'Sistema solar', beats: [], controls: [
+      { id: 'planet', label: 'Planeta', type: 'choice', value: 3, options: [{ value: 1, label: 'Mercurio' }, { value: 3, label: 'Tierra' }] },
+      { id: 'lonely', label: 'Solo', type: 'choice', value: 1, options: [{ value: 1, label: 'Uno' }] },
+      { id: 'orbits', label: 'Órbitas', type: 'toggle', value: true },
+    ] }), 0);
+    expect(m?.controls.map((c) => `${c.id}:${c.type}:${c.value}`)).toEqual(['planet:choice:3', 'orbits:toggle:1']);
+    expect(readManifest(page({ title: 'x', beats: [] }))).toBeNull(); // an animation still needs steps
+  });
+
   it('locks the stage down before any model code runs: CSP, theme and bridge come first in <head>', () => {
     const doc = stageDocument(page({ title: 't', beats }), theme);
     const head = doc.slice(doc.indexOf('<head>'), doc.indexOf('<title>'));

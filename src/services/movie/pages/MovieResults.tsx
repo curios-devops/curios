@@ -300,9 +300,9 @@ export default function MovieResults() {
 
       // The technique (Decisions) and the model (difficulty) are decided together.
       const [picked] = await Promise.all([
-        // Testing Animation (no video credits): Auto starts as Animation. Restore with:
+        // Testing Simulation (no video credits): Auto starts as Simulation. Restore with:
         // typeParam === 'auto' ? detectVideoType(query) : Promise.resolve(typeParam),
-        Promise.resolve<VideoType>(typeParam === 'auto' ? 'animation' : typeParam),
+        Promise.resolve<VideoType>(typeParam === 'auto' ? 'simulation' : typeParam),
         chooseModel(),
       ]);
       const type = picked;
@@ -311,7 +311,7 @@ export default function MovieResults() {
         return;
       }
       setVideoType(type);
-      if (type === 'cinematic' || type === 'tour' || type === 'clip' || type === 'animation') return; // CinematicMontage / TourScene / ClipScene / AnimationScene take it from here
+      if (type === 'cinematic' || type === 'tour' || type === 'clip' || type === 'animation' || type === 'simulation') return; // CinematicMontage / TourScene / ClipScene / AnimationScene take it from here
       startGeneration(query, modeParam ?? movieModeFor(type));
     })();
   }, [query, modeParam, projectIdParam, session?.user?.id, sessionLoading]);
@@ -562,7 +562,7 @@ export default function MovieResults() {
         ? (tourInfo?.related ?? []).map((title, i) => ({ title, imageUrl: tourInfo?.relatedImages?.[i] }))
         : videoType === 'clip'
           ? (clipInfo?.related ?? []).map((title, i) => ({ title, imageUrl: clipInfo?.relatedImages?.[i] }))
-          : videoType === 'animation'
+          : videoType === 'animation' || videoType === 'simulation'
             ? (animInfo?.related ?? []).map((title) => ({ title }))
             : relatedTopics;
 
@@ -633,11 +633,11 @@ export default function MovieResults() {
         return { title: tourInfo.title, caption, hashtags: [] as string[], video: undefined,
           url: shareLink(tourInfo.title, caption, tourInfo.panoramaUrl, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=immersion`) };
       })() : null)
-    : videoType === 'animation'
+    : videoType === 'animation' || videoType === 'simulation'
     ? (animInfo ? (() => {
         const caption = animInfo.overview.split(/(?<=[.!?])\s/)[0];
         return { title: animInfo.title, caption, hashtags: [] as string[], video: undefined,
-          url: shareLink(animInfo.title, caption, undefined, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=animation`) };
+          url: shareLink(animInfo.title, caption, undefined, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=${videoType}`) };
       })() : null)
     : videoType === 'cinematic'
     ? (cine ? (() => {
@@ -651,7 +651,7 @@ export default function MovieResults() {
         url: shareLink(experience.viral.title, experience.viral.caption, coreImage,
           savedId ? `${site}/movie/share/${savedId}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}`),
       } : null);
-  const overview = videoType === 'cinematic' ? cine?.overview : videoType === 'tour' ? tourInfo?.overview : videoType === 'clip' ? clipInfo?.overview : videoType === 'animation' ? animInfo?.overview : (experience?.narrative ?? draftNarrative);
+  const overview = videoType === 'cinematic' ? cine?.overview : videoType === 'tour' ? tourInfo?.overview : videoType === 'clip' ? clipInfo?.overview : videoType === 'animation' || videoType === 'simulation' ? animInfo?.overview : (experience?.narrative ?? draftNarrative);
   const downloadFilm = async () => {
     if (!cine || exportProgress !== null) return;
     const controller = new AbortController();
@@ -785,14 +785,14 @@ export default function MovieResults() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}>
-      <TopBar query={displayQuery} timeAgo="" rightSlot={videoType === 'cinematic' ? qualityButton : videoType === 'tour' || videoType === 'clip' || videoType === 'animation' ? <span /> : enhanceButton} />
+      <TopBar query={displayQuery} timeAgo="" rightSlot={videoType === 'cinematic' ? qualityButton : videoType === 'tour' || videoType === 'clip' || videoType === 'animation' || videoType === 'simulation' ? <span /> : enhanceButton} />
 
 
       {/* Tab navigation: Video / Narrative / Sources (every type uses this template) */}
       <div className="border-b" style={{ borderColor: 'var(--ui-bg-elevated)' }}>
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
-            {TABS.filter((tab) => !((videoType === 'tour' || videoType === 'animation') && tab.id === 'timeline') // a tour or an animation has no chapters
+            {TABS.filter((tab) => !((videoType === 'tour' || videoType === 'animation' || videoType === 'simulation') && tab.id === 'timeline') // a tour, an animation or a simulation has no chapters
               && (tab.id !== 'videos' || (videoType === 'tour' && braveVids.length > 3))).map((tab) => {
               // Clips and Immersion: the first tab is the clip / the world itself, named after it (no type button).
               const isClipTab = videoType === 'clip' && tab.id === 'video';
@@ -876,7 +876,7 @@ export default function MovieResults() {
         )}
 
         {/* Progress bar while generating */}
-        {videoType !== 'cinematic' && videoType !== 'tour' && videoType !== 'clip' && videoType !== 'animation' && !isComplete && !error && (
+        {videoType !== 'cinematic' && videoType !== 'tour' && videoType !== 'clip' && videoType !== 'animation' && videoType !== 'simulation' && !isComplete && !error && (
           <div className="mb-6">
             <div className="flex items-center gap-2 text-sm mb-2" style={{ color: 'var(--ui-text-secondary)' }}>
               <Loader2 size={16} className="animate-spin" />
@@ -913,9 +913,11 @@ export default function MovieResults() {
             onWatch={() => setActiveTab('video')}
             onNeedSignIn={() => { setSignUpSubtitle(t('vidClipSaveGuest')); setShowSignUp(true); }}
           />
-        ) : videoType === 'animation' ? (
+        ) : videoType === 'animation' || videoType === 'simulation' ? (
           <AnimationScene
+            key={videoType}
             question={query || experience?.question || ''}
+            kind={videoType === 'simulation' ? 'simulation' : undefined}
             tab={activeTab === 'video' ? 'video' : 'hidden'}
             belowPlayer={sharedSections}
             onReady={setAnimInfo}
@@ -1201,7 +1203,7 @@ export default function MovieResults() {
             ) : (
               <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--ui-bg-elevated)' }}>
                 <p style={{ color: 'var(--ui-text-muted)' }}>
-                  {t(web === null || (videoType !== 'cinematic' && videoType !== 'tour' && videoType !== 'clip' && videoType !== 'animation' && !isComplete) ? 'vidCollectingSources' : 'vidNoSources')}
+                  {t(web === null || (videoType !== 'cinematic' && videoType !== 'tour' && videoType !== 'clip' && videoType !== 'animation' && videoType !== 'simulation' && !isComplete) ? 'vidCollectingSources' : 'vidNoSources')}
                 </p>
               </div>
             )}

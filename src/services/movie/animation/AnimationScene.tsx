@@ -5,9 +5,12 @@
 // question with its key word, the steps, the narrator (ElevenLabs, a woman's or a man's voice), the
 // live numbers, the surprise moment, speed, controls and the big idea.
 // Stories play by themselves; machines wait for each step (Manual) unless Auto is on.
+// Simulation (its own Video type, after GPT-6's intelligent UI): the answer is a working model to play
+// with — its controls come first (sliders, a picker, a switch, pause) and its steps are "try this"
+// suggestions that set the controls to telling values. Kept apart from the animation of the same question.
 // One animation per question, kept by the server: opening it again is instant.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Loader2, Maximize, Mars, Minimize, Palette, Play, RotateCcw, Rotate3d, Venus, VolumeX } from 'lucide-react';
+import { Loader2, Maximize, Mars, Minimize, Palette, Pause, Play, RotateCcw, Rotate3d, SlidersHorizontal, Venus, VolumeX } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -26,6 +29,8 @@ export interface AnimationInfo {
 
 interface Props {
   question: string;
+  /** 'simulation': a model to play with instead of an animation. */
+  kind?: 'simulation';
   /** The page's tab: the stage shows on Video only. */
   tab: 'video' | 'hidden';
   belowPlayer?: ReactNode;
@@ -37,7 +42,7 @@ type Stage = 'looking' | 'making' | 'ready' | 'nocredits' | 'limit' | 'failed';
 type Voice = 'female' | 'male' | 'off';
 const SPEEDS = [0.5, 1, 2] as const;
 
-export default function AnimationScene({ question, tab, belowPlayer, onReady, onNeedSignIn }: Props) {
+export default function AnimationScene({ question, kind, tab, belowPlayer, onReady, onNeedSignIn }: Props) {
   const { t } = useTranslation();
   const { session, isLoading: sessionLoading } = useSession();
   const { tier, promptUpgrade } = useProCredits();
@@ -51,7 +56,7 @@ export default function AnimationScene({ question, tab, belowPlayer, onReady, on
   useEffect(() => {
     if (sessionLoading || !question.trim()) return;
     const controller = new AbortController();
-    const key = tourKey(question);
+    const key = kind === 'simulation' ? `sim|${tourKey(question)}` : tourKey(question);
     (async () => {
       const found = await findAnimation(key).catch(() => ({ animation: null, making: false, left: 1 }));
       if (controller.signal.aborted) return;
@@ -61,14 +66,14 @@ export default function AnimationScene({ question, tab, belowPlayer, onReady, on
       // The question's difficulty picks the writer: easy → Luna, complex → Sol (Astra for Pro).
       const rated = await decideTier(question);
       const model = rated === 'easy' ? 'luna' : rated === 'complex' && tier === 'pro' ? 'astra' : 'sol';
-      show(await makeAnimation(key, question, model, controller.signal, found.making));
+      show(await makeAnimation(key, question, model, controller.signal, found.making, kind));
     })().catch((err) => {
       if (controller.signal.aborted) return;
       const msg = String(err instanceof Error ? err.message : err);
       setStage(msg.includes('daily_limit') ? 'limit' : msg.includes('sign_in_required') ? 'nocredits' : 'failed');
     });
     function show(a: Animation) {
-      const m = readManifest(a.html);
+      const m = readManifest(a.html, a.kind === 'simulation' ? 0 : 2);
       if (!m) return setStage('failed');
       setAnimation(a);
       setStage('ready');
@@ -77,7 +82,7 @@ export default function AnimationScene({ question, tab, belowPlayer, onReady, on
     return () => controller.abort();
     // tier only matters for a new animation; re-running on it would start another.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question, signedIn, sessionLoading]);
+  }, [question, kind, signedIn, sessionLoading]);
 
   useEffect(() => {
     if (stage !== 'making') return;
@@ -125,8 +130,9 @@ export default function AnimationScene({ question, tab, belowPlayer, onReady, on
 function Player({ animation, belowPlayer }: { animation: Animation; belowPlayer?: ReactNode }) {
   const { t } = useTranslation();
   const { session } = useSession();
-  const manifest = useMemo(() => readManifest(animation.html) as Manifest, [animation.html]);
-  const machine = animation.kind === 'machine';
+  const simulation = animation.kind === 'simulation';
+  const manifest = useMemo(() => readManifest(animation.html, simulation ? 0 : 2) as Manifest, [animation.html, simulation]);
+  const machine = animation.kind === 'machine' || simulation; // waits for the viewer, 3D-friendly frame
   const frameRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   // The theme the stage was drawn in; a theme change redraws it.
@@ -145,7 +151,9 @@ function Player({ animation, belowPlayer }: { animation: Animation; belowPlayer?
   const [readouts, setReadouts] = useState<Record<string, number>>({});
   const [callout, setCallout] = useState('');
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
-  const [controls, setControls] = useState<Record<string, number>>(() => Object.fromEntries(manifest.controls.map((c) => [c.id, c.value])));
+  const [controls, setControls] = useState<Record<string, number | string>>(() => Object.fromEntries(manifest.controls.map((c) => [c.id, c.value])));
+  const [paused, setPaused] = useState(false);
+  const setControl = (id: string, value: number | string) => { setControls((s) => ({ ...s, [id]: value })); send({ cmd: 'set', id, value }); };
   const [voice, setVoice] = useState<Voice>(() => narratorGender(loadNarratorVoice(session?.user)));
   const [fullscreen, setFullscreen] = useState(false);
   const run = useRef({ auto, voice, token: 0 });
@@ -166,6 +174,7 @@ function Player({ animation, belowPlayer }: { animation: Animation; belowPlayer?
       if (!m?.curios) return;
       if (m.ev === 'ready') setReady(true);
       else if (m.ev === 'readouts') setReadouts((r) => ({ ...r, ...m.values }));
+      else if (m.ev === 'controls') setControls((c) => ({ ...c, ...m.values })); // the stage moved them (a suggestion, a drag)
       else if (m.ev === 'callout') setCallout(m.text);
       else if (m.ev === 'done') doneRef.current?.(m.i);
       else if (m.ev === 'error') console.warn('[animation stage]', m.message);
@@ -263,7 +272,31 @@ function Player({ animation, belowPlayer }: { animation: Animation; belowPlayer?
   const title = manifest.title || animation.question;
   const hi = manifest.highlight ? title.toLowerCase().indexOf(manifest.highlight.toLowerCase()) : -1;
   const pill = (on: boolean) => (on ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : { color: 'var(--ui-text-secondary)' });
-  const styleName = machine ? '3D' : t(`vidAnimStyle_${animation.style}`);
+  const styleName = simulation ? t('vidType_simulation') : machine ? '3D' : t(`vidAnimStyle_${animation.style}`);
+
+  const controlsUi = manifest.controls.map((c) => (
+    <div key={c.id} className="flex items-center gap-3 text-sm" style={{ color: 'var(--ui-text-secondary)' }}>
+      <span className="w-28 sm:w-36 flex-shrink-0">{c.label}</span>
+      {c.type === 'range' ? (
+        <>
+          <input type="range" min={c.min} max={c.max} step={c.step} value={Number(controls[c.id])} onChange={(e) => setControl(c.id, Number(e.target.value))} aria-label={c.label} className="flex-1 min-w-0" style={{ accentColor: 'var(--accent-primary)' }} />
+          <span className="w-20 text-right tabular-nums" style={{ color: 'var(--ui-text-primary)' }}>{formatValue(Number(controls[c.id]))} {c.unit}</span>
+        </>
+      ) : c.type === 'choice' ? (
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide" role="group" aria-label={c.label}>
+          {c.options.map((o) => (
+            <button key={String(o.value)} type="button" onClick={() => setControl(c.id, o.value)} aria-pressed={controls[c.id] === o.value} className="flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold border transition-colors" style={controls[c.id] === o.value ? { backgroundColor: 'var(--accent-primary)', borderColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : { borderColor: 'var(--ui-border-default)', color: 'var(--ui-text-primary)' }}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button type="button" role="switch" aria-checked={Boolean(controls[c.id])} aria-label={c.label} onClick={() => setControl(c.id, controls[c.id] ? 0 : 1)} className="relative w-10 h-6 rounded-full transition-colors" style={{ backgroundColor: controls[c.id] ? 'var(--accent-primary)' : 'var(--ui-border-default)' }}>
+          <span className="absolute top-1 w-4 h-4 rounded-full transition-all" style={{ left: controls[c.id] ? '1.25rem' : '0.25rem', backgroundColor: 'var(--ui-bg-elevated)' }} />
+        </button>
+      )}
+    </div>
+  ));
 
   return (
     <>
@@ -280,7 +313,7 @@ function Player({ animation, belowPlayer }: { animation: Animation; belowPlayer?
         <iframe ref={frameRef} title={title} srcDoc={srcDoc} sandbox="allow-scripts" className="absolute inset-0 w-full h-full border-0" />
 
         <span className={`absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-white pointer-events-none ${label}`} style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
-          {machine ? <Rotate3d size={12} /> : <Palette size={12} />} {styleName}
+          {simulation ? <SlidersHorizontal size={12} /> : machine ? <Rotate3d size={12} /> : <Palette size={12} />} {styleName}
         </span>
 
         {/* Live numbers from the stage's model, and the surprise moment. */}
@@ -322,7 +355,10 @@ function Player({ animation, belowPlayer }: { animation: Animation; belowPlayer?
               </button>
             ))}
           </div>
-          <span className={`hidden sm:block ml-1 text-white/70 truncate ${label}`}>{machine ? t('vidAnimHint3d') : ''}</span>
+          <button type="button" onClick={() => { setPaused((p) => !p); send({ cmd: 'pause', paused: !paused }); }} aria-label={paused ? t('vidAnimPlay') : t('vidAnimPause')} title={paused ? t('vidAnimPlay') : t('vidAnimPause')} className="p-1">
+            {paused ? <Play size={16} /> : <Pause size={16} />}
+          </button>
+          <span className={`hidden sm:block ml-1 text-white/70 truncate ${label}`}>{animation.kind === 'machine' ? t('vidAnimHint3d') : ''}</span>
           <button type="button" onClick={toggleFullscreen} title={fullscreen ? t('vidExitFullscreen') : t('vidFullscreen')} aria-label={fullscreen ? t('vidExitFullscreen') : t('vidFullscreen')} className="ml-auto p-1">
             {fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
           </button>
@@ -334,9 +370,12 @@ function Player({ animation, belowPlayer }: { animation: Animation; belowPlayer?
         )}
       </div>
 
-      {/* The steps: Manual waits for each press (the next one pulses), Auto plays them all. */}
+      {/* The steps: Manual waits for each press (the next one pulses), Auto plays them all.
+          A simulation shows its controls first and its steps as "try this" suggestions, in any order. */}
       <section className="mt-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+        {simulation && controlsUi}
+        {simulation && manifest.beats.length > 0 && <p className={label} style={{ color: 'var(--ui-text-muted)' }}>{t('vidSimTry')}</p>}
+        <div className={`flex flex-wrap items-center gap-2 ${simulation ? 'hidden' : ''}`}>
           <div className="flex rounded-full p-0.5 border" style={{ borderColor: 'var(--ui-border-default)' }} role="group">
             {([false, true] as const).map((a) => (
               <button key={String(a)} type="button" onClick={() => { setAuto(a); if (a && !playing && nextBeat < manifest.beats.length) void play(Math.max(0, nextBeat)); }} aria-pressed={auto === a} className="px-3 py-1 rounded-full text-xs font-semibold transition-colors" style={pill(auto === a)}>
@@ -351,14 +390,14 @@ function Player({ animation, belowPlayer }: { animation: Animation; belowPlayer?
         <ol className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {manifest.beats.map((b, i) => {
             const live = i === current, done = i < current || (i === current && !playing), next = i === nextBeat && !playing;
-            const enabled = ready && (i <= nextBeat || !machine);
+            const enabled = ready && (i <= nextBeat || !machine || simulation);
             return (
               <li key={i} className="flex-shrink-0">
                 <button
                   type="button"
                   disabled={!enabled}
                   onClick={() => void play(i)}
-                  className={`inline-flex items-center gap-2 pl-1.5 pr-3.5 py-1.5 rounded-full border text-sm transition-colors disabled:cursor-not-allowed ${next && !auto ? 'anim-next' : ''}`}
+                  className={`inline-flex items-center gap-2 pl-1.5 pr-3.5 py-1.5 rounded-full border text-sm transition-colors disabled:cursor-not-allowed ${next && !auto && !simulation ? 'anim-next' : ''}`}
                   style={{
                     borderColor: live || next ? 'var(--accent-primary)' : 'var(--ui-border-default)',
                     backgroundColor: live ? 'var(--accent-primary)' : 'var(--ui-bg-elevated)',
@@ -367,7 +406,7 @@ function Player({ animation, belowPlayer }: { animation: Animation; belowPlayer?
                   }}
                 >
                   <span className="w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-semibold" style={{ border: '1px solid currentColor' }}>
-                    {next && !auto && !live ? <Play size={11} /> : i + 1}
+                    {next && !auto && !live && !simulation ? <Play size={11} /> : i + 1}
                   </span>
                   {b.label}
                 </button>
@@ -375,13 +414,7 @@ function Player({ animation, belowPlayer }: { animation: Animation; belowPlayer?
             );
           })}
         </ol>
-        {manifest.controls.map((c) => (
-          <label key={c.id} className="flex items-center gap-3 text-sm" style={{ color: 'var(--ui-text-secondary)' }}>
-            <span className="w-32 flex-shrink-0">{c.label}</span>
-            <input type="range" min={c.min} max={c.max} step={c.step} value={controls[c.id]} onChange={(e) => { const v = Number(e.target.value); setControls((s) => ({ ...s, [c.id]: v })); send({ cmd: 'set', id: c.id, value: v }); }} className="flex-1" style={{ accentColor: 'var(--accent-primary)' }} />
-            <span className="w-20 text-right tabular-nums" style={{ color: 'var(--ui-text-primary)' }}>{formatValue(controls[c.id])} {c.unit}</span>
-          </label>
-        ))}
+        {!simulation && controlsUi}
         {manifest.bigIdea && (
           <p className="text-sm sm:text-base" style={{ color: 'var(--ui-text-primary)' }}>
             <span className={`${label} mr-2`} style={{ color: 'var(--accent-primary)' }}>{t('vidAnimBigIdea')}</span>{manifest.bigIdea}

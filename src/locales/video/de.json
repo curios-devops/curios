@@ -141,5 +141,9 @@
   "vidAnimBigIdea": "Die große Idee",
   "vidAnimStyle_kurzgesagt": "Vektor",
   "vidAnimStyle_paper": "Papier",
-  "vidAnimStyle_chalk": "Tafel"
+  "vidAnimStyle_chalk": "Tafel",
+  "vidType_simulation": "Simulation",
+  "vidSimTry": "Probier das",
+  "vidAnimPause": "Pause",
+  "vidAnimPlay": "Fortsetzen"
 }

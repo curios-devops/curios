@@ -141,5 +141,9 @@
   "vidAnimBigIdea": "大事なポイント",
   "vidAnimStyle_kurzgesagt": "ベクター",
   "vidAnimStyle_paper": "ペーパー",
-  "vidAnimStyle_chalk": "黒板"
+  "vidAnimStyle_chalk": "黒板",
+  "vidType_simulation": "シミュレーション",
+  "vidSimTry": "試してみよう",
+  "vidAnimPause": "一時停止",
+  "vidAnimPlay": "再開"
 }

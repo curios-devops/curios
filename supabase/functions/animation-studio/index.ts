@@ -1,16 +1,17 @@
 // Animation (Video page type) — the studio. A model writes the answer as a live stage: a 3D machine
 // you can turn and run (three.js) or an animated story (SVG + GSAP) in a famous explainer style
-// (prompts.ts). Writing one takes Sol 1-3 minutes, longer than an edge call may wait, so it runs in
+// (prompts.ts). Writing one takes Sol ~45-90 s, longer than an edge call may wait, so it runs in
 // OpenAI's background mode: `start` launches it, the page polls `status` until the page is written.
 // One animation per question (animations table), so the same question opens at once and is free.
 //
 // Body { action }:
 //   lookup { key }                          → { ready: true, animation } | { ready: false, left }
-//   start  { key, question, tier }          → { status: 'making' } — tier luna|sol|astra (Astra for Pro only).
+//   start  { key, question, tier, kind? }   → { status: 'making' } — tier luna|sol|astra (Astra for Pro only);
+//          kind 'simulation' asks for a simulation to play with (otherwise Luna picks machine or story).
 //          Daily caps: guest 2 per connection (hashed IP), free 5, Pro 20; GLOBAL_CAP overall.
 //   status { key }                          → { status: 'making' } | { ready: true, animation } | { status: 'failed' }
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-import { CLASSIFY, MACHINE, STORY, STORY_STYLES } from "./prompts.ts";
+import { CLASSIFY, MACHINE, SIMULATION, STORY, STORY_STYLES } from "./prompts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +25,9 @@ const env = (k: string) => (Deno.env.get(k) ?? "").trim();
 const CAP = { guest: 2, free: 5, pro: 20 } as const;
 const GLOBAL_CAP = 300;
 const STALE_MS = 12 * 60 * 1000; // a page still unwritten after this is given up
+// OpenAI's priority processing writes ~1.7× faster (a page in ~45 s instead of ~80 s) at a higher token
+// price; ANIMATION_SERVICE_TIER=default turns it off.
+const TIER = () => env("ANIMATION_SERVICE_TIER") || "priority";
 const MODELS = {
   luna: () => env("MODEL_LUNA") || "gpt-6-luna",
   sol: () => env("MODEL_SOL") || "gpt-6.1-sol",
@@ -114,13 +118,14 @@ Deno.serve(async (req: Request) => {
       if (!question) return json({ error: "question required" }, 400);
       if (await left(req, uid) <= 0) return json({ error: uid ? "daily_limit" : "sign_in_required" }, 429);
       const tier = body.tier === "astra" && await isPro(uid) ? "astra" : body.tier === "luna" ? "luna" : "sol";
-      const { kind, style } = await classify(question);
-      const effort = tier === "luna" ? "none" : kind === "machine" ? "medium" : "low";
+      const { kind, style } = body.kind === "simulation" ? { kind: "simulation", style: "sim" } : await classify(question);
+      // Low reasoning: as good a page as medium, a third sooner.
+      const effort = tier === "luna" ? "none" : "low";
       const started = await openai("/responses", {
         method: "POST",
         body: JSON.stringify({
-          model: MODELS[tier](), reasoning: { effort }, instructions: kind === "machine" ? MACHINE : STORY(style),
-          input: question, background: true, store: true, max_output_tokens: 48000,
+          model: MODELS[tier](), reasoning: { effort }, instructions: kind === "simulation" ? SIMULATION : kind === "machine" ? MACHINE : STORY(style),
+          input: question, background: true, store: true, max_output_tokens: 48000, service_tier: TIER(),
         }),
       });
       const job = await started.json().catch(() => null);

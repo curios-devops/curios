@@ -141,5 +141,9 @@
   "vidAnimBigIdea": "La gran idea",
   "vidAnimStyle_kurzgesagt": "Vectorial",
   "vidAnimStyle_paper": "Paper",
-  "vidAnimStyle_chalk": "Pissarra"
+  "vidAnimStyle_chalk": "Pissarra",
+  "vidType_simulation": "Simulació",
+  "vidSimTry": "Prova això",
+  "vidAnimPause": "Pausa",
+  "vidAnimPlay": "Reprèn"
 }

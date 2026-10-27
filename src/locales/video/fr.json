@@ -141,5 +141,9 @@
   "vidAnimBigIdea": "L'idée clé",
   "vidAnimStyle_kurzgesagt": "Vectoriel",
   "vidAnimStyle_paper": "Papier",
-  "vidAnimStyle_chalk": "Tableau noir"
+  "vidAnimStyle_chalk": "Tableau noir",
+  "vidType_simulation": "Simulation",
+  "vidSimTry": "Essayez",
+  "vidAnimPause": "Pause",
+  "vidAnimPlay": "Reprendre"
 }

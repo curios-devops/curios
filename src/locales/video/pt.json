@@ -141,5 +141,9 @@
   "vidAnimBigIdea": "A grande ideia",
   "vidAnimStyle_kurzgesagt": "Vetorial",
   "vidAnimStyle_paper": "Papel",
-  "vidAnimStyle_chalk": "Lousa"
+  "vidAnimStyle_chalk": "Lousa",
+  "vidType_simulation": "Simulação",
+  "vidSimTry": "Experimente",
+  "vidAnimPause": "Pausar",
+  "vidAnimPlay": "Retomar"
 }

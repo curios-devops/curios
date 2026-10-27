@@ -7,10 +7,10 @@
 // world with its people) and Clips (a real video's moment) are chosen by hand only — each costs a Pro Credit.
 import { supabase } from '../../lib/supabase.ts';
 import type { MovieMode } from './types.ts';
-import { Clapperboard, Film, Palette, PersonStanding, Rotate3d, Video, type LucideIcon } from 'lucide-react';
+import { Clapperboard, Film, Palette, PersonStanding, Rotate3d, SlidersHorizontal, Video, type LucideIcon } from 'lucide-react';
 import AutoModeIcon from '../../components/icons/AutoModeIcon.tsx';
 
-export type VideoType = 'video' | 'cinematic' | 'animation' | 'character' | 'tour' | 'clip';
+export type VideoType = 'video' | 'cinematic' | 'animation' | 'simulation' | 'character' | 'tour' | 'clip';
 export type VideoTypeChoice = VideoType | 'auto';
 
 // Labels are locale keys vidType_<id>; hints document the intent; icons show in the type menu.
@@ -20,6 +20,7 @@ export const VIDEO_TYPES: { id: VideoTypeChoice; label: string; hint: string; ic
   { id: 'video', label: 'Video', hint: 'New generated scenes', icon: Film },
   { id: 'cinematic', label: 'Cinematic', hint: 'Real footage montage with narration and captions', icon: Video },
   { id: 'animation', label: 'Animation', hint: 'Animated explainer', icon: Palette },
+  { id: 'simulation', label: 'Simulation', hint: 'A working model to play with: sliders, pickers and switches change it', icon: SlidersHorizontal },
   { id: 'character', label: 'Character', hint: 'A character tells you the answer', icon: PersonStanding },
   { id: 'tour', label: 'Immersion', hint: 'Step into the world (Viggle 3D) and live it through the eyes of its people', icon: Rotate3d },
   { id: 'clip', label: 'Clips', hint: 'The moment of a real video that answers — and you can talk to it', icon: Clapperboard },

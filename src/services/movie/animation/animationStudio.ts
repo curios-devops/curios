@@ -5,7 +5,7 @@ import { supabase } from '../../../lib/supabase.ts';
 
 export interface Animation {
   question: string;
-  kind: 'machine' | 'story';
+  kind: 'machine' | 'story' | 'simulation';
   style: string;
   model: string;
   html: string;
@@ -31,9 +31,9 @@ export async function findAnimation(key: string): Promise<{ animation: Animation
 }
 
 /** Starts it (unless it's already being made) and waits until the page is written. */
-export async function makeAnimation(key: string, question: string, tier: 'luna' | 'sol' | 'astra', signal: AbortSignal, already = false): Promise<Animation> {
+export async function makeAnimation(key: string, question: string, tier: 'luna' | 'sol' | 'astra', signal: AbortSignal, already = false, kind?: 'simulation'): Promise<Animation> {
   if (!already) {
-    const started = await call({ action: 'start', key, question, tier });
+    const started = await call({ action: 'start', key, question, tier, kind });
     if (started.ready && started.animation) return started.animation;
   }
   for (let i = 0; i < 200 && !signal.aborted; i++) {

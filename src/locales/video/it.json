@@ -141,5 +141,9 @@
   "vidAnimBigIdea": "L'idea chiave",
   "vidAnimStyle_kurzgesagt": "Vettoriale",
   "vidAnimStyle_paper": "Carta",
-  "vidAnimStyle_chalk": "Lavagna"
+  "vidAnimStyle_chalk": "Lavagna",
+  "vidType_simulation": "Simulazione",
+  "vidSimTry": "Prova questo",
+  "vidAnimPause": "Pausa",
+  "vidAnimPlay": "Riprendi"
 }
