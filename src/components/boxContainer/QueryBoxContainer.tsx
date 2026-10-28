@@ -13,6 +13,7 @@ import { uploadMultipleImages } from '../../utils/imageUpload.ts';
 import { logger } from '../../utils/logger.ts';
 import { useVoiceRecording } from '../../hooks/useVoiceRecording.ts';
 import { transcribeAudioWithFallback } from '../../services/stt/transcriptionService.ts';
+import { listenLanguage } from '../../services/stt/language.ts';
 import { classifyIntent, detectLanguage } from '../../services/auto/intentRouter.ts';
 import { useLanguage } from '../../contexts/LanguageContext.tsx';
 import { resolveBuyIntent } from '../../services/search/buyIntent.ts';
@@ -46,7 +47,7 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const reverseImageRef = useRef<ReverseImageSearchHandle>(null);
   const { session } = useSession();
-  const { autoDetect, followQuestion } = useLanguage();
+  const { autoDetect, followQuestion, currentLanguage } = useLanguage();
   const accentColor = useAccentColor();
   const { isRecording, startRecording, stopRecording } = useVoiceRecording();
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -228,8 +229,9 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
 
         logger.info('Transcribing audio...', { size: audioBlob.size });
 
-        // Transcribe using ElevenLabs realtime first, then fallback to Whisper
-        const transcribedText = await transcribeAudioWithFallback(audioBlob);
+        // Transcribe using ElevenLabs realtime first, then fallback to Whisper — in the spoken
+        // language with Auto Detect on (it was always English), else the app's.
+        const transcribedText = await transcribeAudioWithFallback(audioBlob, listenLanguage(autoDetect, currentLanguage?.code));
 
         logger.info('Transcription complete', { text: transcribedText });
 
