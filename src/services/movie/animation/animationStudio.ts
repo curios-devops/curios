@@ -45,3 +45,33 @@ export async function makeAnimation(key: string, question: string, tier: 'luna' 
   }
   throw new Error(signal.aborted ? 'aborted' : 'The animation took too long');
 }
+
+export interface SavedAnimation { id: string; videoUrl: string; posterUrl: string | null }
+
+/**
+ * The recorded video and its preview picture go straight to Cloudinary (signed by the studio), and the
+ * video is kept as the viewer's movie (video_mode 'animation'): their history, its share page and the feed.
+ */
+export async function saveAnimationVideo(o: {
+  key: string; userId: string; question: string; title: string; summary: string; narrative: string;
+  beats: number; seconds: number; aspect: string; video: Blob; poster: Blob | null;
+}): Promise<SavedAnimation> {
+  const { data, error } = await supabase.functions.invoke('animation-studio', { body: { action: 'upload', key: o.key } });
+  if (error || !data?.video) throw new Error('upload not signed');
+  const upload = async (target: { url: string; fields: Record<string, string> }, file: Blob) => {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(target.fields)) form.append(k, v);
+    form.append('file', file);
+    const res = await fetch(target.url, { method: 'POST', body: form });
+    if (!res.ok) throw new Error(`Cloudinary ${res.status}`);
+    return String((await res.json()).secure_url);
+  };
+  const [videoUrl, posterUrl] = await Promise.all([upload(data.video, o.video), o.poster ? upload(data.poster, o.poster).catch(() => null) : null]);
+  const { data: row, error: saveError } = await supabase.from('movie_projects').insert({
+    user_id: o.userId, question: o.question, title: o.title, description: o.summary, narrative: o.narrative,
+    full_video_url: videoUrl, thumbnail_url: posterUrl, scene_count: o.beats, duration_seconds: Math.round(o.seconds),
+    aspect_ratio: o.aspect, video_mode: 'animation', status: 'complete', viral: { title: o.title, caption: o.summary, hashtags: [] },
+  }).select('id').single();
+  if (saveError) throw saveError;
+  return { id: String(row.id), videoUrl, posterUrl };
+}

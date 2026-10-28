@@ -80,6 +80,11 @@ characters (round heads, warm skin #875447, simple eyes and brows that act, a br
 backgrounds (hills, clouds, stars, rain), sparkles. Palette — always, whatever the theme: ${NIGHT}.`,
   paper: `TED-Ed style paper cut-out: warm muted palette, paper textures drawn with SVG filters (feTurbulence grain),
 slightly irregular hand-cut shapes, stylised characters with long limbs, layered depth with soft drop shadows, ink-stamp details.`,
+  real: `news explainer in real colours, like a broadcast reconstruction: clean flat low-poly illustration of the real
+place and things as they look in daylight (sky blue → pale haze, ochre fields, grey ballast and steel rails, real vehicle
+liveries, real building materials), soft sun shading and long shadows, a camera that flies along the real geography
+(follow a train down the line, push in on the faulty part), simple map insets with real names, numbers as clean white
+labels with a thin leader line. No night palette, no cartoon faces: it must look like the real event.`,
   chalk: `3Blue1Brown style mathematics: dark slate ground, clean thin strokes in a few luminous colours (blue, yellow,
 teal, red), shapes and formulas that draw themselves and morph continuously, grids and number lines, smooth camera zooms.`,
 };
@@ -103,11 +108,14 @@ SVG viewBox fitted to the viewport (re-fit on resize so nothing is cut at 360×6
 ${BRIDGE}`;
 
 export const CLASSIFY = `Decide how Curios should animate the answer to a question. Reply JSON only:
-{"kind": "machine" | "story", "style": "kurzgesagt" | "paper" | "chalk"}
+{"kind": "machine" | "story", "style": "real" | "kurzgesagt" | "paper" | "chalk"}
 - machine: the answer is how a physical thing works or an experiment you can run: engines, devices, tools, vehicles,
   appliances, instruments, mechanisms, a physical process on a bench (boiling water, a battery, a lever).
 - story: everything else — natural phenomena, space, biology, history, people, ideas, economics, maths.
-- style (story only): kurzgesagt for science, nature, space, the body, the future; paper for history, culture,
+- a real event in the news is always a story in the real style, even when a machine is part of it.
+- style (story only) — what the story will tell decides it: real for something that really happened or is happening
+  (news, an accident, a strike, an election, a disaster, a trip, a real place, line or building) — it must look like
+  reality; kurzgesagt for science, nature, space, the body, the future; paper for history, culture,
   people, stories, society; chalk for mathematics, logic, computing and abstract ideas.`;
 
 export const SIMULATION = `You build interactive simulations that answer a question — "intelligent UI": the answer is a small,

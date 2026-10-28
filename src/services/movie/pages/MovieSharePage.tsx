@@ -57,9 +57,10 @@ export default function MovieSharePage() {
       <TopBar query={viral?.title || movie.title} timeAgo="" rightSlot={<span />} />
 
       <div className="max-w-3xl mx-auto px-4 py-10">
-        <div className="rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
+        {/* A video keeps its own shape (a portrait animation stays tall); the rest is 16:9. */}
+        <div className={`rounded-xl overflow-hidden bg-black flex items-center justify-center ${movie.full_video_url ? '' : 'aspect-video'}`}>
           {movie.full_video_url ? (
-            <video src={movie.full_video_url} controls autoPlay className="w-full h-full object-contain" />
+            <video src={movie.full_video_url} poster={movie.thumbnail_url} controls autoPlay playsInline className="w-full max-h-[80vh] object-contain" />
           ) : movie.thumbnail_url ? (
             <img src={movie.thumbnail_url} alt={movie.title} className="w-full h-full object-contain" />
           ) : (

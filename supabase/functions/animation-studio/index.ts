@@ -10,8 +10,11 @@
 //          kind 'simulation' asks for a simulation to play with (otherwise Luna picks machine or story).
 //          Daily caps: guest 2 per connection (hashed IP), free 5, Pro 20; GLOBAL_CAP overall.
 //   status { key }                          → { status: 'making' } | { ready: true, animation } | { status: 'failed' }
+//   upload { key }                          → { video, poster }: signed Cloudinary uploads for a signed-in viewer
+//          saving the animation as a video (recorded in the browser); each is { url, fields }.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { CLASSIFY, MACHINE, SIMULATION, STORY, STORY_STYLES } from "./prompts.ts";
+import { signedUpload } from "../_shared/cloudinary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -156,6 +159,16 @@ Deno.serve(async (req: Request) => {
       const { data: saved, error } = await db().from("animations").update({ status: "ready", html, updated_at: new Date().toISOString() }).eq("question_key", key).select("*").single();
       if (error) throw error;
       return json({ ready: true, animation: toAnimation(saved) });
+    }
+
+    if (body.action === "upload") {
+      if (!uid) return json({ error: "sign_in_required" }, 401);
+      if (row?.status !== "ready") return json({ error: "not_ready" }, 400);
+      const id = crypto.randomUUID();
+      return json({
+        video: await signedUpload({ folder: "animations", publicId: id, format: "mp4" }),
+        poster: await signedUpload({ folder: "animations", publicId: `${id}-poster`, format: "jpg" }),
+      });
     }
 
     return json({ error: "unknown action" }, 400);

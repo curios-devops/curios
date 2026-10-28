@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronsUp, Clapperboard, Compass, Crown, Download, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Rotate3d, Share2, Sparkles } from 'lucide-react';
+import { Bookmark, BookmarkCheck, ChevronDown, ChevronsUp, Clapperboard, Compass, Crown, Download, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Rotate3d, Share2, Sparkles } from 'lucide-react';
 
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -39,7 +39,7 @@ import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, movieModeFor, parseVideoType, type VideoType } from '../videoType.ts';
 import CinematicMontage, { type CinematicInfo } from '../cinematic/CinematicMontage.tsx';
 import TourScene, { type TourInfo } from '../tour/TourScene.tsx';
-import AnimationScene, { type AnimationInfo } from '../animation/AnimationScene.tsx';
+import AnimationScene, { unlockRecordingAudio, type AnimationInfo, type SaveState } from '../animation/AnimationScene.tsx';
 import ClipScene, { type ClipInfo } from '../clip/ClipScene.tsx';
 import { getFilmLikeState, saveCinematicFilm, toggleCinematicLike } from '../cinematic/cinematicFilms.ts';
 import { exportCinematic, saveFilm } from '../cinematic/exportCinematic.ts';
@@ -130,6 +130,9 @@ export default function MovieResults() {
   // 360 Tour's data for the shared sections.
   const [tourInfo, setTourInfo] = useState<TourInfo | null>(null);
   const [animInfo, setAnimInfo] = useState<AnimationInfo | null>(null);
+  // Animation saved as a video (Save next to Share): the page's request and the scene's progress.
+  const [animSaveRequest, setAnimSaveRequest] = useState(0);
+  const [animSave, setAnimSave] = useState<SaveState | null>(null);
   // Clips' data for the shared sections.
   const [clipInfo, setClipInfo] = useState<ClipInfo | null>(null);
   // Fresh web results (Exa) for every type: Images and Sources tabs, Cinematic's facts.
@@ -636,8 +639,10 @@ export default function MovieResults() {
     : videoType === 'animation' || videoType === 'simulation'
     ? (animInfo ? (() => {
         const caption = animInfo.overview.split(/(?<=[.!?])\s/)[0];
-        return { title: animInfo.title, caption, hashtags: [] as string[], video: undefined,
-          url: shareLink(animInfo.title, caption, undefined, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=${videoType}`) };
+        // Once saved as a video, shares carry the video, its picture (with a play mark) and its own page.
+        const saved = animSave?.status === 'saved' ? animSave.saved : null;
+        return { title: animInfo.title, caption, hashtags: [] as string[], video: saved?.videoUrl,
+          url: shareLink(animInfo.title, caption, saved?.posterUrl ?? undefined, saved ? `${site}/movie/share/${saved.id}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=${videoType}`) };
       })() : null)
     : videoType === 'cinematic'
     ? (cine ? (() => {
@@ -717,6 +722,25 @@ export default function MovieResults() {
               )}
             </button>
           )}
+          {videoType === 'animation' && animInfo && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!userId) { setSignUpSubtitle(t('vidAnimSaveGuest')); setShowSignUp(true); return; }
+                if (animSave?.status === 'saved') { setShareOpen(true); return; }
+                if (animSave?.status !== 'recording' && animSave?.status !== 'uploading') { unlockRecordingAudio(); setAnimSaveRequest((n) => n + 1); }
+              }}
+              disabled={animSave?.status === 'recording' || animSave?.status === 'uploading'}
+              title={animSave?.status === 'saved' ? t('vidAnimSaved') : t('vidAnimSave')}
+              aria-label={animSave?.status === 'saved' ? t('vidAnimSaved') : t('vidAnimSave')}
+              className={`${lineBtn} ${animSave?.status === 'uploading' ? '' : '!px-0 w-10 justify-center'} disabled:cursor-wait`}
+              style={{ ...lineBtnStyle, color: animSave?.status === 'saved' ? 'var(--accent-primary)' : lineBtnStyle.color }}
+            >
+              {animSave?.status === 'uploading' ? <><Loader2 size={16} className="animate-spin" /><span>{t('vidAnimUploading')}</span></>
+                : animSave?.status === 'recording' ? <Loader2 size={16} className="animate-spin" />
+                : animSave?.status === 'saved' ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShareOpen((o) => !o)}
@@ -730,6 +754,12 @@ export default function MovieResults() {
           </button>
           {exportProgress !== null && (
             <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidDownloadKeepOpen')}</p>
+          )}
+          {animSave?.status === 'recording' && (
+            <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidAnimRecordingKeepOpen')}</p>
+          )}
+          {animSave?.status === 'failed' && (
+            <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidAnimSaveFailed')}</p>
           )}
           {exportFailed && (
             <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidDownloadFailed')}</p>
@@ -922,6 +952,8 @@ export default function MovieResults() {
             belowPlayer={sharedSections}
             onReady={setAnimInfo}
             onNeedSignIn={() => { setSignUpSubtitle(t('vidTourSaveGuest')); setShowSignUp(true); }}
+            saveRequest={animSaveRequest}
+            onSave={setAnimSave}
           />
         ) : videoType === 'tour' ? (
           <TourScene
