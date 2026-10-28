@@ -4,116 +4,21 @@ Using search engines like Brave, SERPAPI, Tavily and SearXNG to stay current, Cu
 
 ## Agents Origins and Influences
 
-1. **Swarm (Multi-Agent Coordination)**  
-   - Swarm-like architectures inspire the idea of multiple independent agents working in parallel, each focusing on a specific piece of the query.
-
-2. **Stanford’s Storm (Question Generation + Prewriting)**  
+1. **Stanford’s Storm (Question Generation + Prewriting)**  
    - Storm-style techniques encourage multi-perspective questioning, ensuring thorough coverage and deeper exploration of a topic before drafting final content.
 
-3. **MindSearch (Graph-Based Task Decomposition & Parallel Execution)**  
+2. **MindSearch (Graph-Based Task Decomposition & Parallel Execution)**  
    - From MindSearch, we integrate the concept of parallel searches and the dynamic breakdown of a larger query into smaller, more focused subtasks.
 
 ---
 
 
-## Typical Search Flow
+## How Search Works
 
-1. **User Submits Query**  
-   - The user enters a query via the UI Agent (just like any standard search).  
-   - The Orchestrator Agent then decides how to break down or parallelize the tasks.
+No multi-agent framework: plain functions and parallel calls (the earlier Swarm-style controller and Pro Search agents were removed).
 
-2. **Multi-Perspective Generation (only in proSearch )**  
-   - The Perspective Generator proposes different ways to explore the query (for example, brainstorming subtopics or specific angles).
-
-3. **Information Retrieval**  
-   - The Information Retriever fetches data for each subtopic in parallel.  
-   - This approach, inspired by multi-agent orchestration (from Swarm and MindSearch), speeds up the discovery of relevant sources.
-
-4. **Final Write-Up**  
-   - The Article Writer turns the refined data into a cohesive, easy-to-read response (including citations).  
-   - The result is sent to the UI Agent, which displays it in the user’s familiar interface.
-
-**High-Level Flow for Search and Pro Search **
-
-**SEARCH ARCHITECTURE SEPARATION**
-
-The search services are now **completely separated** to prevent cross-contamination:
-
-**Regular Search Service** (`src/services/search/regular/regularSearchService.ts`)
-- Uses: `SearchRetrieverAgent` + `SearchWriterAgent`
-- Flow: User Query → Retriever → Writer → Final Answer
-- NO Pro features, NO SwarmController, NO Perspectives
-
-**Pro Search Service** (`src/services/search/pro/proSearchService.ts`)
-- Uses: `SwarmController` (includes `PerspectiveAgent`)
-- Flow: User Query → SwarmController → Perspective Generator → Retriever → Writer → Final Answer
-- Includes Pro features like perspectives
-
-**Unified Router** (`src/services/search/searchService.ts`)
-- Routes to appropriate service based on `isPro` flag
-- Maintains backwards compatibility
-- Ensures complete separation between flows
-
----
-
-**Search**
-User Query
-    |
-    v
-UI Agent  <---->  Orchestrator Agent
-    |
-    +--> Information Retriever --> Article Writer
-    ^
-    | (direct  response)
-    |
-Final Answer to User
-
-
-**ProSearch** typically features four operational agents:
-
-1. **UI Agent/Orchestrator Agent/Swarm Controller**  
-   - *Role*: The “conductor” of all other agents.  
-   - *Key Function*: Receives the user’s request from the UI Agent, breaks it into subtasks (possibly via question generation), and delegates work to the other specialized agents.
-
-2. **Perspective Generator**  
-   - *Role*: Brainstorms angles, questions, and viewpoints about the user’s query.  
-   - *Key Function*: Ensures a broad and deep coverage of the topic, taking inspiration from Storm’s prewriting approach.
-
-3. **Information Retriever**  
-   - *Role*: Gathers raw data from the web or any configured search API (e.g., SearXNG).  
-   - *Key Function*: Executes optimized search queries, collects relevant links and snippets, and feeds them back for refinement.
-
-4. **Article Writer**  
-   - *Role*: Produces a final written response or article.  
-   - *Key Function*: Takes the refined data from the Research Analyst and composes a coherent, citation-backed write-up or summary.
-
-**Pro Search Flow**
-User Query
-    |
-    v
-UI Agent  <---->  Orchestrator Agent / Swarm contrller 
-    |
-    +--> Perspective Generator --> RetrieverAgent  --> AgentWriter
-    ^
-    | (response with perspectives)
-    |
-Final Answer to User
-
----
-
-## Benefits
-
-1. **Depth & Breadth**  
-   - By splitting queries into subtopics and handling them in parallel, ProSearch ensures more comprehensive coverage of complex subjects.
-
-2. **Quality Outputs**  
-   - Dedicated roles (Research Analyst, Article Writer) improve the final answer’s **clarity**, **accuracy**, and **usefulness**.
-
-3. **Familiar Front-End**  
-   - The standard “search-and-results” interface remains intact. ProSearch operates *behind the scenes*, maintaining user comfort and continuity.
-
-4. **Scalability**  
-   - Additional agents (like fact-checkers or domain experts) can be introduced seamlessly if the project grows in scope.
+- **Search** (`src/services/search/controller.ts`): the web search and the media search run in parallel, then one LLM call writes the answer with citations and follow-ups.
+- **Ask Deeper** (`src/services/search/deep/`): one LLM call expands the query into three searches (principal, counterpoint, expansion), they are retrieved in parallel, and one answer is synthesized from them.
 
 ---
 
