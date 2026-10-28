@@ -105,7 +105,7 @@
 
 ### Data Source
 ```
-Tavily API → InsightsRetrieverAgent → insightSwarmController
+Tavily images → the Stories result (`result.images`)
   → result.images[0] → Featured Image Display
 ```
 
