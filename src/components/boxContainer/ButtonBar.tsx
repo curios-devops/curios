@@ -73,7 +73,8 @@ export default function ButtonBar({
   const navigate = useNavigate(); // Voice mode → live Character with the mic open
   const accentColor = useAccentColor();
   const [showModeMenu, setShowModeMenu] = useState(false);
-  // Music mode: "listen" recognizes the song playing around the phone (Shazam-like).
+  // Music mode: "listen" recognizes the song playing around the phone (Shazam-like). Auto's voice
+  // button listens for anything: a song opens its page, someone talking opens the Character.
   const [listening, setListening] = useState(false);
   // Picking a mode rolls the Roadster once before the menu closes (skipped with reduced motion).
   const [spinning, setSpinning] = useState(false);
@@ -280,7 +281,7 @@ export default function ButtonBar({
                 icon={AudioBarsIcon}
                 label={t('voiceMode') || 'Voice mode'}
                 tooltip={t('voiceMode') || 'Voice mode'}
-                onClick={() => navigate('/character?mic=1')}
+                onClick={() => (selectedMode === 'auto' ? setListening(true) : navigate('/character?mic=1'))}
                 accent
               />
             )}
@@ -295,7 +296,7 @@ export default function ButtonBar({
           />
         )}
       </div>
-      {listening && <SongListener onClose={() => setListening(false)} onNeedSignIn={onSignInRequired} />}
+      {listening && <SongListener listenFor={selectedMode === 'auto' ? 'anything' : 'song'} onClose={() => setListening(false)} onNeedSignIn={onSignInRequired} />}
     </div>
   );
 }

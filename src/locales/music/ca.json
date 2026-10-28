@@ -107,6 +107,8 @@
   "songClose": "Tancar",
   "songExplains": "Explica {topic}",
   "songStyle_auto": "Automàtic",
+  "listenAnything": "Escoltant",
+  "listenAnythingHint": "Parla o deixa sonar una cançó",
   "musicListen": "Reconèixer cançó",
   "musicListening": "Escoltant música",
   "musicListeningHint": "Assegura't que el dispositiu sent bé la cançó",

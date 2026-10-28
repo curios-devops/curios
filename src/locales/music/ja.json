@@ -107,6 +107,8 @@
   "songClose": "閉じる",
   "songExplains": "{topic}を説明",
   "songStyle_auto": "おまかせ",
+  "listenAnything": "聞いています",
+  "listenAnythingHint": "話しかけるか、曲を流してください",
   "musicListen": "曲を認識",
   "musicListening": "音楽を聴いています",
   "musicListeningHint": "デバイスが曲をはっきり聴き取れるようにしてください",
