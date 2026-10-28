@@ -66,7 +66,7 @@ export default function MusicFactPage() {
   const target = useMemo<MusicTarget | null>(() => {
     const kind = params.get('kind') as MusicKind | null;
     const artist = params.get('artist');
-    return kind && artist ? { kind, artist, title: params.get('title') ?? undefined } : null;
+    return kind && artist ? { kind, artist, title: params.get('title') ?? undefined, album: params.get('album') ?? undefined, year: params.get('year') ?? undefined } : null;
   }, [params]);
   const { getModel } = useAnswerModel(query);
   const { canUseProFeature, requestProAccess, tier } = useProCredits();

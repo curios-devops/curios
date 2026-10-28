@@ -358,6 +358,7 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
           onVoiceClick={handleVoiceClick}
           isRecording={isRecording}
           isTranscribing={isTranscribing}
+          onSignInRequired={() => { setSignInContext('default'); setShowSignInModal(true); }}
         />
       </div>
       </div>

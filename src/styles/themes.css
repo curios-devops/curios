@@ -366,3 +366,12 @@ html[data-theme="light"] .rocket-thruster {
 @keyframes anim-next { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-primary) 45%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-primary) 0%, transparent); } }
 @keyframes anim-callout { from { opacity: 0; transform: scale(0.6) translateY(-4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .anim-next, .anim-callout { animation: none; } }
+
+/* Music mode's listen screen: rings ripple out of the accent button while it hears, the bars breathe,
+   and the cover of the song it found grows into place. */
+.song-ring { border: 2px solid var(--accent-primary); animation: song-ring 2.4s ease-out infinite; opacity: 0; }
+.song-bars { animation: song-bars 0.9s ease-in-out infinite alternate; }
+.song-found { animation: anim-callout 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes song-ring { from { transform: scale(0.7); opacity: 0.6; } to { transform: scale(1.6); opacity: 0; } }
+@keyframes song-bars { from { transform: scaleY(0.8); } to { transform: scaleY(1.1); } }
+@media (prefers-reduced-motion: reduce) { .song-ring, .song-bars, .song-found { animation: none; } .song-ring { opacity: 0.3; } }

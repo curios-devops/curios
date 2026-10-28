@@ -106,5 +106,21 @@
   "songVotePrompt": "Gostou da música?",
   "songClose": "Fechar",
   "songExplains": "Explica {topic}",
-  "songStyle_auto": "Automático"
+  "songStyle_auto": "Automático",
+  "musicListen": "Reconhecer música",
+  "musicListening": "Ouvindo música",
+  "musicListeningHint": "Verifique se o dispositivo consegue ouvir bem a música",
+  "musicSearching": "Procurando",
+  "musicNotHeard": "Nenhum resultado",
+  "musicNotHeardHint": "Não conseguimos captar direito",
+  "musicTryAgain": "Tentar de novo",
+  "musicMicDenied": "Preciso de permissão para usar o microfone",
+  "musicListenLimit": "Você chegou ao limite de músicas de hoje",
+  "musicListenSignIn": "Entre para continuar reconhecendo músicas",
+  "musicListenError": "Não consegui ouvir agora. Tente de novo.",
+  "musicSearchingHint": "Aguarde um momento",
+  "musicExpanding": "Ampliando a busca",
+  "musicExpandingHint": "Só mais um pouco",
+  "musicTough": "Essa é difícil",
+  "musicToughHint": "Última tentativa"
 }

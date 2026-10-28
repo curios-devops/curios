@@ -3,8 +3,8 @@
 // (no key) gives the sheet, photos, covers, top songs, discography, similar artists and 30 s
 // previews; Last.fm (optional LASTFM_API_KEY) adds listeners, tags and a short bio. When
 // Deezer finds nothing, MusicBrainz + Wikipedia fill a smaller sheet.
-// Body { query, language?: "es" } or { kind, artist, title, language? } (links inside the
-// page) → MusicInfo JSON, or { found: false }.
+// Body { query, language?: "es" } or { kind, artist, title, album?, year?, language? } (links
+// inside the page; a recognized song also knows its album and year) → MusicInfo JSON, or { found: false }.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -440,7 +440,7 @@ Deno.serve(async (req: Request) => {
 
     // Links inside the page already know what they open; free text goes through Luna.
     let parsed: Parsed | null = ["track", "artist", "album"].includes(body?.kind) && typeof body?.artist === "string"
-      ? { kind: body.kind, artist: body.artist, title: typeof body?.title === "string" ? body.title : body.artist }
+      ? { kind: body.kind, artist: body.artist, title: typeof body?.title === "string" ? body.title : body.artist, ...(typeof body?.album === "string" ? { album: body.album } : {}), ...(typeof body?.year === "string" ? { year: body.year } : {}) }
       : null;
     if (!parsed && !query) return json({ error: "Missing query" }, 400);
     parsed ??= (await parseQuery(query)) ?? { kind: "track", artist: "", title: query };

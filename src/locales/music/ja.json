@@ -106,5 +106,21 @@
   "songVotePrompt": "この曲は気に入りましたか？",
   "songClose": "閉じる",
   "songExplains": "{topic}を説明",
-  "songStyle_auto": "おまかせ"
+  "songStyle_auto": "おまかせ",
+  "musicListen": "曲を認識",
+  "musicListening": "音楽を聴いています",
+  "musicListeningHint": "デバイスが曲をはっきり聴き取れるようにしてください",
+  "musicSearching": "検索中",
+  "musicNotHeard": "結果なし",
+  "musicNotHeardHint": "うまく聴き取れませんでした",
+  "musicTryAgain": "もう一度",
+  "musicMicDenied": "マイクの使用を許可してください",
+  "musicListenLimit": "今日の曲の上限に達しました",
+  "musicListenSignIn": "ログインすると曲の認識を続けられます",
+  "musicListenError": "今は聴き取れませんでした。もう一度お試しください。",
+  "musicSearchingHint": "少々お待ちください",
+  "musicExpanding": "検索範囲を広げています",
+  "musicExpandingHint": "もう少しお待ちください",
+  "musicTough": "これは難しい",
+  "musicToughHint": "最後の試み"
 }
