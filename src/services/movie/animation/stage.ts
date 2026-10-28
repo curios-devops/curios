@@ -18,6 +18,8 @@ export interface Manifest {
   highlight: string;
   bigIdea: string;
   related: string[];
+  /** Stock-footage searches for the related questions (newer animations), same order. */
+  relatedSearch: string[];
   beats: Beat[];
   readouts: Readout[];
   controls: Control[];
@@ -55,6 +57,7 @@ export function readManifest(html: string, minBeats = 2): Manifest | null {
     highlight: highlight && title.toLowerCase().includes(highlight.toLowerCase()) ? highlight : '',
     bigIdea: str(raw.bigIdea, 240),
     related: list(raw.related).map((q) => str(q, 120)).filter(Boolean).slice(0, 4),
+    relatedSearch: (Array.isArray(raw.relatedSearch) ? raw.relatedSearch : []).map((q) => str(q, 60)).slice(0, 4),
     beats,
     readouts: list(raw.readouts).map((r) => ({ id: id(r?.id), label: str(r?.label, 30), unit: str(r?.unit, 12) })).filter((r) => r.id && r.label).slice(0, 4),
     controls: list(raw.controls).flatMap((c): Control[] => {
@@ -173,4 +176,15 @@ export function currentTheme(): StageTheme {
     accent: v('--accent-primary', '#2563EB'),
     font: v('--font-ui', 'system-ui, sans-serif'),
   };
+}
+
+// Question words and fillers that make stock searches return lettering ("WHY? WHO?") instead of the subject.
+const FILLER = new Set('what which when where why who whom whose how does did do is are was were can could would should will the a an of to in on for and or but with without from by about into than then this that these those there their its it actually really still just very more most much many some any qué cuál cuáles cuándo cuando dónde por porque quién quiénes cómo cuánto cuántos es son fue era hay puede pueden del las los una uno unos unas para con sin sobre entre este esta estos estas ese esa eso aún todavía realmente muy más'.split(' '));
+const keywords = (text: string) => text.replace(/[^\p{L}\p{N}\s-]/gu, ' ').split(/\s+/).filter((w) => w.length > 2 && !FILLER.has(w.toLowerCase()));
+
+/** A short stock search for a related question (older animations have none): its key words, plus the subject. */
+export function stockSearch(question: string, title: string): string {
+  const own = keywords(question);
+  const subject = keywords(title).filter((w) => !own.some((o) => o.toLowerCase() === w.toLowerCase()));
+  return [...own.slice(0, 3), ...subject].slice(0, 4).join(' ');
 }

@@ -39,6 +39,7 @@ import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, movieModeFor, parseVideoType, type VideoType } from '../videoType.ts';
 import CinematicMontage, { type CinematicInfo } from '../cinematic/CinematicMontage.tsx';
 import TourScene, { type TourInfo } from '../tour/TourScene.tsx';
+import { findSavedAnimation, type SavedAnimation } from '../animation/animationStudio.ts';
 import AnimationScene, { unlockRecordingAudio, type AnimationInfo, type SaveState, type VideoAsk } from '../animation/AnimationScene.tsx';
 import ClipScene, { type ClipInfo } from '../clip/ClipScene.tsx';
 import { getFilmLikeState, saveCinematicFilm, toggleCinematicLike } from '../cinematic/cinematicFilms.ts';
@@ -133,6 +134,7 @@ export default function MovieResults() {
   // Animation as a video (Save / Download next to Share): the page's request and the scene's progress.
   const [animVideoRequest, setAnimVideoRequest] = useState<{ n: number; ask: VideoAsk }>({ n: 0, ask: 'save' });
   const [animSave, setAnimSave] = useState<SaveState | null>(null);
+  const [animSaved, setAnimSaved] = useState<SavedAnimation | null>(null); // kept apart: a later download doesn't forget it
   // Clips' data for the shared sections.
   const [clipInfo, setClipInfo] = useState<ClipInfo | null>(null);
   // Fresh web results (Exa) for every type: Images and Sources tabs, Cinematic's facts.
@@ -493,9 +495,21 @@ export default function MovieResults() {
     saveCinematicFilm(userId, query, cine.title, cine.credits[0]?.image).then((id) => { if (alive && id) setFilmId(id); });
     return () => { alive = false; };
   }, [videoType, cine, filmParam, userId, query]);
+  // An animation's heart is its saved video's: the viewer's own, found here if they saved it before.
+  const animSavedId = animSaved?.id ?? null;
+  useEffect(() => {
+    if (videoType !== 'animation' || !userId || !animInfo?.title || animSavedId) return;
+    let alive = true;
+    void findSavedAnimation(userId, animInfo.title).then((saved) => { if (alive && saved) setAnimSaved(saved); }).catch(() => undefined);
+    return () => { alive = false; };
+  }, [videoType, userId, animInfo?.title, animSavedId]);
   const likeTarget = videoType === 'cinematic'
     ? (filmId ? { kind: 'film' as const, id: filmId } : null)
-    : (savedId ? { kind: 'movie' as const, id: savedId } : null);
+    : videoType === 'animation'
+      ? (animSavedId ? { kind: 'movie' as const, id: animSavedId } : null)
+      : (savedId ? { kind: 'movie' as const, id: savedId } : null);
+  // A heart on an animation not saved yet saves it first, then likes it.
+  const pendingLike = useRef(false);
   useEffect(() => {
     setLike(null);
     if (!likeTarget) return;
@@ -508,6 +522,13 @@ export default function MovieResults() {
   }, [likeTarget?.kind, likeTarget?.id, userId]);
   const toggleLike = async () => {
     if (!userId) { setLikeGuestNote(true); return; }
+    if (!likeTarget && videoType === 'animation' && animInfo) {
+      if (animSave?.status === 'recording' || animSave?.status === 'uploading') { pendingLike.current = true; return; }
+      pendingLike.current = true;
+      unlockRecordingAudio();
+      setAnimVideoRequest((r) => ({ n: r.n + 1, ask: 'save' }));
+      return;
+    }
     if (!likeTarget || !like) return;
     const liked = !like.liked;
     setLike({ liked, count: Math.max(0, like.count + (liked ? 1 : -1)) });
@@ -518,6 +539,13 @@ export default function MovieResults() {
       setLike(like);
     }
   };
+
+  useEffect(() => {
+    if (!like || !pendingLike.current) return;
+    pendingLike.current = false;
+    if (!like.liked) void toggleLike();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [like]);
 
   const roleLabel = (s: MovieSwipe) => t(`vidRole_${s.isCore ? 'core' : s.role}`);
   const isEnhancing = selectedSwipe ? enhancingIds.has(selectedSwipe.id) : false;
@@ -566,7 +594,7 @@ export default function MovieResults() {
         : videoType === 'clip'
           ? (clipInfo?.related ?? []).map((title, i) => ({ title, imageUrl: clipInfo?.relatedImages?.[i] }))
           : videoType === 'animation' || videoType === 'simulation'
-            ? (animInfo?.related ?? []).map((title) => ({ title }))
+            ? (animInfo?.related ?? []).map((title, i) => ({ title, imageUrl: animInfo?.relatedImages?.[i] }))
             : relatedTopics;
 
   // HD / quality extension: rebuild this video one model up — Luna → Sol, Sol → Astra
@@ -640,7 +668,7 @@ export default function MovieResults() {
     ? (animInfo ? (() => {
         const caption = animInfo.overview.split(/(?<=[.!?])\s/)[0];
         // Once saved as a video, shares carry the video, its picture (with a play mark) and its own page.
-        const saved = animSave?.status === 'saved' ? animSave.saved : null;
+        const saved = animSaved;
         return { title: animInfo.title, caption, hashtags: [] as string[], video: saved?.videoUrl,
           url: shareLink(animInfo.title, caption, saved?.posterUrl ?? undefined, saved ? `${site}/v/${saved.id}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=${videoType}`) };
       })() : null)
@@ -691,7 +719,7 @@ export default function MovieResults() {
       {shareCard && (
         <div className="mt-6 flex flex-wrap items-center gap-3">
           {/* Heart on the left: guests always see it (tapping asks them to sign up). */}
-          {(like || !userId) && (
+          {(like || !userId || (videoType === 'animation' && animInfo)) && (
             <button
               type="button"
               onClick={() => void toggleLike()}
@@ -728,7 +756,7 @@ export default function MovieResults() {
             const ringFor = (ask: VideoAsk) => animSave?.status === 'recording' ? (animSave.asks.includes(ask) ? animSave.progress : null)
               : animSave?.status === 'uploading' && ask === 'save' ? animSave.progress : null;
             const ask = (what: VideoAsk) => { unlockRecordingAudio(); setAnimVideoRequest((r) => ({ n: r.n + 1, ask: what })); };
-            const saved = animSave?.status === 'saved';
+            const saved = Boolean(animSaved);
             const btn = (what: VideoAsk, label: string, icon: ReactNode, onClick: () => void, extra = '') => {
               const ring = ringFor(what);
               return (
@@ -970,7 +998,7 @@ export default function MovieResults() {
             onReady={setAnimInfo}
             onNeedSignIn={() => { setSignUpSubtitle(t('vidTourSaveGuest')); setShowSignUp(true); }}
             videoRequest={animVideoRequest}
-            onSave={setAnimSave}
+            onSave={(state) => { if (state.status === 'saved') setAnimSaved(state.saved); setAnimSave(state); }}
           />
         ) : videoType === 'tour' ? (
           <TourScene
