@@ -23,10 +23,13 @@ import { saveNode, ensureShared, updateNodeAnswer, toggleNodeLike, type SavedNod
 import { findCharacter, DEFAULT_CHARACTER_ID, CHARACTERS, FEATURED_CHARACTERS, type CharacterPreset } from '../characterCatalog';
 import { findHalfBody, DEFAULT_HALF_BODY_ID, HALF_BODY, FEATURED_HALF_BODY, type HalfBodyPreset } from '../halfBodyCatalog';
 import { directTurn, buildScriptEvent, type StageProduct, type DirectedTurn } from '../characterDirector';
+import type { WebSearchResult } from '../../search/providers/webSearchProvider';
 import { startCharacterSession, type LiveCharacter } from '../characterSession';
 import { startAnamSession, SpeechQueue, type LiveAnam } from '../anamSession';
 import { speakAnswer } from '../speechAnswer';
-import { decideTier } from '../../auto/modelTier';
+import { decideTurn, type TurnDecision } from '../../auto/modelTier';
+import { groundTurn } from '../grounding';
+import SongListener from '../../music/listen/SongListener';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { appSettings } from '../../../config/appSettings';
@@ -85,7 +88,7 @@ function presenterFor(body: Body, id: string | null, prefs: CharacterPrefs): Pre
 }
 
 /** Full body: buy intent → product on stage → director (search + motion). */
-async function prepareFullTurn(q: string, character: CharacterPreset, history: Turn[], knownProduct: StageProduct | null, model?: Promise<string>) {
+async function prepareFullTurn(q: string, character: CharacterPreset, history: Turn[], knownProduct: StageProduct | null, model?: Promise<string>, sources?: Promise<WebSearchResult[]>) {
   mark('ask: question', { q });
   const buy = await resolveBuyIntent(q).catch(() => ({ isBuyIntent: false }));
   mark('ask: buy-intent ← done', { buy: buy.isBuyIntent });
@@ -95,7 +98,7 @@ async function prepareFullTurn(q: string, character: CharacterPreset, history: T
     const p = result?.success ? result.products[0] : null;
     if (p?.imageUrl) product = { title: p.title, imageUrl: p.imageUrl };
   }
-  const turn = await directTurn({ question: q, character, history, product: buy.isBuyIntent ? product : null, locale: locale(), model });
+  const turn = await directTurn({ question: q, character, history, product: buy.isBuyIntent ? product : null, locale: locale(), model, sources });
   return { turn, product: buy.isBuyIntent ? product : null };
 }
 
@@ -104,6 +107,12 @@ export default function CharacterResults() {
   const params = new URLSearchParams(location.search);
   const initialQuery = params.get('q') || '';
   const openMic = params.get('mic') === '1';
+  // Auto's listener, "speech" button: the presenter connects while listening goes on over it; the
+  // first question is what's heard, and the listener stays until the answer is ready.
+  const listenFirst = params.get('listen') === '1';
+  const [listening, setListening] = useState(listenFirst);
+  const heardRef = useRef<(q: string) => void>(() => {});
+  const [firstHeard] = useState(() => (listenFirst ? new Promise<string>((resolve) => { heardRef.current = resolve; }) : null));
 
   const { requestProAccess, tier, loading: creditsLoading } = useProCredits();
   const { t } = useTranslation();
@@ -199,6 +208,11 @@ export default function CharacterResults() {
     return () => clearInterval(id);
   }, [startedAt]);
 
+  // The presenter couldn't go on stage (or no minutes left): the listener steps aside to show why.
+  useEffect(() => {
+    if (status === 'closed' || status === 'error') setListening(false);
+  }, [status]);
+
   const closeEngine = useCallback(async () => {
     const engine = engineRef.current;
     engineRef.current = null;
@@ -258,14 +272,16 @@ export default function CharacterResults() {
   }, [name, savedNode, initialQuery, presenter.preset.imageUrl]);
 
   /** Start generating an answer — independent of the live connection. */
-  const prepare = useCallback((q: string, who: Presenter, history: Turn[]): Prepared => {
+  const prepare = useCallback((q: string, who: Presenter, history: Turn[], decision: Promise<TurnDecision> = decideTurn(q)): Prepared => {
     const model = modelRef.current;
-    if (who.body === 'full') return { kind: 'full', turn: prepareFullTurn(q, who.preset, history, productRef.current, model) };
+    // Half body speaks a short line while fresh research runs (full body's script goes out whole).
     const queue = new SpeechQueue();
-    const answer = speakAnswer({ question: q, name: who.preset.name, history, locale: locale(), onSpeech: (t) => queue.push(t), model })
+    const sources = groundTurn(q, decision, who.body === 'half' ? () => queue.push(`${t('charLookingUp')} `) : undefined);
+    if (who.body === 'full') return { kind: 'full', turn: prepareFullTurn(q, who.preset, history, productRef.current, model, sources) };
+    const answer = speakAnswer({ question: q, name: who.preset.name, history, locale: locale(), onSpeech: (t) => queue.push(t), model, sources })
       .then((r) => { queue.end(); return r; });
     return { kind: 'half', queue, answer };
-  }, []);
+  }, [t]);
 
   /** Hand a prepared answer to the live engine, then record the turn. */
   const deliver = useCallback(async (p: Prepared) => {
@@ -317,7 +333,7 @@ export default function CharacterResults() {
     }
   }, [deliver, prepare, presenter, thinking]);
 
-  const start = useCallback(async (who: Presenter, firstQ: string) => {
+  const start = useCallback(async (who: Presenter, firstQ: string | Promise<string>) => {
     setStatusDetail(null);
     setSecondsLeft(MINUTE_SECONDS);
     setFrozenFrame(null);
@@ -326,19 +342,18 @@ export default function CharacterResults() {
     stopCaptionTimer();
     speakingRef.current = false;
 
-    // Rate the first question → conversation model (free: no Astra).
-    if (firstQ.trim()) {
-      modelRef.current = decideTier(firstQ).then((tier) => (tier === 'easy' ? appSettings.models.luna : appSettings.models.sol));
-    }
-
-    // Parallel: the first answer starts now, while the session connects.
-    let prepared: Prepared | null = null;
-    if (firstQ.trim()) {
+    // Parallel: the first answer starts as soon as the question is known (heard, when listening),
+    // while the session connects. Its quick decision also rates the conversation model (free: no Astra).
+    const firstPrepared = Promise.resolve(firstQ).then((raw): Prepared | null => {
+      const q = raw.trim();
+      if (!q) return null;
+      const decision = decideTurn(q);
+      modelRef.current = decision.then(({ tier }) => (tier === 'easy' ? appSettings.models.luna : appSettings.models.sol));
       setThinking(true);
       const history = turnsRef.current;
-      addUserTurn(firstQ.trim());
-      prepared = prepare(firstQ.trim(), who, history);
-    }
+      addUserTurn(q);
+      return prepare(q, who, history, decision);
+    });
 
     try {
       const onStatus = (s: Status, detail?: string) => { setStatus(s); if (detail) setStatusDetail(detail); };
@@ -379,7 +394,10 @@ export default function CharacterResults() {
       }
       engineRef.current = engine;
       touch();
+      const prepared = await firstPrepared;
       if (prepared) {
+        if (prepared.kind === 'full') await prepared.turn.catch(() => null);
+        setListening(false); // the answer is ready: the presenter takes the screen
         await deliver(prepared).catch((e) => setStatusDetail(e instanceof Error ? e.message : 'Something went wrong'));
         setThinking(false);
         touch();
@@ -406,7 +424,7 @@ export default function CharacterResults() {
       const who = urlBody || params.get('c') ? presenter : presenterFor(prefs.body, null, prefs);
       setPresenter(who);
       rememberPresenter(who);
-      void start(who, initialQuery);
+      void start(who, firstHeard ?? initialQuery);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creditsLoading]);
@@ -764,6 +782,13 @@ export default function CharacterResults() {
               : { body: 'half', preset: item as HalfBodyPreset },
           )}
           onClose={() => setShowPicker(false)}
+        />
+      )}
+      {listening && (
+        <SongListener
+          listenFor="speech"
+          onHeard={(q) => heardRef.current(q)}
+          onClose={() => { heardRef.current(''); setListening(false); }}
         />
       )}
     </div>

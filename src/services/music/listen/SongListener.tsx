@@ -3,14 +3,17 @@
 // and, only if that missed, the whole 12 s clip. Meanwhile it says where it is, like Shazam:
 // listening → searching → expanding search → this is tough (last try) → no result. The mic's voice
 // processing is off: echo cancellation and noise suppression treat music as noise and wipe it out.
-// In Auto it listens for anything: the clip also goes to speech-to-text, and when no song is
-// recognized what the person said opens the Character with it as their first line. Talking ends
-// at a pause: only then does the clip go to speech-to-text (music or noise never pause, and
-// transcribing them makes up words). When nothing is heard it just closes.
+// In Auto it listens for anything: when someone talks and pauses, the clip goes to song
+// recognition and speech-to-text at once and the first that recognizes something wins — a song
+// opens its page, words open the Character with them as the first line. Only a pause sends the
+// clip to speech-to-text (music or noise never pause, and transcribing them makes up words).
+// Two buttons narrow it: songs only, or speech only — that one goes to the Character right away,
+// so the presenter connects while it listens there ('speech': the words go to onHeard). When
+// nothing is heard it just closes.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { AudioLines, CircleAlert, MessageCircle, X } from 'lucide-react';
+import { AudioLines, CircleAlert, MessageCircle, Music, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { transcribeAudioWithFallback } from '../../stt/transcriptionService.ts';
 import { heardPage, recognizeSong, songPage, spokenWords, TRY_AT_MS, type HeardSong, type Recognition } from './songRecognition.ts';
@@ -22,10 +25,12 @@ type Stage = 'listening' | 'searching' | 'expanding' | 'tough' | 'found' | 'hear
 const SAYS_AT: [number, Stage][] = [[TRY_AT_MS[0], 'searching'], [(TRY_AT_MS[0] + TRY_AT_MS[1]) / 2, 'expanding'], [TRY_AT_MS[1], 'tough']];
 
 interface Props {
-  /** 'anything' (Auto): a song or someone talking; 'song' (Music): only songs. */
-  listenFor?: 'song' | 'anything';
+  /** 'anything' (Auto): a song or someone talking; 'song' (Music): only songs; 'speech' (Character): only words. */
+  listenFor?: 'song' | 'anything' | 'speech';
+  /** 'speech': what was said (the listener stays, showing it, until the parent closes it). */
+  onHeard?: (text: string) => void;
   onClose: () => void;
-  onNeedSignIn: () => void;
+  onNeedSignIn?: () => void;
 }
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -35,8 +40,14 @@ const locale = () => navigator.language.split('-')[0] || 'en';
 function pauseAfterSound(stream: MediaStream, isOver: () => boolean): Promise<void> {
   return new Promise((resolve) => {
     const ctx = new AudioContext();
+    void ctx.resume(); // it can start suspended (no tap counted yet) and would read silence forever
     const analyser = ctx.createAnalyser();
     ctx.createMediaStreamSource(stream).connect(analyser);
+    // Chrome may not pull a mic source that leads nowhere (the analyser then reads silence): end it
+    // at the speakers, muted.
+    const mute = ctx.createGain();
+    mute.gain.value = 0;
+    analyser.connect(mute).connect(ctx.destination);
     const samples = new Float32Array(analyser.fftSize);
     let heard = false, quietSince = 0;
     const tick = setInterval(() => {
@@ -50,7 +61,7 @@ function pauseAfterSound(stream: MediaStream, isOver: () => boolean): Promise<vo
   });
 }
 
-export default function SongListener({ listenFor = 'song', onClose, onNeedSignIn }: Props) {
+export default function SongListener({ listenFor = 'song', onHeard, onClose, onNeedSignIn }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [stage, setStage] = useState<Stage>('listening');
@@ -61,6 +72,10 @@ export default function SongListener({ listenFor = 'song', onClose, onNeedSignIn
   const openTimer = useRef<ReturnType<typeof setTimeout>>();
   const closeRef = useRef(onClose); // a new function each parent render must not restart the listening
   closeRef.current = onClose;
+  const heardRef = useRef(onHeard);
+  heardRef.current = onHeard;
+  const [onlySong, setOnlySong] = useState(false); // Auto narrowed to songs
+  const onlySongRef = useRef(false);
 
   useEffect(() => {
     let over = false;
@@ -85,11 +100,15 @@ export default function SongListener({ listenFor = 'song', onClose, onNeedSignIn
       };
       stopRef.current = () => { over = true; stop(); };
       recorder.start(1000);
-      const anything = listenFor === 'anything';
-      const talked = anything ? pauseAfterSound(stream, () => over) : new Promise<void>(() => {});
-      SAYS_AT.forEach(([at, next]) => setTimeout(() => { if (!over) setStage(next); }, at));
+      const speechOnly = listenFor === 'speech';
+      const wantsSongs = () => !speechOnly;
+      const wantsSpeech = () => speechOnly || (listenFor === 'anything' && !onlySongRef.current);
+      const songsOnly = () => listenFor === 'song' || onlySongRef.current;
+      const never = new Promise<boolean>(() => {});
+      const talked = listenFor === 'song' ? never : pauseAfterSound(stream, () => over).then(() => (wantsSpeech() ? true : never));
+      if (!speechOnly) SAYS_AT.forEach(([at, next]) => setTimeout(() => { if (!over) setStage(next); }, at));
 
-      // The first answer that settles it (a song, or no more tries today) wins.
+      // The first answer that settles it (a song, words, or no more song tries today) wins.
       const finish = (r: Recognition) => {
         if (over) return;
         over = true;
@@ -104,39 +123,37 @@ export default function SongListener({ listenFor = 'song', onClose, onNeedSignIn
           });
         } else setStage(r.status === 'limit' ? (r.signIn ? 'signin' : 'limit') : r.status);
       };
+      const heardWords = (words: string) => {
+        const page = heardPage(null, words);
+        if (over || !page) return;
+        over = true;
+        stop();
+        setSaid(spokenWords(words)); setStage('heard');
+        if (speechOnly) heardRef.current?.(spokenWords(words));
+        else openTimer.current = setTimeout(() => navigate(page), 1200);
+      };
       const clip = () => new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-      const tries: Promise<Recognition>[] = [];
-      let speech: Promise<string> = Promise.resolve('');
+      const tries: Promise<Recognition | void>[] = [];
       let elapsed = 0;
       for (const [i, at] of TRY_AT_MS.entries()) {
-        const paused = await Promise.race([wait(at - elapsed).then(() => false), talked.then(() => true)]);
+        const paused = await Promise.race([wait(at - elapsed).then(() => false), talked]);
         elapsed = at;
         if (over) return;
         const last = paused || i === TRY_AT_MS.length - 1;
         if (last) { stop(); await stopped; if (paused) setStage('searching'); }
         const heard = clip();
-        // In Auto a daily limit on songs doesn't end it: what was said can still go to the Character.
-        tries.push(recognizeSong(heard).then((r) => { if (r.status === 'found' || (r.status === 'limit' && !anything)) finish(r); return r; }));
-        if (last) {
-          if (anything && paused) speech = transcribeAudioWithFallback(heard, locale()).catch(() => '');
-          break;
-        }
+        // Same clip to both, racing: whichever recognizes something first wins. In Auto a daily
+        // limit on songs doesn't end it: what was said can still go to the Character.
+        if (wantsSongs()) tries.push(recognizeSong(heard).then((r) => { if (r.status === 'found' || (r.status === 'limit' && songsOnly())) finish(r); return r; }));
+        if (last && wantsSpeech() && (paused || speechOnly)) tries.push(transcribeAudioWithFallback(heard, locale()).catch(() => '').then(heardWords));
+        if (last) break;
       }
-      const results = await Promise.all(tries);
-      const words = spokenWords(await speech);
+      const results = (await Promise.all(tries)).filter((r): r is Recognition => Boolean(r));
       if (over) return;
-      if (anything) {
-        const page = heardPage(null, words);
-        const limit = results.find((r) => r.status === 'limit');
-        if (page) {
-          over = true;
-          setSaid(words); setStage('heard');
-          openTimer.current = setTimeout(() => navigate(page), 1200);
-        } else if (limit) finish(limit);
-        else { over = true; closeRef.current(); } // nothing heard: back to the box, ready to retry or type
-        return;
-      }
-      finish(results.every((r) => r.status === 'error') ? { status: 'error' } : { status: 'missed' });
+      if (songsOnly()) { finish(results.every((r) => r.status === 'error') ? { status: 'error' } : { status: 'missed' }); return; }
+      const limit = results.find((r) => r.status === 'limit');
+      if (limit) finish(limit);
+      else { over = true; stop(); closeRef.current(); } // nothing heard: back to where it was, ready to retry or type
     })();
     return () => { over = true; stopRef.current(); };
   }, [round, navigate, listenFor]);
@@ -144,7 +161,7 @@ export default function SongListener({ listenFor = 'song', onClose, onNeedSignIn
   const close = () => { stopRef.current(); clearTimeout(openTimer.current); onClose(); };
   const busy = stage === 'listening' || stage === 'searching' || stage === 'expanding' || stage === 'tough';
   const title = {
-    listening: listenFor === 'anything' ? t('listenAnything') : t('musicListening'),
+    listening: listenFor === 'speech' ? t('listenSpeech') : listenFor === 'anything' && !onlySong ? t('listenAnything') : t('musicListening'),
     searching: t('musicSearching'),
     expanding: t('musicExpanding'),
     tough: t('musicTough'),
@@ -157,11 +174,12 @@ export default function SongListener({ listenFor = 'song', onClose, onNeedSignIn
     error: t('musicListenError'),
   }[stage];
   const hint = {
-    listening: listenFor === 'anything' ? t('listenAnythingHint') : t('musicListeningHint'),
+    listening: listenFor === 'speech' ? t('listenSpeechHint') : listenFor === 'anything' && !onlySong ? t('listenAnythingHint') : t('musicListeningHint'),
     searching: t('musicSearchingHint'),
     expanding: t('musicExpandingHint'),
     tough: t('musicToughHint'),
     found: song?.artist ?? '',
+    heard: listenFor === 'speech' ? t('listenAnswering') : '',
     missed: t('musicNotHeardHint'),
   }[stage as string] ?? '';
 
@@ -169,7 +187,7 @@ export default function SongListener({ listenFor = 'song', onClose, onNeedSignIn
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={listenFor === 'anything' ? t('listenAnything') : t('musicListen')}
+      aria-label={listenFor === 'song' ? t('musicListen') : t('listenAnything')}
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center px-4"
       style={{ backgroundColor: 'var(--ui-bg-primary)', color: 'var(--ui-text-primary)' }}
     >
@@ -214,6 +232,31 @@ export default function SongListener({ listenFor = 'song', onClose, onNeedSignIn
       <p className="mt-8 text-xl font-semibold text-center" aria-live="polite">{title}</p>
       {hint && <p className="mt-2 text-sm text-center" style={{ color: 'var(--ui-text-secondary)' }}>{hint}</p>}
 
+      {listenFor === 'anything' && busy && (
+        // Narrow it: songs only (keeps listening here), or speech only (the presenter starts connecting now).
+        <div className="mt-6 flex gap-2">
+          <button
+            type="button"
+            aria-pressed={onlySong}
+            onClick={() => { onlySongRef.current = !onlySongRef.current; setOnlySong(onlySongRef.current); }}
+            className="px-4 py-2 rounded-full text-sm font-medium border flex items-center gap-2"
+            style={onlySong
+              ? { backgroundColor: 'var(--accent-primary)', borderColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }
+              : { borderColor: 'var(--ui-border-default)', color: 'var(--ui-text-secondary)' }}
+          >
+            <Music size={16} /> {t('listenOnlyMusic')}
+          </button>
+          <button
+            type="button"
+            onClick={() => { stopRef.current(); navigate('/character?listen=1'); }}
+            className="px-4 py-2 rounded-full text-sm font-medium border flex items-center gap-2"
+            style={{ borderColor: 'var(--ui-border-default)', color: 'var(--ui-text-secondary)' }}
+          >
+            <MessageCircle size={16} /> {t('listenOnlySpeech')}
+          </button>
+        </div>
+      )}
+
       {(stage === 'missed' || stage === 'error') && (
         <button
           type="button"
@@ -227,7 +270,7 @@ export default function SongListener({ listenFor = 'song', onClose, onNeedSignIn
       {stage === 'signin' && (
         <button
           type="button"
-          onClick={() => { close(); onNeedSignIn(); }}
+          onClick={() => { close(); onNeedSignIn?.(); }}
           className="mt-6 px-5 py-2.5 rounded-full text-sm font-semibold"
           style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
         >

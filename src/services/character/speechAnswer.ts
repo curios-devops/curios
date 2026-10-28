@@ -55,13 +55,15 @@ export async function speakAnswer(params: {
   onSpeech: (text: string) => void;
   /** Conversation's answer model (Luna/Sol/Astra); resolved while the web search runs. */
   model?: Promise<string>;
+  /** What the answer stands on (grounding.ts); the usual web search when not given. */
+  sources?: Promise<WebSearchResult[]>;
 }): Promise<{ speech: string; suggestions: string[]; sources: WebSearchResult[] }> {
   const { question, name, history, locale, onSpeech } = params;
   mark('anam answer: web search → start');
-  const sources = (await executeWebSearch(question).catch(() => [])).slice(0, 6);
+  const sources = (await (params.sources ?? executeWebSearch(question)).catch(() => [])).slice(0, 6);
   mark('anam answer: web search ← done', { results: sources.length });
 
-  const prompt = `You are ${name}, a warm presenter answering out loud in a live video call.
+  const prompt = `You are ${name}, a warm presenter answering out loud in a live video call. Today is ${new Date().toISOString().slice(0, 10)}.
 
 Conversation so far:
 ${history.slice(-6).map((h) => `${h.role === 'user' ? 'User' : name}: ${h.text}`).join('\n') || '(none)'}

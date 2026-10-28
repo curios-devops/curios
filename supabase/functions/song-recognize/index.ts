@@ -5,7 +5,8 @@
 //
 // POST raw audio (webm/opus, or mp4 on iPhone), header x-audio-type = the recorder's mime type
 //   → { found: true, song } | { found: false } | 429 { error: 'daily_limit' | 'sign_in_required' }
-// Daily caps (tries, recognized or not): guest 30 per connection (hashed IP), free 60, Pro 200; GLOBAL_CAP overall.
+// Daily caps on recognized songs (the only ones billed; a miss is free, so listening to someone talk
+// costs nothing): guest 30 per connection (hashed IP), free 60, Pro 200; GLOBAL_CAP overall.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
@@ -47,7 +48,7 @@ async function isPro(uid: string | null): Promise<boolean> {
 
 async function left(uid: string | null, ip: string): Promise<number> {
   const since = new Date(Date.now() - 864e5).toISOString();
-  const recent = () => db().from("song_recognitions").select("id", { count: "exact", head: true }).gte("created_at", since);
+  const recent = () => db().from("song_recognitions").select("id", { count: "exact", head: true }).gte("created_at", since).not("title", "is", null);
   const [{ count: all }, { count: mine }, pro] = await Promise.all([
     recent(),
     uid ? recent().eq("user_id", uid) : recent().eq("creator_ip_hash", ip),
