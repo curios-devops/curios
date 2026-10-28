@@ -49,3 +49,18 @@ export function songPage(song: Pick<HeardSong, 'title' | 'artist' | 'album' | 'y
   if (song.year) p.set('year', song.year);
   return `/music-results?${p}`;
 }
+
+/** Speech-to-text marks sounds in brackets ("(music)", "[Música]"), and Whisper makes up a subtitle
+ *  credit for noise: neither is words anyone said. */
+export function spokenWords(text: string): string {
+  const said = text.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
+  return /amara\.org/i.test(said) ? '' : said;
+}
+
+/** What listening in Auto opens: the song if one was recognized (lyrics are words too), else the
+ *  Character with what the person said as their first line, else nothing (the listener just closes). */
+export function heardPage(song: HeardSong | null, transcript: string): string | null {
+  if (song) return songPage(song);
+  const said = spokenWords(transcript);
+  return said ? `/character?q=${encodeURIComponent(said)}` : null;
+}

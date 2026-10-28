@@ -107,6 +107,8 @@
   "songClose": "Schließen",
   "songExplains": "Erklärt {topic}",
   "songStyle_auto": "Automatisch",
+  "listenAnything": "Ich höre zu",
+  "listenAnythingHint": "Sprich oder lass einen Song laufen",
   "musicListen": "Song erkennen",
   "musicListening": "Höre Musik",
   "musicListeningHint": "Achte darauf, dass dein Gerät den Song gut hört",
