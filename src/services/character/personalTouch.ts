@@ -2,11 +2,10 @@
 // the name (signed in), the part of the day, the city and the weather — "a rainy morning in
 // Barcelona, Marcelo". Nothing here ever holds an answer back: the city and weather are looked up
 // when the conversation starts, the first answer uses whatever is known by then, and weather that
-// arrives later is offered to the next answer instead. Weather: weather-now (Open-Meteo, then
-// OpenWeather, then Google).
+// arrives later is offered to the next answer instead. City and weather: localWeather (shared
+// with the Home greeting).
 import type { User } from '@supabase/supabase-js';
-import { supabase } from '../../lib/supabase';
-import { readerGeo } from '../../utils/readerGeo';
+import { localWeather } from '../../utils/localWeather';
 import { getUserFirstName } from '../../utils/userName';
 
 export function partOfDay(hour: number): string {
@@ -34,12 +33,7 @@ export function trackMoment(user: User | null | undefined): Moment {
   let city = '';
   let weather: string | null = null;
   let weatherSaid = false;
-  void readerGeo().then(async (geo) => {
-    city = geo.city;
-    if (geo.lat == null || geo.lng == null) return;
-    const { data } = await supabase.functions.invoke('weather-now', { body: { lat: geo.lat, lng: geo.lng } });
-    if (typeof data?.weather === 'string') weather = data.weather;
-  }).catch(() => {});
+  void localWeather().then((local) => { city = local.city; weather = local.weather; });
   return {
     opening: () => {
       weatherSaid = Boolean(weather);

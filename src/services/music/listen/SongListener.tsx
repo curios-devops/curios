@@ -10,7 +10,7 @@
 // Two buttons narrow it: songs only, or speech only — that one goes to the Character right away,
 // so the presenter connects while it listens there ('speech': the words go to onHeard). When
 // nothing is heard it just closes.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { AudioLines, CircleAlert, MessageCircle, Music, X } from 'lucide-react';
@@ -33,6 +33,8 @@ interface Props {
   onHeard?: (text: string) => void;
   onClose: () => void;
   onNeedSignIn?: () => void;
+  /** Shown under the listener (the Character's "enable sound" while it listens over the presenter). */
+  children?: ReactNode;
 }
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -65,7 +67,7 @@ function pauseAfterSound(stream: MediaStream, isOver: () => boolean): { paused: 
   return { paused, heardAny: () => heard };
 }
 
-export default function SongListener({ listenFor = 'song', onHeard, onClose, onNeedSignIn }: Props) {
+export default function SongListener({ listenFor = 'song', onHeard, onClose, onNeedSignIn, children }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentLanguage, autoDetect } = useLanguage();
@@ -287,6 +289,7 @@ export default function SongListener({ listenFor = 'song', onHeard, onClose, onN
           {t('signIn')}
         </button>
       )}
+      {children}
     </div>,
     document.body,
   );
