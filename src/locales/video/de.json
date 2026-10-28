@@ -141,14 +141,15 @@
   "vidSimTry": "Probier das",
   "vidAnimPause": "Pause",
   "vidAnimPlay": "Fortsetzen",
-  "vidAnimSave": "Als Video speichern",
-  "vidAnimSaved": "Gespeichert — in deinem Verlauf",
-  "vidAnimSaveGuest": "Registriere dich, um die Animation aufzunehmen",
-  "vidAnimRecording": "Aufnahme",
-  "vidAnimRecordingKeepOpen": "Video wird aufgenommen — lass diese Seite offen, bis es fertig ist",
-  "vidAnimUploading": "Wird gespeichert…",
-  "vidAnimSaveFailed": "Das Video konnte nicht gespeichert werden. Versuch es noch einmal.",
+  "vidAnimSave": "In deinem Bereich speichern",
+  "vidAnimSaved": "In deinem Bereich gespeichert",
+  "vidAnimSaveGuest": "Registriere dich, um die Animation zu speichern",
+  "vidAnimSaveFailed": "Das Video konnte nicht vorbereitet werden. Versuch es später noch einmal.",
   "vidAnimPortrait": "Hochformat",
   "vidAnimLandscape": "Querformat",
-  "vidAnimPortraitMaking": "Hochformat-Version wird erstellt…"
+  "vidAnimPortraitMaking": "Hochformat-Version wird erstellt…",
+  "vidAnimPost": "Veröffentlichen",
+  "vidAnimPosted": "Veröffentlicht",
+  "vidAnimPostGuest": "Registriere dich, um die Animation zu veröffentlichen",
+  "vidAnimVideoComing": "Das Video wird aufgenommen — der Download startet, wenn es fertig ist"
 }

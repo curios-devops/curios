@@ -300,6 +300,26 @@ async function probes(stats: any): Promise<Provider[]> {
   ]);
 }
 
+/** Cloud Run minutes: each animation recording is one job run (animations.render_seconds), by day. */
+async function cloudRun(p_from: string, p_to: string) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/animations?select=render_status,render_seconds,render_requested_at&render_requested_at=gte.${p_from}&render_requested_at=lte.${p_to}`,
+    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } },
+  );
+  const rows: { render_status: string | null; render_seconds: number | null; render_requested_at: string }[] = res.ok ? await res.json() : [];
+  const byDay: Record<string, number> = {};
+  for (const r of rows) {
+    const day = r.render_requested_at.slice(0, 10);
+    byDay[day] = (byDay[day] ?? 0) + (r.render_seconds ?? 0) / 60;
+  }
+  return {
+    minutes: Math.round(rows.reduce((n, r) => n + (r.render_seconds ?? 0), 0) / 6) / 10,
+    renders: rows.filter((r) => r.render_status === "ready").length,
+    failed: rows.filter((r) => r.render_status === "failed").length,
+    daily: Object.entries(byDay).map(([day, minutes]) => ({ day, minutes: Math.round(minutes * 10) / 10 })),
+  };
+}
+
 async function adminEmail(req: Request): Promise<string | null> {
   const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") ?? "";
   if (!token || token === ANON_KEY) return null;
@@ -325,7 +345,7 @@ Deno.serve(async (req: Request) => {
     });
     if (!res.ok) throw new Error(`tele_stats ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const stats = await res.json();
-    return json({ stats, providers: await providers(stats), at: new Date().toISOString() });
+    return json({ stats, providers: await providers(stats), cloudRun: await cloudRun(p_from, p_to), at: new Date().toISOString() });
   } catch (e) {
     return json({ error: "telemetry failed", detail: String(e instanceof Error ? e.message : e) }, 500);
   }

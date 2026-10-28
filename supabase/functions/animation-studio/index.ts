@@ -14,10 +14,20 @@
 //          re-composed for a phone held upright (same manifest), kept under "<key>|portrait". Made once, from the
 //          ready landscape page; it doesn't count toward the daily caps (it is a version, not a new animation).
 //   upload { key }                          → { video, poster }: signed Cloudinary uploads for a signed-in viewer
-//          saving the animation as a video (recorded in the browser); each is { url, fields }.
+//          whose browser recorded the video itself (the fallback when the cloud recording failed).
+//
+// Cloud recording: a ready animation (and its portrait version) is recorded once by the Cloud Run job
+// animation-recorder (RECORDER_JOB in RECORDER_REGION, run with the Vertex service account): it opens
+// curiosai.com/render/animation, which plays the stage once with the narrator and records it. Older
+// animations are queued the first time someone opens them. The job reports with RENDER_SECRET:
+//   render_upload { key, secret }           → { video, poster } signed uploads
+//   render_done   { key, secret, video_url, poster_url, seconds } → the video on the row (and on the
+//                  viewers' movies made from it, landscape only)
+//   render_failed { key, secret, error }    → render_status failed (viewers' browsers record instead)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { CLASSIFY, MACHINE, PORTRAIT, SIMULATION, STORY, STORY_STYLES } from "./prompts.ts";
 import { signedUpload } from "../_shared/cloudinary.ts";
+import { getVertexAccessToken, VERTEX_PROJECT } from "../_shared/vertex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,7 +86,37 @@ async function left(req: Request, uid: string | null): Promise<number> {
   return Math.max(0, Math.min(cap - (mine ?? 0), GLOBAL_CAP - (all ?? 0)));
 }
 
-const toAnimation = (r: Record<string, unknown>) => ({ question: r.question, kind: r.kind, style: r.style, model: r.model, html: r.html });
+const RENDER_STALE_MS = 20 * 60 * 1000; // a queued recording still without a video after this has failed
+const renderState = (r: Record<string, unknown>) =>
+  r.render_status === "queued" && Date.now() - new Date(String(r.render_requested_at)).getTime() > RENDER_STALE_MS ? "failed" : r.render_status ?? null;
+const toAnimation = (r: Record<string, unknown>) => ({
+  question: r.question, kind: r.kind, style: r.style, model: r.model, html: r.html,
+  videoUrl: r.video_url ?? null, posterUrl: r.poster_url ?? null, render: renderState(r),
+});
+
+/** Queues the cloud recording of a ready animation; marks it failed when the job can't be started. */
+async function requestRender(key: string) {
+  await db().from("animations").update({ render_status: "queued", render_requested_at: new Date().toISOString() }).eq("question_key", key);
+  try {
+    if (!env("RENDER_SECRET")) throw new Error("RENDER_SECRET not set");
+    const job = `projects/${VERTEX_PROJECT}/locations/${env("RECORDER_REGION") || "us-central1"}/jobs/${env("RECORDER_JOB") || "animation-recorder"}`;
+    const res = await fetch(`https://run.googleapis.com/v2/${job}:run`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await getVertexAccessToken()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ overrides: { containerOverrides: [{ env: [{ name: "ANIMATION_KEY", value: key }] }] } }),
+    });
+    if (!res.ok) throw new Error(`Cloud Run ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  } catch (e) {
+    console.error("render request", e);
+    await db().from("animations").update({ render_status: "failed" }).eq("question_key", key);
+  }
+}
+const background = (p: Promise<unknown>) => {
+  // @ts-ignore EdgeRuntime is provided by the Supabase edge runtime
+  if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(p); else void p;
+};
+const keyHash = async (key: string) =>
+  [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)))].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
 
 /** Luna picks the technique: a 3D machine or a story, and the story's style. */
 async function classify(question: string): Promise<{ kind: "machine" | "story"; style: string }> {
@@ -112,6 +152,9 @@ Deno.serve(async (req: Request) => {
     const stale = row && row.status === "making" && Date.now() - new Date(row.created_at).getTime() > STALE_MS;
 
     if (body.action === "lookup") {
+      // Older animations are queued on first view; a failed recording is retried after 6 h (e.g. once the job exists).
+      const retry = row?.render_status === "failed" && Date.now() - new Date(row.render_requested_at ?? 0).getTime() > 6 * 3600e3;
+      if (row?.status === "ready" && (!row.render_status || retry)) background(requestRender(key));
       if (row?.status === "ready") return json({ ready: true, animation: toAnimation(row) });
       if (row?.status === "making" && !stale) return json({ ready: false, status: "making" });
       return json({ ready: false, left: await left(req, uid) });
@@ -184,7 +227,36 @@ Deno.serve(async (req: Request) => {
       }
       const { data: saved, error } = await db().from("animations").update({ status: "ready", html, updated_at: new Date().toISOString() }).eq("question_key", key).select("*").single();
       if (error) throw error;
+      background(requestRender(key));
       return json({ ready: true, animation: toAnimation(saved) });
+    }
+
+    if (["render_upload", "render_done", "render_failed"].includes(body.action)) {
+      if (!env("RENDER_SECRET") || body.secret !== env("RENDER_SECRET")) return json({ error: "forbidden" }, 403);
+      if (row?.status !== "ready") return json({ error: "not_ready" }, 400);
+      if (body.action === "render_upload") {
+        const id = `render-${await keyHash(key)}`;
+        return json({
+          video: await signedUpload({ folder: "animations", publicId: id, format: "mp4" }),
+          poster: await signedUpload({ folder: "animations", publicId: `${id}-poster`, format: "jpg" }),
+        });
+      }
+      if (body.action === "render_failed") {
+        console.error("render failed", key, String(body.error ?? "").slice(0, 300));
+        await db().from("animations").update({ render_status: "failed", render_seconds: Number(body.seconds) || null }).eq("question_key", key);
+        return json({ ok: true });
+      }
+      const video = String(body.video_url ?? ""), poster = body.poster_url ? String(body.poster_url) : null;
+      if (!video.startsWith("https://res.cloudinary.com/")) return json({ error: "bad video" }, 400);
+      await db().from("animations").update({
+        video_url: video, poster_url: poster, render_status: "ready", render_seconds: Math.round(Number(body.seconds) || 0), rendered_at: new Date().toISOString(),
+      }).eq("question_key", key);
+      // Viewers' movies of this animation (landscape) get the video now.
+      if (!key.endsWith("|portrait")) {
+        await db().from("movie_projects").update({ full_video_url: video, thumbnail_url: poster, status: "complete" })
+          .eq("animation_key", key).is("full_video_url", null);
+      }
+      return json({ ok: true });
     }
 
     if (body.action === "upload") {

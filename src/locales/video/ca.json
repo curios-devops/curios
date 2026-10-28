@@ -141,14 +141,15 @@
   "vidSimTry": "Prova això",
   "vidAnimPause": "Pausa",
   "vidAnimPlay": "Reprèn",
-  "vidAnimSave": "Desa com a vídeo",
-  "vidAnimSaved": "Desat — és al teu historial",
-  "vidAnimSaveGuest": "Registra't per gravar l'animació",
-  "vidAnimRecording": "Gravant",
-  "vidAnimRecordingKeepOpen": "Gravant el vídeo — deixa aquesta pàgina oberta fins que acabi",
-  "vidAnimUploading": "Desant…",
-  "vidAnimSaveFailed": "No s'ha pogut desar el vídeo. Torna-ho a provar.",
+  "vidAnimSave": "Desa al teu Espai",
+  "vidAnimSaved": "Desat al teu Espai",
+  "vidAnimSaveGuest": "Registra't per desar l'animació",
+  "vidAnimSaveFailed": "No s'ha pogut preparar el vídeo. Torna-ho a provar més tard.",
   "vidAnimPortrait": "Vertical",
   "vidAnimLandscape": "Horitzontal",
-  "vidAnimPortraitMaking": "Preparant la versió vertical…"
+  "vidAnimPortraitMaking": "Preparant la versió vertical…",
+  "vidAnimPost": "Publica",
+  "vidAnimPosted": "Publicat",
+  "vidAnimPostGuest": "Registra't per publicar l'animació",
+  "vidAnimVideoComing": "S'està gravant el vídeo — es baixarà quan acabi"
 }

@@ -10,9 +10,9 @@
 // failing → Video; a Video clip failing → its still frame animated (Ken Burns).
 // Every string comes from src/locales/video (the interface language).
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bookmark, BookmarkCheck, ChevronDown, ChevronsUp, Clapperboard, Compass, Crown, Download, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Rotate3d, Share2, Sparkles } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Send, ChevronDown, ChevronsUp, Clapperboard, Compass, Crown, Download, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Rotate3d, Share2, Sparkles } from 'lucide-react';
 
 import { useSession } from '../../../hooks/useSession.ts';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
@@ -39,8 +39,10 @@ import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, movieModeFor, parseVideoType, type VideoType } from '../videoType.ts';
 import CinematicMontage, { type CinematicInfo } from '../cinematic/CinematicMontage.tsx';
 import TourScene, { type TourInfo } from '../tour/TourScene.tsx';
-import { findSavedAnimation, type SavedAnimation } from '../animation/animationStudio.ts';
-import AnimationScene, { unlockRecordingAudio, type AnimationInfo, type SaveState, type VideoAsk } from '../animation/AnimationScene.tsx';
+import { animationMovie, markAnimationMovie, uploadOwnRecording, type AnimationMovie } from '../animation/animationStudio.ts';
+import AnimationScene, { type AnimationInfo, type Film as AnimationFilm, type StageVideo } from '../animation/AnimationScene.tsx';
+import { unlockRecordingAudio } from '../animation/recorder.ts';
+import { shareOrDownloadVideo } from '../../../utils/videoShare.ts';
 import ClipScene, { type ClipInfo } from '../clip/ClipScene.tsx';
 import { getFilmLikeState, saveCinematicFilm, toggleCinematicLike } from '../cinematic/cinematicFilms.ts';
 import { exportCinematic, saveFilm } from '../cinematic/exportCinematic.ts';
@@ -132,9 +134,14 @@ export default function MovieResults() {
   const [tourInfo, setTourInfo] = useState<TourInfo | null>(null);
   const [animInfo, setAnimInfo] = useState<AnimationInfo | null>(null);
   // Animation as a video (Save / Download next to Share): the page's request and the scene's progress.
-  const [animVideoRequest, setAnimVideoRequest] = useState<{ n: number; ask: VideoAsk }>({ n: 0, ask: 'save' });
-  const [animSave, setAnimSave] = useState<SaveState | null>(null);
-  const [animSaved, setAnimSaved] = useState<SavedAnimation | null>(null); // kept apart: a later download doesn't forget it
+  // Animation as a video. The cloud records it once (animVideo, for the shape on screen); a signed-in viewer's
+  // animation is their movie from the start (animMovie: history, short /v/ link, Save → Space, Post → feed).
+  // If the cloud recording fails, an invisible twin records it in this browser (animTwin).
+  const [animVideo, setAnimVideo] = useState<StageVideo | null>(null);
+  const [animMovie, setAnimMovie] = useState<AnimationMovie | null>(null);
+  const [animTwin, setAnimTwin] = useState(false);
+  const [animDownload, setAnimDownload] = useState<'waiting' | 'failed' | null>(null);
+  const twinFilm = useRef<Blob | null>(null);
   // Clips' data for the shared sections.
   const [clipInfo, setClipInfo] = useState<ClipInfo | null>(null);
   // Fresh web results (Exa) for every type: Images and Sources tabs, Cinematic's facts.
@@ -495,21 +502,63 @@ export default function MovieResults() {
     saveCinematicFilm(userId, query, cine.title, cine.credits[0]?.image).then((id) => { if (alive && id) setFilmId(id); });
     return () => { alive = false; };
   }, [videoType, cine, filmParam, userId, query]);
-  // An animation's heart is its saved video's: the viewer's own, found here if they saved it before.
-  const animSavedId = animSaved?.id ?? null;
   useEffect(() => {
-    if (videoType !== 'animation' || !userId || !animInfo?.title || animSavedId) return;
+    if (videoType !== 'animation' || !userId || !animInfo || animMovie) return;
     let alive = true;
-    void findSavedAnimation(userId, animInfo.title).then((saved) => { if (alive && saved) setAnimSaved(saved); }).catch(() => undefined);
+    void animationMovie({ userId, key: animInfo.key, question: animInfo.question, title: animInfo.title, summary: animInfo.bigIdea,
+      narrative: animInfo.overview, beats: animInfo.beats, videoUrl: animVideo?.portrait ? null : animVideo?.url, posterUrl: animVideo?.poster })
+      .then((m) => { if (alive) setAnimMovie(m); })
+      .catch((err) => logger.warn('[MovieResults] animation movie failed', { error: err instanceof Error ? err.message : String(err) }));
     return () => { alive = false; };
-  }, [videoType, userId, animInfo?.title, animSavedId]);
+  }, [videoType, userId, animInfo, animMovie, animVideo]);
+  // The cloud recording failed: the twin records it here — for the viewer's movie, or for a download.
+  useEffect(() => {
+    if (videoType === 'animation' && animVideo?.render === 'failed' && !animVideo.url && ((animMovie && !animMovie.videoUrl) || animDownload === 'waiting')) setAnimTwin(true);
+  }, [videoType, animVideo, animMovie, animDownload]);
+  const animFileName = (ext: string) => `${(animInfo?.title || displayQuery).replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 60) || 'curios'}.${ext}`;
+  const saveBlob = (blob: Blob) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = animFileName(blob.type.includes('mp4') ? 'mp4' : 'webm');
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  const onTwinFilm = (film: AnimationFilm | null) => {
+    setAnimTwin(false);
+    if (!film) { if (animDownload === 'waiting') setAnimDownload('failed'); return; }
+    twinFilm.current = film.video;
+    if (animDownload === 'waiting') { saveBlob(film.video); setAnimDownload(null); }
+    if (animMovie && !animMovie.videoUrl && animInfo) {
+      void uploadOwnRecording({ key: animInfo.key, movieId: animMovie.id, video: film.video, poster: film.poster })
+        .then((videoUrl) => setAnimMovie((m) => (m ? { ...m, videoUrl } : m))).catch(() => undefined);
+    }
+  };
+  // Download: the cloud video of the shape on screen; while it is still being recorded, it downloads when in.
+  const animVideoUrl = animVideo?.url ?? (animVideo?.portrait ? null : animMovie?.videoUrl) ?? null;
+  useEffect(() => {
+    if (animDownload !== 'waiting' || !animVideoUrl) return;
+    setAnimDownload(null);
+    void shareOrDownloadVideo(animVideoUrl, animFileName('mp4').replace(/\.mp4$/, ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animDownload, animVideoUrl]);
+  const downloadAnimation = () => {
+    if (animVideoUrl) return void shareOrDownloadVideo(animVideoUrl, animFileName('mp4').replace(/\.mp4$/, ''));
+    if (twinFilm.current) return saveBlob(twinFilm.current);
+    unlockRecordingAudio(); // a twin may record it, with sound, after this tap
+    setAnimDownload('waiting');
+  };
+  const markAnimation = (change: { saved?: boolean; posted?: boolean }, guestNote: string) => {
+    if (!userId) { setSignUpSubtitle(t(guestNote)); setShowSignUp(true); return; }
+    if (!animMovie) return;
+    const before = animMovie;
+    setAnimMovie({ ...animMovie, ...(change.saved !== undefined ? { saved: change.saved } : {}), ...(change.posted !== undefined ? { posted: change.posted, saved: change.posted || animMovie.saved } : {}) });
+    markAnimationMovie(animMovie.id, change).catch(() => setAnimMovie(before));
+  };
   const likeTarget = videoType === 'cinematic'
     ? (filmId ? { kind: 'film' as const, id: filmId } : null)
     : videoType === 'animation'
-      ? (animSavedId ? { kind: 'movie' as const, id: animSavedId } : null)
+      ? (animMovie ? { kind: 'movie' as const, id: animMovie.id } : null)
       : (savedId ? { kind: 'movie' as const, id: savedId } : null);
-  // A heart on an animation not saved yet saves it first, then likes it.
-  const pendingLike = useRef(false);
   useEffect(() => {
     setLike(null);
     if (!likeTarget) return;
@@ -522,13 +571,6 @@ export default function MovieResults() {
   }, [likeTarget?.kind, likeTarget?.id, userId]);
   const toggleLike = async () => {
     if (!userId) { setLikeGuestNote(true); return; }
-    if (!likeTarget && videoType === 'animation' && animInfo) {
-      if (animSave?.status === 'recording' || animSave?.status === 'uploading') { pendingLike.current = true; return; }
-      pendingLike.current = true;
-      unlockRecordingAudio();
-      setAnimVideoRequest((r) => ({ n: r.n + 1, ask: 'save' }));
-      return;
-    }
     if (!likeTarget || !like) return;
     const liked = !like.liked;
     setLike({ liked, count: Math.max(0, like.count + (liked ? 1 : -1)) });
@@ -539,13 +581,6 @@ export default function MovieResults() {
       setLike(like);
     }
   };
-
-  useEffect(() => {
-    if (!like || !pendingLike.current) return;
-    pendingLike.current = false;
-    if (!like.liked) void toggleLike();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [like]);
 
   const roleLabel = (s: MovieSwipe) => t(`vidRole_${s.isCore ? 'core' : s.role}`);
   const isEnhancing = selectedSwipe ? enhancingIds.has(selectedSwipe.id) : false;
@@ -667,10 +702,9 @@ export default function MovieResults() {
     : videoType === 'animation' || videoType === 'simulation'
     ? (animInfo ? (() => {
         const caption = animInfo.overview.split(/(?<=[.!?])\s/)[0];
-        // Once saved as a video, shares carry the video, its picture (with a play mark) and its own page.
-        const saved = animSaved;
-        return { title: animInfo.title, caption, hashtags: [] as string[], video: saved?.videoUrl,
-          url: shareLink(animInfo.title, caption, saved?.posterUrl ?? undefined, saved ? `${site}/v/${saved.id}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=${videoType}`) };
+        // A signed-in viewer shares their movie's short link; the video (and picture) once the cloud has it.
+        return { title: animInfo.title, caption, hashtags: [] as string[], video: animVideoUrl ?? undefined,
+          url: animMovie ? `${site}/v/${animMovie.id}` : shareLink(animInfo.title, caption, animVideo?.poster ?? undefined, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=${videoType}`) };
       })() : null)
     : videoType === 'cinematic'
     ? (cine ? (() => {
@@ -750,42 +784,25 @@ export default function MovieResults() {
               )}
             </button>
           )}
-          {videoType === 'animation' && animInfo && (() => {
-            // Save (signed in) and Download (computers): the asked one shows a ring, 0-100%, while the video records, then uploads.
-            const busy = animSave?.status === 'recording' || animSave?.status === 'uploading';
-            const ringFor = (ask: VideoAsk) => animSave?.status === 'recording' ? (animSave.asks.includes(ask) ? animSave.progress : null)
-              : animSave?.status === 'uploading' && ask === 'save' ? animSave.progress : null;
-            const ask = (what: VideoAsk) => { unlockRecordingAudio(); setAnimVideoRequest((r) => ({ n: r.n + 1, ask: what })); };
-            const saved = Boolean(animSaved);
-            const btn = (what: VideoAsk, label: string, icon: ReactNode, onClick: () => void, extra = '') => {
-              const ring = ringFor(what);
-              return (
-                <button type="button" onClick={onClick} disabled={ring !== null} title={ring !== null ? `${label} · ${ring}%` : label} aria-label={label}
-                  className={`${lineBtn} !px-0 w-10 justify-center relative disabled:cursor-wait ${extra}`}
-                  style={{ ...lineBtnStyle, color: what === 'save' && saved ? 'var(--accent-primary)' : lineBtnStyle.color }}>
-                  {ring !== null ? (
-                    <>
-                      <svg className="absolute inset-0 -rotate-90" viewBox="0 0 40 40" aria-hidden="true">
-                        <circle cx="20" cy="20" r="18" fill="none" strokeWidth="2.5" style={{ stroke: 'var(--ui-border-default)' }} />
-                        <circle cx="20" cy="20" r="18" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeDasharray={113.1} strokeDashoffset={113.1 * (1 - ring / 100)} style={{ stroke: 'var(--accent-primary)', transition: 'stroke-dashoffset 0.4s' }} />
-                      </svg>
-                      <span className="text-[10px] font-semibold tabular-nums">{ring}</span>
-                    </>
-                  ) : icon}
-                </button>
-              );
-            };
-            return (
-              <>
-                {btn('save', saved ? t('vidAnimSaved') : t('vidAnimSave'), saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />, () => {
-                  if (!userId) { setSignUpSubtitle(t('vidAnimSaveGuest')); setShowSignUp(true); return; }
-                  if (saved) { setShareOpen(true); return; }
-                  if (!busy || ringFor('save') === null) ask('save');
-                })}
-                {btn('download', t('vidDownload'), <Download size={16} />, () => ask('download'), 'hidden sm:inline-flex')}
-              </>
-            );
-          })()}
+          {videoType === 'animation' && animInfo && (
+            <>
+              {/* Save: their Space. Post: the public feed. Download (computers): the video file. */}
+              <button type="button" onClick={() => markAnimation({ saved: !animMovie?.saved }, 'vidAnimSaveGuest')} aria-pressed={Boolean(animMovie?.saved)}
+                title={animMovie?.saved ? t('vidAnimSaved') : t('vidAnimSave')} aria-label={animMovie?.saved ? t('vidAnimSaved') : t('vidAnimSave')}
+                className={`${lineBtn} !px-0 w-10 justify-center`} style={{ ...lineBtnStyle, color: animMovie?.saved ? 'var(--accent-primary)' : lineBtnStyle.color }}>
+                {animMovie?.saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+              </button>
+              <button type="button" onClick={() => markAnimation({ posted: !animMovie?.posted }, 'vidAnimPostGuest')} aria-pressed={Boolean(animMovie?.posted)}
+                title={animMovie?.posted ? t('vidAnimPosted') : t('vidAnimPost')} aria-label={animMovie?.posted ? t('vidAnimPosted') : t('vidAnimPost')}
+                className={lineBtn} style={{ ...lineBtnStyle, color: animMovie?.posted ? 'var(--accent-primary)' : lineBtnStyle.color }}>
+                <Send size={16} /> <span>{animMovie?.posted ? t('vidAnimPosted') : t('vidAnimPost')}</span>
+              </button>
+              <button type="button" onClick={downloadAnimation} disabled={animDownload === 'waiting'} title={t('vidDownload')} aria-label={t('vidDownload')}
+                className={`${lineBtn} !px-0 w-10 justify-center hidden sm:inline-flex disabled:cursor-wait`} style={lineBtnStyle}>
+                {animDownload === 'waiting' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={() => setShareOpen((o) => !o)}
@@ -800,10 +817,10 @@ export default function MovieResults() {
           {exportProgress !== null && (
             <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidDownloadKeepOpen')}</p>
           )}
-          {(animSave?.status === 'recording' || animSave?.status === 'uploading') && (
-            <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidAnimRecordingKeepOpen')}</p>
+          {animDownload === 'waiting' && (
+            <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidAnimVideoComing')}</p>
           )}
-          {animSave?.status === 'failed' && (
+          {animDownload === 'failed' && (
             <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidAnimSaveFailed')}</p>
           )}
           {exportFailed && (
@@ -997,8 +1014,8 @@ export default function MovieResults() {
             belowPlayer={sharedSections}
             onReady={setAnimInfo}
             onNeedSignIn={() => { setSignUpSubtitle(t('vidTourSaveGuest')); setShowSignUp(true); }}
-            videoRequest={animVideoRequest}
-            onSave={(state) => { if (state.status === 'saved') setAnimSaved(state.saved); setAnimSave(state); }}
+            onVideo={setAnimVideo}
+            twin={animTwin ? onTwinFilm : undefined}
           />
         ) : videoType === 'tour' ? (
           <TourScene

@@ -1,0 +1,28 @@
+# Deploys the Cloud Run job animation-recorder (services/animation-recorder) to the curios-vertex project.
+# Needs repository secrets: GCP_SA_KEY (a service-account JSON key allowed to deploy Cloud Run jobs and
+# run Cloud Build), RENDER_SECRET (same value as the Supabase secret) and SUPABASE_ANON_KEY.
+name: Deploy animation recorder
+
+on:
+  push:
+    branches: [main]
+    paths: ['services/animation-recorder/**', '.github/workflows/deploy-animation-recorder.yml']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy the job
+        run: |
+          gcloud run jobs deploy animation-recorder \
+            --project curios-vertex --region us-central1 \
+            --source services/animation-recorder \
+            --tasks 1 --max-retries 0 --task-timeout 15m \
+            --cpu 2 --memory 2Gi \
+            --set-env-vars "SITE=https://curiosai.com,SUPABASE_URL=https://gpfccicfqynahflehpqo.supabase.co,SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},RENDER_SECRET=${{ secrets.RENDER_SECRET }}"

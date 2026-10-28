@@ -43,7 +43,11 @@ Only small in-scene labels on parts (at most 6, short) and the art's own numbers
 
 PAGE: one standalone HTML document; inline CSS/JS. The stage fills the viewport (html, body 100% × 100%,
 overflow hidden) and works from 360×640 portrait to 1600×900 landscape (fit the content to the aspect; handle
-resize). No other network, files, fonts or images than the libraries named below. Deterministic: seeded random.
+resize).
+FRAMING: compose in a 16:9 design space (SVG viewBox 0 0 1600 900, preserveAspectRatio "xMidYMid meet" — never
+"slice"; three.js: frame the camera for 16:9). Everything that matters — characters, heads, labels, numbers —
+stays inside a safe area 6% in from every edge, at every moment of every beat, including camera zooms and
+pans (check each beat's start and end framing). Backgrounds may bleed to the edges; content never does. No other network, files, fonts or images than the libraries named below. Deterministic: seeded random.
 Reply with the HTML only, in one \`\`\`html block. Keep the code compact: loops and helpers for repeated parts.`;
 
 export const MACHINE = `You build interactive 3D experiments that answer a question with a real machine the viewer
@@ -149,6 +153,8 @@ page, made for a landscape (16:9) frame. Return the same page re-composed for a 
   'pause', 'speed', 'reset', curios.ready(), readouts, callout) — beat i still plays the same moment.
 - Re-lay out every scene for the tall frame: stack what sat side by side, scale the subject up to the width, move
   labels and numbers so nothing is cut or off-screen; everything that matters stays inside a 90% safe area.
-- SVG: a portrait viewBox (e.g. 0 0 900 1600) with preserveAspectRatio "xMidYMid meet" — never "slice"; three.js: the
+- SVG: a portrait viewBox (0 0 900 1600) with preserveAspectRatio "xMidYMid meet" — never "slice"; three.js: the
   camera framed for the tall aspect. Still handle resize.
+- Safe area: everything that matters (characters, heads, labels, numbers) stays 6% in from every edge, at every
+  moment of every beat, including camera zooms and pans. Backgrounds may bleed; content never does.
 Reply with the HTML only, in one \`\`\`html block.`;
