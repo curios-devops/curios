@@ -55,10 +55,10 @@ function isPlainSearch(link: string, query: string): boolean {
 
 // Crawler-friendly URL that renders OG meta tags for X / LinkedIn / Facebook / WhatsApp.
 export function buildCrawlerShareUrl(payload: SharePayload): string {
-  // Curiosity Share links (/s/:slug) are already short AND serve OG tags via the
-  // node-share-og edge function, so share them directly — no long wrapper needed.
+  // Curiosity Share links (/s/:slug) and saved videos (/v/:id) are already short AND serve OG tags
+  // via the node-share-og / video-share-og edge functions, so share them directly — no long wrapper.
   const deep = payload.deepLink || '';
-  if (/^https:\/\/curiosai\.com\/s\/[^/?#]+$/i.test(deep)) return deep;
+  if (/^https:\/\/curiosai\.com\/(s|v)\/[^/?#]+$/i.test(deep)) return deep;
 
   const query = (payload.title || '').trim();
   const snippet = buildSnippet(payload.description || payload.text, query);

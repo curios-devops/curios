@@ -149,5 +149,6 @@
   "vidAnimUploading": "Wird gespeichert…",
   "vidAnimSaveFailed": "Das Video konnte nicht gespeichert werden. Versuch es noch einmal.",
   "vidAnimPortrait": "Hochformat",
-  "vidAnimLandscape": "Querformat"
+  "vidAnimLandscape": "Querformat",
+  "vidAnimPortraitMaking": "Hochformat-Version wird erstellt…"
 }

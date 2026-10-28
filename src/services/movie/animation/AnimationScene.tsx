@@ -9,8 +9,10 @@
 // with — its controls come first (sliders, a picker, a switch, pause) and its steps are "try this"
 // suggestions that set the controls to telling values. Kept apart from the animation of the same question.
 // One animation per question, kept by the server: opening it again is instant.
-// Save records it once from the start as a video (recorder.ts) in the player's shape — on a phone the
-// viewer picks landscape or portrait (TikTok) — and keeps it as their movie (history, share page, feed).
+// Save and Download need it as a video (recorder.ts), in the player's shape — on a phone the viewer
+// picks landscape or portrait (TikTok). Portrait is a second version of the stage, re-composed for the
+// tall frame by the studio (made once); until it is there the landscape stage shows whole, with bands.
+// Save keeps the video as their movie (history, share page, feed).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Captions, Loader2, Maximize, Minimize, Palette, Pause, Play, RectangleHorizontal, RectangleVertical, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
@@ -21,7 +23,7 @@ import { tts } from '../audio/paragraphNarrator.ts';
 import { loadNarratorVoice, narratorGender, NARRATOR_VOICES, saveNarratorVoice } from '../audio/narratorPrefs.ts';
 import { captionLines, lineAt, readingSeconds } from './captions.ts';
 import { tourKey } from '../tour/tourPlan.ts';
-import { findAnimation, makeAnimation, saveAnimationVideo, type Animation, type SavedAnimation } from './animationStudio.ts';
+import { findAnimation, makeAnimation, portraitAnimation, saveAnimationVideo, type Animation, type SavedAnimation } from './animationStudio.ts';
 import { startRecording, videoSize, type Recording } from './recorder.ts';
 export { unlockRecordingAudio } from './recorder.ts';
 import { currentTheme, readManifest, stageDocument, type Manifest, type StageEvent } from './stage.ts';
@@ -32,11 +34,13 @@ export interface AnimationInfo {
   related: string[];
 }
 
-/** Saving the animation as a video: recording (seconds so far), uploading, saved or failed. */
+export type VideoAsk = 'save' | 'download';
+/** The video the page asked for (Save / Download): recording or uploading (0-100), saved, idle or failed. */
 export type SaveState =
-  | { status: 'recording'; seconds: number }
-  | { status: 'uploading' }
+  | { status: 'recording'; progress: number; asks: VideoAsk[] }
+  | { status: 'uploading'; progress: number }
   | { status: 'saved'; saved: SavedAnimation }
+  | { status: 'idle' }
   | { status: 'failed' };
 
 interface Props {
@@ -48,8 +52,8 @@ interface Props {
   belowPlayer?: ReactNode;
   onReady: (info: AnimationInfo) => void;
   onNeedSignIn: () => void;
-  /** Bumped by the page's Save button (signed-in viewers): record and save once. */
-  saveRequest?: number;
+  /** The page's Save (signed-in viewers) or Download button; `n` grows with each press. */
+  videoRequest?: { n: number; ask: VideoAsk };
   onSave?: (state: SaveState) => void;
 }
 
@@ -58,7 +62,7 @@ type Stage = 'looking' | 'making' | 'ready' | 'nocredits' | 'limit' | 'failed';
 type Voice = string;
 const SPEEDS = [0.5, 1, 2] as const;
 
-export default function AnimationScene({ question, kind, tab, belowPlayer, onReady, onNeedSignIn, saveRequest = 0, onSave }: Props) {
+export default function AnimationScene({ question, kind, tab, belowPlayer, onReady, onNeedSignIn, videoRequest, onSave }: Props) {
   const { t } = useTranslation();
   const { session, isLoading: sessionLoading } = useSession();
   const { tier, promptUpgrade } = useProCredits();
@@ -140,10 +144,13 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
       </>
     );
   }
-  return <Player animation={animation} animationKey={key} belowPlayer={belowPlayer} saveRequest={saveRequest} onSave={onSave} />;
+  return <Player animation={animation} animationKey={key} belowPlayer={belowPlayer} videoRequest={videoRequest} onSave={onSave} />;
 }
 
-function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: { animation: Animation; animationKey: string; belowPlayer?: ReactNode; saveRequest: number; onSave?: (state: SaveState) => void }) {
+interface Take { rec: Recording; w: number; h: number; started: number; next: number; own: boolean; poster: Promise<Blob | null>; tick: ReturnType<typeof setInterval> }
+interface Film { video: Blob; poster: Blob | null; seconds: number; w: number; h: number }
+
+function Player({ animation, animationKey, belowPlayer, videoRequest, onSave }: { animation: Animation; animationKey: string; belowPlayer?: ReactNode; videoRequest?: { n: number; ask: VideoAsk }; onSave?: (state: SaveState) => void }) {
   const { t } = useTranslation();
   const { session } = useSession();
   const simulation = animation.kind === 'simulation';
@@ -158,7 +165,22 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
     return () => obs.disconnect();
   }, []);
-  const srcDoc = useMemo(() => stageDocument(animation.html, theme), [animation.html, theme]);
+  const [portrait, setPortrait] = useState(false); // phones only: the player (and a saved video) in TikTok's shape
+  const [portraitPage, setPortraitPage] = useState<Animation | null>(null);
+  const [portraitMaking, setPortraitMaking] = useState(false);
+  useEffect(() => {
+    if (!portrait || portraitPage) return;
+    const controller = new AbortController();
+    setPortraitMaking(true);
+    portraitAnimation(animationKey, controller.signal)
+      .then((a) => { if (readManifest(a.html, 0)) setPortraitPage(a); })
+      .catch(() => undefined) // stays landscape, whole
+      .finally(() => { if (!controller.signal.aborted) setPortraitMaking(false); });
+    return () => { controller.abort(); setPortraitMaking(false); };
+  }, [portrait, portraitPage, animationKey]);
+  const page = portrait && portraitPage ? portraitPage.html : animation.html;
+  const letterbox = portrait && !portraitPage;
+  const srcDoc = useMemo(() => stageDocument(page, theme), [page, theme]);
 
   const [ready, setReady] = useState(false);
   const [auto, setAuto] = useState(!machine);
@@ -176,9 +198,8 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
   const [caption, setCaption] = useState('');
   const [captionsOn, setCaptionsOn] = useState(() => { try { return localStorage.getItem('animationCaptions') !== 'off'; } catch { return true; } });
   const [fullscreen, setFullscreen] = useState(false);
-  const [portrait, setPortrait] = useState(false); // phones only: the player (and a saved video) in TikTok's shape
-  const [recording, setRecording] = useState<number | null>(null); // seconds recorded, while saving
-  const rec = useRef<Recording | null>(null);
+  const [recording, setRecording] = useState<number | null>(null); // seconds of a take of its own (the viewer waits)
+  const take = useRef<Take | null>(null);
   const captionRef = useRef('');
   captionRef.current = caption;
   const run = useRef({ auto, voice, token: 0 });
@@ -190,6 +211,7 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
   const send = (msg: Record<string, unknown>) => frameRef.current?.contentWindow?.postMessage({ curios: 1, ...msg }, '*');
 
   useEffect(() => {
+    dropTake(); // a new stage (theme, portrait version) breaks a recording
     setReady(false);
     setCurrent(-1);
     setCallout('');
@@ -202,7 +224,7 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
       else if (m.ev === 'controls') setControls((c) => ({ ...c, ...m.values })); // the stage moved them (a suggestion, a drag)
       else if (m.ev === 'callout') setCallout(m.text);
       else if (m.ev === 'done') doneRef.current?.(m.i);
-      else if (m.ev === 'frame') { if (rec.current) rec.current.frame(m.bitmap, captionRef.current); else m.bitmap.close(); }
+      else if (m.ev === 'frame') { if (take.current) take.current.rec.frame(m.bitmap, captionRef.current); else m.bitmap.close(); }
       else if (m.ev === 'error') console.warn('[animation stage]', m.message);
     };
     window.addEventListener('message', onMessage);
@@ -239,7 +261,7 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
       const url = URL.createObjectURL(new Blob([sound], { type: 'audio/mpeg' }));
       const audio = new Audio(url);
       audioRef.current = audio;
-      rec.current?.voice(audio);
+      take.current?.rec.voice(audio);
       audio.ontimeupdate = () => { if (audio.duration) show(audio.currentTime / audio.duration); };
       await new Promise<void>((resolve) => { audio.onended = audio.onerror = () => resolve(); audio.play().catch(() => { paced(); resolve(); }); });
       URL.revokeObjectURL(url);
@@ -248,6 +270,7 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
 
   /** Plays beat i on the stage with its narration; with Auto on, goes on to the next. */
   const play = async (i: number) => {
+    if (take.current && i !== take.current.next) dropTake(); // the run was broken: not one whole video
     const token = ++run.current.token;
     audioRef.current?.pause();
     setCurrent(i);
@@ -263,10 +286,17 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
     await Promise.all([beatDone, say(i, token)]);
     if (run.current.token !== token) return;
     setPlaying(false);
+    const t = take.current;
+    if (t && t.next === i) {
+      if (i === 0) t.poster = t.rec.poster();
+      t.next = i + 1;
+      if (t.next === manifest.beats.length) void finishTake();
+    }
     if (run.current.auto && i + 1 < manifest.beats.length) void play(i + 1);
   };
 
   const restart = () => {
+    dropTake();
     run.current.token++;
     audioRef.current?.pause();
     send({ cmd: 'reset' });
@@ -276,75 +306,136 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
     setCaption('');
   };
 
-  // Stories start by themselves once the stage is ready.
+  // Stories start by themselves once the stage is ready; on a computer that first play is recorded too.
   const started = useRef(false);
   useEffect(() => {
-    if (ready && !machine && !started.current) { started.current = true; void play(0); }
+    if (!ready || machine || started.current) return;
+    started.current = true;
+    void (async () => {
+      if (window.matchMedia('(min-width: 640px) and (pointer: fine)').matches) await beginTake(false);
+      void play(0);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
-  useEffect(() => () => { run.current.token++; audioRef.current?.pause(); send({ cmd: 'capture', on: false }); }, []);
+  useEffect(() => () => { run.current.token++; audioRef.current?.pause(); dropTake(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save: play it all once from the start at normal speed, with the voice, and record it.
-  const saveVideo = async () => {
-    const box = frameRef.current?.getBoundingClientRect();
-    if (!box || rec.current || !session?.user) return;
-    const report = onSave ?? (() => undefined);
-    const { w, h } = videoSize(box.width, box.height);
-    try {
-      rec.current = await startRecording(w, h);
-    } catch {
-      return report({ status: 'failed' });
-    }
+  // Takes: one recording of the whole animation, first beat to last at normal speed. On a computer the
+  // first play of a story is a take by itself (lazy), so Save and Download are instant once it has been
+  // watched — or finish with it. A step out of order, restart, a speed change or pause drops it. With no
+  // take, Save / Download record one of their own: it plays from the start and the viewer watches it.
+  // A recording lives in this page: closing it stops it, so the browser asks first while one is wanted.
+  const film = useRef<Film | null>(null);
+  const asks = useRef(new Set<VideoAsk>());
+  const savedRef = useRef<SavedAnimation | null>(null);
+  const report = (state: SaveState) => onSave?.(state);
+  const estimate = useMemo(() => manifest.beats.reduce((n, b) => n + Math.max(4, readingSeconds(b.say)) + 0.8, 1.5), [manifest]);
+  const [wanted, setWanted] = useState(false); // something the viewer asked for is still on its way
+
+  async function beginTake(own: boolean): Promise<boolean> {
+    // The video takes the player's shape; the stage is fitted into it whole.
+    const box = frameRef.current?.getBoundingClientRect(), shape = playerRef.current?.getBoundingClientRect();
+    if (!box?.width || !shape?.width || take.current) return false;
+    const { w, h } = videoSize(shape.width, shape.height);
+    let r: Recording;
+    try { r = await startRecording(w, h, own ? 1000 : 300); } catch { return false; }
+    // A lazy take without sound while the narrator speaks is no use as the video.
+    if (!own && !r.withSound && run.current.voice !== 'off') { void r.stop(); return false; }
+    const startedAt = performance.now();
+    const tick = setInterval(() => {
+      const secs = (performance.now() - startedAt) / 1000;
+      if (own) setRecording(Math.round(secs));
+      if (asks.current.size) report({ status: 'recording', progress: Math.min(99, Math.round((secs / estimate) * 100)), asks: [...asks.current] });
+    }, 500);
+    take.current = { rec: r, w, h, started: startedAt, next: 0, own, poster: Promise.resolve(null), tick };
+    send({ cmd: 'capture', on: true, scale: Math.min(w / box.width, h / box.height) });
+    return true;
+  }
+  function dropTake() {
+    const t = take.current;
+    if (!t) return;
+    take.current = null;
+    clearInterval(t.tick);
+    send({ cmd: 'capture', on: false });
+    void t.rec.stop();
+    setRecording(null);
+  }
+  async function finishTake() {
+    const t = take.current;
+    if (!t) return;
+    await new Promise((r) => setTimeout(r, 800)); // the last picture stays a moment
+    if (take.current !== t) return;
+    take.current = null;
+    clearInterval(t.tick);
+    send({ cmd: 'capture', on: false });
+    const video = await t.rec.stop();
+    film.current = { video, poster: await t.poster, seconds: (performance.now() - t.started) / 1000, w: t.w, h: t.h };
+    setRecording(null);
+    if (t.own) setAuto(!machine);
+    void deliver();
+  }
+  async function recordOwn() {
     restart();
     setSpeed(1);
+    send({ cmd: 'speed', x: 1 });
     setAuto(false);
     run.current.auto = false;
-    send({ cmd: 'speed', x: 1 });
-    send({ cmd: 'capture', on: true, scale: w / box.width });
-    const started = performance.now();
-    const tick = setInterval(() => { const s = Math.round((performance.now() - started) / 1000); setRecording(s); report({ status: 'recording', seconds: s }); }, 1000);
+    if (!(await beginTake(true))) { asks.current.clear(); setWanted(false); return report({ status: 'failed' }); }
     setRecording(0);
-    let poster: Promise<Blob | null> = Promise.resolve(null);
-    try {
-      await new Promise((r) => setTimeout(r, 600)); // the first pictures
-      for (let i = 0; i < manifest.beats.length; i++) {
-        await play(i);
-        if (i === 0) poster = rec.current.poster();
-      }
-      await new Promise((r) => setTimeout(r, 800));
-      send({ cmd: 'capture', on: false });
-      const video = await rec.current.stop();
-      const seconds = (performance.now() - started) / 1000;
-      rec.current = null;
-      clearInterval(tick);
-      setRecording(null);
-      report({ status: 'uploading' });
-      const saved = await saveAnimationVideo({
-        key: animationKey, userId: session.user.id, question: animation.question, title: manifest.title || animation.question,
-        summary: manifest.bigIdea, narrative: manifest.beats.map((b) => b.say).join(' '), beats: manifest.beats.length,
-        seconds, aspect: `${w}:${h}`, video, poster: await poster,
-      });
-      report({ status: 'saved', saved });
-    } catch (err) {
-      console.warn('[animation save]', err);
-      report({ status: 'failed' });
-    } finally {
-      clearInterval(tick);
-      send({ cmd: 'capture', on: false });
-      if (rec.current) { void rec.current.stop(); rec.current = null; }
-      setRecording(null);
-      setAuto(!machine);
+    await new Promise((r) => setTimeout(r, 600)); // the first pictures
+    for (let i = 0; i < manifest.beats.length && take.current?.own; i++) await play(i);
+  }
+  async function deliver() {
+    const f = film.current;
+    if (!f) return;
+    if (asks.current.delete('download')) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(f.video);
+      a.download = `${(manifest.title || animation.question).replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 60) || 'curios'}.${f.video.type.includes('mp4') ? 'mp4' : 'webm'}`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      report(savedRef.current ? { status: 'saved', saved: savedRef.current } : { status: 'idle' });
     }
-  };
-  const lastSave = useRef(saveRequest);
+    if (asks.current.delete('save')) {
+      if (!savedRef.current) {
+        if (!session?.user) return report({ status: 'failed' });
+        report({ status: 'uploading', progress: 0 });
+        try {
+          savedRef.current = await saveAnimationVideo({
+            key: animationKey, userId: session.user.id, question: animation.question, title: manifest.title || animation.question,
+            summary: manifest.bigIdea, narrative: manifest.beats.map((b) => b.say).join(' '), beats: manifest.beats.length,
+            seconds: f.seconds, aspect: `${f.w}:${f.h}`, video: f.video, poster: f.poster,
+            onProgress: (done) => report({ status: 'uploading', progress: Math.round(done * 100) }),
+          });
+        } catch (err) {
+          console.warn('[animation save]', err);
+          setWanted(asks.current.size > 0);
+          return report({ status: 'failed' });
+        }
+      }
+      report({ status: 'saved', saved: savedRef.current });
+    }
+    setWanted(asks.current.size > 0);
+  }
+  const lastRequest = useRef(videoRequest?.n ?? 0);
   useEffect(() => {
-    if (saveRequest === lastSave.current) return;
-    lastSave.current = saveRequest;
-    void saveVideo();
+    if (!videoRequest || videoRequest.n === lastRequest.current) return;
+    lastRequest.current = videoRequest.n;
+    asks.current.add(videoRequest.ask);
+    setWanted(true);
+    if (film.current) void deliver();
+    else if (take.current) report({ status: 'recording', progress: Math.min(99, Math.round(((performance.now() - take.current.started) / 1000 / estimate) * 100)), asks: [...asks.current] });
+    else void recordOwn();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saveRequest]);
+  }, [videoRequest?.n]);
+  // Closing the page would lose a video still recording or uploading: the browser asks first.
+  useEffect(() => {
+    if (!wanted) return;
+    const hold = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', hold);
+    return () => window.removeEventListener('beforeunload', hold);
+  }, [wanted]);
 
-  useEffect(() => { send({ cmd: 'speed', x: speed }); }, [speed, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (speed !== 1) dropTake(); send({ cmd: 'speed', x: speed }); }, [speed, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const chooseVoice = (v: Voice) => {
     setVoice(v);
@@ -416,7 +507,12 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
         className={`overflow-hidden ${pseudoFull ? 'fixed inset-0 z-[200]' : `relative rounded-xl ${portrait ? 'mx-auto max-w-[calc(80vh*9/16)] aspect-[9/16] sm:max-w-none sm:aspect-video' : machine ? 'aspect-[4/5] sm:aspect-video' : 'aspect-video'}`}`}
         style={{ backgroundColor: theme.ground }}
       >
-        <iframe ref={frameRef} title={title} srcDoc={srcDoc} sandbox="allow-scripts" className="absolute inset-0 w-full h-full border-0" />
+        <iframe ref={frameRef} title={title} srcDoc={srcDoc} sandbox="allow-scripts" className={`absolute border-0 ${letterbox ? 'inset-x-0 top-1/2 -translate-y-1/2 w-full aspect-video' : 'inset-0 w-full h-full'}`} />
+        {portraitMaking && (
+          <span className={`absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-white pointer-events-none ${label}`} style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
+            <Loader2 size={12} className="animate-spin" /> {t('vidAnimPortraitMaking')}
+          </span>
+        )}
 
         {/* Live numbers from the stage's model, and the surprise moment. */}
         {manifest.readouts.length > 0 && (
@@ -465,12 +561,12 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
           </div>
           <div className="flex rounded-full p-0.5" style={{ background: 'rgba(0,0,0,0.5)' }} role="group" aria-label={t('vidAnimSpeed')}>
             {SPEEDS.map((x) => (
-              <button key={x} type="button" onClick={() => setSpeed(x)} aria-pressed={speed === x} className="px-2 py-1 rounded-full text-xs font-semibold tabular-nums" style={speed === x ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : { color: '#fff' }}>
+              <button key={x} type="button" disabled={recording !== null} onClick={() => setSpeed(x)} aria-pressed={speed === x} className="px-2 py-1 rounded-full text-xs font-semibold tabular-nums" style={speed === x ? { backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' } : { color: '#fff' }}>
                 ×{x}
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => { setPaused((p) => !p); send({ cmd: 'pause', paused: !paused }); }} aria-label={paused ? t('vidAnimPlay') : t('vidAnimPause')} title={paused ? t('vidAnimPlay') : t('vidAnimPause')} className="p-1">
+          <button type="button" disabled={recording !== null} onClick={() => { if (!paused) dropTake(); setPaused((p) => !p); send({ cmd: 'pause', paused: !paused }); }} aria-label={paused ? t('vidAnimPlay') : t('vidAnimPause')} title={paused ? t('vidAnimPlay') : t('vidAnimPause')} className="p-1">
             {paused ? <Play size={16} /> : <Pause size={16} />}
           </button>
           <span className={`hidden sm:block ml-1 text-white/70 truncate ${label}`}>{animation.kind === 'machine' ? t('vidAnimHint3d') : ''}</span>
@@ -506,7 +602,7 @@ function Player({ animation, animationKey, belowPlayer, saveRequest, onSave }: {
           </button>
           <div className="sm:hidden ml-auto flex rounded-full p-0.5 border" style={{ borderColor: 'var(--ui-border-default)' }} role="group">
             {([false, true] as const).map((p) => (
-              <button key={String(p)} type="button" disabled={recording !== null} onClick={() => setPortrait(p)} aria-pressed={portrait === p} aria-label={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} title={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} className="px-2.5 py-1 rounded-full" style={pill(portrait === p)}>
+              <button key={String(p)} type="button" disabled={recording !== null} onClick={() => { dropTake(); setPortrait(p); }} aria-pressed={portrait === p} aria-label={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} title={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} className="px-2.5 py-1 rounded-full" style={pill(portrait === p)}>
                 {p ? <RectangleVertical size={14} /> : <RectangleHorizontal size={14} />}
               </button>
             ))}

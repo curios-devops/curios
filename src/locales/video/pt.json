@@ -149,5 +149,6 @@
   "vidAnimUploading": "Salvando…",
   "vidAnimSaveFailed": "Não foi possível salvar o vídeo. Tente de novo.",
   "vidAnimPortrait": "Vertical",
-  "vidAnimLandscape": "Horizontal"
+  "vidAnimLandscape": "Horizontal",
+  "vidAnimPortraitMaking": "Preparando a versão vertical…"
 }
