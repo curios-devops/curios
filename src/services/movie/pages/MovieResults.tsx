@@ -10,7 +10,7 @@
 // failing → Video; a Video clip failing → its still frame animated (Ken Burns).
 // Every string comes from src/locales/video (the interface language).
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bookmark, BookmarkCheck, ChevronDown, ChevronsUp, Clapperboard, Compass, Crown, Download, Film, Heart, Image as ImageIcon, Link2, ListOrdered, Loader2, Play, Rotate3d, Share2, Sparkles } from 'lucide-react';
 
@@ -39,7 +39,7 @@ import { setMovieModel } from '../core/llm.ts';
 import { VIDEO_TYPES, movieModeFor, parseVideoType, type VideoType } from '../videoType.ts';
 import CinematicMontage, { type CinematicInfo } from '../cinematic/CinematicMontage.tsx';
 import TourScene, { type TourInfo } from '../tour/TourScene.tsx';
-import AnimationScene, { unlockRecordingAudio, type AnimationInfo, type SaveState } from '../animation/AnimationScene.tsx';
+import AnimationScene, { unlockRecordingAudio, type AnimationInfo, type SaveState, type VideoAsk } from '../animation/AnimationScene.tsx';
 import ClipScene, { type ClipInfo } from '../clip/ClipScene.tsx';
 import { getFilmLikeState, saveCinematicFilm, toggleCinematicLike } from '../cinematic/cinematicFilms.ts';
 import { exportCinematic, saveFilm } from '../cinematic/exportCinematic.ts';
@@ -130,8 +130,8 @@ export default function MovieResults() {
   // 360 Tour's data for the shared sections.
   const [tourInfo, setTourInfo] = useState<TourInfo | null>(null);
   const [animInfo, setAnimInfo] = useState<AnimationInfo | null>(null);
-  // Animation saved as a video (Save next to Share): the page's request and the scene's progress.
-  const [animSaveRequest, setAnimSaveRequest] = useState(0);
+  // Animation as a video (Save / Download next to Share): the page's request and the scene's progress.
+  const [animVideoRequest, setAnimVideoRequest] = useState<{ n: number; ask: VideoAsk }>({ n: 0, ask: 'save' });
   const [animSave, setAnimSave] = useState<SaveState | null>(null);
   // Clips' data for the shared sections.
   const [clipInfo, setClipInfo] = useState<ClipInfo | null>(null);
@@ -722,25 +722,42 @@ export default function MovieResults() {
               )}
             </button>
           )}
-          {videoType === 'animation' && animInfo && (
-            <button
-              type="button"
-              onClick={() => {
-                if (!userId) { setSignUpSubtitle(t('vidAnimSaveGuest')); setShowSignUp(true); return; }
-                if (animSave?.status === 'saved') { setShareOpen(true); return; }
-                if (animSave?.status !== 'recording' && animSave?.status !== 'uploading') { unlockRecordingAudio(); setAnimSaveRequest((n) => n + 1); }
-              }}
-              disabled={animSave?.status === 'recording' || animSave?.status === 'uploading'}
-              title={animSave?.status === 'saved' ? t('vidAnimSaved') : t('vidAnimSave')}
-              aria-label={animSave?.status === 'saved' ? t('vidAnimSaved') : t('vidAnimSave')}
-              className={`${lineBtn} ${animSave?.status === 'uploading' ? '' : '!px-0 w-10 justify-center'} disabled:cursor-wait`}
-              style={{ ...lineBtnStyle, color: animSave?.status === 'saved' ? 'var(--accent-primary)' : lineBtnStyle.color }}
-            >
-              {animSave?.status === 'uploading' ? <><Loader2 size={16} className="animate-spin" /><span>{t('vidAnimUploading')}</span></>
-                : animSave?.status === 'recording' ? <Loader2 size={16} className="animate-spin" />
-                : animSave?.status === 'saved' ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
-            </button>
-          )}
+          {videoType === 'animation' && animInfo && (() => {
+            // Save (signed in) and Download (computers): the asked one shows a ring, 0-100%, while the video records, then uploads.
+            const busy = animSave?.status === 'recording' || animSave?.status === 'uploading';
+            const ringFor = (ask: VideoAsk) => animSave?.status === 'recording' ? (animSave.asks.includes(ask) ? animSave.progress : null)
+              : animSave?.status === 'uploading' && ask === 'save' ? animSave.progress : null;
+            const ask = (what: VideoAsk) => { unlockRecordingAudio(); setAnimVideoRequest((r) => ({ n: r.n + 1, ask: what })); };
+            const saved = animSave?.status === 'saved';
+            const btn = (what: VideoAsk, label: string, icon: ReactNode, onClick: () => void, extra = '') => {
+              const ring = ringFor(what);
+              return (
+                <button type="button" onClick={onClick} disabled={ring !== null} title={ring !== null ? `${label} · ${ring}%` : label} aria-label={label}
+                  className={`${lineBtn} !px-0 w-10 justify-center relative disabled:cursor-wait ${extra}`}
+                  style={{ ...lineBtnStyle, color: what === 'save' && saved ? 'var(--accent-primary)' : lineBtnStyle.color }}>
+                  {ring !== null ? (
+                    <>
+                      <svg className="absolute inset-0 -rotate-90" viewBox="0 0 40 40" aria-hidden="true">
+                        <circle cx="20" cy="20" r="18" fill="none" strokeWidth="2.5" style={{ stroke: 'var(--ui-border-default)' }} />
+                        <circle cx="20" cy="20" r="18" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeDasharray={113.1} strokeDashoffset={113.1 * (1 - ring / 100)} style={{ stroke: 'var(--accent-primary)', transition: 'stroke-dashoffset 0.4s' }} />
+                      </svg>
+                      <span className="text-[10px] font-semibold tabular-nums">{ring}</span>
+                    </>
+                  ) : icon}
+                </button>
+              );
+            };
+            return (
+              <>
+                {btn('save', saved ? t('vidAnimSaved') : t('vidAnimSave'), saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />, () => {
+                  if (!userId) { setSignUpSubtitle(t('vidAnimSaveGuest')); setShowSignUp(true); return; }
+                  if (saved) { setShareOpen(true); return; }
+                  if (!busy || ringFor('save') === null) ask('save');
+                })}
+                {btn('download', t('vidDownload'), <Download size={16} />, () => ask('download'), 'hidden sm:inline-flex')}
+              </>
+            );
+          })()}
           <button
             type="button"
             onClick={() => setShareOpen((o) => !o)}
@@ -755,7 +772,7 @@ export default function MovieResults() {
           {exportProgress !== null && (
             <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidDownloadKeepOpen')}</p>
           )}
-          {animSave?.status === 'recording' && (
+          {(animSave?.status === 'recording' || animSave?.status === 'uploading') && (
             <p className="text-sm" style={{ color: 'var(--ui-text-muted)' }}>{t('vidAnimRecordingKeepOpen')}</p>
           )}
           {animSave?.status === 'failed' && (
@@ -952,7 +969,7 @@ export default function MovieResults() {
             belowPlayer={sharedSections}
             onReady={setAnimInfo}
             onNeedSignIn={() => { setSignUpSubtitle(t('vidTourSaveGuest')); setShowSignUp(true); }}
-            saveRequest={animSaveRequest}
+            videoRequest={animVideoRequest}
             onSave={setAnimSave}
           />
         ) : videoType === 'tour' ? (

@@ -55,18 +55,25 @@ export interface SavedAnimation { id: string; videoUrl: string; posterUrl: strin
 export async function saveAnimationVideo(o: {
   key: string; userId: string; question: string; title: string; summary: string; narrative: string;
   beats: number; seconds: number; aspect: string; video: Blob; poster: Blob | null;
+  /** Share of the video uploaded so far (0-1). */
+  onProgress?: (done: number) => void;
 }): Promise<SavedAnimation> {
   const { data, error } = await supabase.functions.invoke('animation-studio', { body: { action: 'upload', key: o.key } });
   if (error || !data?.video) throw new Error('upload not signed');
-  const upload = async (target: { url: string; fields: Record<string, string> }, file: Blob) => {
-    const form = new FormData();
-    for (const [k, v] of Object.entries(target.fields)) form.append(k, v);
-    form.append('file', file);
-    const res = await fetch(target.url, { method: 'POST', body: form });
-    if (!res.ok) throw new Error(`Cloudinary ${res.status}`);
-    return String((await res.json()).secure_url);
-  };
-  const [videoUrl, posterUrl] = await Promise.all([upload(data.video, o.video), o.poster ? upload(data.poster, o.poster).catch(() => null) : null]);
+  // XHR rather than fetch: it reports upload progress.
+  const upload = (target: { url: string; fields: Record<string, string> }, file: Blob, onProgress?: (done: number) => void) =>
+    new Promise<string>((resolve, reject) => {
+      const form = new FormData();
+      for (const [k, v] of Object.entries(target.fields)) form.append(k, v);
+      form.append('file', file);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', target.url);
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total); };
+      xhr.onload = () => (xhr.status < 300 ? resolve(String(JSON.parse(xhr.responseText).secure_url)) : reject(new Error(`Cloudinary ${xhr.status}`)));
+      xhr.onerror = () => reject(new Error('Cloudinary upload failed'));
+      xhr.send(form);
+    });
+  const [videoUrl, posterUrl] = await Promise.all([upload(data.video, o.video, o.onProgress), o.poster ? upload(data.poster, o.poster).catch(() => null) : null]);
   const { data: row, error: saveError } = await supabase.from('movie_projects').insert({
     user_id: o.userId, question: o.question, title: o.title, description: o.summary, narrative: o.narrative,
     full_video_url: videoUrl, thumbnail_url: posterUrl, scene_count: o.beats, duration_seconds: Math.round(o.seconds),
