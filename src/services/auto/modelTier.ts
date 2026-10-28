@@ -94,3 +94,30 @@ export async function pickAnswerModel(
   if (await tryConsumeCredit()) return { model: models.astra, tier, astraBlocked: false };
   return { model: models.sol, tier, astraBlocked: true };
 }
+
+export interface TurnDecision {
+  tier: QuestionTier | null;
+  /** A good answer depends on current events (news, something happening now). */
+  news: boolean;
+}
+
+/** Character: the tier plus whether the question is about current events, in one quick call.
+ *  Never blocks for long: unknown (→ the usual web search) on error or timeout. */
+export async function decideTurn(query: string): Promise<TurnDecision> {
+  const unknown: TurnDecision = { tier: null, news: false };
+  const call = supabase.functions
+    .invoke('classify-intent', { body: { query: query.trim(), only: 'tier', news: true } })
+    .then(({ data, error }) => {
+      if (error) throw error;
+      const d = data as { tier?: unknown; news?: unknown } | null;
+      const tier = isTier(d?.tier) ? d.tier : null;
+      rememberTier(query, tier);
+      return { tier, news: typeof d?.news === 'number' && d.news >= 0.5 };
+    })
+    .catch((error) => {
+      logger.warn('[ModelTier] turn decision failed, using web search', { error: String(error) });
+      return unknown;
+    });
+  const timeout = new Promise<TurnDecision>((resolve) => setTimeout(() => resolve(unknown), TIER_TIMEOUT_MS));
+  return Promise.race([call, timeout]);
+}

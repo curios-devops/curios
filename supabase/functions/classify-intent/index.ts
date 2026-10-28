@@ -4,7 +4,8 @@
 // (choice, with probabilities → we take the argmax) and whether the user wants to buy
 // (predicate). FALLBACK: gpt-5-nano → gpt-5-mini text classification (mode only).
 // A third question rates difficulty (tier: easy|normal|complex) → the client answers with
-// Luna / Sol / Astra. Body { query, only: "tier" } asks just that (explicit modes skip routing).
+// Luna / Sol / Astra. Body { query, only: "tier" } asks just that (explicit modes skip routing);
+// with news: true it also returns news (probability the answer depends on current events).
 // Returns { mode, probabilities?, buyProbability, movieProbability, musicProbability, gameProbability
 // (each null when unknown), tier (null when unknown), backend }. The topic predicates send a film,
 // a song/artist/album or a video game to its own page.
@@ -237,6 +238,35 @@ const MAGAZINE_SECTIONS: { value: string; description: string }[] = [
 ];
 const MAGAZINE_INSTRUCTIONS = "Which magazine section of a publication like The New York Times or Wired would run a story answering this question? Judge the core subject, not passing words.";
 const NEWS_INSTRUCTIONS = "Answering this well depends on current events or recent developments (news, latest updates, something happening now or this year), rather than an evergreen topic.";
+// Character: answered from memory or with fresh research? Broader than "news": any fact that may
+// have changed or happened after a model's training. Luna with today's date, not a Decisions
+// predicate: that one swung at random on it ("who won the 2026 World Series" 0.13–0.57, "7×8" 1.0).
+async function draftFresh(query: string): Promise<boolean | null> {
+  const headers: Record<string, string> = { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` };
+  if (OPENAI_ORG_ID) headers["OpenAI-Organization"] = OPENAI_ORG_ID;
+  try {
+    const res = await fetch(OPENAI_RESPONSES_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: "gpt-6-luna",
+        input: [
+          { role: "system", content: `Today is ${new Date().toISOString().slice(0, 10)}. Does answering the user's question correctly need facts that may have changed or happened recently (this or last year's events, results, winners, releases, prices, who currently holds a role, the latest version of something, anything about today or now)? Timeless facts, greetings, math, definitions, science, history and how things work do not. Respond with strict JSON only: {"fresh":true} or {"fresh":false}.` },
+          { role: "user", content: query },
+        ],
+        max_output_tokens: 16,
+        reasoning: { effort: "none" },
+        text: { format: { type: "json_object" } },
+      }),
+      signal: AbortSignal.timeout(2200), // under the client's 2.5 s; the presenter is connecting meanwhile,
+    });
+    if (!res.ok) return null;
+    const fresh = JSON.parse(extractOutputText(await res.json()))?.fresh;
+    return typeof fresh === "boolean" ? fresh : null;
+  } catch {
+    return null;
+  }
+}
 
 // Luna picks the most interesting OTHER angles (Decisions only ranks the main one well).
 async function draftSections(query: string, location: string): Promise<string[]> {
@@ -367,8 +397,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body?.only === "tier") {
-      const answers = await decide(query, [tierQuestion], DECISIONS_TIMEOUT_MS);
-      return jsonResponse({ tier: topTier(answers), backend: answers ? "decisions" : "default" });
+      // news: true (Character) also asks, in parallel, whether the answer needs recent facts (1 / 0).
+      const [answers, fresh] = await Promise.all([decide(query, [tierQuestion], DECISIONS_TIMEOUT_MS), body?.news ? draftFresh(query) : null]);
+      return jsonResponse({ tier: topTier(answers), ...(body?.news ? { news: fresh === null ? null : Number(fresh) } : {}), backend: answers ? "decisions" : "default" });
     }
 
     const answers = await decide(query, [

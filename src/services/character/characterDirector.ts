@@ -79,10 +79,12 @@ export async function directTurn(params: {
   locale: string;
   /** Conversation's answer model (Luna/Sol/Astra); resolved while the web search runs. */
   model?: Promise<string>;
+  /** What the answer stands on (grounding.ts); the usual web search when not given. */
+  sources?: Promise<WebSearchResult[]>;
 }): Promise<DirectedTurn> {
   const { question, character, history, product, locale } = params;
   mark('director: web search → start');
-  const sources = (await executeWebSearch(question).catch(() => [])).slice(0, 6);
+  const sources = (await (params.sources ?? executeWebSearch(question)).catch(() => [])).slice(0, 6);
   mark('director: web search ← done', { results: sources.length });
 
   const productBlock = product
@@ -92,7 +94,7 @@ In speech, present it warmly and honestly by name (never say "OBJ_0"), mention 2
 In actions, the character picks the product <OBJ_0> up from the small table beside them, holds it toward the camera, turns it to show it off, and keeps holding it. Write the tag <OBJ_0> exactly once per segment, at the product's first mention.`
     : '';
 
-  const prompt = `You are the director of a live, full-body AI presenter on a small stage. The presenter answers the user's question out loud while acting.
+  const prompt = `You are the director of a live, full-body AI presenter on a small stage. The presenter answers the user's question out loud while acting. Today is ${new Date().toISOString().slice(0, 10)}.
 
 Presenter: ${character.name}. Appearance and scene: ${character.description}
 Personality: ${character.personality}
