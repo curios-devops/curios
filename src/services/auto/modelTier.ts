@@ -99,20 +99,22 @@ export interface TurnDecision {
   tier: QuestionTier | null;
   /** A good answer depends on current events (news, something happening now). */
   news: boolean;
+  /** The language the question was asked in ("es"), when detected. */
+  language: string | null;
 }
 
 /** Character: the tier plus whether the question is about current events, in one quick call.
  *  Never blocks for long: unknown (→ the usual web search) on error or timeout. */
 export async function decideTurn(query: string): Promise<TurnDecision> {
-  const unknown: TurnDecision = { tier: null, news: false };
+  const unknown: TurnDecision = { tier: null, news: false, language: null };
   const call = supabase.functions
     .invoke('classify-intent', { body: { query: query.trim(), only: 'tier', news: true } })
     .then(({ data, error }) => {
       if (error) throw error;
-      const d = data as { tier?: unknown; news?: unknown } | null;
+      const d = data as { tier?: unknown; news?: unknown; language?: unknown } | null;
       const tier = isTier(d?.tier) ? d.tier : null;
       rememberTier(query, tier);
-      return { tier, news: typeof d?.news === 'number' && d.news >= 0.5 };
+      return { tier, news: typeof d?.news === 'number' && d.news >= 0.5, language: typeof d?.language === 'string' ? d.language : null };
     })
     .catch((error) => {
       logger.warn('[ModelTier] turn decision failed, using web search', { error: String(error) });

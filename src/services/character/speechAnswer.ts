@@ -47,6 +47,10 @@ export class SpeechSplitter {
   }
 }
 
+export const openingBlock = (opening: string | undefined) => opening
+  ? `\nOpening (first answer only): begin with one short, warm, natural clause using this moment — greet them by name if given, and the weather, time of day or city — then answer. Use only these details, never invent others: ${opening}\n`
+  : '';
+
 export async function speakAnswer(params: {
   question: string;
   name: string;
@@ -57,11 +61,17 @@ export async function speakAnswer(params: {
   model?: Promise<string>;
   /** What the answer stands on (grounding.ts); the usual web search when not given. */
   sources?: Promise<WebSearchResult[]>;
+  /** The question's language when detected (else locale). */
+  language?: Promise<string | null>;
+  /** First answer only: the moment and the user (personalTouch.ts), for a personal opening. */
+  opening?: Promise<string>;
 }): Promise<{ speech: string; suggestions: string[]; sources: WebSearchResult[] }> {
-  const { question, name, history, locale, onSpeech } = params;
+  const { question, name, history, onSpeech } = params;
   mark('anam answer: web search → start');
   const sources = (await (params.sources ?? executeWebSearch(question)).catch(() => [])).slice(0, 6);
   mark('anam answer: web search ← done', { results: sources.length });
+  const locale = (await params.language?.catch(() => null)) || params.locale;
+  const opening = await params.opening?.catch(() => undefined);
 
   const prompt = `You are ${name}, a warm presenter answering out loud in a live video call. Today is ${new Date().toISOString().slice(0, 10)}.
 
@@ -72,7 +82,7 @@ User asks: "${question}"
 
 Search Results:
 ${buildSourcesText(sources)}
-
+${openingBlock(opening)}
 Answer in language "${locale}" in 40–80 spoken words: direct, accurate, grounded in the sources, natural sentences. No markdown, no emojis, no URLs, no citations, no lists.
 Then on a new line write exactly ${SUGGESTIONS_MARKER} followed by a JSON array of 3 short follow-up questions in language "${locale}".`;
 

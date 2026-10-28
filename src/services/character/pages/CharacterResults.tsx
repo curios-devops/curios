@@ -23,12 +23,12 @@ import { saveNode, ensureShared, updateNodeAnswer, toggleNodeLike, type SavedNod
 import { findCharacter, DEFAULT_CHARACTER_ID, CHARACTERS, FEATURED_CHARACTERS, type CharacterPreset } from '../characterCatalog';
 import { findHalfBody, DEFAULT_HALF_BODY_ID, HALF_BODY, FEATURED_HALF_BODY, type HalfBodyPreset } from '../halfBodyCatalog';
 import { directTurn, buildScriptEvent, type StageProduct, type DirectedTurn } from '../characterDirector';
-import type { WebSearchResult } from '../../search/providers/webSearchProvider';
 import { startCharacterSession, type LiveCharacter } from '../characterSession';
 import { startAnamSession, SpeechQueue, type LiveAnam } from '../anamSession';
 import { speakAnswer } from '../speechAnswer';
 import { decideTurn, type TurnDecision } from '../../auto/modelTier';
 import { groundTurn } from '../grounding';
+import { personalTouch } from '../personalTouch';
 import SongListener from '../../music/listen/SongListener';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
@@ -88,7 +88,8 @@ function presenterFor(body: Body, id: string | null, prefs: CharacterPrefs): Pre
 }
 
 /** Full body: buy intent → product on stage → director (search + motion). */
-async function prepareFullTurn(q: string, character: CharacterPreset, history: Turn[], knownProduct: StageProduct | null, model?: Promise<string>, sources?: Promise<WebSearchResult[]>) {
+type TurnContext = Pick<Parameters<typeof directTurn>[0], 'model' | 'sources' | 'language' | 'opening'>;
+async function prepareFullTurn(q: string, character: CharacterPreset, history: Turn[], knownProduct: StageProduct | null, context: TurnContext) {
   mark('ask: question', { q });
   const buy = await resolveBuyIntent(q).catch(() => ({ isBuyIntent: false }));
   mark('ask: buy-intent ← done', { buy: buy.isBuyIntent });
@@ -98,7 +99,7 @@ async function prepareFullTurn(q: string, character: CharacterPreset, history: T
     const p = result?.success ? result.products[0] : null;
     if (p?.imageUrl) product = { title: p.title, imageUrl: p.imageUrl };
   }
-  const turn = await directTurn({ question: q, character, history, product: buy.isBuyIntent ? product : null, locale: locale(), model, sources });
+  const turn = await directTurn({ question: q, character, history, product: buy.isBuyIntent ? product : null, locale: locale(), ...context });
   return { turn, product: buy.isBuyIntent ? product : null };
 }
 
@@ -277,11 +278,13 @@ export default function CharacterResults() {
     // Half body speaks a short line while fresh research runs (full body's script goes out whole).
     const queue = new SpeechQueue();
     const sources = groundTurn(q, decision, who.body === 'half' ? () => queue.push(`${t('charLookingUp')} `) : undefined);
-    if (who.body === 'full') return { kind: 'full', turn: prepareFullTurn(q, who.preset, history, productRef.current, model, sources) };
-    const answer = speakAnswer({ question: q, name: who.preset.name, history, locale: locale(), onSpeech: (t) => queue.push(t), model, sources })
+    // Answer in the language the question was asked in; the first answer opens personally.
+    const context = { model, sources, language: decision.then((d) => d.language), opening: history.length ? undefined : personalTouch(session?.user) };
+    if (who.body === 'full') return { kind: 'full', turn: prepareFullTurn(q, who.preset, history, productRef.current, context) };
+    const answer = speakAnswer({ question: q, name: who.preset.name, history, locale: locale(), onSpeech: (t) => queue.push(t), ...context })
       .then((r) => { queue.end(); return r; });
     return { kind: 'half', queue, answer };
-  }, [t]);
+  }, [t, session?.user]);
 
   /** Hand a prepared answer to the live engine, then record the turn. */
   const deliver = useCallback(async (p: Prepared) => {
