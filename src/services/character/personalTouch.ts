@@ -1,23 +1,13 @@
 // The first answer opens with something personal and of the moment, like a host who knows you:
 // the name (signed in), the part of the day, the city and the weather — "a rainy morning in
-// Barcelona, Marcelo". Open-Meteo needs no key. Anything missing is simply left out, and the
-// whole lookup gives up after 1.5 s so it never holds the answer back.
+// Barcelona, Marcelo". Nothing here ever holds an answer back: the city and weather are looked up
+// when the conversation starts, the first answer uses whatever is known by then, and weather that
+// arrives later is offered to the next answer instead. Weather: weather-now (Open-Meteo, then
+// OpenWeather, then Google).
 import type { User } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabase';
 import { readerGeo } from '../../utils/readerGeo';
 import { getUserFirstName } from '../../utils/userName';
-
-/** WMO weather code (Open-Meteo) → a word the answer can use. */
-export function weatherWord(code: number): string | null {
-  if (code === 0) return 'clear';
-  if (code <= 3) return 'cloudy';
-  if (code === 45 || code === 48) return 'foggy';
-  if (code >= 51 && code <= 67) return 'rainy';
-  if (code >= 71 && code <= 77) return 'snowy';
-  if (code >= 80 && code <= 82) return 'rainy';
-  if (code >= 85 && code <= 86) return 'snowy';
-  if (code >= 95) return 'stormy';
-  return null;
-}
 
 export function partOfDay(hour: number): string {
   if (hour >= 5 && hour < 12) return 'morning';
@@ -32,19 +22,33 @@ export function describeMoment(m: { name: string | null; city: string; weather: 
   return `It's ${moment}${m.city ? ` in ${m.city}` : ''}${m.name ? ` for ${m.name}` : ''}.`;
 }
 
-async function weatherNow(lat: number, lng: number): Promise<string | null> {
-  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=weather_code`, { signal: AbortSignal.timeout(1500) });
-  const code = (await r.json())?.current?.weather_code;
-  return typeof code === 'number' ? weatherWord(code) : null;
+export interface Moment {
+  /** First answer: everything known right now. */
+  opening: () => string;
+  /** A later answer: the weather, once, if it arrived after the first answer. */
+  late: () => string | undefined;
 }
 
-export async function personalTouch(user: User | null | undefined): Promise<string> {
-  const lookup = (async () => {
-    const geo = await readerGeo();
-    const weather = geo.lat != null && geo.lng != null ? await weatherNow(geo.lat, geo.lng).catch(() => null) : null;
-    return { city: geo.city, weather };
-  })();
-  const late = new Promise<{ city: string; weather: string | null }>((resolve) => setTimeout(() => resolve({ city: '', weather: null }), 1500));
-  const { city, weather } = await Promise.race([lookup, late]);
-  return describeMoment({ name: getUserFirstName(user), city, weather, hour: new Date().getHours() });
+export function trackMoment(user: User | null | undefined): Moment {
+  const name = getUserFirstName(user);
+  let city = '';
+  let weather: string | null = null;
+  let weatherSaid = false;
+  void readerGeo().then(async (geo) => {
+    city = geo.city;
+    if (geo.lat == null || geo.lng == null) return;
+    const { data } = await supabase.functions.invoke('weather-now', { body: { lat: geo.lat, lng: geo.lng } });
+    if (typeof data?.weather === 'string') weather = data.weather;
+  }).catch(() => {});
+  return {
+    opening: () => {
+      weatherSaid = Boolean(weather);
+      return describeMoment({ name, city, weather, hour: new Date().getHours() });
+    },
+    late: () => {
+      if (weatherSaid || !weather) return undefined;
+      weatherSaid = true;
+      return `It's ${weather} ${city ? `in ${city} ` : ''}right now.`;
+    },
+  };
 }

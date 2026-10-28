@@ -112,10 +112,10 @@ export async function transcribeWithElevenLabsRealtime(
   const query = new URLSearchParams({
     model_id: modelId,
     token: credential,
-    language_code: language,
     commit_strategy: 'manual',
     include_timestamps: 'false',
   });
+  if (language !== 'auto') query.set('language_code', language); // 'auto': the model detects it
 
   const wsUrl = `${ELEVENLABS_REALTIME_URL}?${query.toString()}`;
 
