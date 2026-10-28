@@ -31,6 +31,10 @@ describe('Song recognition', () => {
       expect(url.searchParams.get('q')).toBe('¿Por qué el cielo es azul?');
     });
 
+    it('drops quotes around the whole line — the question shows and is asked as said, not as a quotation', () => {
+      expect(new URL(heardPage(null, '"Why do cats purr?"')!, 'https://x.test').searchParams.get('q')).toBe('Why do cats purr?');
+    });
+
     it('opens nothing for sound tags alone — an unnamed song must not start an avatar conversation', () => {
       expect(heardPage(null, '(music) [Música]')).toBeNull();
       expect(heardPage(null, '')).toBeNull();

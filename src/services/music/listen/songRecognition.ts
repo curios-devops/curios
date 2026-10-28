@@ -51,9 +51,10 @@ export function songPage(song: Pick<HeardSong, 'title' | 'artist' | 'album' | 'y
 }
 
 /** Speech-to-text marks sounds in brackets ("(music)", "[Música]"), and Whisper makes up a subtitle
- *  credit for noise: neither is words anyone said. */
+ *  credit for noise: neither is words anyone said. Quotes around the whole line (detecting the
+ *  language, it sometimes adds them) go too. */
 export function spokenWords(text: string): string {
-  const said = text.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
+  const said = text.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^["“”«»']+|["“”«»']+$/g, '').trim();
   return /amara\.org/i.test(said) ? '' : said;
 }
 

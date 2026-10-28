@@ -612,7 +612,7 @@ export default function CharacterResults() {
                 className="absolute inset-x-0 mx-auto top-1/2 w-max inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
                 style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
               >
-                <Volume2 size={16} /> Tap to enable sound
+                <Volume2 size={16} /> {t('charEnableSound')}
               </button>
             )}
 
@@ -804,7 +804,19 @@ export default function CharacterResults() {
           listenFor="speech"
           onHeard={(q) => heardRef.current(q)}
           onClose={() => { heardRef.current(''); setListening(false); }}
-        />
+        >
+          {status === 'needs-sound' && (
+            // Phones block the presenter's sound until a tap; it connects while this listens.
+            <button
+              type="button"
+              onClick={unlockSound}
+              className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
+              style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}
+            >
+              <Volume2 size={16} /> {t('charEnableSound')}
+            </button>
+          )}
+        </SongListener>
       )}
     </div>
   );

@@ -57,6 +57,8 @@ jobs:
         run: |
           for fn in ${{ steps.pick.outputs.funcs }}; do
             echo "::group::deploy $fn"
-            supabase functions deploy "$fn" --project-ref "$PROJECT_ID"
+            # --use-api: bundle on Supabase's side, no Docker image pull (Docker Hub's anonymous
+            # pull limit answered "toomanyrequests: Data limit exceeded").
+            supabase functions deploy "$fn" --project-ref "$PROJECT_ID" --use-api
             echo "::endgroup::"
           done

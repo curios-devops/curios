@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation, type TranslationKey } from '../hooks/useTranslation.ts';
+import { localWeather, peekLocalWeather } from '../utils/localWeather.ts';
 
 interface AnimatedHomeTitleProps {
   name: string | null;
@@ -18,7 +19,14 @@ function getTimeGreetingKey(date = new Date()): TranslationKey {
   return 'greetNight';
 }
 
-/** Time-of-day greetings; the name is omitted when there is none. */
+/** "Clear skies in Barcelona" — only when the weather is already known (never waited for). */
+function weatherGreeting(t: (key: TranslationKey) => string): string | null {
+  const local = peekLocalWeather();
+  if (!local?.weather || !local.city) return null;
+  return t('greetWeatherCity').replace('{weather}', t(`greetWeather_${local.weather}` as TranslationKey)).replace('{city}', local.city);
+}
+
+/** Time-of-day greetings (and now and then the weather in the reader's city); the name is omitted when there is none. */
 function buildSalutations(name: string | null, t: (key: TranslationKey) => string): string[] {
   // [with name, without name] — some greetings read differently with no name ("Hello there").
   const pairs: [TranslationKey, TranslationKey][] = [
@@ -29,11 +37,14 @@ function buildSalutations(name: string | null, t: (key: TranslationKey) => strin
     ['greetHi', 'greetHiThere'],
     ['greetNiceToSeeYou', 'greetNiceToSeeYou'],
   ];
-  return pairs.map(([withKey, withoutKey]) =>
+  const greetings = pairs.map(([withKey, withoutKey]) =>
     name
       ? t('greetWithName').replace('{greeting}', t(withKey)).replace('{name}', name)
       : t(withoutKey)
   );
+  const weather = weatherGreeting(t);
+  if (weather) greetings.push(name ? t('greetWithName').replace('{greeting}', weather).replace('{name}', name) : weather);
+  return greetings;
 }
 
 type Phase = 'sal-typing' | 'sal-pausing' | 'sal-deleting' | 'q-typing' | 'done';
@@ -55,6 +66,8 @@ export default function AnimatedHomeTitle({ name, className, style, onDone }: An
   }, [name, t]);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+  // City and weather for a later greeting (and the Character), looked up in the background.
+  useEffect(() => { void localWeather(); }, []);
 
   const [display, setDisplay] = useState('');
   // The question beat may take its own color (Terra: the accent, like xerj's second line).

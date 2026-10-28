@@ -89,7 +89,9 @@ export async function startCharacterSession(
   // TRTC video (lazy-loaded: the SDK is large and only this page needs it).
   const { default: TRTC } = await import('trtc-sdk-v5');
   mark('trtc sdk loaded');
-  const rtc = TRTC.create();
+  // No SDK dialog when sound is blocked (on iPhone it showed a blank box with "Resume" over
+  // everything): the page's own "Tap to enable sound" handles it.
+  const rtc = TRTC.create({ enableAutoPlayDialog: false });
   const m = creds.trtc;
   // Phones block sound until a tap. The block can arrive before the first frame, so
   // remember it — otherwise "live" would hide the "enable sound" button for good.
