@@ -8,6 +8,7 @@ import { executeWebSearch, type WebSearchResult } from '../search/providers/webS
 import { buildSourcesText, streamLLMText } from '../search/providers/llmProvider';
 import type { CharacterPreset } from './characterCatalog';
 import { mark } from './timing';
+import { openingBlock } from './speechAnswer';
 
 export interface StageProduct {
   title: string;
@@ -81,11 +82,17 @@ export async function directTurn(params: {
   model?: Promise<string>;
   /** What the answer stands on (grounding.ts); the usual web search when not given. */
   sources?: Promise<WebSearchResult[]>;
+  /** The question's language when detected (else locale). */
+  language?: Promise<string | null>;
+  /** First answer only: the moment and the user (personalTouch.ts), for a personal opening. */
+  opening?: Promise<string>;
 }): Promise<DirectedTurn> {
-  const { question, character, history, product, locale } = params;
+  const { question, character, history, product } = params;
   mark('director: web search → start');
   const sources = (await (params.sources ?? executeWebSearch(question)).catch(() => [])).slice(0, 6);
   mark('director: web search ← done', { results: sources.length });
+  const locale = (await params.language?.catch(() => null)) || params.locale;
+  const opening = await params.opening?.catch(() => undefined);
 
   const productBlock = product
     ? `
@@ -106,7 +113,7 @@ User now asks: "${question}"
 
 Search Results:
 ${buildSourcesText(sources)}
-${productBlock}
+${productBlock}${openingBlock(opening)}
 
 Return ONLY a JSON object:
 {
