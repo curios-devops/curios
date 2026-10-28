@@ -2,7 +2,8 @@
 // The page around it draws every control in Curios' design and talks to the stage through a small
 // bridge (window.curios) injected here, before the model's code: beats, controls, speed, pause and
 // reset go in; readouts, control values the stage moved, the surprise callout, beat ends and errors
-// come out. The stage gets the theme as CSS
+// come out. For a saved video the stage also draws itself into one picture per frame (capture).
+// The stage gets the theme as CSS
 // variables, and a CSP that only lets it load its libraries (no other network).
 
 export interface StageTheme { dark: boolean; ground: string; surface: string; ink: string; muted: string; accent: string; font: string }
@@ -28,7 +29,8 @@ export type StageEvent =
   | { ev: 'readouts'; values: Record<string, number> }
   | { ev: 'controls'; values: Record<string, number | string> }
   | { ev: 'callout'; text: string }
-  | { ev: 'error'; message: string };
+  | { ev: 'error'; message: string }
+  | { ev: 'frame'; bitmap: ImageBitmap };
 
 const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -81,7 +83,45 @@ const CSP = "default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr
 
 const BRIDGE = `(() => {
   const handlers = {};
-  const post = (m) => parent.postMessage(Object.assign({ curios: 1 }, m), '*');
+  const post = (m, transfer) => parent.postMessage(Object.assign({ curios: 1 }, m), '*', transfer || []);
+  // WebGL keeps its last frame so a recording can copy it.
+  const getContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, opts) {
+    return getContext.call(this, type, /webgl/.test(type) ? Object.assign({}, opts, { preserveDrawingBuffer: true }) : opts);
+  };
+  // One picture of the stage: its canvases as they are, its drawings (SVG) with the page's styles.
+  const SVG = 'http://www.w3.org/2000/svg';
+  async function picture(scale) {
+    const w = innerWidth, h = innerHeight, out = document.createElement('canvas');
+    out.width = Math.round(w * scale); out.height = Math.round(h * scale);
+    const g = out.getContext('2d');
+    g.scale(scale, scale);
+    g.fillStyle = getComputedStyle(document.body).backgroundColor || window.curios.theme.ground;
+    g.fillRect(0, 0, w, h);
+    const css = [...document.querySelectorAll('style')].map((s) => s.textContent).join('\\n');
+    for (const el of document.querySelectorAll('canvas, svg')) {
+      if (el.parentElement && el.parentElement.closest('svg')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      if (el.tagName === 'CANVAS') { g.drawImage(el, r.left, r.top, r.width, r.height); continue; }
+      const copy = el.cloneNode(true);
+      copy.setAttribute('xmlns', SVG); copy.setAttribute('width', r.width); copy.setAttribute('height', r.height);
+      const style = document.createElementNS(SVG, 'style'); style.textContent = css; copy.insertBefore(style, copy.firstChild);
+      const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(copy)], { type: 'image/svg+xml' }));
+      const img = new Image(); img.src = url;
+      try { await img.decode(); g.drawImage(img, r.left, r.top, r.width, r.height); } catch {}
+      URL.revokeObjectURL(url);
+    }
+    return createImageBitmap(out);
+  }
+  let capturing = false;
+  async function capture(scale) {
+    while (capturing) {
+      const start = performance.now();
+      try { const bitmap = await picture(scale); post({ ev: 'frame', bitmap }, [bitmap]); } catch {}
+      await new Promise((r) => setTimeout(r, Math.max(0, 40 - (performance.now() - start))));
+    }
+  }
   let last = 0, pending = null;
   window.curios = {
     theme: __THEME__,
@@ -104,6 +144,7 @@ const BRIDGE = `(() => {
       else if (m.cmd === 'speed') handlers.speed && handlers.speed(m.x);
       else if (m.cmd === 'pause') handlers.pause && handlers.pause(Boolean(m.paused));
       else if (m.cmd === 'reset') handlers.reset && handlers.reset();
+      else if (m.cmd === 'capture') { const was = capturing; capturing = Boolean(m.on); if (capturing && !was) capture(Number(m.scale) || 1); }
     } catch (err) { post({ ev: 'error', message: String(err && err.message || err) }); }
   });
   addEventListener('error', (e) => post({ ev: 'error', message: String(e.message) }));

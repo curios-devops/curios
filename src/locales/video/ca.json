@@ -140,5 +140,14 @@
   "vidType_simulation": "Simulació",
   "vidSimTry": "Prova això",
   "vidAnimPause": "Pausa",
-  "vidAnimPlay": "Reprèn"
+  "vidAnimPlay": "Reprèn",
+  "vidAnimSave": "Desa com a vídeo",
+  "vidAnimSaved": "Desat — és al teu historial",
+  "vidAnimSaveGuest": "Registra't per gravar l'animació",
+  "vidAnimRecording": "Gravant",
+  "vidAnimRecordingKeepOpen": "Gravant el vídeo — deixa aquesta pàgina oberta fins que acabi",
+  "vidAnimUploading": "Desant…",
+  "vidAnimSaveFailed": "No s'ha pogut desar el vídeo. Torna-ho a provar.",
+  "vidAnimPortrait": "Vertical",
+  "vidAnimLandscape": "Horitzontal"
 }

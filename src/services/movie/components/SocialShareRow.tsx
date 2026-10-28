@@ -1,8 +1,9 @@
 // Social share row for a finished movie (blueprint: copy ONLY the row of social icons).
-// X, LinkedIn, Facebook, WhatsApp, TikTok (download), plus copy-link.
+// X, LinkedIn, Facebook, WhatsApp, TikTok (download), plus copy-link; Instagram and YouTube when
+// there is a video file (like TikTok, they only take the file: share sheet on phones, download elsewhere).
 
 import { useState } from 'react';
-import { Linkedin, Facebook, MessageCircle, Music2, Link2, Check } from 'lucide-react';
+import { Linkedin, Facebook, Instagram, MessageCircle, Music2, Link2, Check, Youtube } from 'lucide-react';
 import { shareOrDownloadVideo } from '../../../utils/videoShare.ts';
 import { openWhatsApp } from '../../../components/share/openWhatsApp.ts';
 
@@ -45,7 +46,7 @@ export default function SocialShareRow({ shareUrl, title, caption, videoUrl, onS
     }
   };
 
-  const handleTikTok = () => {
+  const shareVideoFile = () => {
     onShared?.();
     // TikTok has no web share intent. On mobile the native share sheet lets the user push the
     // mp4 straight into TikTok; elsewhere it downloads the file to upload manually. The plain
@@ -72,7 +73,7 @@ export default function SocialShareRow({ shareUrl, title, caption, videoUrl, onS
   } as const;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <button
         type="button"
         aria-label="Share on X"
@@ -118,10 +119,21 @@ export default function SocialShareRow({ shareUrl, title, caption, videoUrl, onS
         aria-label="Download for TikTok"
         className={btn}
         style={btnStyle}
-        onClick={handleTikTok}
+        onClick={shareVideoFile}
       >
         <Music2 size={18} />
       </button>
+
+      {videoUrl && (
+        <>
+          <button type="button" aria-label="Share on Instagram" className={btn} style={btnStyle} onClick={shareVideoFile}>
+            <Instagram size={18} />
+          </button>
+          <button type="button" aria-label="Share on YouTube" className={btn} style={btnStyle} onClick={shareVideoFile}>
+            <Youtube size={18} />
+          </button>
+        </>
+      )}
 
       <button
         type="button"

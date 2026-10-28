@@ -140,5 +140,14 @@
   "vidType_simulation": "Simulación",
   "vidSimTry": "Prueba esto",
   "vidAnimPause": "Pausa",
-  "vidAnimPlay": "Reanudar"
+  "vidAnimPlay": "Reanudar",
+  "vidAnimSave": "Guardar como video",
+  "vidAnimSaved": "Guardado — está en tu historial",
+  "vidAnimSaveGuest": "Regístrate para grabar la animación",
+  "vidAnimRecording": "Grabando",
+  "vidAnimRecordingKeepOpen": "Grabando el video — deja esta página abierta hasta que termine",
+  "vidAnimUploading": "Guardando…",
+  "vidAnimSaveFailed": "No se pudo guardar el video. Inténtalo de nuevo.",
+  "vidAnimPortrait": "Vertical",
+  "vidAnimLandscape": "Horizontal"
 }

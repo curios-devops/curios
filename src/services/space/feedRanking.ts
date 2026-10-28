@@ -42,5 +42,6 @@ export const FEED_TYPE_BADGE: Record<string, string> = {
   stories: 'Magazine',
   explore: 'Article',
   movie: 'Video',
+  animation: 'Animation',
   cinematic: 'Video',
 };

@@ -140,5 +140,14 @@
   "vidType_simulation": "Simulation",
   "vidSimTry": "Probier das",
   "vidAnimPause": "Pause",
-  "vidAnimPlay": "Fortsetzen"
+  "vidAnimPlay": "Fortsetzen",
+  "vidAnimSave": "Als Video speichern",
+  "vidAnimSaved": "Gespeichert — in deinem Verlauf",
+  "vidAnimSaveGuest": "Registriere dich, um die Animation aufzunehmen",
+  "vidAnimRecording": "Aufnahme",
+  "vidAnimRecordingKeepOpen": "Video wird aufgenommen — lass diese Seite offen, bis es fertig ist",
+  "vidAnimUploading": "Wird gespeichert…",
+  "vidAnimSaveFailed": "Das Video konnte nicht gespeichert werden. Versuch es noch einmal.",
+  "vidAnimPortrait": "Hochformat",
+  "vidAnimLandscape": "Querformat"
 }

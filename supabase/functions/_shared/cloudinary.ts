@@ -41,6 +41,22 @@ export async function storeMedia(
   return (await res.json()).secure_url as string;
 }
 
+/**
+ * Signed fields for the browser to upload one file straight to Cloudinary (a recorded video is too
+ * big to pass through an edge call). `format` converts it on upload (a WebM recording → MP4).
+ */
+export async function signedUpload(o: { folder: string; publicId: string; format?: string }) {
+  if (!CLOUD || !KEY || !SECRET) throw new Error("Cloudinary is not configured");
+  const params: Record<string, string> = {
+    folder: `${ROOT}/creations/${o.folder}`,
+    public_id: o.publicId,
+    timestamp: String(Math.floor(Date.now() / 1000)),
+    ...(o.format ? { format: o.format } : {}),
+  };
+  const toSign = Object.keys(params).sort().map((k) => `${k}=${params[k]}`).join("&");
+  return { url: `https://api.cloudinary.com/v1_1/${CLOUD}/auto/upload`, fields: { ...params, api_key: KEY, signature: await sha1Hex(toSign + SECRET) } };
+}
+
 /** Bucket + path of one of our Supabase Storage public URLs (null for anything else). */
 export function supabaseObject(url: string | null | undefined, supabaseUrl: string): { bucket: string; path: string } | null {
   const prefix = `${supabaseUrl}/storage/v1/object/public/`;
