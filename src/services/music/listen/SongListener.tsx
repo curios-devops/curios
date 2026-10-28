@@ -16,6 +16,8 @@ import { useNavigate } from 'react-router-dom';
 import { AudioLines, CircleAlert, MessageCircle, Music, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { transcribeAudioWithFallback } from '../../stt/transcriptionService.ts';
+import { listenLanguage } from '../../stt/language.ts';
+import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import { heardPage, recognizeSong, songPage, spokenWords, TRY_AT_MS, type HeardSong, type Recognition } from './songRecognition.ts';
 
 type Stage = 'listening' | 'searching' | 'expanding' | 'tough' | 'found' | 'heard' | 'missed' | 'denied' | 'limit' | 'signin' | 'error';
@@ -34,7 +36,6 @@ interface Props {
 }
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const locale = () => navigator.language.split('-')[0] || 'en';
 
 /** paused: resolves once there was sound and then a quiet second (someone finished talking; music
  *  rarely pauses). heardAny: whether the meter ever read sound — a meter that reads none can't be trusted. */
@@ -67,6 +68,9 @@ function pauseAfterSound(stream: MediaStream, isOver: () => boolean): { paused: 
 export default function SongListener({ listenFor = 'song', onHeard, onClose, onNeedSignIn }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { currentLanguage, autoDetect } = useLanguage();
+  const sttLanguage = useRef('auto');
+  sttLanguage.current = listenLanguage(autoDetect, currentLanguage?.code);
   const [stage, setStage] = useState<Stage>('listening');
   const [song, setSong] = useState<HeardSong | null>(null);
   const [said, setSaid] = useState('');
@@ -151,7 +155,7 @@ export default function SongListener({ listenFor = 'song', onHeard, onClose, onN
         if (wantsSongs()) tries.push(recognizeSong(heard).then((r) => { if (r.status === 'found' || (r.status === 'limit' && songsOnly())) finish(r); return r; }));
         // A meter that never read any sound is broken (some browsers give it silence), not proof
         // nobody talked: then the clip goes to speech-to-text anyway.
-        if (last && wantsSpeech() && (paused || speechOnly || !meter?.heardAny())) tries.push(transcribeAudioWithFallback(heard, locale()).catch(() => '').then(heardWords));
+        if (last && wantsSpeech() && (paused || speechOnly || !meter?.heardAny())) tries.push(transcribeAudioWithFallback(heard, sttLanguage.current).catch(() => '').then(heardWords));
         if (last) break;
       }
       const results = (await Promise.all(tries)).filter((r): r is Recognition => Boolean(r));

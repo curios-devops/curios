@@ -28,7 +28,9 @@ import { startAnamSession, SpeechQueue, type LiveAnam } from '../anamSession';
 import { speakAnswer } from '../speechAnswer';
 import { decideTurn, type TurnDecision } from '../../auto/modelTier';
 import { groundTurn } from '../grounding';
-import { personalTouch } from '../personalTouch';
+import { trackMoment, type Moment } from '../personalTouch';
+import { answerLanguage, listenLanguage } from '../../stt/language';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import SongListener from '../../music/listen/SongListener';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
@@ -124,6 +126,7 @@ export default function CharacterResults() {
   // Answer model for the whole conversation, rated on its first question: Luna if easy, else Sol.
   const modelRef = useRef<Promise<string> | undefined>(undefined);
   const { session } = useSession();
+  const { currentLanguage, autoDetect } = useLanguage();
   const { isRecording, startRecording, stopRecording, error: micError } = useVoiceRecording();
 
   // Explicit URL (?body=…&c=…) wins; otherwise the remembered choice.
@@ -273,18 +276,26 @@ export default function CharacterResults() {
   }, [name, savedNode, initialQuery, presenter.preset.imageUrl]);
 
   /** Start generating an answer — independent of the live connection. */
+  // The moment (city, weather) is looked up once, as the conversation starts.
+  const momentRef = useRef<Moment | null>(null);
   const prepare = useCallback((q: string, who: Presenter, history: Turn[], decision: Promise<TurnDecision> = decideTurn(q)): Prepared => {
     const model = modelRef.current;
     // Half body speaks a short line while fresh research runs (full body's script goes out whole).
     const queue = new SpeechQueue();
     const sources = groundTurn(q, decision, who.body === 'half' ? () => queue.push(`${t('charLookingUp')} `) : undefined);
     // Answer in the language the question was asked in; the first answer opens personally.
-    const context = { model, sources, language: decision.then((d) => d.language), opening: history.length ? undefined : personalTouch(session?.user) };
+    const moment = (momentRef.current ??= trackMoment(session?.user));
+    const opening = () => {
+      if (!history.length) return { first: true, text: moment.opening() };
+      const late = moment.late();
+      return late ? { first: false, text: late } : undefined;
+    };
+    const context = { model, sources, language: decision.then((d) => answerLanguage(d.language, autoDetect, currentLanguage?.code)), opening };
     if (who.body === 'full') return { kind: 'full', turn: prepareFullTurn(q, who.preset, history, productRef.current, context) };
     const answer = speakAnswer({ question: q, name: who.preset.name, history, locale: locale(), onSpeech: (t) => queue.push(t), ...context })
       .then((r) => { queue.end(); return r; });
     return { kind: 'half', queue, answer };
-  }, [t, session?.user]);
+  }, [t, session?.user, autoDetect, currentLanguage?.code]);
 
   /** Hand a prepared answer to the live engine, then record the turn. */
   const deliver = useCallback(async (p: Prepared) => {
@@ -420,6 +431,7 @@ export default function CharacterResults() {
     if (creditsLoading || startedRef.current) return;
     mark('credits loaded → start');
     startedRef.current = true;
+    momentRef.current ??= trackMoment(session?.user); // city and weather, ready for the first answer
     // Signed-in users: their saved setup (any device) — unless the URL says otherwise.
     void fetchPrefs(session?.user).then((prefs) => {
       prefsRef.current = prefs;
@@ -494,7 +506,7 @@ export default function CharacterResults() {
     try {
       const blob = await stopRecording();
       if (blob) {
-        const text = await transcribeAudioWithFallback(blob, locale());
+        const text = await transcribeAudioWithFallback(blob, listenLanguage(autoDetect, currentLanguage?.code));
         if (text.trim()) send(text);
       }
     } finally {

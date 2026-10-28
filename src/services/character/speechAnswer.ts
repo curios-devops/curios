@@ -47,9 +47,15 @@ export class SpeechSplitter {
   }
 }
 
-export const openingBlock = (opening: string | undefined) => opening
-  ? `\nOpening (first answer only): begin with one short, warm, natural clause using this moment — greet them by name if given, and the weather, time of day or city — then answer. Use only these details, never invent others: ${opening}\n`
-  : '';
+/** The personal touch (personalTouch.ts): the first answer opens with the moment; a later one may
+ *  mention weather that arrived late, only if it fits. */
+export const openingBlock = (touch: PersonalTouch | undefined) => !touch
+  ? ''
+  : touch.first
+    ? `\nOpening (first answer only): begin with one short, warm, natural clause using this moment — greet them by name if given, and the weather, time of day or city — then answer. Use only these details, never invent others: ${touch.text}\n`
+    : `\nIf it fits naturally, you may mention in passing: ${touch.text}\n`;
+
+export interface PersonalTouch { first: boolean; text: string }
 
 export async function speakAnswer(params: {
   question: string;
@@ -63,15 +69,15 @@ export async function speakAnswer(params: {
   sources?: Promise<WebSearchResult[]>;
   /** The question's language when detected (else locale). */
   language?: Promise<string | null>;
-  /** First answer only: the moment and the user (personalTouch.ts), for a personal opening. */
-  opening?: Promise<string>;
+  /** The personal touch, read when the prompt is written (never waited for). */
+  opening?: () => PersonalTouch | undefined;
 }): Promise<{ speech: string; suggestions: string[]; sources: WebSearchResult[] }> {
   const { question, name, history, onSpeech } = params;
   mark('anam answer: web search → start');
   const sources = (await (params.sources ?? executeWebSearch(question)).catch(() => [])).slice(0, 6);
   mark('anam answer: web search ← done', { results: sources.length });
   const locale = (await params.language?.catch(() => null)) || params.locale;
-  const opening = await params.opening?.catch(() => undefined);
+  const opening = params.opening?.();
 
   const prompt = `You are ${name}, a warm presenter answering out loud in a live video call. Today is ${new Date().toISOString().slice(0, 10)}.
 

@@ -8,7 +8,7 @@ import { executeWebSearch, type WebSearchResult } from '../search/providers/webS
 import { buildSourcesText, streamLLMText } from '../search/providers/llmProvider';
 import type { CharacterPreset } from './characterCatalog';
 import { mark } from './timing';
-import { openingBlock } from './speechAnswer';
+import { openingBlock, type PersonalTouch } from './speechAnswer';
 
 export interface StageProduct {
   title: string;
@@ -84,15 +84,15 @@ export async function directTurn(params: {
   sources?: Promise<WebSearchResult[]>;
   /** The question's language when detected (else locale). */
   language?: Promise<string | null>;
-  /** First answer only: the moment and the user (personalTouch.ts), for a personal opening. */
-  opening?: Promise<string>;
+  /** The personal touch, read when the prompt is written (never waited for). */
+  opening?: () => PersonalTouch | undefined;
 }): Promise<DirectedTurn> {
   const { question, character, history, product } = params;
   mark('director: web search → start');
   const sources = (await (params.sources ?? executeWebSearch(question)).catch(() => [])).slice(0, 6);
   mark('director: web search ← done', { results: sources.length });
   const locale = (await params.language?.catch(() => null)) || params.locale;
-  const opening = await params.opening?.catch(() => undefined);
+  const opening = params.opening?.();
 
   const productBlock = product
     ? `
