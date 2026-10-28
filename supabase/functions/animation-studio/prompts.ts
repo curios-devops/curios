@@ -30,6 +30,7 @@ THE BRIDGE (already on the page as window.curios — never redefine it):
 THE MANIFEST: put it first in <body>, as <script type="application/json" id="manifest">{…}</script>:
 { "title": question rephrased as a short title (question language), "highlight": one word of the title,
   "bigIdea": the one idea in one sentence, "related": [3 follow-up questions],
+  "relatedSearch": [for each related question, a 1-3 word English stock-footage search that pictures it, e.g. "high speed train"],
   "beats": [{ "label": "≤ 3 words", "say": "2-3 short sentences a 10-year-old understands — true, vivid (about 10 s aloud)" }],
   "readouts": [{ "id", "label", "unit" }] (0-4),
   "controls": [{ "id", "label", "type": "range", "min", "max", "step", "value", "unit" }

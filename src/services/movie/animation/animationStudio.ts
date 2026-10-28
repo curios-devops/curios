@@ -95,3 +95,11 @@ export async function saveAnimationVideo(o: {
   if (saveError) throw saveError;
   return { id: String(row.id), videoUrl, posterUrl };
 }
+
+/** The viewer's own saved video of this animation (by its title), if they saved it before. */
+export async function findSavedAnimation(userId: string, title: string): Promise<SavedAnimation | null> {
+  const { data } = await supabase.from('movie_projects').select('id, full_video_url, thumbnail_url')
+    .eq('user_id', userId).eq('video_mode', 'animation').eq('title', title)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  return data?.full_video_url ? { id: String(data.id), videoUrl: String(data.full_video_url), posterUrl: data.thumbnail_url ? String(data.thumbnail_url) : null } : null;
+}

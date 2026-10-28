@@ -23,15 +23,18 @@ import { tts } from '../audio/paragraphNarrator.ts';
 import { loadNarratorVoice, narratorGender, NARRATOR_VOICES, saveNarratorVoice } from '../audio/narratorPrefs.ts';
 import { captionLines, lineAt, readingSeconds } from './captions.ts';
 import { tourKey } from '../tour/tourPlan.ts';
+import { findRelatedPosters } from '../cinematic/cinematicPlan.ts';
 import { findAnimation, makeAnimation, portraitAnimation, saveAnimationVideo, type Animation, type SavedAnimation } from './animationStudio.ts';
 import { startRecording, videoSize, type Recording } from './recorder.ts';
 export { unlockRecordingAudio } from './recorder.ts';
-import { currentTheme, readManifest, stageDocument, type Manifest, type StageEvent } from './stage.ts';
+import { currentTheme, readManifest, stageDocument, stockSearch, type Manifest, type StageEvent } from './stage.ts';
 
 export interface AnimationInfo {
   title: string;
   overview: string;
   related: string[];
+  /** A stock picture per related question (Continue exploring), when found. */
+  relatedImages?: (string | undefined)[];
 }
 
 export type VideoAsk = 'save' | 'download';
@@ -97,7 +100,11 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
       if (!m) return setStage('failed');
       setAnimation(a);
       setStage('ready');
-      cb.current.onReady({ title: m.title, overview: [m.bigIdea, ...m.beats.map((b) => b.say)].filter(Boolean).join(' '), related: m.related });
+      const info: AnimationInfo = { title: m.title, overview: [m.bigIdea, ...m.beats.map((b) => b.say)].filter(Boolean).join(' '), related: m.related };
+      cb.current.onReady(info);
+      // Continue exploring gets its own stock pictures, never holding the animation back.
+      void findRelatedPosters({ related: m.related, relatedSearch: m.related.map((q, i) => m.relatedSearch[i] || stockSearch(q, m.title)) }, [])
+        .then((relatedImages) => { if (!controller.signal.aborted) cb.current.onReady({ ...info, relatedImages }); });
     }
     return () => controller.abort();
     // tier only matters for a new animation; re-running on it would start another.

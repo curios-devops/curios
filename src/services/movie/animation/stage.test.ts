@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readManifest, stageDocument, type StageTheme } from './stage.ts';
+import { readManifest, stageDocument, stockSearch, type StageTheme } from './stage.ts';
 
 const page = (manifest: unknown, rest = '<script>curios.ready()</script>') =>
   `<!doctype html><html><head><title>x</title></head><body><script type="application/json" id="manifest">${JSON.stringify(manifest)}</script>${rest}</body></html>`;
@@ -48,5 +48,14 @@ describe('Animation stage', () => {
   it('keeps a hostile theme value from closing the bridge script', () => {
     const doc = stageDocument(page({ title: 't', beats }), { ...theme, font: '</script><script>alert(1)</script>' });
     expect(doc).not.toContain('</script><script>alert(1)');
+  });
+});
+
+
+describe('stockSearch', () => {
+  // A stock engine given "What does…?" returns pictures of question marks; it needs the subject.
+  it('drops question words and fillers, keeps the subject words and adds the animation subject', () => {
+    expect(stockSearch('What does LZB actually supervise?', 'Why did trains keep running?')).toBe('LZB supervise trains keep');
+    expect(stockSearch('¿Qué protección queda cuando falla el LZB?', 'Trenes')).toBe('protección queda falla Trenes');
   });
 });
