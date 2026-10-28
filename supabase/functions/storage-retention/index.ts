@@ -15,7 +15,7 @@ import { deleteSupabaseObjects, storeMedia, supabaseObject } from "../_shared/cl
 
 const BUCKET = "movie-assets";
 const GUEST_PREFIXES = ["curios-guest", "guest"];
-const RETENTION_DAYS = 30;
+const RETENTION_DAYS = 7; // was 30: guest frames (~2 MB PNGs, ~30 a day) filled the 1 GB plan in three weeks
 
 // @ts-ignore
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;

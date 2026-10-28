@@ -5,6 +5,7 @@
 // API-key block. Uploads the returned base64 image to Storage and returns a hosted public URL.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { getVertexAccessToken, vertexModelUrl } from "../_shared/vertex.ts";
+import { storeMedia } from "../_shared/cloudinary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -196,12 +197,20 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Upload server-side (service role → works for guests) and return a public URL.
+    // Upload server-side (service role → works for guests) and return a public URL. Cloudinary
+    // first, as a JPEG (~0.3 MB instead of a ~2 MB PNG): Supabase Storage is 1 GB on our plan and
+    // these frames filled it. Supabase only if Cloudinary fails.
     if (body.storageBucket) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
       const path = body.storagePath || `ai-images/${crypto.randomUUID()}.png`;
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      try {
+        const url = await storeMedia(bytes, { folder: "frames", publicId: path.replace(/\.[a-z0-9]+$/i, "").replace(/[^\w-]+/g, "_"), resourceType: "image", contentType: "image/png", format: "jpg" });
+        return new Response(JSON.stringify({ url, throttled, fallback, vertexError }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (e) {
+        console.warn("Cloudinary frame upload failed, using Supabase Storage:", e instanceof Error ? e.message : String(e));
+      }
       const supabase = createClient(supabaseUrl, serviceKey);
       const { error: upErr } = await supabase.storage
         .from(body.storageBucket)

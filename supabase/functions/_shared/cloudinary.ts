@@ -16,10 +16,11 @@ async function sha1Hex(input: string) {
 /**
  * Uploads bytes (or a public URL Cloudinary fetches itself) and returns its https URL.
  * `folder` is under the root folder ("songs" → curios/creations/songs). Audio is a "video" resource.
+ * `format` converts it on upload (e.g. "jpg": a 2 MB PNG frame is stored as ~0.3 MB).
  */
 export async function storeMedia(
   file: Uint8Array | string,
-  o: { folder: string; publicId: string; resourceType: "image" | "video"; contentType?: string },
+  o: { folder: string; publicId: string; resourceType: "image" | "video"; contentType?: string; format?: string },
 ): Promise<string> {
   if (!CLOUD || !KEY || !SECRET) throw new Error("Cloudinary is not configured");
   const params: Record<string, string> = {
@@ -27,6 +28,7 @@ export async function storeMedia(
     overwrite: "true",
     public_id: o.publicId,
     timestamp: String(Math.floor(Date.now() / 1000)),
+    ...(o.format ? { format: o.format } : {}),
   };
   const toSign = Object.keys(params).sort().map((k) => `${k}=${params[k]}`).join("&");
   const form = new FormData();
