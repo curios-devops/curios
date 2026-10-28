@@ -36,9 +36,11 @@ interface Props {
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const locale = () => navigator.language.split('-')[0] || 'en';
 
-/** Resolves once there was sound and then a quiet second: someone finished talking (music rarely pauses). */
-function pauseAfterSound(stream: MediaStream, isOver: () => boolean): Promise<void> {
-  return new Promise((resolve) => {
+/** paused: resolves once there was sound and then a quiet second (someone finished talking; music
+ *  rarely pauses). heardAny: whether the meter ever read sound — a meter that reads none can't be trusted. */
+function pauseAfterSound(stream: MediaStream, isOver: () => boolean): { paused: Promise<void>; heardAny: () => boolean } {
+  let heard = false;
+  const paused = new Promise<void>((resolve) => {
     const ctx = new AudioContext();
     void ctx.resume(); // it can start suspended (no tap counted yet) and would read silence forever
     const analyser = ctx.createAnalyser();
@@ -49,7 +51,7 @@ function pauseAfterSound(stream: MediaStream, isOver: () => boolean): Promise<vo
     mute.gain.value = 0;
     analyser.connect(mute).connect(ctx.destination);
     const samples = new Float32Array(analyser.fftSize);
-    let heard = false, quietSince = 0;
+    let quietSince = 0;
     const tick = setInterval(() => {
       analyser.getFloatTimeDomainData(samples);
       const loud = Math.sqrt(samples.reduce((sum, x) => sum + x * x, 0) / samples.length) > 0.02;
@@ -59,6 +61,7 @@ function pauseAfterSound(stream: MediaStream, isOver: () => boolean): Promise<vo
       if (paused) resolve();
     }, 100);
   });
+  return { paused, heardAny: () => heard };
 }
 
 export default function SongListener({ listenFor = 'song', onHeard, onClose, onNeedSignIn }: Props) {
@@ -105,7 +108,8 @@ export default function SongListener({ listenFor = 'song', onHeard, onClose, onN
       const wantsSpeech = () => speechOnly || (listenFor === 'anything' && !onlySongRef.current);
       const songsOnly = () => listenFor === 'song' || onlySongRef.current;
       const never = new Promise<boolean>(() => {});
-      const talked = listenFor === 'song' ? never : pauseAfterSound(stream, () => over).then(() => (wantsSpeech() ? true : never));
+      const meter = listenFor === 'song' ? null : pauseAfterSound(stream, () => over);
+      const talked = meter ? meter.paused.then(() => (wantsSpeech() ? true : never)) : never;
       if (!speechOnly) SAYS_AT.forEach(([at, next]) => setTimeout(() => { if (!over) setStage(next); }, at));
 
       // The first answer that settles it (a song, words, or no more song tries today) wins.
@@ -145,7 +149,9 @@ export default function SongListener({ listenFor = 'song', onHeard, onClose, onN
         // Same clip to both, racing: whichever recognizes something first wins. In Auto a daily
         // limit on songs doesn't end it: what was said can still go to the Character.
         if (wantsSongs()) tries.push(recognizeSong(heard).then((r) => { if (r.status === 'found' || (r.status === 'limit' && songsOnly())) finish(r); return r; }));
-        if (last && wantsSpeech() && (paused || speechOnly)) tries.push(transcribeAudioWithFallback(heard, locale()).catch(() => '').then(heardWords));
+        // A meter that never read any sound is broken (some browsers give it silence), not proof
+        // nobody talked: then the clip goes to speech-to-text anyway.
+        if (last && wantsSpeech() && (paused || speechOnly || !meter?.heardAny())) tries.push(transcribeAudioWithFallback(heard, locale()).catch(() => '').then(heardWords));
         if (last) break;
       }
       const results = (await Promise.all(tries)).filter((r): r is Recognition => Boolean(r));
