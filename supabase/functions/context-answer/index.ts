@@ -2,7 +2,7 @@
 // Character answers with today's facts. Fast mode (10 credits; the default "ultra" costs 100).
 // The key stays server-side (CONTEXT_DEV_API_KEY). No retries: a live presenter is waiting, and
 // on any failure the client falls back to its usual web search.
-// Body { question } → { answer, sources } (answer null when nothing usable came back).
+// Body { question, language?, city? } → { answer, sources } (answer null when nothing usable came back).
 // Docs: https://docs.context.dev/api-reference/web-extraction/answers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +19,8 @@ Deno.serve(async (req: Request) => {
 
   const body = await req.json().catch(() => null);
   const question = typeof body?.question === "string" ? body.question.trim().slice(0, 1500) : "";
+  const language = typeof body?.language === "string" ? body.language.slice(0, 10) : "";
+  const city = typeof body?.city === "string" ? body.city.slice(0, 80) : "";
   if (!question) return json({ error: "question is required" }, 400);
 
   // @ts-ignore
@@ -31,7 +33,7 @@ Deno.serve(async (req: Request) => {
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         mode: "fast",
-        task: `Answer with the latest facts available today, in the question's language, in 3-5 sentences: ${question}`,
+        task: `Answer with the latest facts available today, in ${language ? `language "${language}"` : "the question's language"}, in 3-5 sentences.${city ? ` The user is in ${city}; use that only if it matters to the question.` : ""} Question: ${question}`,
         json_format: { answer: "" },
         // The client waits 7 s: a partial answer from what was found by 6 s beats none.
         timeoutOpts: { milliseconds: 6000, behavior: "return-partial" },

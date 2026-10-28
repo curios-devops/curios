@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
     const whisperForm = new FormData();
     whisperForm.append("file", audioFile, audioFile.name || "audio.webm");
     whisperForm.append("model", "whisper-1");
-    whisperForm.append("language", language);
+    if (language !== "auto") whisperForm.append("language", language); // "auto": Whisper detects it
 
     const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",

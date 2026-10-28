@@ -397,9 +397,10 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body?.only === "tier") {
-      // news: true (Character) also asks, in parallel, whether the answer needs recent facts (1 / 0).
-      const [answers, fresh] = await Promise.all([decide(query, [tierQuestion], DECISIONS_TIMEOUT_MS), body?.news ? draftFresh(query) : null]);
-      return jsonResponse({ tier: topTier(answers), ...(body?.news ? { news: fresh === null ? null : Number(fresh) } : {}), backend: answers ? "decisions" : "default" });
+      // news: true (Character) also asks the question's language and, in parallel, whether the
+      // answer needs recent facts (1 / 0).
+      const [answers, fresh] = await Promise.all([decide(query, body?.news ? [tierQuestion, languageQuestion] : [tierQuestion], DECISIONS_TIMEOUT_MS), body?.news ? draftFresh(query) : null]);
+      return jsonResponse({ tier: topTier(answers), ...(body?.news ? { news: fresh === null ? null : Number(fresh), language: topLanguage(answers) } : {}), backend: answers ? "decisions" : "default" });
     }
 
     const answers = await decide(query, [

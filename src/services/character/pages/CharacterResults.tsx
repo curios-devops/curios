@@ -23,12 +23,14 @@ import { saveNode, ensureShared, updateNodeAnswer, toggleNodeLike, type SavedNod
 import { findCharacter, DEFAULT_CHARACTER_ID, CHARACTERS, FEATURED_CHARACTERS, type CharacterPreset } from '../characterCatalog';
 import { findHalfBody, DEFAULT_HALF_BODY_ID, HALF_BODY, FEATURED_HALF_BODY, type HalfBodyPreset } from '../halfBodyCatalog';
 import { directTurn, buildScriptEvent, type StageProduct, type DirectedTurn } from '../characterDirector';
-import type { WebSearchResult } from '../../search/providers/webSearchProvider';
 import { startCharacterSession, type LiveCharacter } from '../characterSession';
 import { startAnamSession, SpeechQueue, type LiveAnam } from '../anamSession';
 import { speakAnswer } from '../speechAnswer';
 import { decideTurn, type TurnDecision } from '../../auto/modelTier';
 import { groundTurn } from '../grounding';
+import { trackMoment, type Moment } from '../personalTouch';
+import { answerLanguage, listenLanguage } from '../../stt/language';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import SongListener from '../../music/listen/SongListener';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
@@ -88,7 +90,8 @@ function presenterFor(body: Body, id: string | null, prefs: CharacterPrefs): Pre
 }
 
 /** Full body: buy intent → product on stage → director (search + motion). */
-async function prepareFullTurn(q: string, character: CharacterPreset, history: Turn[], knownProduct: StageProduct | null, model?: Promise<string>, sources?: Promise<WebSearchResult[]>) {
+type TurnContext = Pick<Parameters<typeof directTurn>[0], 'model' | 'sources' | 'language' | 'opening'>;
+async function prepareFullTurn(q: string, character: CharacterPreset, history: Turn[], knownProduct: StageProduct | null, context: TurnContext) {
   mark('ask: question', { q });
   const buy = await resolveBuyIntent(q).catch(() => ({ isBuyIntent: false }));
   mark('ask: buy-intent ← done', { buy: buy.isBuyIntent });
@@ -98,7 +101,7 @@ async function prepareFullTurn(q: string, character: CharacterPreset, history: T
     const p = result?.success ? result.products[0] : null;
     if (p?.imageUrl) product = { title: p.title, imageUrl: p.imageUrl };
   }
-  const turn = await directTurn({ question: q, character, history, product: buy.isBuyIntent ? product : null, locale: locale(), model, sources });
+  const turn = await directTurn({ question: q, character, history, product: buy.isBuyIntent ? product : null, locale: locale(), ...context });
   return { turn, product: buy.isBuyIntent ? product : null };
 }
 
@@ -123,6 +126,7 @@ export default function CharacterResults() {
   // Answer model for the whole conversation, rated on its first question: Luna if easy, else Sol.
   const modelRef = useRef<Promise<string> | undefined>(undefined);
   const { session } = useSession();
+  const { currentLanguage, autoDetect } = useLanguage();
   const { isRecording, startRecording, stopRecording, error: micError } = useVoiceRecording();
 
   // Explicit URL (?body=…&c=…) wins; otherwise the remembered choice.
@@ -272,16 +276,26 @@ export default function CharacterResults() {
   }, [name, savedNode, initialQuery, presenter.preset.imageUrl]);
 
   /** Start generating an answer — independent of the live connection. */
+  // The moment (city, weather) is looked up once, as the conversation starts.
+  const momentRef = useRef<Moment | null>(null);
   const prepare = useCallback((q: string, who: Presenter, history: Turn[], decision: Promise<TurnDecision> = decideTurn(q)): Prepared => {
     const model = modelRef.current;
     // Half body speaks a short line while fresh research runs (full body's script goes out whole).
     const queue = new SpeechQueue();
     const sources = groundTurn(q, decision, who.body === 'half' ? () => queue.push(`${t('charLookingUp')} `) : undefined);
-    if (who.body === 'full') return { kind: 'full', turn: prepareFullTurn(q, who.preset, history, productRef.current, model, sources) };
-    const answer = speakAnswer({ question: q, name: who.preset.name, history, locale: locale(), onSpeech: (t) => queue.push(t), model, sources })
+    // Answer in the language the question was asked in; the first answer opens personally.
+    const moment = (momentRef.current ??= trackMoment(session?.user));
+    const opening = () => {
+      if (!history.length) return { first: true, text: moment.opening() };
+      const late = moment.late();
+      return late ? { first: false, text: late } : undefined;
+    };
+    const context = { model, sources, language: decision.then((d) => answerLanguage(d.language, autoDetect, currentLanguage?.code)), opening };
+    if (who.body === 'full') return { kind: 'full', turn: prepareFullTurn(q, who.preset, history, productRef.current, context) };
+    const answer = speakAnswer({ question: q, name: who.preset.name, history, locale: locale(), onSpeech: (t) => queue.push(t), ...context })
       .then((r) => { queue.end(); return r; });
     return { kind: 'half', queue, answer };
-  }, [t]);
+  }, [t, session?.user, autoDetect, currentLanguage?.code]);
 
   /** Hand a prepared answer to the live engine, then record the turn. */
   const deliver = useCallback(async (p: Prepared) => {
@@ -417,6 +431,7 @@ export default function CharacterResults() {
     if (creditsLoading || startedRef.current) return;
     mark('credits loaded → start');
     startedRef.current = true;
+    momentRef.current ??= trackMoment(session?.user); // city and weather, ready for the first answer
     // Signed-in users: their saved setup (any device) — unless the URL says otherwise.
     void fetchPrefs(session?.user).then((prefs) => {
       prefsRef.current = prefs;
@@ -491,7 +506,7 @@ export default function CharacterResults() {
     try {
       const blob = await stopRecording();
       if (blob) {
-        const text = await transcribeAudioWithFallback(blob, locale());
+        const text = await transcribeAudioWithFallback(blob, listenLanguage(autoDetect, currentLanguage?.code));
         if (text.trim()) send(text);
       }
     } finally {
