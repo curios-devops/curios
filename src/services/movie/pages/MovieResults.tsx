@@ -642,7 +642,7 @@ export default function MovieResults() {
         // Once saved as a video, shares carry the video, its picture (with a play mark) and its own page.
         const saved = animSave?.status === 'saved' ? animSave.saved : null;
         return { title: animInfo.title, caption, hashtags: [] as string[], video: saved?.videoUrl,
-          url: shareLink(animInfo.title, caption, saved?.posterUrl ?? undefined, saved ? `${site}/movie/share/${saved.id}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=${videoType}`) };
+          url: shareLink(animInfo.title, caption, saved?.posterUrl ?? undefined, saved ? `${site}/v/${saved.id}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=${videoType}`) };
       })() : null)
     : videoType === 'cinematic'
     ? (cine ? (() => {
@@ -654,7 +654,7 @@ export default function MovieResults() {
         title: experience.viral.title, caption: experience.viral.caption, hashtags: experience.viral.hashtags,
         video: selectedSwipe?.videoUrl || experience.coreVideoUrl,
         url: shareLink(experience.viral.title, experience.viral.caption, coreImage,
-          savedId ? `${site}/movie/share/${savedId}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}`),
+          savedId ? `${site}/v/${savedId}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}`),
       } : null);
   const overview = videoType === 'cinematic' ? cine?.overview : videoType === 'tour' ? tourInfo?.overview : videoType === 'clip' ? clipInfo?.overview : videoType === 'animation' || videoType === 'simulation' ? animInfo?.overview : (experience?.narrative ?? draftNarrative);
   const downloadFilm = async () => {

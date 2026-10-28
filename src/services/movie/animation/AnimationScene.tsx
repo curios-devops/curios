@@ -10,7 +10,9 @@
 // suggestions that set the controls to telling values. Kept apart from the animation of the same question.
 // One animation per question, kept by the server: opening it again is instant.
 // Save and Download need it as a video (recorder.ts), in the player's shape — on a phone the viewer
-// picks landscape or portrait (TikTok). Save keeps it as their movie (history, share page, feed).
+// picks landscape or portrait (TikTok). Portrait is a second version of the stage, re-composed for the
+// tall frame by the studio (made once); until it is there the landscape stage shows whole, with bands.
+// Save keeps the video as their movie (history, share page, feed).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Captions, Loader2, Maximize, Minimize, Palette, Pause, Play, RectangleHorizontal, RectangleVertical, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
@@ -21,7 +23,7 @@ import { tts } from '../audio/paragraphNarrator.ts';
 import { loadNarratorVoice, narratorGender, NARRATOR_VOICES, saveNarratorVoice } from '../audio/narratorPrefs.ts';
 import { captionLines, lineAt, readingSeconds } from './captions.ts';
 import { tourKey } from '../tour/tourPlan.ts';
-import { findAnimation, makeAnimation, saveAnimationVideo, type Animation, type SavedAnimation } from './animationStudio.ts';
+import { findAnimation, makeAnimation, portraitAnimation, saveAnimationVideo, type Animation, type SavedAnimation } from './animationStudio.ts';
 import { startRecording, videoSize, type Recording } from './recorder.ts';
 export { unlockRecordingAudio } from './recorder.ts';
 import { currentTheme, readManifest, stageDocument, type Manifest, type StageEvent } from './stage.ts';
@@ -163,7 +165,22 @@ function Player({ animation, animationKey, belowPlayer, videoRequest, onSave }: 
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
     return () => obs.disconnect();
   }, []);
-  const srcDoc = useMemo(() => stageDocument(animation.html, theme), [animation.html, theme]);
+  const [portrait, setPortrait] = useState(false); // phones only: the player (and a saved video) in TikTok's shape
+  const [portraitPage, setPortraitPage] = useState<Animation | null>(null);
+  const [portraitMaking, setPortraitMaking] = useState(false);
+  useEffect(() => {
+    if (!portrait || portraitPage) return;
+    const controller = new AbortController();
+    setPortraitMaking(true);
+    portraitAnimation(animationKey, controller.signal)
+      .then((a) => { if (readManifest(a.html, 0)) setPortraitPage(a); })
+      .catch(() => undefined) // stays landscape, whole
+      .finally(() => { if (!controller.signal.aborted) setPortraitMaking(false); });
+    return () => { controller.abort(); setPortraitMaking(false); };
+  }, [portrait, portraitPage, animationKey]);
+  const page = portrait && portraitPage ? portraitPage.html : animation.html;
+  const letterbox = portrait && !portraitPage;
+  const srcDoc = useMemo(() => stageDocument(page, theme), [page, theme]);
 
   const [ready, setReady] = useState(false);
   const [auto, setAuto] = useState(!machine);
@@ -181,7 +198,6 @@ function Player({ animation, animationKey, belowPlayer, videoRequest, onSave }: 
   const [caption, setCaption] = useState('');
   const [captionsOn, setCaptionsOn] = useState(() => { try { return localStorage.getItem('animationCaptions') !== 'off'; } catch { return true; } });
   const [fullscreen, setFullscreen] = useState(false);
-  const [portrait, setPortrait] = useState(false); // phones only: the player (and a saved video) in TikTok's shape
   const [recording, setRecording] = useState<number | null>(null); // seconds of a take of its own (the viewer waits)
   const take = useRef<Take | null>(null);
   const captionRef = useRef('');
@@ -195,6 +211,7 @@ function Player({ animation, animationKey, belowPlayer, videoRequest, onSave }: 
   const send = (msg: Record<string, unknown>) => frameRef.current?.contentWindow?.postMessage({ curios: 1, ...msg }, '*');
 
   useEffect(() => {
+    dropTake(); // a new stage (theme, portrait version) breaks a recording
     setReady(false);
     setCurrent(-1);
     setCallout('');
@@ -315,9 +332,10 @@ function Player({ animation, animationKey, belowPlayer, videoRequest, onSave }: 
   const [wanted, setWanted] = useState(false); // something the viewer asked for is still on its way
 
   async function beginTake(own: boolean): Promise<boolean> {
-    const box = frameRef.current?.getBoundingClientRect();
-    if (!box?.width || take.current) return false;
-    const { w, h } = videoSize(box.width, box.height);
+    // The video takes the player's shape; the stage is fitted into it whole.
+    const box = frameRef.current?.getBoundingClientRect(), shape = playerRef.current?.getBoundingClientRect();
+    if (!box?.width || !shape?.width || take.current) return false;
+    const { w, h } = videoSize(shape.width, shape.height);
     let r: Recording;
     try { r = await startRecording(w, h, own ? 1000 : 300); } catch { return false; }
     // A lazy take without sound while the narrator speaks is no use as the video.
@@ -329,7 +347,7 @@ function Player({ animation, animationKey, belowPlayer, videoRequest, onSave }: 
       if (asks.current.size) report({ status: 'recording', progress: Math.min(99, Math.round((secs / estimate) * 100)), asks: [...asks.current] });
     }, 500);
     take.current = { rec: r, w, h, started: startedAt, next: 0, own, poster: Promise.resolve(null), tick };
-    send({ cmd: 'capture', on: true, scale: w / box.width });
+    send({ cmd: 'capture', on: true, scale: Math.min(w / box.width, h / box.height) });
     return true;
   }
   function dropTake() {
@@ -489,7 +507,12 @@ function Player({ animation, animationKey, belowPlayer, videoRequest, onSave }: 
         className={`overflow-hidden ${pseudoFull ? 'fixed inset-0 z-[200]' : `relative rounded-xl ${portrait ? 'mx-auto max-w-[calc(80vh*9/16)] aspect-[9/16] sm:max-w-none sm:aspect-video' : machine ? 'aspect-[4/5] sm:aspect-video' : 'aspect-video'}`}`}
         style={{ backgroundColor: theme.ground }}
       >
-        <iframe ref={frameRef} title={title} srcDoc={srcDoc} sandbox="allow-scripts" className="absolute inset-0 w-full h-full border-0" />
+        <iframe ref={frameRef} title={title} srcDoc={srcDoc} sandbox="allow-scripts" className={`absolute border-0 ${letterbox ? 'inset-x-0 top-1/2 -translate-y-1/2 w-full aspect-video' : 'inset-0 w-full h-full'}`} />
+        {portraitMaking && (
+          <span className={`absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-white pointer-events-none ${label}`} style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
+            <Loader2 size={12} className="animate-spin" /> {t('vidAnimPortraitMaking')}
+          </span>
+        )}
 
         {/* Live numbers from the stage's model, and the surprise moment. */}
         {manifest.readouts.length > 0 && (
@@ -579,7 +602,7 @@ function Player({ animation, animationKey, belowPlayer, videoRequest, onSave }: 
           </button>
           <div className="sm:hidden ml-auto flex rounded-full p-0.5 border" style={{ borderColor: 'var(--ui-border-default)' }} role="group">
             {([false, true] as const).map((p) => (
-              <button key={String(p)} type="button" disabled={recording !== null} onClick={() => setPortrait(p)} aria-pressed={portrait === p} aria-label={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} title={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} className="px-2.5 py-1 rounded-full" style={pill(portrait === p)}>
+              <button key={String(p)} type="button" disabled={recording !== null} onClick={() => { dropTake(); setPortrait(p); }} aria-pressed={portrait === p} aria-label={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} title={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} className="px-2.5 py-1 rounded-full" style={pill(portrait === p)}>
                 {p ? <RectangleVertical size={14} /> : <RectangleHorizontal size={14} />}
               </button>
             ))}

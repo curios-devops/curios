@@ -139,3 +139,15 @@ PRINCIPLES
   numbered tags), on var(--ground); legible at 360 px wide. Direct manipulation on the stage is welcome too (drag a planet,
   click a chess piece) — report resulting control values with curios.controls.
 ${BRIDGE}`;
+
+export const PORTRAIT = `You re-compose an animation stage for a phone held upright. The input is the stage's whole HTML
+page, made for a landscape (16:9) frame. Return the same page re-composed for a portrait 9:16 frame (360×640 up to 450×800).
+- Copy the manifest (<script type="application/json" id="manifest">) exactly as it is: same title, beats, words, readouts
+  and controls — the narration and the steps must not change.
+- Keep the story, style, palette, characters, motion and timing, and every bridge call (curios.on('beat' …), 'set',
+  'pause', 'speed', 'reset', curios.ready(), readouts, callout) — beat i still plays the same moment.
+- Re-lay out every scene for the tall frame: stack what sat side by side, scale the subject up to the width, move
+  labels and numbers so nothing is cut or off-screen; everything that matters stays inside a 90% safe area.
+- SVG: a portrait viewBox (e.g. 0 0 900 1600) with preserveAspectRatio "xMidYMid meet" — never "slice"; three.js: the
+  camera framed for the tall aspect. Still handle resize.
+Reply with the HTML only, in one \`\`\`html block.`;

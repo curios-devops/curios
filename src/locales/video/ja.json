@@ -149,5 +149,6 @@
   "vidAnimUploading": "保存中…",
   "vidAnimSaveFailed": "動画を保存できませんでした。もう一度お試しください。",
   "vidAnimPortrait": "縦",
-  "vidAnimLandscape": "横"
+  "vidAnimLandscape": "横",
+  "vidAnimPortraitMaking": "縦向き版を作成中…"
 }

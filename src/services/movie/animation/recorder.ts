@@ -63,7 +63,10 @@ export async function startRecording(w: number, h: number, waitForSound = 1000):
   return {
     withSound: sound.length > 0,
     frame(bitmap, caption) {
-      g.drawImage(bitmap, 0, 0, w, h);
+      // Fitted whole (never cropped): a landscape stage in a portrait video gets bands.
+      const k = Math.min(w / bitmap.width, h / bitmap.height), bw = bitmap.width * k, bh = bitmap.height * k;
+      if (bw < w - 1 || bh < h - 1) { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); }
+      g.drawImage(bitmap, (w - bw) / 2, (h - bh) / 2, bw, bh);
       bitmap.close();
       g.font = `600 ${Math.round(unit * 0.9)}px system-ui, sans-serif`;
       g.textAlign = 'center';

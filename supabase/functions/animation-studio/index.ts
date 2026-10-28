@@ -10,10 +10,13 @@
 //          kind 'simulation' asks for a simulation to play with (otherwise Luna picks machine or story).
 //          Daily caps: guest 2 per connection (hashed IP), free 5, Pro 20; GLOBAL_CAP overall.
 //   status { key }                          → { status: 'making' } | { ready: true, animation } | { status: 'failed' }
+//   portrait { key }                        → { status: 'making' } | { ready: true, animation }: the same animation
+//          re-composed for a phone held upright (same manifest), kept under "<key>|portrait". Made once, from the
+//          ready landscape page; it doesn't count toward the daily caps (it is a version, not a new animation).
 //   upload { key }                          → { video, poster }: signed Cloudinary uploads for a signed-in viewer
 //          saving the animation as a video (recorded in the browser); each is { url, fields }.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-import { CLASSIFY, MACHINE, SIMULATION, STORY, STORY_STYLES } from "./prompts.ts";
+import { CLASSIFY, MACHINE, PORTRAIT, SIMULATION, STORY, STORY_STYLES } from "./prompts.ts";
 import { signedUpload } from "../_shared/cloudinary.ts";
 
 const corsHeaders = {
@@ -63,7 +66,7 @@ async function isPro(uid: string | null): Promise<boolean> {
 
 async function left(req: Request, uid: string | null): Promise<number> {
   const since = new Date(Date.now() - 864e5).toISOString();
-  const recent = () => db().from("animations").select("id", { count: "exact", head: true }).gte("created_at", since);
+  const recent = () => db().from("animations").select("id", { count: "exact", head: true }).gte("created_at", since).not("question_key", "like", "%|portrait");
   const [{ count: all }, { count: mine }, pro] = await Promise.all([
     recent(),
     uid ? recent().eq("user_id", uid) : recent().eq("creator_ip_hash", await ipHash(req)),
@@ -140,6 +143,29 @@ Deno.serve(async (req: Request) => {
       const { error } = await db().from("animations").upsert(fields, { onConflict: "question_key" });
       if (error) throw error;
       return json({ status: "making", kind, style });
+    }
+
+    if (body.action === "portrait") {
+      if (row?.status === "ready") return json({ ready: true, animation: toAnimation(row) });
+      if (row?.status === "making" && !stale) return json({ status: "making" });
+      if (!key.endsWith("|portrait")) return json({ error: "portrait key required" }, 400);
+      const { data: base } = await db().from("animations").select("*").eq("question_key", key.slice(0, -"|portrait".length)).maybeSingle();
+      if (base?.status !== "ready" || !base.html) return json({ error: "not_ready" }, 400);
+      const started = await openai("/responses", {
+        method: "POST",
+        body: JSON.stringify({
+          model: base.model, reasoning: { effort: "low" }, instructions: PORTRAIT, input: base.html,
+          background: true, store: true, max_output_tokens: 48000, service_tier: TIER(),
+        }),
+      });
+      const job = await started.json().catch(() => null);
+      if (!started.ok || !job?.id) { console.error("openai portrait", started.status, JSON.stringify(job).slice(0, 300)); return json({ error: "start_failed" }, 502); }
+      const { error } = await db().from("animations").upsert({
+        question_key: key, question: base.question, kind: base.kind, style: base.style, model: base.model, status: "making",
+        response_id: job.id, html: null, user_id: uid, creator_ip_hash: uid ? null : await ipHash(req), created_at: new Date().toISOString(),
+      }, { onConflict: "question_key" });
+      if (error) throw error;
+      return json({ status: "making" });
     }
 
     if (body.action === "status") {

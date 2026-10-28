@@ -149,5 +149,6 @@
   "vidAnimUploading": "Enregistrement…",
   "vidAnimSaveFailed": "Impossible d'enregistrer la vidéo. Réessaie.",
   "vidAnimPortrait": "Portrait",
-  "vidAnimLandscape": "Paysage"
+  "vidAnimLandscape": "Paysage",
+  "vidAnimPortraitMaking": "Préparation de la version portrait…"
 }

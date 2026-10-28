@@ -149,5 +149,6 @@
   "vidAnimUploading": "Saving…",
   "vidAnimSaveFailed": "The video couldn't be saved. Try again.",
   "vidAnimPortrait": "Portrait",
-  "vidAnimLandscape": "Landscape"
+  "vidAnimLandscape": "Landscape",
+  "vidAnimPortraitMaking": "Making the portrait version…"
 }

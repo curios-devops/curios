@@ -149,5 +149,6 @@
   "vidAnimUploading": "Desant…",
   "vidAnimSaveFailed": "No s'ha pogut desar el vídeo. Torna-ho a provar.",
   "vidAnimPortrait": "Vertical",
-  "vidAnimLandscape": "Horitzontal"
+  "vidAnimLandscape": "Horitzontal",
+  "vidAnimPortraitMaking": "Preparant la versió vertical…"
 }

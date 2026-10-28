@@ -179,6 +179,7 @@ const router = createBrowserRouter(
         { path: '/arcade', element: <LazyPageWrapper><ArcadeCatalog /></LazyPageWrapper> },
         { path: '/arcade/:id', element: <LazyPageWrapper><ArcadePage /></LazyPageWrapper> },
         { path: '/movie/share/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> },
+        { path: '/v/:id', element: <LazyPageWrapper><MovieSharePage /></LazyPageWrapper> }, // short share link
         // Curiosity Engine routes
         { path: '/s/:slug', element: <LazyPageWrapper><NodeSharePage /></LazyPageWrapper> },
         { path: '/topic/:slug', element: <LazyPageWrapper><TopicPage /></LazyPageWrapper> },

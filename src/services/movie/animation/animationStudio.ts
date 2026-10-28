@@ -36,6 +36,19 @@ export async function makeAnimation(key: string, question: string, tier: 'luna' 
     const started = await call({ action: 'start', key, question, tier, kind });
     if (started.ready && started.animation) return started.animation;
   }
+  return waitFor(key, signal);
+}
+
+/** The same animation re-composed for a phone held upright (same narration and steps); made once, then kept. */
+export async function portraitAnimation(key: string, signal: AbortSignal): Promise<Animation> {
+  const portraitKey = `${key}|portrait`;
+  const started = await call({ action: 'portrait', key: portraitKey });
+  if (started.ready && started.animation) return started.animation;
+  return waitFor(portraitKey, signal);
+}
+
+/** Polls until the page for `key` is written. */
+async function waitFor(key: string, signal: AbortSignal): Promise<Animation> {
   for (let i = 0; i < 200 && !signal.aborted; i++) {
     await new Promise((r) => setTimeout(r, i === 0 ? 15000 : 4000));
     if (signal.aborted) break;
