@@ -1,6 +1,6 @@
-const DEFAULT_TITLE = 'CuriosAI - AI-Powered Search';
-const DEFAULT_DESCRIPTION = 'Get comprehensive AI-powered search results with insights, analysis, and curated information from multiple sources.';
-const FALLBACK_IMAGE = 'https://curiosai.com/curios-og-image-1200x627.png';
+const DEFAULT_TITLE = 'CuriosAI - Visualize knowledge';
+const DEFAULT_DESCRIPTION = 'From search to understanding: ask anything and see the answer as a page, a story or a video.';
+const FALLBACK_IMAGE = 'https://curiosai.com/curios-og-image-1200x627.png?v=2';
 const BOT_REGEX = /linkedinbot|facebookexternalhit|facebookbot|twitterbot|whatsapp|whatsappbot|slackbot|telegrambot|bot|crawler|spider|facebot|postman|curl|wget/i;
 
 const escapeHtml = (text = '') =>
