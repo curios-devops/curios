@@ -130,9 +130,11 @@ async function recentArchetypes(): Promise<string[]> {
 async function classify(question: string, key: string): Promise<{ kind: "machine" | "story"; style: string; direction?: Direction }> {
   const res = await openai("/responses", {
     method: "POST",
-    body: JSON.stringify({ model: MODELS.luna(), reasoning: { effort: "none" }, instructions: CLASSIFY, input: question, text: { format: { type: "json_object" } }, max_output_tokens: 200 }),
+    // json_object mode refuses an input without the word "json" (the instructions do not count).
+    body: JSON.stringify({ model: MODELS.luna(), reasoning: { effort: "none" }, instructions: CLASSIFY, input: `Question (reply in json): ${question}`, text: { format: { type: "json_object" } }, max_output_tokens: 200 }),
     signal: AbortSignal.timeout(15000),
   }).catch(() => null);
+  if (!res?.ok) console.error("classify failed", res?.status, (await res?.text().catch(() => "") ?? "").slice(0, 300));
   const data = res?.ok ? await res.json().catch(() => null) : null;
   const text = data?.output_text ?? (data?.output ?? []).flatMap((o: Record<string, any>) => o.content ?? []).map((c: Record<string, any>) => c.text ?? "").join("");
   let out: Record<string, unknown> = {};
