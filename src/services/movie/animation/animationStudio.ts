@@ -38,10 +38,11 @@ export async function findAnimation(key: string): Promise<{ animation: Animation
   return { animation: a.ready && a.animation ? a.animation : null, making: a.status === 'making', left: a.left ?? 1 };
 }
 
-/** Starts it (unless it's already being made) and waits until the page is written. */
-export async function makeAnimation(key: string, question: string, tier: 'luna' | 'sol' | 'astra', signal: AbortSignal, already = false, kind?: 'simulation'): Promise<Animation> {
+/** Starts it (unless it's already being made) and waits until the page is written. `lang`: the words' language
+ *  when the question shows none of its own (a name, one word). */
+export async function makeAnimation(key: string, question: string, tier: 'luna' | 'sol' | 'astra', signal: AbortSignal, already = false, kind?: 'simulation', lang?: string): Promise<Animation> {
   if (!already) {
-    const started = await call({ action: 'start', key, question, tier, kind });
+    const started = await call({ action: 'start', key, question, tier, kind, lang });
     if (started.ready && started.animation) return started.animation;
   }
   return waitFor(key, signal);

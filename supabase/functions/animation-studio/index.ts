@@ -6,7 +6,7 @@
 //
 // Body { action }:
 //   lookup { key }                          → { ready: true, animation } | { ready: false, left }
-//   start  { key, question, tier, kind? }   → { status: 'making' } — tier luna|sol|astra (Astra for Pro only);
+//   start  { key, question, tier, kind?, lang? } → { status: 'making' } — tier luna|sol|astra (Astra for Pro only);
 //          kind 'simulation' asks for a simulation to play with (otherwise Luna picks machine or story).
 //          Daily caps: guest 2 per connection (hashed IP), free 5, Pro 20; GLOBAL_CAP overall.
 //   status { key }                          → { status: 'making' } | { ready: true, animation } | { status: 'failed' }
@@ -178,12 +178,15 @@ Deno.serve(async (req: Request) => {
       if (await left(req, uid) <= 0) return json({ error: uid ? "daily_limit" : "sign_in_required" }, 429);
       const tier = body.tier === "astra" && await isPro(uid) ? "astra" : body.tier === "luna" ? "luna" : "sol";
       const { kind, style, direction } = body.kind === "simulation" ? { kind: "simulation", style: "sim", direction: undefined } : await classify(question, key);
+      // The viewer's chosen (or browser) language, for a question that shows none of its own.
+      const lang = typeof body.lang === "string" && /^[a-z]{2,3}(-[A-Za-z]{2})?$/.test(body.lang) ? body.lang : "en";
       // Low reasoning: as good a page as medium, a third sooner.
       const effort = tier === "luna" ? "none" : "low";
       const started = await openai("/responses", {
         method: "POST",
         body: JSON.stringify({
-          model: MODELS[tier](), reasoning: { effort }, instructions: kind === "simulation" ? SIMULATION : kind === "machine" ? MACHINE : STORY(direction!.archetype, direction!.palette),
+          model: MODELS[tier](), reasoning: { effort }, instructions: `${kind === "simulation" ? SIMULATION : kind === "machine" ? MACHINE : STORY(direction!.archetype, direction!.palette)}
+LANGUAGE: the question's own; when it shows none clearly (a name, a single word, a link), the language with code "${lang}".`,
           input: question, background: true, store: true, max_output_tokens: 48000, service_tier: TIER(),
         }),
       });
