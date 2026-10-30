@@ -38,6 +38,7 @@ function Carousel({ count, index, onIndex, width, children }: {
     const el = row?.children[i] as HTMLElement | undefined;
     if (row && el) row.scrollTo({ left: el.offsetLeft + el.offsetWidth / 2 - row.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => center(index, false), []);
   const onScroll = () => {
     clearTimeout(settle.current);
@@ -203,6 +204,7 @@ export default function ArcadeStudio({ info, query, onClose }: { info: GameInfo;
       .then((ideas) => { if (live) setExamples(ideas.length >= 3 ? ideas : fixed()); })
       .catch(() => { if (live) setExamples(fixed()); });
     return () => { live = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [info.name, currentLanguage.code]); // once per game and language
   const [pct, setPct] = useState(0);
   const [fixing, setFixing] = useState(false);

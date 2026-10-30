@@ -326,6 +326,7 @@ export default function MovieResults() {
       if (type === 'cinematic' || type === 'tour' || type === 'clip' || type === 'animation' || type === 'simulation') return; // CinematicMontage / TourScene / ClipScene / AnimationScene take it from here
       startGeneration(query, modeParam ?? movieModeFor(type));
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, modeParam, projectIdParam, session?.user?.id, sessionLoading]);
 
   // Cinematic found no usable footage (or failed) → the default technique, Video.
@@ -568,6 +569,7 @@ export default function MovieResults() {
       : new MoviePersistenceService().getLikeState(likeTarget.id, userId);
     load.then((s) => { if (alive) setLike(s); }).catch(() => undefined);
     return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [likeTarget?.kind, likeTarget?.id, userId]);
   const toggleLike = async () => {
     if (!userId) { setLikeGuestNote(true); return; }

@@ -180,6 +180,7 @@ export default function CinematicMontage({ question, tab, context, belowPlayer, 
   // Leaving the Video tab pauses the film (it resumes where it was).
   useEffect(() => {
     if (tab !== 'video' && narration === 'playing') togglePause();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
   const toggleFullscreen = () => {

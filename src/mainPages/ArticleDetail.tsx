@@ -133,6 +133,7 @@ export default function ArticleDetail() {
       console.warn('[ARTICLE DETAIL] Article data not found in navigation state');
       setIsGenerating(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article?.title]); // FIXED: Use primitive value, not object reference
 
   // Cold load (shared link, no thumbnail): resolve a hero image so the page isn't bare.
@@ -144,6 +145,7 @@ export default function ArticleDetail() {
       if (!cancelled && url) setHeroImage(url);
     });
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article?.title]);
 
   const loadArticleContent = async () => {

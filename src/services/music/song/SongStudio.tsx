@@ -82,6 +82,7 @@ export default function SongStudio({ info, onClose }: { info: SongSource; onClos
     draft('', lang);
     fetchSongIdeas(info, lang).then(setIdeas).catch(() => setIdeas([]));
     void songMusicReady().then(setMusicReady);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [info.title, info.kind === 'topic' ? '' : info.artist.name, lang]); // once per inspiration and language
 
   const parts = song ? PARTS_BY_LENGTH[length].map((id) => song.parts.find((p) => p.id === id)).filter((p) => !!p) : [];

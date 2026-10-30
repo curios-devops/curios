@@ -268,6 +268,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, recorder
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [srcDoc]);
 
   // A stage that never says ready (a slow library, a quiet bug) still gets played after a few seconds.

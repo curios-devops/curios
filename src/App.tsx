@@ -36,6 +36,7 @@ function AppContent() {
   const visitQuery = new URLSearchParams(location.search).get('q');
   useEffect(() => {
     trackVisit(location.pathname, currentLanguage.code);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, visitQuery]);
   const showBanner = isHome && appSettings.banner.enabled; // operator toggle (appSettings)
   const [isCollapsed, setIsCollapsed] = useState(false);

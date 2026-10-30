@@ -106,6 +106,7 @@ export default function StoriesResults() {
       if (live) setPlan(p);
     });
     return () => { live = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
   // Save the story as a curiosity node (guests: null) — the same node Search uses for its
@@ -170,6 +171,7 @@ export default function StoriesResults() {
         setLoading(false);
       });
     return () => { live = false; runKey.current = ''; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, storyKey, plan]);
 
   useEffect(() => {

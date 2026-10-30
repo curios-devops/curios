@@ -126,6 +126,7 @@ export function useSubscription(session: Session | null) {
         fetchTimeoutRef.current = null;
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]); // Only re-run if user ID changes, not on every session update
 
   return {

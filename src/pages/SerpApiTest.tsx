@@ -123,7 +123,7 @@ export default function SerpApiTest() {
           .replace('www.', '')
           .split('.')[0]
         if (domain) websites.add(domain)
-      } catch {}
+      } catch { /* not a URL */ }
 
       // Extract key words from title (skip common words)
       const title = result.title || ''
