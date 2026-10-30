@@ -141,14 +141,15 @@
   "vidSimTry": "試してみよう",
   "vidAnimPause": "一時停止",
   "vidAnimPlay": "再開",
-  "vidAnimSave": "動画として保存",
-  "vidAnimSaved": "保存しました — 履歴にあります",
-  "vidAnimSaveGuest": "登録するとアニメーションを動画で保存できます",
-  "vidAnimRecording": "録画中",
-  "vidAnimRecordingKeepOpen": "動画を録画中 — 終わるまでこのページを開いたままにしてください",
-  "vidAnimUploading": "保存中…",
-  "vidAnimSaveFailed": "動画を保存できませんでした。もう一度お試しください。",
+  "vidAnimSave": "スペースに保存",
+  "vidAnimSaved": "スペースに保存済み",
+  "vidAnimSaveGuest": "登録するとアニメーションを保存できます",
+  "vidAnimSaveFailed": "動画を準備できませんでした。後でもう一度お試しください。",
   "vidAnimPortrait": "縦",
   "vidAnimLandscape": "横",
-  "vidAnimPortraitMaking": "縦向き版を作成中…"
+  "vidAnimPortraitMaking": "縦向き版を作成中…",
+  "vidAnimPost": "投稿",
+  "vidAnimPosted": "投稿済み",
+  "vidAnimPostGuest": "登録するとアニメーションを投稿できます",
+  "vidAnimVideoComing": "動画を録画中です — 完了するとダウンロードされます"
 }

@@ -39,4 +39,20 @@
   --label-weight: 400;
   --label-tracking: 2.24px;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* Data colors — charts only (DESIGN.md): a validated categorical order, light steps; --chart-other is "Others" */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-other: #9ca3af;
+}
+/* The same hues stepped for dark surfaces (validated there, not a flip). */
+.dark {
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-other: #6b7280;
 }

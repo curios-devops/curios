@@ -41,6 +41,10 @@ themes. Read it before writing any UI. Every line here should change what you bu
   muted, `border-gray-200` lines; in dark: `text-white`, `text-gray-400`, `border-gray-800`).
 - **Accent** (`--accent-primary`) is the theme's one color: primary action, active tab,
   links, focus, progress, one badge. Nothing else. Hover = accent mixed 18 % with black.
+- **Data colors (charts only)** — `--chart-1 … --chart-5` + `--chart-other` (`tokens.css`, light and
+  dark steps): blue, orange, aqua, yellow, magenta, a categorical order validated for color blindness in
+  both modes. Series take them in that fixed order (never by rank); more than five fold into "Others".
+  One series uses `--chart-1`. Labels and values stay in text tokens, never the series color. Not for UI.
 - **Text on an accent fill** uses `var(--ui-text-on-accent)` (white for most themes, dark on
   Terra's yellow NIGHT) — never `text-white`.
 - Text passes 4.5:1 on its background.

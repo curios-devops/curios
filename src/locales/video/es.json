@@ -141,14 +141,15 @@
   "vidSimTry": "Prueba esto",
   "vidAnimPause": "Pausa",
   "vidAnimPlay": "Reanudar",
-  "vidAnimSave": "Guardar como video",
-  "vidAnimSaved": "Guardado — está en tu historial",
-  "vidAnimSaveGuest": "Regístrate para grabar la animación",
-  "vidAnimRecording": "Grabando",
-  "vidAnimRecordingKeepOpen": "Grabando el video — deja esta página abierta hasta que termine",
-  "vidAnimUploading": "Guardando…",
-  "vidAnimSaveFailed": "No se pudo guardar el video. Inténtalo de nuevo.",
+  "vidAnimSave": "Guardar en tu Espacio",
+  "vidAnimSaved": "Guardado en tu Espacio",
+  "vidAnimSaveGuest": "Regístrate para guardar la animación",
+  "vidAnimSaveFailed": "No se pudo preparar el video. Inténtalo más tarde.",
   "vidAnimPortrait": "Vertical",
   "vidAnimLandscape": "Horizontal",
-  "vidAnimPortraitMaking": "Preparando la versión vertical…"
+  "vidAnimPortraitMaking": "Preparando la versión vertical…",
+  "vidAnimPost": "Publicar",
+  "vidAnimPosted": "Publicado",
+  "vidAnimPostGuest": "Regístrate para publicar la animación",
+  "vidAnimVideoComing": "El video se está grabando — se descargará al terminar"
 }

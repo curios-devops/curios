@@ -3,7 +3,7 @@
 // title/caption/thumbnail + the social share row.
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
 import TopBar from '../../../components/results/TopBar.tsx';
@@ -14,6 +14,8 @@ import SocialShareRow from '../components/SocialShareRow.tsx';
 interface SharedMovie {
   id: string;
   title: string;
+  question?: string;
+  video_mode?: string | null;
   full_video_url?: string;
   thumbnail_url?: string;
   viral?: ViralPackage;
@@ -47,6 +49,11 @@ export default function MovieSharePage() {
         <p>Movie not found.</p>
       </div>
     );
+  }
+
+  // An animation whose cloud video isn't recorded yet: the live animation instead.
+  if (!movie.full_video_url && movie.video_mode === 'animation' && movie.question) {
+    return <Navigate to={`/movie-results?q=${encodeURIComponent(movie.question)}&type=animation`} replace />;
   }
 
   const viral = movie.viral;

@@ -93,6 +93,7 @@ const MusicFactPage = lazyRetry(() => import('./services/music/pages/MusicFactPa
 const SongPage = lazyRetry(() => import('./services/music/song/SongPage.tsx'));
 const ExplainSongPage = lazyRetry(() => import('./services/music/song/ExplainSongPage.tsx'));
 const TelePage = lazyRetry(() => import('./services/telemetry/TelePage.tsx'));
+const AnimationRenderPage = lazyRetry(() => import('./services/movie/animation/RenderPage.tsx'));
 // Curios Arcade: a shared AI-made mini game.
 const ArcadePage = lazyRetry(() => import('./services/games/arcade/ArcadePage.tsx'));
 // "Made with AI": the community's movies, songs, games and stories.
@@ -200,6 +201,8 @@ const router = createBrowserRouter(
     },
     // Internal telemetry: outside the app shell, not linked anywhere (see TelePage).
     { path: '/tele', element: <LazyPageWrapper><TelePage /></LazyPageWrapper> }
+    // The cloud recorder's page (Cloud Run job animation-recorder): outside the app shell.
+    ,{ path: '/render/animation', element: <LazyPageWrapper><AnimationRenderPage /></LazyPageWrapper> }
   ]
 );
 

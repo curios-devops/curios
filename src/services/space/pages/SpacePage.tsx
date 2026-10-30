@@ -1,8 +1,9 @@
-// Private Space — /spaces. The user's personal history of curiosity nodes.
+// Private Space — /spaces. The user's personal history of curiosity nodes, and the animations they saved.
 
 import { useEffect, useState } from 'react';
 import { useSession } from '../../../hooks/useSession';
 import { listMyNodes } from '../nodePersistenceService';
+import { listMySavedAnimations, type HistoryItem } from '../historyService';
 import type { NodeRecord } from '../types';
 import ContentCard from '../components/ContentCard';
 
@@ -16,6 +17,7 @@ export default function SpacePage() {
   const { session, isLoading } = useSession();
   const userId = session?.user?.id;
   const [nodes, setNodes] = useState<NodeRecord[]>([]);
+  const [animations, setAnimations] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,9 +27,10 @@ export default function SpacePage() {
         setLoading(false);
         return;
       }
-      const data = await listMyNodes(userId);
+      const [data, saved] = await Promise.all([listMyNodes(userId), listMySavedAnimations(userId)]);
       if (active) {
         setNodes(data);
+        setAnimations(saved);
         setLoading(false);
       }
     })();
@@ -45,10 +48,13 @@ export default function SpacePage() {
         </div>
       ) : !userId ? (
         <p className="text-gray-500 dark:text-gray-400">Sign in to build your Space.</p>
-      ) : nodes.length === 0 ? (
+      ) : nodes.length === 0 && animations.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400">No questions yet. Ask something to start your Space.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {animations.map((a) => (
+            <ContentCard key={a.id} to={a.href} title={a.title} summary={a.summary} cover={a.cover} badge="Animation" />
+          ))}
           {nodes.map((n) => (
             <ContentCard
               key={n.id}

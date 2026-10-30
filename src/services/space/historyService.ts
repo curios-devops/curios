@@ -27,13 +27,13 @@ interface MovieRow {
   created_at: string;
 }
 
-/** The user's own completed movies (newest first). */
+/** The user's own completed movies, and their animations from the moment they opened them (newest first). */
 async function listMyMovies(userId: string): Promise<HistoryItem[]> {
   const { data, error } = await supabase
     .from('movie_projects')
     .select('id, title, question, description, thumbnail_url, created_at')
     .eq('user_id', userId)
-    .eq('status', 'complete')
+    .or('status.eq.complete,animation_key.not.is.null')
     .order('created_at', { ascending: false });
   if (error) {
     logger.warn('[History] listMyMovies failed', { error: error.message });
@@ -45,7 +45,7 @@ async function listMyMovies(userId: string): Promise<HistoryItem[]> {
     title: (m.title && m.title.trim()) || m.question,
     summary: m.description,
     cover: m.thumbnail_url,
-    href: `/movie/share/${m.id}`,
+    href: `/v/${m.id}`,
     created_at: m.created_at,
   }));
 }
@@ -67,4 +67,28 @@ export async function listMyHistory(userId: string): Promise<HistoryItem[]> {
   return [...nodeItems, ...movies].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
+}
+
+/** The user's animations they saved to their Space (Save), newest first. */
+export async function listMySavedAnimations(userId: string): Promise<HistoryItem[]> {
+  const { data, error } = await supabase
+    .from('movie_projects')
+    .select('id, title, question, description, thumbnail_url, created_at')
+    .eq('user_id', userId)
+    .eq('video_mode', 'animation')
+    .eq('saved', true)
+    .order('created_at', { ascending: false });
+  if (error) {
+    logger.warn('[History] listMySavedAnimations failed', { error: error.message });
+    return [];
+  }
+  return (data ?? []).map((m: MovieRow) => ({
+    id: m.id,
+    type: 'movie' as const,
+    title: (m.title && m.title.trim()) || m.question,
+    summary: m.description,
+    cover: m.thumbnail_url,
+    href: `/v/${m.id}`,
+    created_at: m.created_at,
+  }));
 }

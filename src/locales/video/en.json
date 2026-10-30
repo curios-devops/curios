@@ -141,14 +141,15 @@
   "vidSimTry": "Try this",
   "vidAnimPause": "Pause",
   "vidAnimPlay": "Resume",
-  "vidAnimSave": "Save as video",
-  "vidAnimSaved": "Saved — see it in your history",
-  "vidAnimSaveGuest": "Sign up to save this animation as a video",
-  "vidAnimRecording": "Recording",
-  "vidAnimRecordingKeepOpen": "Recording the video — keep this page open until it ends",
-  "vidAnimUploading": "Saving…",
-  "vidAnimSaveFailed": "The video couldn't be saved. Try again.",
+  "vidAnimSave": "Save to your Space",
+  "vidAnimSaved": "Saved in your Space",
+  "vidAnimSaveGuest": "Sign up to save this animation",
+  "vidAnimSaveFailed": "The video couldn't be prepared. Try again later.",
   "vidAnimPortrait": "Portrait",
   "vidAnimLandscape": "Landscape",
-  "vidAnimPortraitMaking": "Making the portrait version…"
+  "vidAnimPortraitMaking": "Making the portrait version…",
+  "vidAnimPost": "Post",
+  "vidAnimPosted": "Posted",
+  "vidAnimPostGuest": "Sign up to post this animation",
+  "vidAnimVideoComing": "The video is being recorded — it downloads when it's ready"
 }

@@ -1,0 +1,8 @@
+{
+  "name": "animation-recorder",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "puppeteer": "24.43.1"
+  }
+}

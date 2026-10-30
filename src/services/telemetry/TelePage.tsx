@@ -17,7 +17,8 @@ interface Stats {
   top_zones: { tz: string; n: number }[];
   daily: { day: string; n: number }[];
 }
-interface Telemetry { stats: Stats; providers: Provider[]; at: string }
+interface CloudRun { minutes: number; renders: number; failed: number; daily: { day: string; minutes: number }[] }
+interface Telemetry { stats: Stats; providers: Provider[]; cloudRun?: CloudRun; at: string }
 
 const WINDOWS: [keyof Stats['visits'], string][] = [
   ['24h', 'Hoy (24 h)'], ['7d', 'Semana'], ['30d', 'Mes'], ['90d', '90 días'], ['365d', '1 año'], ['ytd', 'Este año'], ['range', 'Rango'],
@@ -49,8 +50,10 @@ function amount(v: number, unit: Meter['unit']) {
 }
 const pctText = (p: number | null) => (p === null ? 'N.A.' : `${Math.round(p * 100)}%`);
 
-// Pie slices are shades of the accent (no new colors).
-const SHADES = [100, 72, 52, 38, 26, 16];
+// Pie slices take the data colors in fixed order (DESIGN.md); "Others" is neutral; a thin surface gap
+// between slices keeps neighbours apart.
+const SLICE = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
+const sliceColor = (k: string, i: number) => (k === '…' ? 'var(--chart-other)' : SLICE[i]);
 function Pie({ title, data, names }: { title: string; data: Record<string, number>; names?: (k: string) => string }) {
   const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
   const top = entries.slice(0, 5);
@@ -58,9 +61,10 @@ function Pie({ title, data, names }: { title: string; data: Record<string, numbe
   if (rest) top.push(['…', rest]);
   const total = top.reduce((n, [, v]) => n + v, 0);
   let at = 0;
-  const stops = top.map(([, v], i) => {
+  const gap = top.length > 1 ? 1.5 : 0;
+  const stops = top.map(([k, v], i) => {
     const from = at; at += (v / total) * 360;
-    return `color-mix(in srgb, var(--accent-primary) ${SHADES[i]}%, transparent) ${from}deg ${at}deg`;
+    return `${sliceColor(k, i)} ${from}deg ${Math.max(from, at - gap)}deg, var(--ui-bg-elevated) ${Math.max(from, at - gap)}deg ${at}deg`;
   });
   return (
     <div className="rounded-xl p-4" style={{ background: 'var(--ui-bg-elevated)', border: '1px solid var(--ui-border-default)' }}>
@@ -71,7 +75,7 @@ function Pie({ title, data, names }: { title: string; data: Record<string, numbe
           <ul className="text-xs space-y-1 min-w-0">
             {top.map(([k, v], i) => (
               <li key={k} className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: `color-mix(in srgb, var(--accent-primary) ${SHADES[i]}%, transparent)` }} />
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: sliceColor(k, i) }} />
                 <span className="truncate">{k === '…' ? 'Otros' : names ? names(k) : k}</span>
                 <span style={{ color: 'var(--ui-text-muted)' }}>{Math.round((v / total) * 100)}%</span>
               </li>
@@ -142,6 +146,10 @@ export default function TelePage() {
   const days: { day: string; n: number }[] = [];
   for (let d = new Date(`${from}T00:00:00`); isoDay(d) <= to; d.setDate(d.getDate() + 1)) days.push({ day: isoDay(d), n: perDay.get(isoDay(d)) ?? 0 });
   const maxDaily = Math.max(1, ...days.map((d) => d.n));
+  const cloud = data.cloudRun;
+  const cloudPerDay = new Map((cloud?.daily ?? []).map((d) => [d.day, d.minutes]));
+  const cloudDays = days.map((d) => ({ day: d.day, minutes: cloudPerDay.get(d.day) ?? 0 }));
+  const maxCloud = Math.max(1, ...cloudDays.map((d) => d.minutes));
   const langName = (code: string) => languages.find((l) => l.code === code)?.name ?? code;
 
   // The whole sheet on ONE page sized to it (JPEG keeps it light), named by date.
@@ -208,13 +216,32 @@ export default function TelePage() {
           </div>
           <div className="flex items-end gap-px h-16 mt-4">
             {days.map((d) => (
-              <div key={d.day} className="flex-1 rounded-t" title={`${d.day}: ${d.n}`} style={{ height: `${(d.n / maxDaily) * 100}%`, minHeight: 2, background: d.n ? 'var(--accent-primary)' : 'var(--ui-border-default)' }} />
+              <div key={d.day} className="flex-1 rounded-t" title={`${d.day}: ${d.n}`} style={{ height: `${(d.n / maxDaily) * 100}%`, minHeight: 2, background: d.n ? 'var(--chart-1)' : 'var(--ui-border-default)' }} />
             ))}
           </div>
           <div className="flex justify-between text-[11px] mt-1" style={{ color: 'var(--ui-text-muted)' }}>
             <span>{day(new Date(`${from}T00:00:00`))}</span><span>{day(new Date(`${to}T00:00:00`))}</span>
           </div>
         </section>
+
+        {cloud && (
+          <section className="rounded-xl p-4" style={{ background: 'var(--ui-bg-elevated)', border: '1px solid var(--ui-border-default)' }}>
+            <h2 className="text-sm font-medium mb-3">Cloud Run · grabación de animaciones</h2>
+            <div className="grid grid-cols-3 gap-3">
+              <div><p className="text-xs" style={{ color: 'var(--ui-text-muted)' }}>Minutos (rango)</p><p className="text-lg font-semibold">{num(cloud.minutes)}</p></div>
+              <div><p className="text-xs" style={{ color: 'var(--ui-text-muted)' }}>Videos grabados</p><p className="text-lg font-semibold">{num(cloud.renders)}</p></div>
+              <div><p className="text-xs" style={{ color: 'var(--ui-text-muted)' }}>Fallidos (los grabó el navegador)</p><p className="text-lg font-semibold">{num(cloud.failed)}</p></div>
+            </div>
+            <div className="flex items-end gap-px h-16 mt-4">
+              {cloudDays.map((d) => (
+                <div key={d.day} className="flex-1 rounded-t" title={`${d.day}: ${d.minutes} min`} style={{ height: `${(d.minutes / maxCloud) * 100}%`, minHeight: 2, background: d.minutes ? 'var(--chart-1)' : 'var(--ui-border-default)' }} />
+              ))}
+            </div>
+            <div className="flex justify-between text-[11px] mt-1" style={{ color: 'var(--ui-text-muted)' }}>
+              <span>{day(new Date(`${from}T00:00:00`))}</span><span>minutos por día · {day(new Date(`${to}T00:00:00`))}</span>
+            </div>
+          </section>
+        )}
 
         <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Pie title="Visitas por función" data={stats.by_feature} names={(k) => FEATURE_NAMES[k] ?? k} />

@@ -37,7 +37,8 @@ export function videoSize(width: number, height: number): { w: number; h: number
   return width >= height ? { w: 1280, h: even((1280 * height) / width) } : { w: even((1280 * width) / height), h: 1280 };
 }
 
-export async function startRecording(w: number, h: number, waitForSound = 1000): Promise<Recording> {
+/** `silent`: the narrator is recorded but not played through the speakers (the invisible twin). */
+export async function startRecording(w: number, h: number, waitForSound = 1000, silent = false): Promise<Recording> {
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -89,7 +90,7 @@ export async function startRecording(w: number, h: number, waitForSound = 1000):
       if (!sound.length) return; // a stopped context would silence the narrator for the viewer too
       const source = audio.createMediaElementSource(el);
       source.connect(mix);
-      source.connect(audio.destination);
+      if (!silent) source.connect(audio.destination);
     },
     poster() {
       const copy = document.createElement('canvas');
