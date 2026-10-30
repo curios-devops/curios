@@ -3,6 +3,7 @@
 // by Luna/Sol/Astra in the background (1-3 minutes) while the page polls. Once written, the studio has it
 // recorded once in the cloud (Cloud Run) as a video everyone shares.
 import { supabase } from '../../../lib/supabase.ts';
+import type { StageTheme } from './stage.ts';
 
 export interface Animation {
   question: string;
@@ -10,6 +11,8 @@ export interface Animation {
   style: string;
   model: string;
   html: string;
+  /** The story's own colours (its archetype's palette); machines, simulations and older animations have none. */
+  stage?: StageTheme | null;
   /** The cloud recording: its video and picture once ready; render is queued / ready / failed (null: not asked). */
   videoUrl?: string | null;
   posterUrl?: string | null;

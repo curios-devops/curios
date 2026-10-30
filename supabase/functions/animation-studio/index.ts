@@ -1,6 +1,6 @@
 // Animation (Video page type) — the studio. A model writes the answer as a live stage: a 3D machine
-// you can turn and run (three.js) or an animated story (SVG + GSAP) in a famous explainer style
-// (prompts.ts). Writing one takes Sol ~45-90 s, longer than an edge call may wait, so it runs in
+// you can turn and run (three.js) or an animated story (SVG + GSAP) in a motion archetype with its own
+// palette (archetypes.ts, prompts.ts). Writing one takes Sol ~45-90 s, longer than an edge call may wait, so it runs in
 // OpenAI's background mode: `start` launches it, the page polls `status` until the page is written.
 // One animation per question (animations table), so the same question opens at once and is free.
 //
@@ -25,7 +25,8 @@
 //                  viewers' movies made from it, landscape only)
 //   render_failed { key, secret, error }    → render_status failed (viewers' browsers record instead)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-import { CLASSIFY, MACHINE, PORTRAIT, SIMULATION, STORY, STORY_STYLES } from "./prompts.ts";
+import { CLASSIFY, MACHINE, PORTRAIT, SIMULATION, STORY } from "./prompts.ts";
+import { direct, stageOf, type Direction } from "./archetypes.ts";
 import { signedUpload } from "../_shared/cloudinary.ts";
 import { getVertexAccessToken, VERTEX_PROJECT } from "../_shared/vertex.ts";
 
@@ -90,7 +91,7 @@ const RENDER_STALE_MS = 20 * 60 * 1000; // a queued recording still without a vi
 const renderState = (r: Record<string, unknown>) =>
   r.render_status === "queued" && Date.now() - new Date(String(r.render_requested_at)).getTime() > RENDER_STALE_MS ? "failed" : r.render_status ?? null;
 const toAnimation = (r: Record<string, unknown>) => ({
-  question: r.question, kind: r.kind, style: r.style, model: r.model, html: r.html,
+  question: r.question, kind: r.kind, style: r.style, model: r.model, html: r.html, stage: stageOf(r.style),
   videoUrl: r.video_url ?? null, posterUrl: r.poster_url ?? null, render: renderState(r),
 });
 
@@ -118,8 +119,15 @@ const background = (p: Promise<unknown>) => {
 const keyHash = async (key: string) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)))].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
 
-/** Luna picks the technique: a 3D machine or a story, and the story's style. */
-async function classify(question: string): Promise<{ kind: "machine" | "story"; style: string }> {
+/** The archetypes of the last 3 stories (for variety). */
+async function recentArchetypes(): Promise<string[]> {
+  const { data } = await db().from("animations").select("style").eq("kind", "story").not("question_key", "like", "%|portrait")
+    .order("created_at", { ascending: false }).limit(3);
+  return (data ?? []).map((r: { style: string | null }) => String(r.style ?? "").split(":")[0]);
+}
+
+/** Luna picks the technique (a 3D machine or a story) and the story's archetype; direct() settles it. */
+async function classify(question: string, key: string): Promise<{ kind: "machine" | "story"; style: string; direction?: Direction }> {
   const res = await openai("/responses", {
     method: "POST",
     body: JSON.stringify({ model: MODELS.luna(), reasoning: { effort: "none" }, instructions: CLASSIFY, input: question, text: { format: { type: "json_object" } }, max_output_tokens: 200 }),
@@ -129,8 +137,10 @@ async function classify(question: string): Promise<{ kind: "machine" | "story"; 
   const text = data?.output_text ?? (data?.output ?? []).flatMap((o: Record<string, any>) => o.content ?? []).map((c: Record<string, any>) => c.text ?? "").join("");
   let out: Record<string, unknown> = {};
   try { out = JSON.parse(text); } catch { /* → story */ }
-  const kind = out.kind === "machine" ? "machine" : "story";
-  return { kind, style: kind === "machine" ? "3d" : String(out.style) in STORY_STYLES ? String(out.style) : "kurzgesagt" };
+  if (out.kind === "machine") return { kind: "machine", style: "3d" };
+  const direction = direct(out, await recentArchetypes(), key);
+  console.log("animation direction", JSON.stringify({ key, ...direction }));
+  return { kind: "story", style: direction.style, direction };
 }
 
 const pageOf = (data: Record<string, any>) => {
@@ -167,13 +177,13 @@ Deno.serve(async (req: Request) => {
       if (!question) return json({ error: "question required" }, 400);
       if (await left(req, uid) <= 0) return json({ error: uid ? "daily_limit" : "sign_in_required" }, 429);
       const tier = body.tier === "astra" && await isPro(uid) ? "astra" : body.tier === "luna" ? "luna" : "sol";
-      const { kind, style } = body.kind === "simulation" ? { kind: "simulation", style: "sim" } : await classify(question);
+      const { kind, style, direction } = body.kind === "simulation" ? { kind: "simulation", style: "sim", direction: undefined } : await classify(question, key);
       // Low reasoning: as good a page as medium, a third sooner.
       const effort = tier === "luna" ? "none" : "low";
       const started = await openai("/responses", {
         method: "POST",
         body: JSON.stringify({
-          model: MODELS[tier](), reasoning: { effort }, instructions: kind === "simulation" ? SIMULATION : kind === "machine" ? MACHINE : STORY(style),
+          model: MODELS[tier](), reasoning: { effort }, instructions: kind === "simulation" ? SIMULATION : kind === "machine" ? MACHINE : STORY(direction!.archetype, direction!.palette),
           input: question, background: true, store: true, max_output_tokens: 48000, service_tier: TIER(),
         }),
       });
@@ -185,7 +195,7 @@ Deno.serve(async (req: Request) => {
       };
       const { error } = await db().from("animations").upsert(fields, { onConflict: "question_key" });
       if (error) throw error;
-      return json({ status: "making", kind, style });
+      return json({ status: "making", kind, style, why: direction?.why });
     }
 
     if (body.action === "portrait") {

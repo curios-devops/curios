@@ -3,18 +3,13 @@
 // readouts, controls — in its own design, and drives the stage through a small bridge
 // (window.curios, injected by the page before the model's code runs).
 
-// Curios' night look, sampled from a Kurzgesagt-style AI explainer that sits well on the black theme.
-const NIGHT = `deep indigo night (ground gradient #14053c → #2b0b5c, silhouettes #1c054b / #43226c), a hot horizon glow
-(#ff5a3c → #c2185b) behind the subject, the hero in warm yellow #e2b230 (shade #b08557), motion and particles in cyan
-#5ad1e6, light and energy white with a violet glow (#b39dff); data as magenta pills (#c2187a, white bold text, a thin
-white leader line ending in a dot on the thing: "~0.000003 s", "surface of the Sun", "×5 hotter"); soft radial glows,
-slow parallax clouds and twinkling stars that never stop`;
+import { ARCHETYPES, NIGHT } from "./archetypes.ts";
 
 const BRIDGE = `
 THE BRIDGE (already on the page as window.curios — never redefine it):
 - curios.theme = { dark: boolean, ground, surface, ink, muted, accent, font } and the same as CSS variables
-  --ground --surface --ink --muted --accent --font on :root. The stage background is var(--ground); in-scene
-  labels use var(--font), var(--ink) on var(--surface) unless the style gives them their own look. The art keeps its palette.
+  --ground --surface --ink --muted --accent --font on :root: the animation's own colours (never the viewer's app
+  theme). The stage background is var(--ground); in-scene labels use var(--font), var(--ink) on var(--surface).
 - curios.on('beat', (i) => Promise): play beat i (0-based) and resolve when its motion has finished. Beats are
   played in order but may be replayed; the stage keeps the state reached (beat 3 starts where 2 ended).
   Between beats keep gentle idle motion (never freeze).
@@ -79,26 +74,21 @@ PRINCIPLES
   ${NIGHT}. Materials stay real (metal, glass, paint) but are lit by it: a yellow key, a magenta-coral rim, cyan particles.
 ${BRIDGE}`;
 
-export const STORY_STYLES: Record<string, string> = {
-  kurzgesagt: `Kurzgesagt – In a Nutshell: flat vector shapes without outlines, soft radial glows for light, simple round
-characters (round heads, warm skin #875447, simple eyes and brows that act, a bright yellow coat), layered parallax
-backgrounds (hills, clouds, stars, rain), sparkles. Palette — always, whatever the theme: ${NIGHT}.`,
-  paper: `TED-Ed style paper cut-out: warm muted palette, paper textures drawn with SVG filters (feTurbulence grain),
-slightly irregular hand-cut shapes, stylised characters with long limbs, layered depth with soft drop shadows, ink-stamp details.`,
-  real: `news explainer in real colours, like a broadcast reconstruction: clean flat low-poly illustration of the real
-place and things as they look in daylight (sky blue → pale haze, ochre fields, grey ballast and steel rails, real vehicle
-liveries, real building materials), soft sun shading and long shadows, a camera that flies along the real geography
-(follow a train down the line, push in on the faulty part), simple map insets with real names, numbers as clean white
-labels with a thin leader line. No night palette, no cartoon faces: it must look like the real event.`,
-  chalk: `3Blue1Brown style mathematics: dark slate ground, clean thin strokes in a few luminous colours (blue, yellow,
-teal, red), shapes and formulas that draw themselves and morph continuously, grids and number lines, smooth camera zooms.`,
+/** The art direction for a story: the archetype's look and one of its palettes (archetypes.ts). */
+const LOOK = (archetype: string, palette: number) => {
+  const a = ARCHETYPES[archetype] ?? ARCHETYPES.flat;
+  const p = a.palettes[palette] ?? a.palettes[0];
+  return `${a.name}. ${a.look}
+PALETTE "${p.name}" — the animation's own, whatever the viewer's theme: ground ${p.ground} (var(--ground)), surfaces
+${p.surface}, ink ${p.ink}, muted ${p.muted}, accent ${p.accent}${p.more.length ? `, plus ${p.more.join(", ")}` : ""}; tints and
+shades of these only, no other hues (skin tones excepted).${p.note ? ` ${p.note}.` : ""}`;
 };
 
-export const STORY = (style: string) => `You are the animation director of an explainer studio. Answer the question
+export const STORY = (archetype: string, palette: number) => `You are the animation director of an explainer studio. Answer the question
 with a short animated story (5-7 beats of about 10 seconds each), written as SVG + GSAP 3
 (https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js — the only library).
 
-STYLE: ${STORY_STYLES[style] ?? STORY_STYLES.kurzgesagt}
+STYLE: ${LOOK(archetype, palette)}
 
 STORY: start where the viewer already is (a person, a place or a situation they know) and the question they would
 ask; one picture that grows, one part per beat, each beat morphing out of the last (continuous transformation; the
@@ -113,15 +103,19 @@ SVG viewBox fitted to the viewport (re-fit on resize so nothing is cut at 360×6
 ${BRIDGE}`;
 
 export const CLASSIFY = `Decide how Curios should animate the answer to a question. Reply JSON only:
-{"kind": "machine" | "story", "style": "real" | "kurzgesagt" | "paper" | "chalk"}
+{"kind": "machine" | "story", "archetype": id, "alt": id, "confidence": 0-100, "why": "one short sentence"}
 - machine: the answer is how a physical thing works or an experiment you can run: engines, devices, tools, vehicles,
   appliances, instruments, mechanisms, a physical process on a bench (boiling water, a battery, a lever).
 - story: everything else — natural phenomena, space, biology, history, people, ideas, economics, maths.
-- a real event in the news is always a story in the real style, even when a machine is part of it.
-- style (story only) — what the story will tell decides it: real for something that really happened or is happening
-  (news, an accident, a strike, an election, a disaster, a trip, a real place, line or building) — it must look like
-  reality; kurzgesagt for science, nature, space, the body, the future; paper for history, culture,
-  people, stories, society; chalk for mathematics, logic, computing and abstract ideas.`;
+- a real event in the news is always a story in the real archetype, even when a machine is part of it.
+- archetype (story only): the visual language that explains THIS answer best; alt: the second best; confidence: how
+  clearly the first one wins. If the question asks for a look ("as a paper collage", "con tipografía"), use it, 100.
+  ${Object.entries(ARCHETYPES).map(([id, a]) => `${id} = ${a.name}`).join("; ")}.
+  Guide (first choice / alternative): science, physics, the body, space → flat / isometric; mathematics, economics,
+  statistics, comparisons → geometric / editorial; history, culture, society, biographies → paper / character;
+  animals, psychology, what-ifs → character / flat; technology, networks, systems, processes → isometric / flat;
+  software, apps, how to use an interface → ui / geometric; abstract ideas, trends, opinions → editorial / geometric;
+  something that really happened or is happening (news, an accident, an election, a disaster, a real place) → real.`;
 
 export const SIMULATION = `You build interactive simulations that answer a question — "intelligent UI": the answer is a small,
 beautiful working model the viewer plays with, not a video. Like a bicycle whose exploded view a slider assembles and takes

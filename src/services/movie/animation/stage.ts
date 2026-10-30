@@ -3,8 +3,8 @@
 // bridge (window.curios) injected here, before the model's code: beats, controls, speed, pause and
 // reset go in; readouts, control values the stage moved, the surprise callout, beat ends and errors
 // come out. For a saved video the stage also draws itself into one picture per frame (capture).
-// The stage gets the theme as CSS
-// variables, and a CSP that only lets it load its libraries (no other network).
+// The stage gets the animation's own colours as CSS variables (never the app's theme: an animation
+// looks the same in light and dark, and in its video), and a CSP that only lets it load its libraries.
 
 export interface StageTheme { dark: boolean; ground: string; surface: string; ink: string; muted: string; accent: string; font: string }
 export interface Beat { label: string; say: string }
@@ -162,21 +162,10 @@ export function stageDocument(html: string, theme: StageTheme): string {
   return /<head[^>]*>/i.test(page) ? page.replace(/<head[^>]*>/i, (h) => `${h}${head}`) : page.replace(/<html[^>]*>/i, (h) => `${h}<head>${head}</head>`);
 }
 
-/** The theme as the page shows it now (CSS variables resolved), for the stage. */
-export function currentTheme(): StageTheme {
-  const css = getComputedStyle(document.documentElement);
-  const v = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback;
-  const dark = document.documentElement.classList.contains('dark');
-  return {
-    dark,
-    ground: v('--ui-bg-primary', dark ? '#111111' : '#F9F6F4'),
-    surface: v('--ui-bg-elevated', dark ? '#1A1A1A' : '#FFFFFF'),
-    ink: v('--ui-text-primary', dark ? '#FFFFFF' : '#0A0A0A'),
-    muted: v('--ui-text-secondary', dark ? '#9CA3AF' : '#6B7280'),
-    accent: v('--accent-primary', '#2563EB'),
-    font: v('--font-ui', 'system-ui, sans-serif'),
-  };
-}
+/** The stage colours of machines, simulations and older animations, which bring none of their own. */
+export const DEFAULT_STAGE: StageTheme = {
+  dark: true, ground: '#111111', surface: '#1A1A1A', ink: '#FFFFFF', muted: '#9CA3AF', accent: '#2563EB', font: 'system-ui, sans-serif',
+};
 
 // Question words and fillers that make stock searches return lettering ("WHY? WHO?") instead of the subject.
 const FILLER = new Set('what which when where why who whom whose how does did do is are was were can could would should will the a an of to in on for and or but with without from by about into than then this that these those there their its it actually really still just very more most much many some any qué cuál cuáles cuándo cuando dónde por porque quién quiénes cómo cuánto cuántos es son fue era hay puede pueden del las los una uno unos unas para con sin sobre entre este esta estos estas ese esa eso aún todavía realmente muy más'.split(' '));
