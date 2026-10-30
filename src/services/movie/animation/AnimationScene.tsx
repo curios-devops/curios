@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Captions, Loader2, Maximize, Minimize, Palette, Pause, Play, RectangleHorizontal, RectangleVertical, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useSession } from '../../../hooks/useSession.ts';
+import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { decideTier } from '../../auto/modelTier.ts';
 import { tts } from '../audio/paragraphNarrator.ts';
@@ -70,6 +71,7 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
   const { t } = useTranslation();
   const { session, isLoading: sessionLoading } = useSession();
   const { tier, promptUpgrade } = useProCredits();
+  const { currentLanguage } = useLanguage(); // the viewer's chosen (or browser) language, for questions with none of their own
   const [stage, setStage] = useState<Stage>('looking');
   const [animation, setAnimation] = useState<Animation | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -90,7 +92,7 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
       // The question's difficulty picks the writer: easy → Luna, complex → Sol (Astra for Pro).
       const rated = await decideTier(question);
       const model = rated === 'easy' ? 'luna' : rated === 'complex' && tier === 'pro' ? 'astra' : 'sol';
-      show(await makeAnimation(key, question, model, controller.signal, found.making, kind));
+      show(await makeAnimation(key, question, model, controller.signal, found.making, kind, currentLanguage.code));
     })().catch((err) => {
       if (controller.signal.aborted) return;
       const msg = String(err instanceof Error ? err.message : err);

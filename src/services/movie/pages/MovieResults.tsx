@@ -312,9 +312,9 @@ export default function MovieResults() {
 
       // The technique (Decisions) and the model (difficulty) are decided together.
       const [picked] = await Promise.all([
-        // Testing Simulation (no video credits): Auto starts as Simulation. Restore with:
+        // Auto starts as an Animation (no video credits). Let Decisions pick the technique again with:
         // typeParam === 'auto' ? detectVideoType(query) : Promise.resolve(typeParam),
-        Promise.resolve<VideoType>(typeParam === 'auto' ? 'simulation' : typeParam),
+        Promise.resolve<VideoType>(typeParam === 'auto' ? 'animation' : typeParam),
         chooseModel(),
       ]);
       const type = picked;
