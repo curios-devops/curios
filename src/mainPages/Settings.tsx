@@ -66,7 +66,7 @@ export default function Settings() {
         style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>Settings</h1>
+          <h1 className="text-2xl font-semibold" style={{ color: 'var(--ui-text-primary)' }}>Settings</h1>
           <button
             type="button"
             onClick={() => navigate('/')}
@@ -95,7 +95,7 @@ export default function Settings() {
           {/* Pro Features Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>CuriosAI</h2>
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--ui-text-primary)' }}>CuriosAI</h2>
             </div>
             <div
               className="rounded-xl border"
@@ -105,7 +105,7 @@ export default function Settings() {
                 <div className="py-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Subscription</h3>
+                      <h3 className="font-semibold" style={{ color: 'var(--ui-text-primary)' }}>Subscription</h3>
                       <p
                         className={`text-sm mt-1 ${subscriptionLabelColor}`}
                         style={subscriptionLabelColor ? undefined : { color: 'var(--ui-text-secondary)' }}

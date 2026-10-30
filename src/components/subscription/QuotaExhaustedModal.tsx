@@ -31,7 +31,7 @@ export default function QuotaExhaustedModal({ isOpen, onClose, message }: QuotaE
           <BatteryWarning size={40} style={{ color: 'var(--accent-primary)' }} />
         </div>
 
-        <h2 className={`text-xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        <h2 className={`text-2xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           {t('quotaExhaustedTitle') || "You're out of Pro Credits"}
         </h2>
         <p className={`text-sm mb-6 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>

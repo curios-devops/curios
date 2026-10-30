@@ -184,7 +184,7 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
           <>
             {/* Title + meta line: boxed age rating, details in gray */}
             <div className="mb-3">
-              <h1 className="text-lg font-semibold">{info?.name ?? query}</h1>
+              <h1 className="text-2xl font-semibold">{info?.name ?? query}</h1>
               {info && (
                 <p className="text-sm mt-1 flex items-center flex-wrap gap-x-1.5 text-gray-500 dark:text-gray-400">
                   {info.esrb && (

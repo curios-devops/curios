@@ -54,7 +54,7 @@ export default function GuestSettingsModal({ isOpen, onClose }: GuestSettingsMod
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--ui-border-subtle)' }}>
-          <h2 className="text-base font-semibold tracking-[-0.01em]" style={{ color: 'var(--ui-text-primary)' }}>{t('settings')}</h2>
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('settings')}</h2>
           <button
             type="button"
             onClick={onClose}

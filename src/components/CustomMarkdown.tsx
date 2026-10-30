@@ -95,7 +95,7 @@ export default function CustomMarkdown({ children, className = "", citations = [
         );
       } else if (line.startsWith('# ')) {
         elements.push(
-          <h1 key={`h1-${key++}`} className="text-2xl font-bold text-gray-900 dark:text-white mt-6 mb-4">
+          <h1 key={`h1-${key++}`} className="text-2xl font-semibold text-gray-900 dark:text-white mt-6 mb-4">
             {parseInlineFormatting(line.substring(2))}
           </h1>
         );

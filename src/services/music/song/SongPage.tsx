@@ -295,7 +295,7 @@ export default function SongPage() {
       <header className="flex items-center gap-3 px-4 py-3 max-w-3xl mx-auto">
         <button type="button" onClick={() => navigate(-1)} aria-label={t('arcadeBack')} className="p-1 -ml-1 hover:opacity-80"><ArrowLeft size={22} /></button>
         <div className="min-w-0">
-          <h1 className="text-base font-semibold leading-tight truncate">{song.title}</h1>
+          <h1 className="text-base sm:text-lg font-semibold leading-tight truncate">{song.title}</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
             {t('songInspiredBy').replace('{name}', song.inspiredBy === song.inspiredArtist ? song.inspiredArtist : `${song.inspiredBy} · ${song.inspiredArtist}`)}
             {' · '}{song.creatorName ?? t('arcadeAnonymous')}

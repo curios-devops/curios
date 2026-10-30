@@ -60,7 +60,7 @@ export default function SignInModal({ isOpen, currentLanguage: _currentLanguage,
         </button>
 
         <div className="text-center mb-8">
-          <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+          <h2 className={`text-2xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
             {title || t("welcome_back" as TranslationKey)}
           </h2>
           <p className="text-gray-400 text-sm">{subtitle || t("logInToYourAccount" as TranslationKey)}</p>

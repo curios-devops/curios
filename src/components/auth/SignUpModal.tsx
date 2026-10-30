@@ -56,7 +56,7 @@ export default function SignUpModal({ isOpen, onClose, context = 'default', curr
 
         {/* Custom title and subtitle for sign up */}
         <div className="text-center mb-8">
-          <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{title ?? t('welcome')}</h2>
+          <h2 className={`text-2xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{title ?? t('welcome')}</h2>
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>{subtitle ?? t('createFreeAccount')}</p>
         </div>
         <div className="mt-10 space-y-6">

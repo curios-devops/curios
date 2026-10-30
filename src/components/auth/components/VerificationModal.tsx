@@ -38,7 +38,7 @@ export default function VerificationModal({ email, onClose }: VerificationModalP
           </div>
 
           {/* Title */}
-          <h2 className={`text-3xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4`}>
+          <h2 className={`text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4`}>
             {t('checkYourEmail')}
           </h2>
 

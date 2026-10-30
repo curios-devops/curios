@@ -462,7 +462,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, recorder
   return (
     <>
       {/* The question, its key word in the accent (Marble). */}
-      <h2 className="font-bricolage text-xl sm:text-2xl font-bold mb-3" style={{ color: 'var(--ui-text-primary)' }}>
+      <h2 className="font-bricolage text-2xl sm:text-4xl font-bold leading-tight tracking-tight mb-3" style={{ color: 'var(--ui-text-primary)' }}>
         {hi >= 0 ? <>{title.slice(0, hi)}<span style={{ color: 'var(--accent-primary)' }}>{title.slice(hi, hi + manifest.highlight.length)}</span>{title.slice(hi + manifest.highlight.length)}</> : title}
       </h2>
 

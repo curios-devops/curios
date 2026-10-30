@@ -173,7 +173,7 @@ export default function TelePage() {
       <div ref={sheet} className="max-w-6xl mx-auto px-4 py-6 space-y-5" style={{ background: 'var(--ui-bg-primary)' }}>
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold font-space-grotesk">Telemetría</h1>
+            <h1 className="text-2xl font-semibold">Telemetría</h1>
             <p className="text-xs" style={{ color: 'var(--ui-text-muted)' }}>
               Curios · {now.toLocaleString('es')} · visitas desde {stats.tracking_since ? day(new Date(stats.tracking_since)) : 'hoy (recién activado)'}
             </p>
@@ -204,7 +204,7 @@ export default function TelePage() {
         </section>
 
         <section className="rounded-xl p-4" style={{ background: 'var(--ui-bg-elevated)', border: '1px solid var(--ui-border-default)' }}>
-          <h2 className="text-sm font-medium mb-3">Visitas</h2>
+          <h2 className="text-sm font-semibold mb-3">Visitas</h2>
           <div className="grid grid-cols-4 md:grid-cols-7 gap-3">
             {WINDOWS.map(([k, label]) => (
               <div key={k}>
@@ -226,7 +226,7 @@ export default function TelePage() {
 
         {cloud && (
           <section className="rounded-xl p-4" style={{ background: 'var(--ui-bg-elevated)', border: '1px solid var(--ui-border-default)' }}>
-            <h2 className="text-sm font-medium mb-3">Cloud Run · grabación de animaciones</h2>
+            <h2 className="text-sm font-semibold mb-3">Cloud Run · grabación de animaciones</h2>
             <div className="grid grid-cols-3 gap-3">
               <div><p className="text-xs" style={{ color: 'var(--ui-text-muted)' }}>Minutos (rango)</p><p className="text-lg font-semibold">{num(cloud.minutes)}</p></div>
               <div><p className="text-xs" style={{ color: 'var(--ui-text-muted)' }}>Videos grabados</p><p className="text-lg font-semibold">{num(cloud.renders)}</p></div>
@@ -256,7 +256,7 @@ export default function TelePage() {
 
         <section className="rounded-xl p-4" style={{ background: 'var(--ui-bg-elevated)', border: '1px solid var(--ui-border-default)' }}>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <h2 className="text-sm font-medium">Consumo de APIs</h2>
+            <h2 className="text-sm font-semibold">Consumo de APIs</h2>
             <div className="flex flex-wrap gap-3 text-xs" style={{ color: 'var(--ui-text-secondary)' }}>
               {(Object.keys(LEVELS) as Level[]).map((l) => (
                 <span key={l} className="flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${LEVELS[l].dot}`} />{LEVELS[l].label} {counts[l]}</span>

@@ -10,7 +10,11 @@ colors:
   night: "#111111"
   night-card: "#1A1A1A"
 typography:
-  display: { fontFamily: "Bricolage Grotesque", fontWeight: 700, letterSpacing: "-0.025em" }
+  display: { fontFamily: "Bricolage Grotesque", fontSize: "clamp(28px, 6vw, 36px)", fontWeight: 700, letterSpacing: "-0.025em" }
+  headline: { fontFamily: "Bricolage Grotesque", fontSize: 1.5rem, fontSizeSm: 2.25rem, fontWeight: 700 }
+  h1: { fontSize: 1.5rem, fontWeight: 600 }
+  h2: { fontSize: 1.25rem, fontWeight: 600 }
+  h3: { fontSize: 1.125rem, fontWeight: 600 }
   body: { fontFamily: "system-ui", fontSize: 1rem, lineHeight: 1.5 }
   label: { fontFamily: "Geist Mono", fontSize: 11.2px, letterSpacing: 2.24px }
   mono: { fontFamily: "ui-monospace" }
@@ -58,6 +62,19 @@ themes. Read it before writing any UI. Every line here should change what you bu
   Geist Mono 11.2px, +2.24px tracking.
 - **Mono** (`font-mono`, `--font-mono`): code and data.
 - Two weights do the work: 400 and 500/600; 700 only for display.
+- **Title scale.** Every title takes one of these rows; titles are `font-semibold`, only Display and
+  Headline are bold. Small caps eyebrows ("DESCUBRE", "OVERVIEW") are labels, not titles.
+
+  | Role | Classes | Where |
+  |---|---|---|
+  | Display | Bricolage 700, `--home-title-size` (28–36px) | the Home title only |
+  | Headline | `font-bricolage text-2xl sm:text-4xl font-bold leading-tight tracking-tight` | what a results page is about: the answer's question, a shared answer, an animation |
+  | Page / dialog title | `text-2xl font-semibold` | Settings, Library, fact pages, Character; sign-in, Pro, quota dialogs |
+  | Bar title | `text-base sm:text-lg font-semibold` | the query in a results top bar, song pages |
+  | Section | `text-xl font-semibold` | answer sections, settings groups, Policies |
+  | Panel title | `text-lg font-semibold` | sheets and pickers, Pro plan cards, Markdown `###` |
+  | Group | `font-semibold` (body size) | a setting's name, a card list's heading |
+  | Card title | `text-sm font-semibold` | cards, chart titles, popovers |
 
 ## Layout
 - Tailwind's 4px spacing scale only (`gap-2/3/4`, `p-4`–`p-6`, `px-6` page gutter). No one-off values.

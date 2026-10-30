@@ -341,7 +341,7 @@ function ErrorBoundary({ children }: ErrorBoundaryProps) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
         <div className="text-center">
-          <h1 className="text-2xl font-medium mb-4" style={{ color: 'var(--ui-text-primary)' }}>Something went wrong</h1>
+          <h1 className="text-2xl font-semibold mb-4" style={{ color: 'var(--ui-text-primary)' }}>Something went wrong</h1>
           <p className="mb-4" style={{ color: 'var(--ui-text-muted)' }}>We&apos;re sorry, but something went wrong. Please try refreshing the page.</p>
           <button
             onClick={() => globalThis.location.reload()}

@@ -93,14 +93,14 @@ export default function GeneralSection() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>General</h2>
+      <h2 className="text-xl font-semibold" style={{ color: 'var(--ui-text-primary)' }}>General</h2>
       <div className="rounded-xl border" style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}>
         <div className="divide-y mx-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
           {/* Same rows as the Settings window, for every theme (a theme changes looks, not controls). */}
           {/* Appearance … Auto (right); the description; then light / dark / system. */}
           <div className="py-6">
             <div className="flex items-center justify-between gap-4">
-              <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('appearance')}</h3>
+              <h3 className="font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('appearance')}</h3>
               {autoSwitch}
             </div>
             <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">{t('settingsThemeDesc')}</p>
@@ -111,7 +111,7 @@ export default function GeneralSection() {
 
           {/* Themes: title, description, then the dots. */}
           <div className="py-6">
-            <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('accentColor')}</h3>
+            <h3 className="font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('accentColor')}</h3>
             <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">{t('themeDesc')}</p>
             <div className="flex gap-2 mt-3">
               {ACCENT_OPTIONS.map((color) => {
@@ -139,7 +139,7 @@ export default function GeneralSection() {
           {/* Language … Auto Detect (right): follows each question's language; off keeps the one picked here. */}
           <div className="py-6">
             <div className="flex items-center justify-between gap-4">
-              <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('language')}</h3>
+              <h3 className="font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('language')}</h3>
               <label
                 className="flex items-center gap-2 text-sm font-medium cursor-pointer"
                 style={{ color: 'var(--ui-text-secondary)' }}
@@ -163,7 +163,7 @@ export default function GeneralSection() {
           <div className="py-6">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>{t('settingsNarrator')}</h3>
+                <h3 className="font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{t('settingsNarrator')}</h3>
                 <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">{t('settingsNarratorDesc')}</p>
               </div>
               <NarratorVoiceSelect />
@@ -174,7 +174,7 @@ export default function GeneralSection() {
           <div className="py-6">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Cookies</h3>
+                <h3 className="font-semibold" style={{ color: 'var(--ui-text-primary)' }}>Cookies</h3>
                 <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">Manage cookie preferences</p>
               </div>
               <Segmented options={cookieOptions} value={cookieChoice} onChange={handleCookieChange} />
@@ -185,7 +185,7 @@ export default function GeneralSection() {
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Auto-suggest</h3>
+                <h3 className="font-semibold" style={{ color: 'var(--ui-text-primary)' }}>Auto-suggest</h3>
                 <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">Enable dropdown and tab-complete suggestions while typing a query</p>
               </div>
               {/* Disabled for now — feature is off */}

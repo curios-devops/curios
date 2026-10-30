@@ -85,7 +85,7 @@ export default function AuthCallback() {
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-black' : 'bg-white'} flex items-center justify-center`}>
       <div className="text-center">
         <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: 'var(--accent-primary)' }} />
-        <h1 className={`text-2xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>
+        <h1 className={`text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>
           {t('completingSignIn')}
         </h1>
         <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
