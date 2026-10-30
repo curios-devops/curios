@@ -86,9 +86,9 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
   const handleShare = async (platform: SharePlatform) => {
     try {
       switch (platform) {
-        case 'linkedin':
+        case 'linkedin': {
           // Clean query extraction
-          const shareQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          const shareQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[[\]]/g, '').trim() || 'CuriosAI Search Results';
           
           // Simple first sentence extraction (much shorter and safer)
           let shareSnippet = '';
@@ -135,15 +135,16 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
           window.open(linkedInUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
           setIsOpen(false);
           break;
+        }
         case 'email':
           window.open(`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}%0A%0A${encodeURIComponent(url)}`, '_blank');
           break;
         case 'whatsapp':
           window.open(`https://wa.me/?text=${encodeURIComponent(title)}%0A${encodeURIComponent(url)}`, '_blank');
           break;
-        case 'facebook':
+        case 'facebook': {
           // Facebook uses social-share URL for proper Open Graph meta tags (isolated from LinkedIn/Twitter)
-          const fbQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          const fbQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[[\]]/g, '').trim() || 'CuriosAI Search Results';
           let fbSnippet = '';
           if (text && text.length > 20) {
             const cleanText = text.replace(/\*\*/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -160,10 +161,11 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
           window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fbShareUrl)}`, '_blank');
           setIsOpen(false);
           break;
-        case 'twitter':
+        }
+        case 'twitter': {
           // Build Twitter share URL using social-share function (isolated from LinkedIn)
           // This ensures Twitter gets the proper meta tags including the image
-          const twitterQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[\[\]]/g, '').trim() || 'CuriosAI Search Results';
+          const twitterQuery = query ? query.trim() : title.replace(/CuriosAI Search: |[[\]]/g, '').trim() || 'CuriosAI Search Results';
           
           // Get snippet for Twitter (isolated logic)
           let twitterSnippet = '';
@@ -188,6 +190,7 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
           window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(twitterShareUrl)}&text=${encodeURIComponent(twitterQuery)}`, '_blank');
           setIsOpen(false);
           break;
+        }
         case 'copy':
           await navigator.clipboard.writeText(url);
           setShowCheckmark(true);
@@ -199,8 +202,6 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
           break;
       }
     } catch (error: unknown) {
-      if (error instanceof Error) {
-      }
       console.error('Share operation failed:', error);
     }
   };

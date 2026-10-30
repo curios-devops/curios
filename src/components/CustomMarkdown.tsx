@@ -64,6 +64,7 @@ export default function CustomMarkdown({ children, className = "", citations = [
     let processed = splitMultipleCitations(children);
     processed = collapseAdjacentCitations(processed);
     return parseMarkdown(processed);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [children, citationSignature]);
   
   // Simple markdown parser for basic formatting

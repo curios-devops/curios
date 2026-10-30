@@ -171,6 +171,7 @@ export const TabSystem: React.FC<TabSystemProps> = ({ result, loading, sectionLa
       .catch(() => { if (live) setAiFailed(true); })
       .finally(() => { if (live) setIsGeneratingImage(false); });
     return () => { live = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAi, aiImageUrl, result]);
 
   const handleFollowUpClick = (question: string) => {

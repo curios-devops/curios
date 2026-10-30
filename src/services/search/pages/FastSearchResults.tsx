@@ -347,6 +347,7 @@ export default function FastSearchResults() {
     fetchResults();
     // Only re-run when the query or requested tier changes; other deps (navigate,
     // state setters) are stable/intentionally omitted.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, wantsDeep, forcedAstra]);
 
   // Keep the finished search (and each "Know more" section, header image, saved node…) for
@@ -357,6 +358,7 @@ export default function FastSearchResults() {
       deep: effectiveDeep, answer: streamingAnswer, expansions, knowMoreLabel, sources: foundSources, images, headerImage,
       sponsorProducts, followUps: followUpQuestions, results, savedNode,
     }, searchStartTime);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, isExpanding, error, streamingAnswer, expansions, knowMoreLabel, foundSources, images, headerImage, sponsorProducts, followUpQuestions, results, savedNode]);
 
   // Toggle "Ask Deeper": free for everyone (no Pro credit, no sign-in).

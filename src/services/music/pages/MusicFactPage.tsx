@@ -163,6 +163,7 @@ Write in language "${currentLanguage.code}", 140–180 words in 2–3 short para
       if (!cancelled) setExplanationDone(true);
     })();
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, target, currentLanguage.code]);
 
   const openLyrics = () => {

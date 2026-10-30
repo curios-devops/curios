@@ -132,7 +132,7 @@ async function generateVideo(accessToken) {
       console.log(`   ${operationName}`);
       console.log('');
       console.log('💡 Para consultar status:');
-      console.log(`   curl -H "Authorization: Bearer \$(gcloud auth print-access-token)" \\`);
+      console.log(`   curl -H "Authorization: Bearer $(gcloud auth print-access-token)" \\`);
       console.log(`     "https://${LOCATION}-aiplatform.googleapis.com/v1/${operationName}"`);
       console.log('');
 

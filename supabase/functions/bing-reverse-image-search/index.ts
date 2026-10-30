@@ -158,7 +158,7 @@ Deno.serve(async (req: Request) => {
     // Extract web results from related_content
     const webResults = (data.related_content || [])
       .slice(0, MAX_IMAGES) // Cap at 10 results
-      .map((item, index) => ({
+      .map((item) => ({
         title: item.title || 'Untitled',
         url: item.link || '',
         content: `Source: ${item.source || 'Unknown'}\nDomain: ${item.domain || 'Unknown'}\nImage: ${item.width}x${item.height} ${item.format || 'unknown'}\nSize: ${item.file_size || 'unknown'}`,
@@ -169,7 +169,7 @@ Deno.serve(async (req: Request) => {
     const imageResults = (data.related_content || [])
       .slice(0, MAX_IMAGES) // Cap at 10 images
       .filter(item => item.original || item.cdn_original || item.thumbnail)
-      .map((item, index) => ({
+      .map((item) => ({
         // Prefer original > cdn_original > thumbnail for best quality
         url: item.original || item.cdn_original || item.thumbnail || '',
         alt: item.title || 'Bing reverse image search result',

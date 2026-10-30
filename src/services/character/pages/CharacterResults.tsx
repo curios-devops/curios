@@ -237,6 +237,7 @@ export default function CharacterResults() {
       else { await closeEngine(); setStatus('closed'); }
       chargingRef.current = false;
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLive, secondsLeft]);
 
   // Idle watcher: freeze + close after 30 s without input or speech.
@@ -424,6 +425,7 @@ export default function CharacterResults() {
       setStatus('error');
       setStatusDetail(`${who.preset.name} couldn't get on stage right now. Please try again in a moment.`);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deliver, maybeRecordLoop, openMic, prepare, requestProAccess, startRecording]);
 
   // Start once credits are known (checking earlier reads an empty balance).

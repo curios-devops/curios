@@ -55,7 +55,7 @@ export function parseCitation(
     
     if (partialMatches.length > 0) {
       const countToShow = additionalCount > 0 ? (additionalCount + 1) : partialMatches.length;
-      let citationsToShow = partialMatches.slice(0, countToShow);
+      const citationsToShow = partialMatches.slice(0, countToShow);
       if (citationsToShow.length < countToShow && citationsToShow.length > 0) {
         const first = citationsToShow[0];
         while (citationsToShow.length < countToShow) {
@@ -79,7 +79,7 @@ export function parseCitation(
   const countToShow = additionalCount > 0
     ? additionalCount + 1
     : Math.max(matchingCitations.length, 1);
-  let citationsToShow = matchingCitations.slice(0, countToShow);
+  const citationsToShow = matchingCitations.slice(0, countToShow);
   // If '+N' requested but we don't have enough matches, duplicate the first citation
   if (citationsToShow.length < countToShow && citationsToShow.length > 0) {
     const first = citationsToShow[0];

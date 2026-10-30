@@ -114,7 +114,6 @@ export interface Song {
 
 const SONG_COLUMNS = 'id, title, inspired_by, inspired_artist, style, voice, lyrics, captions, audio_url, instrumental_url, duration_ms, palette, animations, votes_up, votes_down, plays, creator_id, creator_name, created_at';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const toSong = (r: any): Song => ({
   id: r.id, title: r.title, inspiredBy: r.inspired_by ?? '', inspiredArtist: r.inspired_artist ?? '', style: r.style ?? 'original',
   voice: r.voice !== false, lyrics: r.lyrics ?? null, captions: r.captions ?? [], audioUrl: r.audio_url, instrumentalUrl: r.instrumental_url ?? null,

@@ -100,7 +100,7 @@ Deno.serve(async (req: Request) => {
     console.log(`🔍 Processing multi-type search for query: "${query}", types: ${types.join(', ')}`);
 
     // Helper to build Brave API URL for each type
-    function getApiUrl(type: string, query: string): string {
+    const getApiUrl = (type: string, query: string): string => {
       if (type === 'web') {
         return `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&text_decorations=false&extra_snippets=true`;
       } else if (type === 'images') {
@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
         return `https://api.search.brave.com/res/v1/videos/search?q=${encodeURIComponent(query)}&count=20&search_lang=en&country=us&spellcheck=1`;
       }
       return '';
-    }
+    };
 
     // Fetch all types in parallel
     const results: Record<string, any> = {};
