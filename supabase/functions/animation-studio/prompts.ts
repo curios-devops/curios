@@ -102,7 +102,7 @@ about 10 s), keeps moving the whole time, and its timeline resolves the beat's p
 SVG viewBox fitted to the viewport (re-fit on resize so nothing is cut at 360×640 or 1600×900).
 ${BRIDGE}`;
 
-export const CLASSIFY = `Decide how Curios should animate the answer to a question. Reply JSON only:
+export const CLASSIFY = `Decide how Curios should animate the answer to a question. Reply with a json object only:
 {"kind": "machine" | "story", "archetype": id, "alt": id, "confidence": 0-100, "why": "one short sentence"}
 - machine: the answer is how a physical thing works or an experiment you can run: engines, devices, tools, vehicles,
   appliances, instruments, mechanisms, a physical process on a bench (boiling water, a battery, a lever).
