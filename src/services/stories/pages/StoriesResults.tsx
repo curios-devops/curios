@@ -250,7 +250,7 @@ export default function StoriesResults() {
           <button type="button" onClick={goBack} style={{ color: accent.primary }} className="p-1 hover:opacity-80 transition-opacity flex-shrink-0">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-base sm:text-lg font-medium break-words max-h-24 overflow-y-auto pr-1">{query}</h1>
+          <h1 className="text-base sm:text-lg font-semibold break-words max-h-24 overflow-y-auto pr-1">{query}</h1>
         </div>
         <button
           type="button"

@@ -560,7 +560,7 @@ export default function FastSearchResults() {
                 <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
                   <div className="flex items-center gap-3">
                     <Sparkles className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
-                    <h2 className="text-xl font-medium text-gray-900 dark:text-white">Overview</h2>
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Overview</h2>
                   </div>
 
                   {/* Source count with icons */}

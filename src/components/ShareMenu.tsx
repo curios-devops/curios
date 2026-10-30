@@ -219,7 +219,7 @@ export default function ShareMenu({ url, title, text, query, images, validImageI
 
       {isOpen && (
         <div className="absolute top-full right-0 mt-1.5 bg-white dark:bg-night-850 rounded-lg border border-gray-200 dark:border-gray-800 shadow-xl p-3 sm:p-4 w-[280px] sm:w-[320px] animate-fade-in transition-colors duration-200">
-          <h2 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-3 transition-colors duration-200">{t('shareLabel')}</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 transition-colors duration-200">{t('shareLabel')}</h2>
           
           {/* Development notice for localhost URLs */}
           {url.includes('localhost') && (

@@ -185,7 +185,7 @@ export default function SongStudio({ info, onClose }: { info: SongSource; onClos
           <ArrowLeft size={22} />
         </button>
         <div className="min-w-0">
-          <h1 className="text-base font-semibold leading-tight">{t('songStudioTitle')}</h1>
+          <h1 className="text-base sm:text-lg font-semibold leading-tight">{t('songStudioTitle')}</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
             {info.kind === 'topic'
               ? t('songExplains').replace('{topic}', info.title)

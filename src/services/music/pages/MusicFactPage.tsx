@@ -244,7 +244,7 @@ Write in language "${currentLanguage.code}", 90–120 words in 1–2 short parag
         {tab === 'music' && (
           <>
             <div className="mb-3">
-              <h1 className="text-lg font-semibold">{info?.title ?? query}</h1>
+              <h1 className="text-2xl font-semibold">{info?.title ?? query}</h1>
               {meta.length > 0 && <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">{meta.join(' · ')}</p>}
             </div>
 
@@ -418,7 +418,7 @@ Write in language "${currentLanguage.code}", 90–120 words in 1–2 short parag
             licensed link (the full text never reaches the browser). */}
         {tab === 'lyrics' && info?.lyrics && (
           <div className="max-w-3xl">
-            <h1 className="text-lg font-semibold">{info.title}</h1>
+            <h1 className="text-2xl font-semibold">{info.title}</h1>
             <p className="text-sm mt-1 mb-4 text-gray-500 dark:text-gray-400">
               {info.artist.name}{!info.lyrics.full && ` · ${t('musicLyricsExcerpt')}`}
             </p>

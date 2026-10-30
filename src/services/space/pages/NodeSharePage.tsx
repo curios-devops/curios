@@ -114,7 +114,7 @@ export default function NodeSharePage() {
   if (!node) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center" style={{ backgroundColor: 'var(--background)' }}>
-        <h1 className="text-2xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>This page isn&apos;t available</h1>
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--ui-text-primary)' }}>This page isn&apos;t available</h1>
         <p style={{ color: 'var(--ui-text-muted)' }}>The shared answer may have been removed or made private.</p>
         <Link to="/" className="px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}>
           Go home
@@ -136,7 +136,7 @@ export default function NodeSharePage() {
           <ArrowLeft size={16} /> Back
         </button>
 
-        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white break-words">
+        <h1 className="font-bricolage text-2xl sm:text-4xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white break-words">
           {node.query}
         </h1>
 
@@ -174,7 +174,7 @@ export default function NodeSharePage() {
         <div className="bg-white dark:bg-night-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="flex items-center gap-3 p-6 border-b border-gray-200 dark:border-gray-800">
             <Sparkles className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
-            <h2 className="text-xl font-medium text-gray-900 dark:text-white">Overview</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Overview</h2>
           </div>
           <div className="px-4 py-5 sm:p-6">
             <div className="prose dark:prose-invert max-w-none break-words">

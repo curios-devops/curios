@@ -1119,7 +1119,7 @@ export default function MovieResults() {
                       <Crown size={10} /> {t('vidEnhanced')}
                     </span>
                   )}
-                  <h2 className="text-sm font-medium">{selectedSwipe.title}</h2>
+                  <h2 className="text-sm font-semibold">{selectedSwipe.title}</h2>
                 </div>
                 {selectedSwipe.narration && (
                   <p className="text-sm mt-1" style={{ color: 'var(--ui-text-muted)' }}>{selectedSwipe.narration}</p>

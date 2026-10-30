@@ -51,8 +51,8 @@ export default function Policies() {
       </button>
 
       <main className="max-w-7xl mx-auto px-6 py-12">
-        <h1 className="text-4xl font-medium text-white mb-4 text-center">Terms & Policies</h1>
-        <h2 className="text-2xl font-medium text-gray-400 mb-12">Legal</h2>
+        <h1 className="text-2xl font-semibold text-white mb-4 text-center">Terms & Policies</h1>
+        <h2 className="text-xl font-semibold text-gray-400 mb-12">Legal</h2>
 
         <div className="space-y-4">
           <div id="privacy">

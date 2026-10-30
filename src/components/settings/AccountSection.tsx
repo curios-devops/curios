@@ -7,14 +7,14 @@ interface AccountSectionProps {
 export default function AccountSection({ username, email, onSignOut }: AccountSectionProps) {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-medium" style={{ color: 'var(--ui-text-primary)' }}>Account</h2>
+      <h2 className="text-xl font-semibold" style={{ color: 'var(--ui-text-primary)' }}>Account</h2>
       <div className="rounded-xl border" style={{ backgroundColor: 'var(--ui-bg-elevated)', borderColor: 'var(--ui-border-default)' }}>
         <div className="divide-y mx-6" style={{ borderColor: 'var(--ui-border-subtle)' }}>
           {/* Username */}
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Username</h3>
+                <h3 className="font-semibold" style={{ color: 'var(--ui-text-primary)' }}>Username</h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>{username}</p>
               </div>
               <button
@@ -36,7 +36,7 @@ export default function AccountSection({ username, email, onSignOut }: AccountSe
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Email</h3>
+                <h3 className="font-semibold" style={{ color: 'var(--ui-text-primary)' }}>Email</h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>{email}</p>
               </div>
               <button
@@ -58,7 +58,7 @@ export default function AccountSection({ username, email, onSignOut }: AccountSe
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium" style={{ color: 'var(--ui-text-primary)' }}>Sign out</h3>
+                <h3 className="font-semibold" style={{ color: 'var(--ui-text-primary)' }}>Sign out</h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--ui-text-secondary)' }}>Sign out of your account</p>
               </div>
               <button 

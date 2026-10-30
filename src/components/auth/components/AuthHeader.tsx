@@ -57,7 +57,7 @@ export default function AuthHeader({ mode, context = 'default' }: AuthHeaderProp
 
   return (
     <div className="text-center">
-      <h2 className={`text-3xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+      <h2 className={`text-2xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
         {content.title}
       </h2>
       <p className="text-gray-400 text-sm">

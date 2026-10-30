@@ -674,7 +674,7 @@ export default function CharacterResults() {
         {/* Conversation */}
         <section className="flex-1 min-w-0 flex flex-col gap-4 px-4 sm:px-0">
           <div>
-            <h1 className="text-xl font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{name}</h1>
+            <h1 className="text-2xl font-semibold" style={{ color: 'var(--ui-text-primary)' }}>{name}</h1>
             <p className="text-sm" style={{ color: 'var(--ui-text-secondary)' }}>
               {presenter.preset.tagline}{presenter.body === 'full' ? ` · ${presenter.preset.personality}` : ''}
             </p>

@@ -17,7 +17,7 @@ export default function CollapsibleSection({ title, description, children }: Col
         className="w-full flex items-start justify-between gap-4 text-left"
       >
         <div>
-          <h2 className="text-xl font-medium text-white mb-2">{title}</h2>
+          <h2 className="text-xl font-semibold text-white mb-2">{title}</h2>
           <p className="text-gray-400 text-sm">{description}</p>
         </div>
         {isExpanded ? (

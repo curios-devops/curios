@@ -77,7 +77,7 @@ export default function CreditsSetting({ compact = false }: { compact?: boolean 
   return (
     <div className={compact ? 'py-5' : 'py-6'}>
       <div className="flex items-center justify-between gap-3">
-        <h3 className={compact ? 'text-sm font-semibold' : 'font-medium'} style={{ color: 'var(--ui-text-primary)' }}>{t('creditsTitle')}</h3>
+        <h3 className={compact ? 'text-sm font-semibold' : 'font-semibold'} style={{ color: 'var(--ui-text-primary)' }}>{t('creditsTitle')}</h3>
         <label className={`flex items-center ${compact ? 'gap-1.5 text-xs' : 'gap-2 text-sm'} font-medium cursor-pointer`} style={{ color: 'var(--ui-text-secondary)' }}>
           <ToggleSwitch checked={display.on} onChange={(on) => setDisplay({ on })} />
           <span className="w-6">{display.on ? 'On' : 'Off'}</span>

@@ -64,7 +64,7 @@ export default function SubscriptionSuccess() {
           <>
             <div className="flex items-center justify-center gap-2 mb-4">
               <CheckCircle className="text-green-500" size={24} />
-              <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('welcomeToPro')}</h1>
+              <h1 className={`text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('welcomeToPro')}</h1>
             </div>
             <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-6`}>
               {t('proUpgradeSuccess')}

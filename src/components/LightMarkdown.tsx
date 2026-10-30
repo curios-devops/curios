@@ -71,14 +71,14 @@ export default function LightMarkdown({ children }: LightMarkdownProps) {
     } else if (line.startsWith('## ')) {
       flushList();
       elements.push(
-        <h2 key={elements.length} className="text-xl font-bold mt-6 mb-3">
+        <h2 key={elements.length} className="text-xl font-semibold mt-6 mb-3">
           {line.slice(3)}
         </h2>
       );
     } else if (line.startsWith('# ')) {
       flushList();
       elements.push(
-        <h1 key={elements.length} className="text-2xl font-bold mt-8 mb-4">
+        <h1 key={elements.length} className="text-2xl font-semibold mt-8 mb-4">
           {line.slice(2)}
         </h1>
       );
