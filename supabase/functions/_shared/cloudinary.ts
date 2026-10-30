@@ -35,7 +35,7 @@ export async function storeMedia(
   for (const [k, v] of Object.entries(params)) form.append(k, v);
   form.append("api_key", KEY);
   form.append("signature", await sha1Hex(toSign + SECRET));
-  form.append("file", typeof file === "string" ? file : new Blob([file], { type: o.contentType ?? "application/octet-stream" }));
+  form.append("file", typeof file === "string" ? file : new Blob([file as BlobPart], { type: o.contentType ?? "application/octet-stream" }));
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/${o.resourceType}/upload`, { method: "POST", body: form });
   if (!res.ok) throw new Error(`Cloudinary ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return (await res.json()).secure_url as string;
