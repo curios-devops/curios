@@ -27,7 +27,7 @@ import { tourKey } from '../tour/tourPlan.ts';
 import { findRelatedPosters } from '../cinematic/cinematicPlan.ts';
 import { findAnimation, makeAnimation, portraitAnimation, type Animation } from './animationStudio.ts';
 import { startRecording, videoSize, type Recording } from './recorder.ts';
-import { currentTheme, readManifest, stageDocument, stockSearch, type Manifest, type StageEvent } from './stage.ts';
+import { DEFAULT_STAGE, readManifest, stageDocument, stockSearch, type Manifest, type StageEvent } from './stage.ts';
 
 export interface AnimationInfo {
   /** The animation's key (studio) and what its viewer's movie is made of. */
@@ -188,13 +188,8 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, recorder
   const machine = animation.kind === 'machine' || simulation; // waits for the viewer, 3D-friendly frame
   const frameRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
-  // The theme the stage was drawn in; a theme change redraws it.
-  const [theme, setTheme] = useState(currentTheme);
-  useEffect(() => {
-    const obs = new MutationObserver(() => setTheme((old) => { const now = currentTheme(); return JSON.stringify(now) === JSON.stringify(old) ? old : now; }));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
-    return () => obs.disconnect();
-  }, []);
+  // The animation's own colours, whatever the app's theme.
+  const theme = animation.stage ?? DEFAULT_STAGE;
   const [portrait, setPortrait] = useState(false); // phones only: the player (and a saved video) in TikTok's shape
   const [portraitPage, setPortraitPage] = useState<Animation | null>(null);
   const [portraitMaking, setPortraitMaking] = useState(false);
@@ -253,7 +248,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, recorder
   const send = (msg: Record<string, unknown>) => frameRef.current?.contentWindow?.postMessage({ curios: 1, ...msg }, '*');
 
   useEffect(() => {
-    dropTake(); // a new stage (theme, portrait version) breaks a recording
+    dropTake(); // a new stage (the portrait version) breaks a recording
     setReady(false);
     setCurrent(-1);
     setCallout('');
