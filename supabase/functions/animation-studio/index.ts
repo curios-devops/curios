@@ -17,7 +17,8 @@
 //          whose browser recorded the video itself (the fallback when the cloud recording failed).
 //
 // Cloud recording: a ready animation (and its portrait version) is recorded once by the Cloud Run job
-// animation-recorder (RECORDER_JOB in RECORDER_REGION, run with the Vertex service account): it opens
+// animation-recorder (RECORDER_JOB in RECORDER_REGION, run with the Vertex service account) or, when that
+// can't start, by the same recorder on GitHub Actions (record-animation.yml): it opens
 // curiosai.com/render/animation, which plays the stage once with the narrator and records it. Older
 // animations are queued the first time someone opens them. The job reports with RENDER_SECRET:
 //   render_upload { key, secret }           → { video, poster } signed uploads
@@ -95,18 +96,38 @@ const toAnimation = (r: Record<string, unknown>) => ({
   videoUrl: r.video_url ?? null, posterUrl: r.poster_url ?? null, render: renderState(r),
 });
 
-/** Queues the cloud recording of a ready animation; marks it failed when the job can't be started. */
+/** Starts the Cloud Run job animation-recorder for this key. */
+async function runCloudRun(key: string) {
+  const job = `projects/${VERTEX_PROJECT}/locations/${env("RECORDER_REGION") || "us-central1"}/jobs/${env("RECORDER_JOB") || "animation-recorder"}`;
+  const res = await fetch(`https://run.googleapis.com/v2/${job}:run`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await getVertexAccessToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ overrides: { containerOverrides: [{ env: [{ name: "ANIMATION_KEY", value: key }] }] } }),
+  });
+  if (!res.ok) throw new Error(`Cloud Run ${res.status}: ${(await res.text()).slice(0, 200)}`);
+}
+
+/** Starts the GitHub Actions workflow record-animation.yml for this key (the same recorder). */
+async function runGitHub(key: string) {
+  if (!env("GITHUB_DISPATCH_TOKEN")) throw new Error("GITHUB_DISPATCH_TOKEN not set");
+  const res = await fetch("https://api.github.com/repos/curios-devops/curios/actions/workflows/record-animation.yml/dispatches", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env("GITHUB_DISPATCH_TOKEN")}`, Accept: "application/vnd.github+json", "User-Agent": "curios-animation-studio" },
+    body: JSON.stringify({ ref: "main", inputs: { key } }),
+  });
+  if (!res.ok) throw new Error(`GitHub ${res.status}: ${(await res.text()).slice(0, 200)}`);
+}
+
+/** Queues the cloud recording of a ready animation: Cloud Run, else GitHub Actions; marks it failed when
+ *  neither can start (viewers' browsers record it then). */
 async function requestRender(key: string) {
   await db().from("animations").update({ render_status: "queued", render_requested_at: new Date().toISOString() }).eq("question_key", key);
   try {
     if (!env("RENDER_SECRET")) throw new Error("RENDER_SECRET not set");
-    const job = `projects/${VERTEX_PROJECT}/locations/${env("RECORDER_REGION") || "us-central1"}/jobs/${env("RECORDER_JOB") || "animation-recorder"}`;
-    const res = await fetch(`https://run.googleapis.com/v2/${job}:run`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${await getVertexAccessToken()}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ overrides: { containerOverrides: [{ env: [{ name: "ANIMATION_KEY", value: key }] }] } }),
+    await runCloudRun(key).catch(async (e) => {
+      console.error("render request (Cloud Run)", e);
+      await runGitHub(key);
     });
-    if (!res.ok) throw new Error(`Cloud Run ${res.status}: ${(await res.text()).slice(0, 200)}`);
   } catch (e) {
     console.error("render request", e);
     await db().from("animations").update({ render_status: "failed" }).eq("question_key", key);

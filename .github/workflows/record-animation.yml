@@ -1,0 +1,39 @@
+# Records one Curios animation (services/animation-recorder/record.mjs) when the Cloud Run job can't:
+# animation-studio dispatches it with the animation key (GITHUB_DISPATCH_TOKEN, a fine-grained token with
+# Actions: write on this repo). Needs repository secrets RENDER_SECRET (same value as the Supabase secret)
+# and SUPABASE_ANON_KEY. If this fails too, viewers' browsers record the animation.
+name: Record animation
+run-name: Record ${{ inputs.key }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      key:
+        description: Animation key (question key, maybe ending in |portrait)
+        required: true
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: services/animation-recorder
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: services/animation-recorder
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Puppeteer's Chrome, kept between runs (~150 MB download otherwise).
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ hashFiles('services/animation-recorder/package.json') }}
+      - run: npm install --omit=dev --no-audit --no-fund
+      - run: node record.mjs
+        env:
+          ANIMATION_KEY: ${{ inputs.key }}
+          RENDER_SECRET: ${{ secrets.RENDER_SECRET }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

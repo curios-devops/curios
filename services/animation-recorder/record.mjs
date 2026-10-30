@@ -1,5 +1,5 @@
-// Cloud Run job animation-recorder: records one Curios animation as a video, once, for everyone.
-// animation-studio runs it with ANIMATION_KEY when an animation (or its "|portrait" version) is ready. It
+// Cloud Run job animation-recorder (or its GitHub Actions fallback, record-animation.yml): records one Curios
+// animation as a video, once, for everyone. animation-studio runs it with ANIMATION_KEY when an animation (or its "|portrait" version) is ready. It
 // opens curiosai.com/render/animation in headless Chrome at the video's size; that page plays the animation
 // with the narrator, records it, uploads it and reports to the studio, then sets window.__render. If the
 // page can't report (crash, timeout), this job reports the failure itself, so viewers' browsers take over.
