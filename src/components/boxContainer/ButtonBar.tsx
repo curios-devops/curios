@@ -76,23 +76,21 @@ export default function ButtonBar({
   // Music mode: "listen" recognizes the song playing around the phone (Shazam-like). Auto's voice
   // button listens for anything: a song opens its page, someone talking opens the Character.
   const [listening, setListening] = useState(false);
-  // Picking a mode rolls the Roadster once before the menu closes (skipped with reduced motion).
+  // Picking a mode applies it at once; the Roadster then rolls once as the menu leaves (skipped with
+  // reduced motion). The wait is the length of .is-spinning in themes.css.
   const [spinning, setSpinning] = useState(false);
   const spinningRef = useRef(false);
   const selectMode = (mode: ModeType) => {
     if (spinningRef.current) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      onModeSelect(mode);
-      return;
-    }
+    onModeSelect(mode);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     spinningRef.current = true;
     setSpinning(true);
     window.setTimeout(() => {
-      onModeSelect(mode);
       setShowModeMenu(false);
       spinningRef.current = false;
       setSpinning(false);
-    }, 600);
+    }, 400);
   };
   const modeMenuRef = useRef<HTMLDivElement>(null);
   // The menu opens toward the side with more room and scrolls inside it (it grows with "More").

@@ -388,7 +388,7 @@ Deno.serve(async (req: Request) => {
       // const { kind, style, direction } = body.kind === "simulation" ? { kind: "simulation", style: "sim", direction: undefined } : await classify(question, key);
       const direction = story ? direct({ archetype: "kurzgesagt", confidence: 100 }, [], key) : undefined;
       const kind = (story ? "story" : "simulation") as "story" | "machine" | "simulation", style = direction?.style ?? "sim";
-      const sources = story ? await findSources(question, env("TAVILY_API_KEY")) : [];
+      const sources = story ? await findSources(question, { exa: env("EXA_API_KEY"), brave: env("BRAVE_API_KEY") }) : [];
       // The viewer's chosen (or browser) language, for a question that shows none of its own.
       const lang = typeof body.lang === "string" && /^[a-z]{2,3}(-[A-Za-z]{2})?$/.test(body.lang) ? body.lang : "en";
       const reset = {
