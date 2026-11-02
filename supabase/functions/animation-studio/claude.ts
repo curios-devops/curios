@@ -19,5 +19,8 @@ export async function askClaude(o: { apiKey: string; model: string; system: stri
   return message.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
 }
 
+/** An image on the web, as Claude's image block. */
+export const imageUrlBlock = (url: string) => ({ type: "image" as const, source: { type: "url" as const, url } });
+
 /** A base64 JPEG data URL (the contact sheet) as Claude's image block. */
 export const imageBlock = (dataUrl: string) => ({ type: "image" as const, source: { type: "base64" as const, media_type: "image/jpeg" as const, data: dataUrl.slice(dataUrl.indexOf(",") + 1) } });

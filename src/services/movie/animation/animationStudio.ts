@@ -23,12 +23,17 @@ export interface Animation {
   sources?: { title: string; url: string; snippet: string }[];
   /** Whether it can still be made again. */
   canRegenerate?: boolean;
+  /** A film in chapters (stories): each one's cover, and whether it is made. Others are made when asked for. */
+  chapters?: { cover: string | null; made: boolean }[] | null;
 }
 
-/** While a new one is made: its first picture once painted; `reviewing`: the critic is looking at it. */
-export interface Making { cover?: string | null; reviewing?: boolean }
+/** What the director planned: the page shows it in seconds, without waiting for the film. */
+export interface Preview { title: string; highlight: string; bigIdea: string; overview: string; related: string[]; relatedSearch: string[]; chapters: { label: string }[]; sources: { title: string; url: string; snippet: string }[] }
 
-type Answer = { ready?: boolean; animation?: Animation; left?: number; status?: string; cover?: string | null; proof?: { html: string; stage: StageTheme | null }; error?: unknown };
+/** While a new one is made: its first picture once painted; `reviewing`: the critic is looking at it. */
+export interface Making { cover?: string | null; reviewing?: boolean; preview?: Preview }
+
+type Answer = { ready?: boolean; animation?: Animation; left?: number; status?: string; cover?: string | null; proof?: { html: string; stage: StageTheme | null }; preview?: Preview; error?: unknown };
 
 async function call(body: Record<string, unknown>): Promise<Answer> {
   const { data, error } = await supabase.functions.invoke('animation-studio', { body });
@@ -53,8 +58,22 @@ export async function makeAnimation(key: string, question: string, tier: 'luna' 
   if (!o.already) {
     const started = await call({ action: 'start', key, question, tier, kind: o.kind, lang: o.lang, regenerate: o.regenerate });
     if (started.ready && started.animation) return started.animation;
+    if (started.preview) o.onMaking?.({ preview: started.preview });
   }
   return waitFor(key, signal, o.onMaking);
+}
+
+export interface MadeChapter { cover: string | null; seconds: number; code: string | null }
+
+/** Chapter i of a film: it is made the first time anyone asks. `onCover` as soon as its first frame is painted. */
+export async function chapterOf(key: string, i: number, onCover: (cover: string) => void, signal: AbortSignal): Promise<MadeChapter> {
+  for (let tries = 0; tries < 60 && !signal.aborted; tries++) {
+    const c = await call({ action: 'chapter', key, i }) as unknown as MadeChapter & { done: boolean };
+    if (c.cover) onCover(c.cover);
+    if (c.done) return c;
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  throw new Error('The chapter took too long');
 }
 
 /** The same animation re-composed for a phone held upright (same narration and steps); made once, then kept. */

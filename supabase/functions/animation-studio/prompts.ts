@@ -110,6 +110,7 @@ drifts), overlapping and staggered action, squash and stretch, follow-through, s
 clouds, twinkling stars, rain), staging (one focus at a time). Each beat lasts as long as its "say" takes to read aloud (words ÷ 2.6 seconds,
 about 10 s), keeps moving the whole time, and its timeline resolves the beat's promise at the end.
 SVG viewBox fitted to the viewport (re-fit on resize so nothing is cut at 360×640 or 1600×900).
+This is a film, not an instrument: "readouts" and "controls" stay empty, and a number that matters is part of the art.
 ${BRIDGE}`;
 
 export const CLASSIFY = `Decide how Curios should animate the answer to a question. Reply with a json object only:
@@ -168,11 +169,6 @@ move or scale, and where (the frame is 1600×900)"}]}. One entry per distinct pr
 export const FIX = `The art director looked at this page frame by frame and sent it back with the fixes after it. Apply each one, and check
 the same fault in the other beats (positions, scales, the camera's shots). Change only what they need: same manifest, story,
 palette, motion and bridge calls. Reply with the whole HTML page only, in one \`\`\`html block.`;
-
-/** The first picture, on screen while the page is written. */
-export const COVER = (question: string) => `A wide cinematic key art for an animated science explainer about: ${question}
-Flat vector illustration, saturated colours on a deep navy background with soft glowing light, rounded shapes without outlines,
-layered depth, tiny details, one clear subject in the centre. No text, no letters, no logos, no watermark.`;
 
 export const PORTRAIT = `You re-compose an animation stage for a phone held upright. The input is the stage's whole HTML
 page, made for a landscape (16:9) frame. Return the same page re-composed for a portrait 9:16 frame (360×640 up to 450×800).

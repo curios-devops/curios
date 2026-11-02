@@ -127,6 +127,8 @@
   "vidAnimMaking": "Creating your animation…",
   "vidAnimReviewing": "Checking the framing…",
   "vidAnimRegenerate": "Regenerate",
+  "vidAnimNextChapter": "Next chapter",
+  "vidAnimMakingChapter": "Creating this chapter…",
   "vidAnimWait": "A new animation takes about a minute",
   "vidAnimNoCreditsGuest": "You're out of animations for today. Sign up to make more.",
   "vidAnimNoCreditsFree": "You've used today's animations. Go Pro to make more.",

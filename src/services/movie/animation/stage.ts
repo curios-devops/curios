@@ -84,7 +84,7 @@ export function readManifest(html: string, minBeats = 2): Manifest | null {
 }
 
 // Libraries the stage may load; nothing else leaves the frame (connect-src 'none').
-const CSP = "default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; media-src data: blob:";
+const CSP = "default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data: blob: https://res.cloudinary.com; font-src data:; connect-src 'none'; media-src data: blob:";
 
 const BRIDGE = `(() => {
   const handlers = {};
@@ -104,11 +104,11 @@ const BRIDGE = `(() => {
     g.fillStyle = getComputedStyle(document.body).backgroundColor || window.curios.theme.ground;
     g.fillRect(0, 0, w, h);
     const css = [...document.querySelectorAll('style')].map((s) => s.textContent).join('\\n');
-    for (const el of document.querySelectorAll('canvas, svg')) {
+    for (const el of document.querySelectorAll('canvas, svg, img')) {
       if (el.parentElement && el.parentElement.closest('svg')) continue;
       const r = el.getBoundingClientRect();
       if (r.width < 2 || r.height < 2) continue;
-      if (el.tagName === 'CANVAS') { g.drawImage(el, r.left, r.top, r.width, r.height); continue; }
+      if (el.tagName !== 'svg') { g.drawImage(el, r.left, r.top, r.width, r.height); continue; }
       const copy = el.cloneNode(true);
       copy.setAttribute('xmlns', SVG); copy.setAttribute('width', r.width); copy.setAttribute('height', r.height);
       const style = document.createElementNS(SVG, 'style'); style.textContent = css; copy.insertBefore(style, copy.firstChild);
@@ -145,6 +145,7 @@ const BRIDGE = `(() => {
     if (!m.curios || e.source !== parent) return;
     try {
       if (m.cmd === 'beat') { await (handlers.beat && handlers.beat(m.i)); post({ ev: 'done', i: m.i }); }
+      else if (m.cmd === 'chapter') handlers.chapter && handlers.chapter(m);
       else if (m.cmd === 'set') handlers.set && handlers.set(m.id, m.value);
       else if (m.cmd === 'speed') handlers.speed && handlers.speed(m.x);
       else if (m.cmd === 'pause') handlers.pause && handlers.pause(Boolean(m.paused));
