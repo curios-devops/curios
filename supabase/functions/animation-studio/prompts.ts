@@ -40,9 +40,16 @@ PAGE: one standalone HTML document; inline CSS/JS. The stage fills the viewport 
 overflow hidden) and works from 360×640 portrait to 1600×900 landscape (fit the content to the aspect; handle
 resize).
 FRAMING: compose in a 16:9 design space (SVG viewBox 0 0 1600 900, preserveAspectRatio "xMidYMid meet" — never
-"slice"; three.js: frame the camera for 16:9). Everything that matters — characters, heads, labels, numbers —
-stays inside a safe area 6% in from every edge, at every moment of every beat, including camera zooms and
-pans (check each beat's start and end framing). Backgrounds may bleed to the edges; content never does. No other network, files, fonts or images than the libraries named below. Deterministic: seeded random.
+"slice"; three.js: frame the camera for 16:9). Plan each beat as a shot before drawing it: a list of { x, y, zoom } for
+its start and end, and every camera move goes through one helper, so each frame is known.
+SAFE AREA, as seen through the camera, at every moment of every beat: everything that matters — characters, heads, whole
+vehicles, labels, numbers — stays inside x 96-1504, y 54-680. The bottom quarter belongs to Curios' captions and
+controls: only ground and background there. Backgrounds may bleed to the edges; content never does. Title pills and
+other words that stay put live outside the camera group, so that a zoom can't push them out of the frame.
+SIZES, as seen through the camera: the beat's subject fills 35-60% of the frame's height (never a small thing in a big
+empty frame); anything that matters is at least 12% tall; labels at least 34 units, numbers at least 64; at most 3 labels at
+once, and they never touch each other or cover a face. A label belongs to something: place it next to it.
+No other network, files, fonts or images than the libraries named below. Deterministic: seeded random.
 Reply with the HTML only, in one \`\`\`html block. Keep the code compact: loops and helpers for repeated parts.`;
 
 export const MACHINE = `You build interactive 3D experiments that answer a question with a real machine the viewer
@@ -76,7 +83,7 @@ ${BRIDGE}`;
 
 /** The art direction for a story: the archetype's look and one of its palettes (archetypes.ts). */
 const LOOK = (archetype: string, palette: number) => {
-  const a = ARCHETYPES[archetype] ?? ARCHETYPES.flat;
+  const a = ARCHETYPES[archetype] ?? ARCHETYPES.kurzgesagt;
   const p = a.palettes[palette] ?? a.palettes[0];
   return `${a.name}. ${a.look}
 PALETTE "${p.name}" — the animation's own, whatever the viewer's theme: ground ${p.ground} (var(--ground)), surfaces
@@ -94,6 +101,8 @@ STORY: start where the viewer already is (a person, a place or a situation they 
 ask; one picture that grows, one part per beat, each beat morphing out of the last (continuous transformation; the
 camera zooms into the object through a wrapper <g>); real numbers with a true scale comparison; end on the idea.
 Check the science of every beat before animating it.
+FACTS: when SOURCES come with the question, they are what is true today: base the story on them, take the real names, dates
+and numbers from them, and never deny or doubt what they report because you don't recall it. Don't invent numbers.
 
 MOTION: anticipation before big moves, ease in/out (power2/power3, back.out for pops; linear only for constant
 drifts), overlapping and staggered action, squash and stretch, follow-through, secondary motion (blinks, drifting
@@ -138,6 +147,31 @@ PRINCIPLES
   numbered tags), on var(--ground); legible at 360 px wide. Direct manipulation on the stage is welcome too (drag a planet,
   click a chess piece) — report resulting control values with curios.controls.
 ${BRIDGE}`;
+
+/** The critic: looks at the contact sheet of a written page (proof.ts) before it is published. */
+export const CRITIC = `You are the art director who approves an animated explainer before it is published. The image is its contact
+sheet: each beat appears twice in a row, tagged with its number (the middle of the beat, then its end), reading left to right,
+top to bottom. The narration of each beat comes with it.
+Reject only what a viewer would notice:
+- something that matters (a character, a head, a vehicle, a label, a number) cut by the edge of the frame
+- text too small to read on a phone (under 3% of the frame's height)
+- a subject too small to carry the shot (under a quarter of the frame's height), or a frame that is mostly empty
+- things overlapping so that one hides the other, text over text
+- anything that matters in the bottom quarter of the frame (captions cover it)
+- a blank frame, or a frame that shows nothing of what its narration says
+Reply with a json object only: {"approved": true|false, "fixes": [{"beat": 1, "problem": "...", "fix": "a concrete change: what to
+move or scale, and where (the frame is 1600×900)"}]}. One entry per distinct problem (say every beat it touches once), at most
+6, the worst first. Empty when approved.`;
+
+/** The writer applies the critic's fixes to its own page (it continues the same response). */
+export const FIX = `The art director looked at your page frame by frame and sent it back with the fixes below. Apply each one, and check
+the same fault in the other beats (positions, scales, the camera's shots). Change only what they need: same manifest, story,
+palette, motion and bridge calls. Reply with the whole HTML page only, in one \`\`\`html block.`;
+
+/** The first picture, on screen while the page is written. */
+export const COVER = (question: string) => `A wide cinematic key art for an animated science explainer about: ${question}
+Flat vector illustration, saturated colours on a deep navy background with soft glowing light, rounded shapes without outlines,
+layered depth, tiny details, one clear subject in the centre. No text, no letters, no logos, no watermark.`;
 
 export const PORTRAIT = `You re-compose an animation stage for a phone held upright. The input is the stage's whole HTML
 page, made for a landscape (16:9) frame. Return the same page re-composed for a portrait 9:16 frame (360×640 up to 450×800).

@@ -20,9 +20,17 @@ describe('direct', () => {
     expect(d.archetype).toBe('paper');
   });
 
-  it('falls back to flat when Luna answers nothing usable, instead of failing the animation', () => {
-    expect(direct({}, [], 'k').archetype).toBe('flat');
-    expect(direct({ archetype: 'kurzgesagt', alt: 'nope' }, [], 'k').archetype).toBe('flat');
+  it('falls back to kurzgesagt, the default look, when Luna answers nothing usable, instead of failing the animation', () => {
+    expect(direct({}, [], 'k').archetype).toBe('kurzgesagt');
+    expect(direct({ archetype: 'vaporwave', alt: 'nope' }, [], 'k').archetype).toBe('kurzgesagt');
+  });
+
+  it('gives every question a kurzgesagt look with its own colours, whatever the key (the cascade is off)', () => {
+    for (const key of ['a', 'por qué suben los precios', 'cómo vivían los romanos']) {
+      const d = direct({ archetype: 'kurzgesagt', confidence: 100 }, [], key);
+      expect(d.style).toMatch(/^kurzgesagt:\d$/);
+      expect(stageOf(d.style)?.dark).toBe(true);
+    }
   });
 
   it('gives the same question the same look every time (deterministic palette)', () => {

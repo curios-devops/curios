@@ -622,6 +622,7 @@ export default function MovieResults() {
   ].filter((r, i, all) => all.findIndex((x) => x.image === r.image) === i);
   const sourceList: { title: string; url: string; snippet: string }[] =
     videoType === 'clip' && clipInfo?.source.url ? [clipInfo.source, ...(web ?? [])]
+      : videoType === 'animation' && animInfo?.sources.length ? animInfo.sources // what the animation really stands on
       : videoType !== 'cinematic' && (experience?.sources?.length ?? 0) > 0 ? experience!.sources : (web ?? []);
   const exploreTopics: { title: string; imageUrl?: string }[] =
     videoType === 'cinematic'
@@ -1018,6 +1019,7 @@ export default function MovieResults() {
             onNeedSignIn={() => { setSignUpSubtitle(t('vidTourSaveGuest')); setShowSignUp(true); }}
             onVideo={setAnimVideo}
             twin={animTwin ? onTwinFilm : undefined}
+            onRegenerate={() => { setAnimInfo(null); setAnimVideo(null); setAnimMovie(null); }}
           />
         ) : videoType === 'tour' ? (
           <TourScene

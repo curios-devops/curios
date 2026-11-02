@@ -14,8 +14,10 @@
 // portrait is a second version of the stage, re-composed for the tall frame by the studio and recorded
 // too; until it is there the landscape stage shows whole, with bands. Should the cloud recording fail,
 // the page mounts an invisible twin (twin) that plays it once, silently, and records it in the browser.
+// A new animation shows its first picture as soon as it is painted, with what is happening over it, and
+// Regenerate makes the whole thing again (a few times per question), then or once it plays.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Captions, Loader2, Maximize, Minimize, Palette, Pause, Play, RectangleHorizontal, RectangleVertical, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { Captions, Loader2, Maximize, Minimize, Palette, Pause, Play, RectangleHorizontal, RectangleVertical, RefreshCw, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation.ts';
 import { useSession } from '../../../hooks/useSession.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
@@ -26,7 +28,7 @@ import { loadNarratorVoice, narratorGender, NARRATOR_VOICES, saveNarratorVoice }
 import { captionLines, lineAt, readingSeconds } from './captions.ts';
 import { tourKey } from '../tour/tourPlan.ts';
 import { findRelatedPosters } from '../cinematic/cinematicPlan.ts';
-import { findAnimation, makeAnimation, portraitAnimation, type Animation } from './animationStudio.ts';
+import { findAnimation, makeAnimation, portraitAnimation, type Animation, type Making } from './animationStudio.ts';
 import { startRecording, videoSize, type Recording } from './recorder.ts';
 import { DEFAULT_STAGE, readManifest, stageDocument, stockSearch, type Manifest, type StageEvent } from './stage.ts';
 
@@ -41,6 +43,8 @@ export interface AnimationInfo {
   related: string[];
   /** A stock picture per related question (Continue exploring), when found. */
   relatedImages?: (string | undefined)[];
+  /** What it stands on (the Sources tab). */
+  sources: { title: string; url: string; snippet: string }[];
 }
 
 /** The cloud video of what the player shows (landscape or portrait): url once recorded. */
@@ -60,6 +64,8 @@ interface Props {
   onVideo?: (video: StageVideo) => void;
   /** Mount the invisible twin that records it here (the cloud recording failed); its film, or null. */
   twin?: (film: Film | null) => void;
+  /** The animation is being made again: what the page knew about the old one no longer holds. */
+  onRegenerate?: () => void;
 }
 
 type Stage = 'looking' | 'making' | 'ready' | 'nocredits' | 'limit' | 'failed';
@@ -67,7 +73,7 @@ type Stage = 'looking' | 'making' | 'ready' | 'nocredits' | 'limit' | 'failed';
 type Voice = string;
 const SPEEDS = [0.5, 1, 2] as const;
 
-export default function AnimationScene({ question, kind, tab, belowPlayer, onReady, onNeedSignIn, onVideo, twin }: Props) {
+export default function AnimationScene({ question, kind, tab, belowPlayer, onReady, onNeedSignIn, onVideo, twin, onRegenerate }: Props) {
   const { t } = useTranslation();
   const { session, isLoading: sessionLoading } = useSession();
   const { tier, promptUpgrade } = useProCredits();
@@ -75,6 +81,10 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
   const [stage, setStage] = useState<Stage>('looking');
   const [animation, setAnimation] = useState<Animation | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [making, setMaking] = useState<Making>({});
+  const [run, setRun] = useState(0); // Regenerate: one more run of the effect below
+  const [notice, setNotice] = useState('');
+  const regenerating = useRef<Animation | null | undefined>(undefined); // set: this run makes it again; the old one, to go back to
   const cb = useRef({ onReady });
   cb.current = { onReady };
   const signedIn = Boolean(session?.user);
@@ -83,27 +93,36 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
   useEffect(() => {
     if (sessionLoading || !question.trim()) return;
     const controller = new AbortController();
+    const again = regenerating.current !== undefined;
     (async () => {
-      const found = await findAnimation(key).catch(() => ({ animation: null, making: false, left: 1 }));
+      const found = again ? { animation: null, making: false, left: 1 } : await findAnimation(key).catch(() => ({ animation: null, making: false, left: 1 }));
       if (controller.signal.aborted) return;
       if (found.animation) return show(found.animation);
       if (!found.making && found.left <= 0) return setStage(tier === 'pro' ? 'limit' : 'nocredits');
       setStage('making');
-      // The question's difficulty picks the writer: easy → Luna, complex → Sol (Astra for Pro).
-      const rated = await decideTier(question);
+      // A story is always Luna's (the studio's choice). A simulation's difficulty picks its writer: easy → Luna, complex → Sol (Astra for Pro).
+      const rated = kind === 'simulation' ? await decideTier(question) : 'easy';
       const model = rated === 'easy' ? 'luna' : rated === 'complex' && tier === 'pro' ? 'astra' : 'sol';
-      show(await makeAnimation(key, question, model, controller.signal, found.making, kind, currentLanguage.code));
+      show(await makeAnimation(key, question, model, controller.signal, { already: found.making, kind, lang: currentLanguage.code, regenerate: again, onMaking: (m) => setMaking((was) => ({ ...was, ...m })) }));
     })().catch((err) => {
       if (controller.signal.aborted) return;
       const msg = String(err instanceof Error ? err.message : err);
+      const previous = regenerating.current;
+      if (again && previous && (msg.includes('limit') || msg.includes('sign_in_required'))) { // refused: the one there was stays
+        regenerating.current = undefined;
+        setNotice(t('vidAnimLimit'));
+        setAnimation(previous);
+        return setStage('ready');
+      }
       setStage(msg.includes('daily_limit') ? 'limit' : msg.includes('sign_in_required') ? 'nocredits' : 'failed');
     });
     function show(a: Animation) {
       const m = readManifest(a.html, a.kind === 'simulation' ? 0 : 2);
       if (!m) return setStage('failed');
+      regenerating.current = undefined;
       setAnimation(a);
       setStage('ready');
-      const info: AnimationInfo = { key, question: a.question, title: m.title || a.question, bigIdea: m.bigIdea, beats: m.beats.length, overview: [m.bigIdea, ...m.beats.map((b) => b.say)].filter(Boolean).join(' '), related: m.related };
+      const info: AnimationInfo = { key, question: a.question, title: m.title || a.question, bigIdea: m.bigIdea, beats: m.beats.length, overview: [m.bigIdea, ...m.beats.map((b) => b.say)].filter(Boolean).join(' '), related: m.related, sources: a.sources ?? [] };
       cb.current.onReady(info);
       // Continue exploring gets its own stock pictures, never holding the animation back.
       void findRelatedPosters({ related: m.related, relatedSearch: m.related.map((q, i) => m.relatedSearch[i] || stockSearch(q, m.title)) }, [])
@@ -112,7 +131,18 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
     return () => controller.abort();
     // tier only matters for a new animation; re-running on it would start another.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question, kind, signedIn, sessionLoading]);
+  }, [question, kind, signedIn, sessionLoading, run]);
+
+  const regenerate = () => {
+    if (!signedIn) return onNeedSignIn();
+    regenerating.current = animation;
+    setNotice('');
+    setMaking({});
+    setAnimation(null);
+    setStage('making');
+    onRegenerate?.();
+    setRun((r) => r + 1);
+  };
 
   // The cloud recording: asked for when the animation was written (or first opened); checked until it is in.
   useEffect(() => {
@@ -144,7 +174,17 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
     return (
       <>
         <div className="relative rounded-xl overflow-hidden aspect-video flex flex-col items-center justify-center gap-3 px-6 text-center" style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-secondary)' }}>
-          {stage === 'nocredits' ? (
+          {stage === 'making' && making.cover ? (
+            <>
+              {/* The first picture, straight to the screen; the animation takes its place when it is ready. */}
+              <img src={making.cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 px-3 py-2 text-left text-white" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)' }}>
+                <Loader2 size={16} className="animate-spin flex-shrink-0" />
+                <span className="text-sm flex-1 min-w-0 truncate">{t(making.reviewing ? 'vidAnimReviewing' : 'vidAnimMaking')} · {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</span>
+                {signedIn && <button type="button" onClick={regenerate} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0" style={{ background: 'rgba(0,0,0,0.5)' }}><RefreshCw size={13} /> {t('vidAnimRegenerate')}</button>}
+              </div>
+            </>
+          ) : stage === 'nocredits' ? (
             <>
               <Palette size={28} />
               <p className="text-sm max-w-sm">{noCredits}</p>
@@ -160,7 +200,7 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
           ) : (
             <>
               <Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent-primary)' }} />
-              <p className="text-sm">{stage === 'making' ? t(elapsed < 20 ? 'vidAnimDirecting' : elapsed < 70 ? 'vidAnimBuilding' : 'vidAnimPolishing') : t('vidAnimLooking')}</p>
+              <p className="text-sm">{stage === 'making' ? t(making.reviewing ? 'vidAnimReviewing' : elapsed < 20 ? 'vidAnimDirecting' : elapsed < 70 ? 'vidAnimBuilding' : 'vidAnimPolishing') : t('vidAnimLooking')}</p>
               {stage === 'making' && <p className={label} style={{ color: 'var(--ui-text-muted)' }}>{t('vidAnimWait')} · {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</p>}
             </>
           )}
@@ -169,7 +209,7 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
       </>
     );
   }
-  return <><Player animation={animation} animationKey={key} belowPlayer={belowPlayer} onVideo={onVideo} />{twinPlayer}</>;
+  return <>{notice && <p className="text-sm mb-3" style={{ color: 'var(--ui-text-secondary)' }}>{notice}</p>}<Player key={run} animation={animation} animationKey={key} belowPlayer={belowPlayer} onVideo={onVideo} onRegenerate={animation.kind === 'story' && animation.canRegenerate && signedIn ? regenerate : undefined} />{twinPlayer}</>;
 }
 
 interface Take { rec: Recording; w: number; h: number; started: number; next: number; poster: Promise<Blob | null> }
@@ -179,8 +219,8 @@ interface Take { rec: Recording; w: number; h: number; started: number; next: nu
  * at normal speed with the narrator and hands over the film (null if it couldn't) — `fill` takes the whole
  * window (the cloud render page), `silent` keeps the narrator out of the speakers (the twin).
  */
-export function Player({ animation, animationKey, belowPlayer, onVideo, recorder }: {
-  animation: Animation; animationKey: string; belowPlayer?: ReactNode; onVideo?: (video: StageVideo) => void;
+export function Player({ animation, animationKey, belowPlayer, onVideo, onRegenerate, recorder }: {
+  animation: Animation; animationKey: string; belowPlayer?: ReactNode; onVideo?: (video: StageVideo) => void; onRegenerate?: () => void;
   recorder?: { silent?: boolean; fill?: boolean; onFilm: (film: Film | null) => void };
 }) {
   const { t } = useTranslation();
@@ -556,6 +596,11 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, recorder
           <button type="button" onClick={restart} className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full disabled:opacity-40" style={{ color: 'var(--ui-text-secondary)' }}>
             <RotateCcw size={13} /> {t('vidAnimRestart')}
           </button>
+          {onRegenerate && (
+            <button type="button" onClick={onRegenerate} className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full" style={{ color: 'var(--ui-text-secondary)' }}>
+              <RefreshCw size={13} /> {t('vidAnimRegenerate')}
+            </button>
+          )}
           <div className="sm:hidden ml-auto flex rounded-full p-0.5 border" style={{ borderColor: 'var(--ui-border-default)' }} role="group">
             {([false, true] as const).map((p) => (
               <button key={String(p)} type="button" onClick={() => { dropTake(); setPortrait(p); }} aria-pressed={portrait === p} aria-label={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} title={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} className="px-2.5 py-1 rounded-full" style={pill(portrait === p)}>

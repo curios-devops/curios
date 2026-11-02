@@ -16,6 +16,31 @@ export interface Archetype { name: string; look: string; font: string; palettes:
 const SANS = "system-ui, -apple-system, 'Segoe UI', sans-serif";
 
 export const ARCHETYPES: Record<string, Archetype> = {
+  kurzgesagt: {
+    name: "Flat science explainer in the spirit of Kurzgesagt (never its own characters, bird or logo)",
+    look: `WORLD: rich, saturated flat vector, every shape rounded, NO outlines. Depth from 4-5 layers moving at different speeds
+(parallax): a vertical ground gradient, huge soft colour blobs, far silhouettes, the subject, near pieces. Every form has
+2-3 flat tones (a shade and an offset highlight), never one fill; light is soft radial glows. Small details reward looking:
+twinkling 4-point sparkles, drifting particles, windows that light up. Dozens of shapes per scene, built with helpers:
+a sparse scene reads as a slide, not a film.
+MASCOT: one small original character made of rounded shapes that belongs to the topic (an astronaut, a Roman baker, a
+coin): 15-20% of the frame's height, big simple eyes that look at whatever matters, a blink, an idle bob, squash and
+stretch on every pose, one small joke near the end.
+CAMERA: every line of narration gets a camera move or a transformation; nothing ever holds still, and no beat is a
+static infographic. Moves ease with power3.inOut, zooms stay proportional (scale by a ratio, not linearly); every pop is a
+spring (elastic.out(1, 0.45)). Ambient motion (twinkle, drift, bob) runs on its own loop, apart from the beats.
+SHAPE OF THE STORY: the event happens in the first beat → pull back to show the true scale → dive in to make it personal
+("you") → pull back out → the consequence with a live counter → an escalation → a funny beat with the mascot → a
+callback to the opening and the idea.
+ON-STAGE WORDS: few and short, in caps with wide letter spacing, in rounded pills, no full stops; each line rises into
+place through a clip on a strong ease-out, it never fades in whole.
+FINISH: a soft vignette over the whole frame.`,
+    font: "ui-rounded, 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Nunito, system-ui, sans-serif",
+    palettes: [
+      { name: "deep space", ground: "#081d2c", surface: "#102348", ink: "#ffffff", muted: "#8fd8e6", accent: "#ffd98a", more: ["#ff8f4a", "#ffc857", "#5fc47a", "#4dc7eb", "#dc5f6e"], note: "ground gradient #081d2c → #102348; soft blobs of teal rgb(24,150,160), blue rgb(40,95,195), coral rgb(220,95,110) and indigo rgb(60,70,175) at 10-20% opacity; pills rgba(6,20,40,.62)" },
+      { name: "night", ground: "#14053c", surface: "#2b0b5c", ink: "#ffffff", muted: "#b39dff", accent: "#e2b230", more: ["#ff5a3c", "#c2185b", "#5ad1e6", "#c2187a"], note: NIGHT },
+    ],
+  },
   flat: {
     name: "Flat vector explainer",
     look: `Kurzgesagt-like flat vector shapes without outlines, soft radial glows for light, simple round characters (round
@@ -111,13 +136,13 @@ export interface Direction { archetype: string; palette: number; style: string; 
 const hash = (s: string) => [...s].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
 
 /**
- * Settles Luna's pick: an unknown archetype falls back to flat; when the pick is not a clear one (confidence < 80)
+ * Settles Luna's pick: an unknown archetype falls back to kurzgesagt; when the pick is not a clear one (confidence < 80)
  * and it was used in 2 of the last 3 stories, its alternative is used instead (variety never beats a clear fit).
  * The palette comes from the question key, so the same question always gets the same look.
  */
 export function direct(pick: Pick, recent: string[], key: string): Direction {
   const known = (a: unknown): a is string => typeof a === "string" && a in ARCHETYPES;
-  const chosen = known(pick.archetype) ? pick.archetype : "flat";
+  const chosen = known(pick.archetype) ? pick.archetype : "kurzgesagt";
   const confidence = Math.max(0, Math.min(100, Number(pick.confidence) || 0));
   const alt = known(pick.alt) && pick.alt !== chosen ? pick.alt : null;
   const varied = Boolean(alt) && confidence < 80 && recent.slice(0, 3).filter((a) => a === chosen).length >= 2;

@@ -1,9 +1,11 @@
 // Animation (Video page type): asks the animation-studio edge function for the question's live stage.
 // One per question, kept by the server: an animation already made opens at once; a new one is written
-// by Luna/Sol/Astra in the background (1-3 minutes) while the page polls. Once written, the studio has it
-// recorded once in the cloud (Cloud Run) as a video everyone shares.
+// in the background (a story by Luna, in under a minute) while the page polls and shows a first picture. A story
+// passes the critic first: this browser takes a contact sheet of the stage and the studio judges it. Once
+// published, the studio has it recorded once in the cloud (Cloud Run) as a video everyone shares.
 import { supabase } from '../../../lib/supabase.ts';
-import type { StageTheme } from './stage.ts';
+import { contactSheet } from './proof.ts';
+import { DEFAULT_STAGE, readManifest, type StageTheme } from './stage.ts';
 
 export interface Animation {
   question: string;
@@ -17,9 +19,16 @@ export interface Animation {
   videoUrl?: string | null;
   posterUrl?: string | null;
   render?: 'queued' | 'ready' | 'failed' | null;
+  /** The news and pages it stands on (stories); older animations have none. */
+  sources?: { title: string; url: string; snippet: string }[];
+  /** Whether it can still be made again. */
+  canRegenerate?: boolean;
 }
 
-type Answer = { ready?: boolean; animation?: Animation; left?: number; status?: string; error?: unknown };
+/** While a new one is made: its first picture once painted; `reviewing`: the critic is looking at it. */
+export interface Making { cover?: string | null; reviewing?: boolean }
+
+type Answer = { ready?: boolean; animation?: Animation; left?: number; status?: string; cover?: string | null; proof?: { html: string; stage: StageTheme | null }; error?: unknown };
 
 async function call(body: Record<string, unknown>): Promise<Answer> {
   const { data, error } = await supabase.functions.invoke('animation-studio', { body });
@@ -38,14 +47,14 @@ export async function findAnimation(key: string): Promise<{ animation: Animation
   return { animation: a.ready && a.animation ? a.animation : null, making: a.status === 'making', left: a.left ?? 1 };
 }
 
-/** Starts it (unless it's already being made) and waits until the page is written. `lang`: the words' language
- *  when the question shows none of its own (a name, one word). */
-export async function makeAnimation(key: string, question: string, tier: 'luna' | 'sol' | 'astra', signal: AbortSignal, already = false, kind?: 'simulation', lang?: string): Promise<Animation> {
-  if (!already) {
-    const started = await call({ action: 'start', key, question, tier, kind, lang });
+/** Starts it (unless it's already being made) and waits until it is published. `lang`: the words' language
+ *  when the question shows none of its own (a name, one word); `regenerate`: replaces the one there is. */
+export async function makeAnimation(key: string, question: string, tier: 'luna' | 'sol' | 'astra', signal: AbortSignal, o: { already?: boolean; kind?: 'simulation'; lang?: string; regenerate?: boolean; onMaking?: (m: Making) => void } = {}): Promise<Animation> {
+  if (!o.already) {
+    const started = await call({ action: 'start', key, question, tier, kind: o.kind, lang: o.lang, regenerate: o.regenerate });
     if (started.ready && started.animation) return started.animation;
   }
-  return waitFor(key, signal);
+  return waitFor(key, signal, o.onMaking);
 }
 
 /** The same animation re-composed for a phone held upright (same narration and steps); made once, then kept. */
@@ -56,14 +65,20 @@ export async function portraitAnimation(key: string, signal: AbortSignal): Promi
   return waitFor(portraitKey, signal);
 }
 
-/** Polls until the page for `key` is written. */
-async function waitFor(key: string, signal: AbortSignal): Promise<Animation> {
-  for (let i = 0; i < 200 && !signal.aborted; i++) {
-    await new Promise((r) => setTimeout(r, i === 0 ? 15000 : 4000));
+/** Polls until the page for `key` is published; a written story goes past the critic on the way. */
+async function waitFor(key: string, signal: AbortSignal, onMaking?: (m: Making) => void): Promise<Animation> {
+  for (let i = 0; i < 400 && !signal.aborted; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
     if (signal.aborted) break;
     const s = await call({ action: 'status', key }).catch(() => ({ status: 'making' }) as Answer);
     if (s.ready && s.animation) return s.animation;
     if (s.status === 'failed') throw new Error('failed');
+    if (s.status === 'proof' && s.proof) {
+      onMaking?.({ reviewing: true });
+      const sheet = await contactSheet(s.proof.html, s.proof.stage ?? DEFAULT_STAGE, readManifest(s.proof.html)?.beats.length ?? 0).catch(() => null);
+      const reviewed = await call({ action: 'review', key, sheet }).catch(() => ({ status: 'making' }) as Answer);
+      if (reviewed.ready && reviewed.animation) return reviewed.animation;
+    } else if (s.cover) onMaking?.({ cover: s.cover });
   }
   throw new Error(signal.aborted ? 'aborted' : 'The animation took too long');
 }
