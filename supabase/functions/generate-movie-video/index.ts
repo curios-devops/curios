@@ -64,7 +64,9 @@ const PRUNA_BUDGET_MS = 100000;
 
 const RUNPOD_API_KEY = Deno.env.get("RUNPOD_API_KEY");
 const RUNPOD_ENDPOINT_ID = Deno.env.get("RUNPOD_ENDPOINT_ID");
-const runpodConfigured = Boolean(RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID);
+// LTX on RunPod is off: the account has no balance and the endpoint was deleted on 2026-11-02, so video goes Pruna →
+// Wavespeed. LTX_RUNPOD=ON brings it back, with a new RUNPOD_ENDPOINT_ID.
+const runpodConfigured = Deno.env.get("LTX_RUNPOD") === "ON" && Boolean(RUNPOD_API_KEY && RUNPOD_ENDPOINT_ID);
 const RUNPOD_BASE = `https://api.runpod.ai/v2/${RUNPOD_ENDPOINT_ID}`;
 // Hard cap on a single RunPod job so an abandoned/stuck render can't bill forever.
 const RUNPOD_JOB_TIMEOUT_MS = Number(Deno.env.get("RUNPOD_JOB_TIMEOUT_MS") || 600000);

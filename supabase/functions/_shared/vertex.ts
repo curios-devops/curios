@@ -3,11 +3,16 @@
 // service-account secrets (VERTEX_AI_SERVICE_ACCOUNT_EMAIL / VERTEX_AI_PRIVATE_KEY) — the
 // same credentials the Veo calls use. Billed via the curios-vertex project, so it is
 // NOT subject to the AI-Studio free-tier limits or the leaked API-key block.
+// OFF until the project's Google billing is back (403 "billing not enabled"): getVertexAccessToken throws at once,
+// so every caller goes to its fallback without waiting for a sure failure. VERTEX_AI=ON turns it back on.
 
 // @ts-ignore: Deno.env is available in Supabase Edge Functions runtime
 export const VERTEX_PROJECT = Deno.env.get("VERTEX_AI_PROJECT") || "curios-vertex";
 // @ts-ignore
 export const VERTEX_LOCATION = Deno.env.get("VERTEX_AI_LOCATION") || "us-central1";
+
+// @ts-ignore
+export const vertexOn = () => Deno.env.get("VERTEX_AI") === "ON";
 
 // @ts-ignore
 const SERVICE_ACCOUNT_EMAIL = Deno.env.get("VERTEX_AI_SERVICE_ACCOUNT_EMAIL");
@@ -63,6 +68,7 @@ async function createJWT(): Promise<string> {
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 export async function getVertexAccessToken(): Promise<string> {
+  if (!vertexOn()) throw new Error("Vertex is off (VERTEX_AI=ON turns it back on)");
   if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.token;
 
   const jwt = await createJWT();

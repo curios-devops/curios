@@ -246,12 +246,12 @@ async function written(key: string, row: Record<string, any>, html: string | nul
   return proofOf(html, row.style);
 }
 
-/** The first picture (gemini-image: Nano Banana, gpt-image-2 fallback). */
+/** The first picture (gemini-image: Pruna, OpenAI fallback). */
 async function makeCover(question: string): Promise<string | null> {
   const res = await fetch(`${env("SUPABASE_URL")}/functions/v1/gemini-image`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env("SUPABASE_ANON_KEY")}` },
-    body: JSON.stringify({ prompt: COVER(question), aspectRatio: "16:9", storageBucket: "movie-assets", storagePath: `animations/${crypto.randomUUID()}.png` }),
+    body: JSON.stringify({ prompt: COVER(question), engine: "pruna", aspectRatio: "16:9", storageBucket: "movie-assets", storagePath: `animations/${crypto.randomUUID()}.png` }),
   }).catch(() => null);
   const data = res?.ok ? await res.json().catch(() => null) : null;
   return typeof data?.url === "string" && data.url.startsWith("http") ? data.url : null;
