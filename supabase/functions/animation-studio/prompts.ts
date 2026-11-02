@@ -44,7 +44,8 @@ FRAMING: compose in a 16:9 design space (SVG viewBox 0 0 1600 900, preserveAspec
 its start and end, and every camera move goes through one helper, so each frame is known.
 SAFE AREA, as seen through the camera, at every moment of every beat: everything that matters — characters, heads, whole
 vehicles, labels, numbers — stays inside x 96-1504, y 54-680. The bottom quarter belongs to Curios' captions and
-controls: only ground and background there. Backgrounds may bleed to the edges; content never does. Title pills and
+controls: only ground and background there. Backgrounds bleed at least 300 units past every edge, so that no zoom or
+parallax ever shows a layer's border; content never does. Title pills and
 other words that stay put live outside the camera group, so that a zoom can't push them out of the frame.
 SIZES, as seen through the camera: the beat's subject fills 35-60% of the frame's height (never a small thing in a big
 empty frame); anything that matters is at least 12% tall; labels at least 34 units, numbers at least 64; at most 3 labels at
