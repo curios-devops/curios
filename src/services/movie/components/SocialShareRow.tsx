@@ -89,7 +89,8 @@ export default function SocialShareRow({ shareUrl, title, caption, videoUrl, onS
         aria-label="Share on LinkedIn"
         className={btn}
         style={btnStyle}
-        onClick={() => open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`)}
+        // The same link as Search: on an iPhone this one opens the LinkedIn app, share-offsite its website.
+        onClick={() => open(`https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodeURIComponent(title)}&text=${encodeURIComponent(title)}&summary=${encodeURIComponent(caption ?? title)}&source=CuriosAI`)}
       >
         <Linkedin size={18} />
       </button>
