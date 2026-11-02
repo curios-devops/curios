@@ -3,8 +3,10 @@
 // on VERTEX AI (service-account auth, curios-vertex project). The cheap/fast default for Movie
 // swipe frames. Billed via Vertex, so it avoids the AI-Studio free-tier limit and the leaked
 // API-key block. Uploads the returned base64 image to Storage and returns a hosted public URL.
+// While Vertex is off (_shared/vertex.ts) Pruna serves these (~5 s; it takes text only, so a reference goes to OpenAI).
+// Body { engine: "pruna" } keeps a first picture that must be quick on Pruna once Vertex is back.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-import { getVertexAccessToken, vertexModelUrl } from "../_shared/vertex.ts";
+import { getVertexAccessToken, vertexModelUrl, vertexOn } from "../_shared/vertex.ts";
 import { storeMedia } from "../_shared/cloudinary.ts";
 
 const corsHeaders = {
@@ -17,11 +19,16 @@ const IMAGE_MODEL = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-3.1-flash-lite
 // @ts-ignore
 const IMAGE_LOCATION = Deno.env.get("GEMINI_IMAGE_LOCATION") || "global";
 // Fallback when Vertex is exhausted/unavailable after retries — a pricier frame beats a
-// broken one. Quality "low" (~$0.016) keeps the fallback cheap for default swipe frames.
+// broken one. Quality "low" keeps the fallback cheap for default swipe frames.
 // @ts-ignore
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 // @ts-ignore
-const FALLBACK_IMAGE_MODEL = Deno.env.get("MOVIE_IMAGE_MODEL") || "gpt-image-2";
+const FALLBACK_IMAGE_MODEL = Deno.env.get("MOVIE_IMAGE_MODEL") || "gpt-image-2.5-flare";
+// @ts-ignore
+const PRUNA_API_KEY = Deno.env.get("PRUNA_API_KEY");
+// @ts-ignore
+const PRUNA_IMAGE_MODEL = Deno.env.get("PRUNA_IMAGE_MODEL") || "p-image";
+const PRUNA_MS = 20000;
 const TIMEOUT_MS = 60000;
 
 function b64ToBytes(b64: string): Uint8Array {
@@ -49,7 +56,38 @@ async function fetchReference(url: string): Promise<{ mime: string; data: string
   }
 }
 
-/** OpenAI gpt-image-2 fallback: /generations (prompt-only) or /edits (with reference). */
+/** Pruna's image as base64, or null: Try-Sync usually answers at once, otherwise it is polled. */
+async function prunaImage(prompt: string, aspectRatio: string): Promise<string | null> {
+  if (!PRUNA_API_KEY) return null;
+  const headers = { "Content-Type": "application/json", apikey: PRUNA_API_KEY };
+  const deadline = Date.now() + PRUNA_MS;
+  try {
+    const submit = await fetch("https://api.pruna.ai/v1/predictions", {
+      method: "POST",
+      headers: { ...headers, Model: PRUNA_IMAGE_MODEL, "Try-Sync": "true" },
+      body: JSON.stringify({ input: { prompt, aspect_ratio: aspectRatio } }),
+      signal: AbortSignal.timeout(PRUNA_MS),
+    });
+    let data = await submit.json();
+    while (data?.status !== "succeeded" && data?.get_url && data?.status !== "failed" && data?.status !== "canceled" && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 500));
+      data = { get_url: data.get_url, ...(await (await fetch(data.get_url, { headers })).json()) };
+    }
+    const gen = String(data?.generation_url ?? "");
+    if (!gen) { console.error("pruna image", JSON.stringify(data).slice(0, 300)); return null; }
+    const file = await fetch(gen.startsWith("http") ? gen : `https://api.pruna.ai${gen}`, { headers });
+    if (!file.ok) return null;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+  } catch (e) {
+    console.error("pruna image", e instanceof Error ? e.message : String(e));
+    return null;
+  }
+}
+
+/** OpenAI image fallback: /generations (prompt-only) or /edits (with reference). */
 async function openaiFallback(
   prompt: string,
   aspectRatio: string,
@@ -121,7 +159,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Missing prompt" }), { status: 400, headers: corsHeaders });
     }
 
-    const accessToken = await getVertexAccessToken();
+    const accessToken = vertexOn() ? await getVertexAccessToken() : null;
 
     // gemini-3.1-flash-lite-image is served from the Vertex `global` location. Overridable
     // per-request (model/location) for probing without redeploying.
@@ -151,7 +189,8 @@ Deno.serve(async (req: Request) => {
     let throttled = 0;
     let fallback = false;
     let vertexError: string | undefined;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    let b64 = (body.engine === "pruna" || !accessToken) && !reference ? await prunaImage(prompt, body.aspectRatio || "16:9") ?? undefined : undefined;
+    for (let attempt = 0; accessToken && !b64 && attempt < 3; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 2000));
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -169,8 +208,7 @@ Deno.serve(async (req: Request) => {
       console.warn(`Vertex image 429 (attempt ${attempt + 1}/3) — backing off`);
     }
 
-    let b64: string | undefined;
-    if (response && response.ok) {
+    if (response?.ok) {
       const data = await response.json();
       b64 = extractImageBase64(data);
       if (!b64) {
@@ -178,13 +216,13 @@ Deno.serve(async (req: Request) => {
         const cand = data?.candidates?.[0];
         vertexError = `no image: ${cand?.finishReason ?? data?.promptFeedback?.blockReason ?? 'unknown'} ${JSON.stringify(cand?.content?.parts?.map((p: { text?: string }) => p.text).filter(Boolean) ?? []).slice(0, 200)}`;
       }
-    } else {
-      const error = response ? await response.text() : "no response";
-      console.error("Vertex image API error:", { status: response?.status, error });
-      vertexError = `${response?.status ?? 'no response'}: ${error.slice(0, 300)}`;
+    } else if (response) {
+      const error = await response.text();
+      console.error("Vertex image API error:", { status: response.status, error });
+      vertexError = `${response.status}: ${error.slice(0, 300)}`;
     }
 
-    // Vertex exhausted/failed/refused → gpt-image-2 fallback rather than failing the frame.
+    // Vertex off/exhausted/failed/refused → OpenAI rather than failing the frame.
     if (!b64) {
       console.warn("Falling back to OpenAI", FALLBACK_IMAGE_MODEL);
       const fb = await openaiFallback(prompt, body.aspectRatio || "16:9", reference);
