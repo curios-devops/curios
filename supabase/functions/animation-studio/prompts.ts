@@ -170,11 +170,6 @@ export const FIX = `The art director looked at this page frame by frame and sent
 the same fault in the other beats (positions, scales, the camera's shots). Change only what they need: same manifest, story,
 palette, motion and bridge calls. Reply with the whole HTML page only, in one \`\`\`html block.`;
 
-/** The first picture, on screen while the page is written. */
-export const COVER = (question: string) => `A wide cinematic key art for an animated science explainer about: ${question}
-Flat vector illustration, saturated colours on a deep navy background with soft glowing light, rounded shapes without outlines,
-layered depth, tiny details, one clear subject in the centre. No text, no letters, no logos, no watermark.`;
-
 export const PORTRAIT = `You re-compose an animation stage for a phone held upright. The input is the stage's whole HTML
 page, made for a landscape (16:9) frame. Return the same page re-composed for a portrait 9:16 frame (360×640 up to 450×800).
 - Copy the manifest (<script type="application/json" id="manifest">) exactly as it is: same title, beats, words, readouts

@@ -28,7 +28,7 @@ import { loadNarratorVoice, narratorGender, NARRATOR_VOICES, saveNarratorVoice }
 import { captionLines, lineAt, readingSeconds } from './captions.ts';
 import { tourKey } from '../tour/tourPlan.ts';
 import { findRelatedPosters } from '../cinematic/cinematicPlan.ts';
-import { findAnimation, makeAnimation, portraitAnimation, type Animation, type Making } from './animationStudio.ts';
+import { chapterOf, findAnimation, makeAnimation, portraitAnimation, type Animation, type Making, type Preview } from './animationStudio.ts';
 import { startRecording, videoSize, type Recording } from './recorder.ts';
 import { DEFAULT_STAGE, readManifest, stageDocument, stockSearch, type Manifest, type StageEvent } from './stage.ts';
 
@@ -103,7 +103,7 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
       // A story is always Luna's (the studio's choice). A simulation's difficulty picks its writer: easy → Luna, complex → Sol (Astra for Pro).
       const rated = kind === 'simulation' ? await decideTier(question) : 'easy';
       const model = rated === 'easy' ? 'luna' : rated === 'complex' && tier === 'pro' ? 'astra' : 'sol';
-      show(await makeAnimation(key, question, model, controller.signal, { already: found.making, kind, lang: currentLanguage.code, regenerate: again, onMaking: (m) => setMaking((was) => ({ ...was, ...m })) }));
+      show(await makeAnimation(key, question, model, controller.signal, { already: found.making, kind, lang: currentLanguage.code, regenerate: again, onMaking: (m) => { setMaking((was) => ({ ...was, ...m })); if (m.preview) announce(m.preview); } }));
     })().catch((err) => {
       if (controller.signal.aborted) return;
       const msg = String(err instanceof Error ? err.message : err);
@@ -122,10 +122,16 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
       regenerating.current = undefined;
       setAnimation(a);
       setStage('ready');
-      const info: AnimationInfo = { key, question: a.question, title: m.title || a.question, bigIdea: m.bigIdea, beats: m.beats.length, overview: [m.bigIdea, ...m.beats.map((b) => b.say)].filter(Boolean).join(' '), related: m.related, sources: a.sources ?? [] };
+      tell({ key, question: a.question, title: m.title || a.question, bigIdea: m.bigIdea, beats: m.beats.length, overview: [m.bigIdea, ...m.beats.map((b) => b.say)].filter(Boolean).join(' '), related: m.related, sources: a.sources ?? [] }, m.relatedSearch);
+    }
+    /** The director's plan: everything around the film appears now, while it is made. */
+    function announce(p: Preview) {
+      tell({ key, question, title: p.title || question, bigIdea: p.bigIdea, beats: p.chapters.length, overview: p.overview, related: p.related, sources: p.sources }, p.relatedSearch);
+    }
+    function tell(info: AnimationInfo, relatedSearch: string[]) {
       cb.current.onReady(info);
       // Continue exploring gets its own stock pictures, never holding the animation back.
-      void findRelatedPosters({ related: m.related, relatedSearch: m.related.map((q, i) => m.relatedSearch[i] || stockSearch(q, m.title)) }, [])
+      void findRelatedPosters({ related: info.related, relatedSearch: info.related.map((q, i) => relatedSearch[i] || stockSearch(q, info.title)) }, [])
         .then((relatedImages) => { if (!controller.signal.aborted) cb.current.onReady({ ...info, relatedImages }); });
     }
     return () => controller.abort();
@@ -148,7 +154,7 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
   useEffect(() => {
     if (!animation || (animation.render !== 'queued' && animation.render !== null && animation.render !== undefined)) return;
     const id = setInterval(() => {
-      void findAnimation(key).then((f) => { if (f.animation && f.animation.render !== animation.render) setAnimation(f.animation); }).catch(() => undefined);
+      void findAnimation(key).then((f) => { if (f.animation && f.animation.render !== animation.render) setAnimation((a) => (a ? { ...f.animation!, html: a.html } : a)); }).catch(() => undefined); // the page on screen stays
     }, 8000);
     return () => clearInterval(id);
   }, [animation, key]);
@@ -173,6 +179,7 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
     const noCredits = tier === 'guest' ? t('vidAnimNoCreditsGuest') : t('vidAnimNoCreditsFree');
     return (
       <>
+        {making.preview && <h2 className="font-bricolage text-2xl sm:text-4xl font-bold leading-tight tracking-tight mb-3" style={{ color: 'var(--ui-text-primary)' }}>{making.preview.title}</h2>}
         <div className="relative rounded-xl overflow-hidden aspect-video flex flex-col items-center justify-center gap-3 px-6 text-center" style={{ backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text-secondary)' }}>
           {stage === 'making' && making.cover ? (
             <>
@@ -229,6 +236,10 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
   const manifest = useMemo(() => readManifest(animation.html, simulation ? 0 : 2) as Manifest, [animation.html, simulation]);
   const machine = animation.kind === 'machine' || simulation; // waits for the viewer, 3D-friendly frame
   const story = animation.kind === 'story'; // a film: it plays by itself, with nothing to operate
+  const film = animation.chapters ?? null; // in chapters: the next one is made when the viewer asks for it
+  const [covers, setCovers] = useState<Record<number, string>>({});
+  const [makingChapter, setMakingChapter] = useState<number | null>(null);
+  const loaded = useRef(new Set((film ?? []).flatMap((c, i) => (c.made ? [i] : []))));
   const frameRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   // The animation's own colours, whatever the app's theme.
@@ -264,7 +275,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
   const srcDoc = useMemo(() => stageDocument(page, theme), [page, theme]);
 
   const [ready, setReady] = useState(false);
-  const [auto, setAuto] = useState(!machine);
+  const [auto, setAuto] = useState(!machine && !film);
   const [current, setCurrent] = useState(-1); // the beat playing or last played
   const [playing, setPlaying] = useState(false);
   const [readouts, setReadouts] = useState<Record<string, number>>({});
@@ -356,9 +367,19 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
     audioRef.current?.pause();
     setCurrent(i);
     setPlaying(true);
+    if (film && !loaded.current.has(i)) {
+      setCaption('');
+      setMakingChapter(i);
+      const c = await chapterOf(animationKey, i, (cover) => setCovers((was) => ({ ...was, [i]: cover })), new AbortController().signal).catch(() => null);
+      setMakingChapter(null);
+      if (run.current.token !== token) return;
+      if (!c?.cover) return setPlaying(false);
+      loaded.current.add(i);
+      send({ cmd: 'chapter', i, cover: c.cover, seconds: c.seconds, code: c.code });
+    }
     // The next line is fetched while this one plays, so the voice doesn't wait between beats.
     const next = manifest.beats[i + 1];
-    if (next && run.current.voice !== 'off') void tts(next.say, run.current.voice, narratorGender(run.current.voice), new AbortController().signal).catch(() => undefined);
+    if (!film && next && run.current.voice !== 'off') void tts(next.say, run.current.voice, narratorGender(run.current.voice), new AbortController().signal).catch(() => undefined);
     const beatDone = new Promise<void>((resolve) => {
       doneRef.current = (k) => { if (k === i) resolve(); };
       setTimeout(resolve, 45000); // a beat that never reports back
@@ -579,6 +600,22 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
             <Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent-primary)' }} />
           </div>
         )}
+        {/* The next chapter: its first frame as soon as it is painted, then it plays. */}
+        {makingChapter !== null && (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: theme.ground }}>
+            {covers[makingChapter] && <img src={covers[makingChapter]} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+            <span className="relative inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm text-white" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
+              <Loader2 size={15} className="animate-spin" /> {t('vidAnimMakingChapter')}
+            </span>
+          </div>
+        )}
+        {film && !recorder && !playing && makingChapter === null && current >= 0 && nextBeat < manifest.beats.length && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <button type="button" onClick={() => void play(nextBeat)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}>
+              <Play size={15} /> {t('vidAnimNextChapter')}: {manifest.beats[nextBeat].label}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* The steps: Manual waits for each press (the next one pulses), Auto plays them all.
@@ -602,7 +639,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
               <RefreshCw size={13} /> {t('vidAnimRegenerate')}
             </button>
           )}
-          <div className="sm:hidden ml-auto flex rounded-full p-0.5 border" style={{ borderColor: 'var(--ui-border-default)' }} role="group">
+          <div className={`sm:hidden ml-auto flex rounded-full p-0.5 border ${film ? '!hidden' : ''}`} style={{ borderColor: 'var(--ui-border-default)' }} role="group">
             {([false, true] as const).map((p) => (
               <button key={String(p)} type="button" onClick={() => { dropTake(); setPortrait(p); }} aria-pressed={portrait === p} aria-label={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} title={t(p ? 'vidAnimPortrait' : 'vidAnimLandscape')} className="px-2.5 py-1 rounded-full" style={pill(portrait === p)}>
                 {p ? <RectangleVertical size={14} /> : <RectangleHorizontal size={14} />}
@@ -628,9 +665,11 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
                     opacity: !enabled ? 0.45 : done && !live ? 0.6 : 1,
                   }}
                 >
-                  <span className="w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-semibold" style={{ border: '1px solid currentColor' }}>
-                    {next && !auto && !live && !simulation ? <Play size={11} /> : i + 1}
-                  </span>
+                  {covers[i] ?? film?.[i]?.cover ? <img src={(covers[i] ?? film?.[i]?.cover)!} alt="" className="w-6 h-6 rounded-full object-cover" /> : (
+                    <span className="w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-semibold" style={{ border: '1px solid currentColor' }}>
+                      {next && !auto && !live && !simulation ? <Play size={11} /> : i + 1}
+                    </span>
+                  )}
                   {b.label}
                 </button>
               </li>

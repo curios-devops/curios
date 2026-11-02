@@ -7,10 +7,12 @@
 //
 // Body { action }:
 //   lookup { key }                          → { ready: true, animation } | { ready: false, left }
-//   start  { key, question, tier, kind?, lang?, regenerate? } → { status: 'making' } — tier luna|sol|astra (Astra for Pro only);
+//   start  { key, question, tier, kind?, lang?, regenerate? } → { status: 'making', preview? } — tier luna|sol|astra (Astra for Pro only);
 //          kind 'simulation' asks for a simulation to play with (otherwise a story; the kind of animation is fixed for now,
-//          see below). The writer gets the top news and pages (sources.ts) and today's date; a first picture is made
-//          alongside and shows while it writes. regenerate (signed in) makes it again, MAX_REGENS times per question.
+//          see below). A story is a film in chapters (chapters.ts): the director plans it with the top news and pages
+//          (sources.ts) and today's date, and its preview goes back at once; the first chapter is then made in the
+//          background. regenerate (signed in) makes it again, MAX_REGENS times per question.
+//   chapter { key, i }                      → { cover, seconds, code, done }: chapter i, made the first time anyone asks.
 //          Daily caps: guest 2 per connection (hashed IP), free 5, Pro 20; GLOBAL_CAP overall.
 //   status { key }                          → { status: 'making', cover } | { status: 'proof', proof } | { ready: true, animation } | { status: 'failed' }
 //   review { key, sheet }                   → the critic (Luna looks at the contact sheet the viewer's browser took of the
@@ -33,10 +35,11 @@
 //   render_failed { key, secret, error }    → render_status failed (viewers' browsers record instead)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // import { CLASSIFY } from "./prompts.ts"; (the second decision, see `start`)
-import { COVER, CRITIC, FIX, MACHINE, PORTRAIT, SIMULATION, STORY } from "./prompts.ts";
+import { CRITIC, FIX, MACHINE, PORTRAIT, SIMULATION, STORY } from "./prompts.ts";
 import { direct, stageOf } from "./archetypes.ts";
 import { briefing, findSources, type Source } from "./sources.ts";
-import { askClaude, imageBlock } from "./claude.ts";
+import { askClaude, imageBlock, imageUrlBlock } from "./claude.ts";
+import { chapterSeconds, codeFrom, COVER_STYLE, DIRECTOR, pageFor, planFrom, WRITER, type Plan } from "./chapters.ts";
 import { signedUpload } from "../_shared/cloudinary.ts";
 import { modelsFrom, tierOf, type Tier } from "../_shared/models.ts";
 import { getVertexAccessToken, VERTEX_PROJECT } from "../_shared/vertex.ts";
@@ -103,8 +106,12 @@ const renderState = (r: Record<string, unknown>) =>
 const toAnimation = (r: Record<string, unknown>) => ({
   question: r.question, kind: r.kind, style: r.style, model: r.model, html: r.html, stage: stageOf(r.style),
   videoUrl: r.video_url ?? null, posterUrl: r.poster_url ?? null, render: renderState(r),
-  sources: ((r.sources ?? []) as Source[]).map(({ title, url, text }) => ({ title, url, snippet: text })), canRegenerate: Number(r.regens ?? 0) < MAX_REGENS,
+  sources: sourcesOf(r), canRegenerate: Number(r.regens ?? 0) < MAX_REGENS,
+  chapters: (r.plan as Plan | null)?.chapters.map((c) => ({ cover: c.cover ?? null, made: c.code !== undefined })) ?? null,
 });
+const sourcesOf = (r: Record<string, unknown>) => ((r.sources ?? []) as Source[]).map(({ title, url, text }) => ({ title, url, snippet: text }));
+/** A film can be recorded once all its chapters exist: they are made as viewers ask for them. */
+const recordable = (r: Record<string, any>) => !r.plan || (r.plan as Plan).chapters.every((c) => c.code !== undefined);
 
 /** Starts the Cloud Run job animation-recorder for this key. */
 async function runCloudRun(key: string) {
@@ -246,15 +253,62 @@ async function written(key: string, row: Record<string, any>, html: string | nul
   return proofOf(html, row.style);
 }
 
-/** The first picture (gemini-image: Pruna, OpenAI fallback). */
-async function makeCover(question: string): Promise<string | null> {
+/** A chapter's cover, which is its first frame (gemini-image: Pruna, OpenAI fallback). */
+async function paint(scene: string): Promise<string | null> {
   const res = await fetch(`${env("SUPABASE_URL")}/functions/v1/gemini-image`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env("SUPABASE_ANON_KEY")}` },
-    body: JSON.stringify({ prompt: COVER(question), engine: "pruna", aspectRatio: "16:9", storageBucket: "movie-assets", storagePath: `animations/${crypto.randomUUID()}.png` }),
+    body: JSON.stringify({ prompt: `${scene}\n${COVER_STYLE}`, engine: "pruna", aspectRatio: "16:9", storageBucket: "movie-assets", storagePath: `animations/${crypto.randomUUID()}.png` }),
   }).catch(() => null);
   const data = res?.ok ? await res.json().catch(() => null) : null;
   return typeof data?.url === "string" && data.url.startsWith("http") ? data.url : null;
+}
+
+/** A quick answer that must pass `read`: Luna, then Haiku. */
+async function quick<T>(o: { system: string; text: string; image?: string; effort: "none" | "low"; json?: boolean }, read: (answer: string) => T | null): Promise<T | null> {
+  const res = await openai("/responses", {
+    method: "POST",
+    body: JSON.stringify({
+      model: models().openai("luna"), reasoning: { effort: o.effort }, instructions: o.system, max_output_tokens: 4000, service_tier: TIER(),
+      input: o.image ? [{ role: "user", content: [{ type: "input_text", text: o.text }, { type: "input_image", image_url: o.image, detail: "low" }] }] : o.text,
+      ...(o.json ? { text: { format: { type: "json_object" } } } : {}),
+    }),
+    signal: AbortSignal.timeout(30000),
+  }).catch(() => null);
+  if (!res?.ok) console.error("luna", res?.status, (await res?.text().catch(() => "") ?? "").slice(0, 200));
+  const good = res?.ok ? read(textOf(await res.json().catch(() => ({})))) : null;
+  const claude = models().claude("luna");
+  if (good || !claude) return good;
+  const content = o.image ? [imageUrlBlock(o.image), { type: "text" as const, text: o.text }] : o.text;
+  const answer = await askClaude({ apiKey: env("CLAUDE_API_KEY"), model: claude, system: o.system, content, maxTokens: 4000, signal: AbortSignal.timeout(30000) }).catch((e) => { console.error("claude", e); return ""; });
+  return read(answer);
+}
+
+/** Makes chapter i of the film `id`: cover first, so it shows, then its code. The film being regenerated stops it. */
+async function makeChapter(key: string, id: string, i: number) {
+  const read = async () => (await db().from("animations").select("plan").eq("question_key", key).eq("response_id", id).maybeSingle()).data as { plan: Plan } | null;
+  // Read again just before writing: another chapter may have landed meanwhile.
+  const save = async (change: Partial<Plan["chapters"][number]>, more: Record<string, unknown> = {}) => {
+    const row = await read();
+    if (!row) return null;
+    row.plan.chapters[i] = { ...row.plan.chapters[i], ...change };
+    await db().from("animations").update({ plan: row.plan, html: pageFor(row.plan), ...more }).eq("question_key", key).eq("response_id", id);
+    return row.plan;
+  };
+  const row = await read();
+  if (!row) return;
+  const c = row.plan.chapters[i];
+  const cover = c.cover ?? await paint(c.scene);
+  if (!cover) {
+    console.error("no cover", key, i);
+    if (i === 0) await db().from("animations").delete().eq("question_key", key).eq("response_id", id); // the next visit can try again
+    else await save({ started: 0 });
+    return;
+  }
+  await save({ cover }, i === 0 ? { poster_url: cover } : {});
+  const code = await quick({ system: WRITER, text: `Narration: ${c.say}\nSeconds: ${chapterSeconds(c.say)}`, image: cover, effort: "low" }, codeFrom);
+  const plan = await save({ code: code ?? "" }, i === 0 ? { status: "ready", updated_at: new Date().toISOString() } : {}); // no code: it stays a moving cover
+  if (plan?.chapters.every((x) => x.code !== undefined)) await requestRender(key);
 }
 
 interface Fix { beat?: unknown; problem?: unknown; fix?: unknown }
@@ -309,7 +363,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "lookup") {
       // Older animations are queued on first view; a failed recording is retried after 6 h (e.g. once the job exists).
       const retry = row?.render_status === "failed" && Date.now() - new Date(row.render_requested_at ?? 0).getTime() > 6 * 3600e3;
-      if (row?.status === "ready" && (!row.render_status || retry)) background(requestRender(key));
+      if (row?.status === "ready" && (!row.render_status || retry) && recordable(row)) background(requestRender(key));
       if (row?.status === "ready") return json({ ready: true, animation: toAnimation(row) });
       if (row?.status === "making" && !stale) return json({ ready: false, status: "making" });
       return json({ ready: false, left: await left(req, uid) });
@@ -334,31 +388,54 @@ Deno.serve(async (req: Request) => {
       // const { kind, style, direction } = body.kind === "simulation" ? { kind: "simulation", style: "sim", direction: undefined } : await classify(question, key);
       const direction = story ? direct({ archetype: "kurzgesagt", confidence: 100 }, [], key) : undefined;
       const kind = (story ? "story" : "simulation") as "story" | "machine" | "simulation", style = direction?.style ?? "sim";
-      const cover = story ? makeCover(question) : null; // already painting while the writer starts
       const sources = story ? await findSources(question, env("TAVILY_API_KEY")) : [];
       // The viewer's chosen (or browser) language, for a question that shows none of its own.
       const lang = typeof body.lang === "string" && /^[a-z]{2,3}(-[A-Za-z]{2})?$/.test(body.lang) ? body.lang : "en";
+      const reset = {
+        sources, review: null, regens: Number(row?.regens ?? 0) + (regenerate ? 1 : 0),
+        video_url: null, poster_url: null, render_status: null, render_requested_at: null, rendered_at: null,
+        user_id: uid, creator_ip_hash: uid ? null : await ipHash(req), created_at: new Date().toISOString(),
+      };
+      const forget = async () => {
+        // The old page's job, its portrait version and this viewer's copy of its video go; other viewers keep the movie they saved.
+        if (!regenerate) return;
+        if (row?.status === "making" && String(row.response_id).startsWith("resp")) void openai(`/responses/${row.response_id}/cancel`, { method: "POST" }).catch(() => undefined);
+        await db().from("animations").delete().eq("question_key", `${key}|portrait`);
+        await db().from("movie_projects").update({ full_video_url: null, thumbnail_url: null, status: "rendering" }).eq("animation_key", key).eq("user_id", uid);
+      };
+      if (story) {
+        const plan = await quick({
+          system: DIRECTOR, effort: "none", json: true,
+          text: `${briefing(question, sources)}\n\nLANGUAGE: the question's own; when it shows none clearly, the language with code "${lang}". TODAY: ${new Date().toISOString().slice(0, 10)}. Reply in json.`,
+        }, planFrom);
+        if (!plan) return json({ error: "start_failed" }, 502);
+        const id = `chapters:${crypto.randomUUID()}`;
+        const { error } = await db().from("animations").upsert({ question_key: key, question, kind, style, model: models().openai("luna"), status: "making", response_id: id, html: null, plan, ...reset }, { onConflict: "question_key" });
+        if (error) throw error;
+        await forget();
+        background(makeChapter(key, id, 0));
+        return json({ status: "making", kind, style, preview: { ...plan, chapters: plan.chapters.map(({ label }) => ({ label })), sources: sources.map(({ title, url, text }) => ({ title, url, snippet: text })) } });
+      }
       const page = await writer(tier, `${kind === "simulation" ? SIMULATION : kind === "machine" ? MACHINE : STORY(direction!.archetype, direction!.palette)}
 LANGUAGE: the question's own; when it shows none clearly (a name, a single word, a link), the language with code "${lang}".
 TODAY: ${new Date().toISOString().slice(0, 10)}.`, briefing(question, sources));
       if (!page) return json({ error: "start_failed" }, 502);
-      const fields = {
-        question_key: key, question, kind, style, model: page.model, status: "making", response_id: page.id, html: null,
-        user_id: uid, creator_ip_hash: uid ? null : await ipHash(req), created_at: new Date().toISOString(),
-        sources, review: null, regens: Number(row?.regens ?? 0) + (regenerate ? 1 : 0),
-        video_url: null, poster_url: null, render_status: null, render_requested_at: null, rendered_at: null,
-      };
-      const { error } = await db().from("animations").upsert(fields, { onConflict: "question_key" });
+      const { error } = await db().from("animations").upsert({ question_key: key, question, kind, style, model: page.model, status: "making", response_id: page.id, html: null, plan: null, ...reset }, { onConflict: "question_key" });
       if (error) throw error;
       page.go(key);
-      if (regenerate) {
-        // The old page's job, its portrait version and this viewer's copy of its video go; other viewers keep the movie they saved.
-        if (row?.status === "making" && row.response_id && !String(row.response_id).startsWith("claude:")) void openai(`/responses/${row.response_id}/cancel`, { method: "POST" }).catch(() => undefined);
-        await db().from("animations").delete().eq("question_key", `${key}|portrait`);
-        await db().from("movie_projects").update({ full_video_url: null, thumbnail_url: null, status: "rendering" }).eq("animation_key", key).eq("user_id", uid);
+      await forget();
+      return json({ status: "making", kind, style });
+    }
+
+    if (body.action === "chapter") {
+      const c = (row?.plan as Plan | null)?.chapters?.[Number(body.i)];
+      if (!c) return json({ error: "no_chapter" }, 400);
+      if (c.code === undefined && Date.now() - Number(c.started ?? 0) > 60 * 1000) {
+        c.started = Date.now();
+        await db().from("animations").update({ plan: row.plan }).eq("question_key", key).eq("response_id", row.response_id);
+        background(makeChapter(key, row.response_id, Number(body.i)));
       }
-      if (cover) background(cover.then((url) => (url ? db().from("animations").update({ poster_url: url }).eq("question_key", key).eq("response_id", page.id) : null)));
-      return json({ status: "making", kind, style, why: direction?.why });
+      return json({ cover: c.cover ?? null, seconds: chapterSeconds(c.say), code: c.code ?? null, done: c.code !== undefined });
     }
 
     if (body.action === "portrait") {
@@ -383,6 +460,7 @@ TODAY: ${new Date().toISOString().slice(0, 10)}.`, briefing(question, sources));
       if (row.status === "ready") return json({ ready: true, animation: toAnimation(row) });
       if (stale || row.status === "failed") return json({ status: "failed" });
       const making = { status: "making", cover: row.poster_url ?? null };
+      if (String(row.response_id).startsWith("chapters:")) return json(making); // makeChapter reports
       if (row.review?.state === "proof" || row.review?.state === "reviewing") {
         if (Date.now() - Number(row.review.at) > REVIEW_MS) return publish(key, row.html, { state: "unreviewed" });
         return row.review.state === "proof" ? proofOf(row.html, row.style) : json(making);
