@@ -285,19 +285,24 @@ async function quick<T>(o: { system: string; text: string; image?: string; effor
 }
 
 /** Makes chapter i of the film `id`: cover first, so it shows, then its code. The film being regenerated stops it. */
+const COVERS_WAIT_MS = 4000; // past the first chapter's code, the film doesn't wait for the rail
+
 async function makeChapter(key: string, id: string, i: number) {
   const read = async () => (await db().from("animations").select("plan").eq("question_key", key).eq("response_id", id).maybeSingle()).data as { plan: Plan } | null;
   // Read again just before writing: another chapter may have landed meanwhile.
-  const save = async (change: Partial<Plan["chapters"][number]>, more: Record<string, unknown> = {}) => {
+  const save = async (change: Partial<Plan["chapters"][number]>, more: Record<string, unknown> = {}, nextCovers: (string | null)[] = []) => {
     const row = await read();
     if (!row) return null;
     row.plan.chapters[i] = { ...row.plan.chapters[i], ...change };
+    nextCovers.forEach((cover, k) => { if (cover) row.plan.chapters[k + 1].cover = cover; });
     await db().from("animations").update({ plan: row.plan, html: pageFor(row.plan), ...more }).eq("question_key", key).eq("response_id", id);
     return row.plan;
   };
   const row = await read();
   if (!row) return;
   const c = row.plan.chapters[i];
+  // The other covers are painted with the first, for the chapter rail; their code waits for the viewer.
+  const nextCovers = i === 0 ? Promise.all(row.plan.chapters.slice(1).map((x) => paint(x.scene))) : null;
   const cover = c.cover ?? await paint(c.scene);
   if (!cover) {
     console.error("no cover", key, i);
@@ -307,7 +312,9 @@ async function makeChapter(key: string, id: string, i: number) {
   }
   await save({ cover }, i === 0 ? { poster_url: cover } : {});
   const code = await quick({ system: WRITER, text: `Narration: ${c.say}\nSeconds: ${chapterSeconds(c.say)}`, image: cover, effort: "low" }, codeFrom);
-  const plan = await save({ code: code ?? "" }, i === 0 ? { status: "ready", updated_at: new Date().toISOString() } : {}); // no code: it stays a moving cover
+  // A cover late for this is painted when its chapter is asked for.
+  const painted = nextCovers ? await Promise.race([nextCovers, new Promise<null[]>((r) => setTimeout(() => r([]), COVERS_WAIT_MS))]) : [];
+  const plan = await save({ code: code ?? "" }, i === 0 ? { status: "ready", updated_at: new Date().toISOString() } : {}, painted); // no code: it stays a moving cover
   if (plan?.chapters.every((x) => x.code !== undefined)) await requestRender(key);
 }
 

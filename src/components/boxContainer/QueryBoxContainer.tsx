@@ -24,6 +24,7 @@ const MOVIE_PROBABILITY_THRESHOLD = 0.5;
 const MUSIC_PROBABILITY_THRESHOLD = 0.5;
 const GAME_PROBABILITY_THRESHOLD = 0.5;
 import { warmMovieGpu } from '../../services/movie/warmupService.ts';
+import { unlockFilmNarrator } from '../../services/movie/audio/paragraphNarrator.ts';
 
 interface QueryBoxContainerProps {
   onModeChange?: (mode: ModeType) => void;
@@ -123,6 +124,9 @@ export default function QueryBoxContainer({ onModeChange, rotateHint }: QueryBox
 
     // Validate: need either text or images
     if (!trimmedQuery && !hasImages) return;
+
+    // The film's narrator can only be unlocked in this tap. Video only: it would stop the viewer's music.
+    if (selectedMode === 'movie') unlockFilmNarrator();
 
     // Regular search is free and open for all users — no quota gating.
 
