@@ -164,8 +164,8 @@ Reply with a json object only: {"approved": true|false, "fixes": [{"beat": 1, "p
 move or scale, and where (the frame is 1600×900)"}]}. One entry per distinct problem (say every beat it touches once), at most
 6, the worst first. Empty when approved.`;
 
-/** The writer applies the critic's fixes to its own page (it continues the same response). */
-export const FIX = `The art director looked at your page frame by frame and sent it back with the fixes below. Apply each one, and check
+/** The writer applies the critic's fixes to the page (they come after it, under FIXES). */
+export const FIX = `The art director looked at this page frame by frame and sent it back with the fixes after it. Apply each one, and check
 the same fault in the other beats (positions, scales, the camera's shots). Change only what they need: same manifest, story,
 palette, motion and bridge calls. Reply with the whole HTML page only, in one \`\`\`html block.`;
 
