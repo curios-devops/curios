@@ -2,7 +2,8 @@
 // The page around it draws every control in Curios' design and talks to the stage through a small
 // bridge (window.curios) injected here, before the model's code: beats, controls, speed, pause and
 // reset go in; readouts, control values the stage moved, the surprise callout, beat ends and errors
-// come out. For a saved video the stage also draws itself into one picture per frame (capture).
+// come out. For a saved video the stage also draws itself into one picture per frame (capture), and
+// for the critic it plays every beat fast and sends two pictures of each (proof).
 // The stage gets the animation's own colours as CSS variables (never the app's theme: an animation
 // looks the same in light and dark, and in its video), and a CSP that only lets it load its libraries.
 
@@ -32,7 +33,8 @@ export type StageEvent =
   | { ev: 'controls'; values: Record<string, number | string> }
   | { ev: 'callout'; text: string }
   | { ev: 'error'; message: string }
-  | { ev: 'frame'; bitmap: ImageBitmap };
+  | { ev: 'frame'; bitmap: ImageBitmap }
+  | { ev: 'proof'; frames: ImageBitmap[] };
 
 const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -148,6 +150,18 @@ const BRIDGE = `(() => {
       else if (m.cmd === 'pause') handlers.pause && handlers.pause(Boolean(m.paused));
       else if (m.cmd === 'reset') handlers.reset && handlers.reset();
       else if (m.cmd === 'capture') { const was = capturing; capturing = Boolean(m.on); if (capturing && !was) capture(Number(m.scale) || 1); }
+      else if (m.cmd === 'proof') {
+        if (window.gsap) window.gsap.globalTimeline.timeScale(12);
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms)), frames = [];
+        for (let i = 0; i < m.beats; i++) {
+          const beat = Promise.resolve(handlers.beat && handlers.beat(i));
+          await wait(250);
+          frames.push(await picture(m.scale));
+          await Promise.race([beat, wait(2000)]);
+          frames.push(await picture(m.scale));
+        }
+        post({ ev: 'proof', frames }, frames);
+      }
     } catch (err) { post({ ev: 'error', message: String(err && err.message || err) }); }
   });
   addEventListener('error', (e) => post({ ev: 'error', message: String(e.message) }));
