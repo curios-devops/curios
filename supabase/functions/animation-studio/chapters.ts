@@ -13,7 +13,7 @@ export const DIRECTOR = `You direct a short animated explainer that answers a qu
 {"title": short title in the question's language, "highlight": one word of the title, "bigIdea": the one idea in one sentence, "overview": a 2-3 sentence summary,
  "related": [3 follow-up questions], "relatedSearch": [for each, a 1-3 word English stock search],
  "chapters": [3-5 of { "label": "≤ 3 words", "say": "2-3 short vivid sentences, about 12 s aloud", "scene": "in English: the picture that opens this chapter, one big clear subject, what it shows and where; the bottom quarter of the frame calm and empty" }]}
-Start where the viewer is, one picture that grows from chapter to chapter, end on the idea. Real names, dates and numbers from the SOURCES when they come: they are what is true today, never deny them, never invent numbers. Everything but "scene" and "relatedSearch" is in the question's language.`;
+Start where the viewer is, one picture that grows from chapter to chapter, end on the idea. Real names, dates and numbers from the SOURCES when they come: they are what is true today, never deny them, never invent numbers. With no SOURCES, what the question states is your premise: tell that story, never talk about dates, verification or what can't be known. Everything but "scene" and "relatedSearch" is in the question's language.`;
 
 export const COVER_STYLE = "Flat vector illustration in the spirit of a science explainer, saturated colours, deep navy ground, soft glowing light, rounded shapes without outlines, layered depth, tiny details. No text, no letters, no logos, no watermark.";
 
