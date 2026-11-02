@@ -228,6 +228,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
   const simulation = animation.kind === 'simulation';
   const manifest = useMemo(() => readManifest(animation.html, simulation ? 0 : 2) as Manifest, [animation.html, simulation]);
   const machine = animation.kind === 'machine' || simulation; // waits for the viewer, 3D-friendly frame
+  const story = animation.kind === 'story'; // a film: it plays by itself, with nothing to operate
   const frameRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   // The animation's own colours, whatever the app's theme.
@@ -517,7 +518,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
         )}
 
         {/* Live numbers from the stage's model, and the surprise moment. */}
-        {manifest.readouts.length > 0 && (
+        {!story && manifest.readouts.length > 0 && (
           <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5 pointer-events-none">
             <div className="flex flex-wrap justify-end gap-1.5">
               {manifest.readouts.map((r) => (
@@ -586,7 +587,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
         {simulation && controlsUi}
         {simulation && manifest.beats.length > 0 && <p className={label} style={{ color: 'var(--ui-text-muted)' }}>{t('vidSimTry')}</p>}
         <div className={`flex flex-wrap items-center gap-2 ${simulation ? 'hidden' : ''}`}>
-          <div className="flex rounded-full p-0.5 border" style={{ borderColor: 'var(--ui-border-default)' }} role="group">
+          <div className={`flex rounded-full p-0.5 border ${story ? 'hidden' : ''}`} style={{ borderColor: 'var(--ui-border-default)' }} role="group">
             {([false, true] as const).map((a) => (
               <button key={String(a)} type="button" onClick={() => { setAuto(a); if (a && !playing && nextBeat < manifest.beats.length) void play(Math.max(0, nextBeat)); }} aria-pressed={auto === a} className="px-3 py-1 rounded-full text-xs font-semibold transition-colors" style={pill(auto === a)}>
                 {a ? t('vidAnimAuto') : t('vidAnimManual')}
@@ -636,7 +637,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
             );
           })}
         </ol>
-        {!simulation && controlsUi}
+        {!simulation && !story && controlsUi}
         {manifest.bigIdea && (
           <p className="text-sm sm:text-base" style={{ color: 'var(--ui-text-primary)' }}>
             <span className={`${label} mr-2`} style={{ color: 'var(--accent-primary)' }}>{t('vidAnimBigIdea')}</span>{manifest.bigIdea}

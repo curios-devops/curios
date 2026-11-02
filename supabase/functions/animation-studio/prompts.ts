@@ -110,6 +110,7 @@ drifts), overlapping and staggered action, squash and stretch, follow-through, s
 clouds, twinkling stars, rain), staging (one focus at a time). Each beat lasts as long as its "say" takes to read aloud (words ÷ 2.6 seconds,
 about 10 s), keeps moving the whole time, and its timeline resolves the beat's promise at the end.
 SVG viewBox fitted to the viewport (re-fit on resize so nothing is cut at 360×640 or 1600×900).
+This is a film, not an instrument: "readouts" and "controls" stay empty, and a number that matters is part of the art.
 ${BRIDGE}`;
 
 export const CLASSIFY = `Decide how Curios should animate the answer to a question. Reply with a json object only:
