@@ -2,7 +2,8 @@
 //
 // Humans pass straight through to the SPA (MovieSharePage plays the video). Link-preview and search
 // crawlers (WhatsApp, X, LinkedIn, Facebook, Googlebot…) get a small page with the video's own Open
-// Graph tags: title, the opening line, its picture (a frame with a play mark) and the video file.
+// Graph tags: title, the opening line, its picture with a play mark (LinkedIn and others only show the
+// picture, so it has to say it is a video) and the video file, for the apps that do play it.
 // Any failure falls back to the SPA.
 
 const CRAWLER_REGEX = /bot|crawler|spider|facebookexternalhit|facebot|embedly|quora link preview|whatsapp|slackbot|telegram|pinterest|discord|vkshare|redditbot|linkedinbot|twitterbot|googlebot|bingbot|applebot|duckduckbot|yandex|gptbot|perplexitybot|claudebot|validator/i;
@@ -10,6 +11,11 @@ const SITE = 'https://curiosai.com';
 const FALLBACK_IMAGE = `${SITE}/curios-og-image-1200x627.png`;
 const SUPABASE_URL = Deno.env.get('VITE_SUPABASE_URL') || 'https://gpfccicfqynahflehpqo.supabase.co';
 const SUPABASE_ANON_KEY = Deno.env.get('VITE_SUPABASE_ANON_KEY') || '';
+
+// As in src/services/movie/playMark.ts: a recorded poster already has its mark.
+const PLAY_MARK = 'l_text:Arial_460:%E2%97%8F,co_black,o_45/fl_layer_apply,g_center/l_text:Arial_130:%E2%96%B6,co_white/fl_layer_apply,g_center,x_8';
+const withPlayMark = (image) =>
+  (image.includes('-poster.') || !image.includes('res.cloudinary.com/') ? image : image.replace('/image/upload/', `/image/upload/${PLAY_MARK}/`));
 
 const esc = (text = '') =>
   String(text).replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c] || c));
@@ -19,10 +25,11 @@ function buildPage(m, id) {
   const full = String((m.viral && m.viral.caption) || m.description || '').replace(/\s+/g, ' ').trim();
   const description = full.length > 160 ? `${full.slice(0, 157)}…` : full;
   const url = `${SITE}/v/${id}`;
-  const image = m.thumbnail_url || FALLBACK_IMAGE;
+  const image = m.thumbnail_url ? withPlayMark(m.thumbnail_url) : FALLBACK_IMAGE;
   const [w, h] = String(m.aspect_ratio || '').split(':').map(Number);
+  const [videoW, videoH] = w >= h ? [1280, Math.round((1280 * h) / w)] : [Math.round((1280 * w) / h), 1280];
   const video = m.full_video_url
-    ? `<meta property="og:video" content="${esc(m.full_video_url)}"><meta property="og:video:secure_url" content="${esc(m.full_video_url)}"><meta property="og:video:type" content="video/mp4">${w && h ? `<meta property="og:video:width" content="${w}"><meta property="og:video:height" content="${h}">` : ''}`
+    ? `<meta property="og:video" content="${esc(m.full_video_url)}"><meta property="og:video:secure_url" content="${esc(m.full_video_url)}"><meta property="og:video:type" content="video/mp4">${w && h ? `<meta property="og:video:width" content="${videoW}"><meta property="og:video:height" content="${videoH}">` : ''}`
     : '';
   return `<!doctype html><html><head><meta charset="utf-8">
 <title>${esc(title)} · CuriosAI</title>

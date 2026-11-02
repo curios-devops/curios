@@ -37,6 +37,7 @@ import type { WebSearchResult } from '../../search/providers/webSearchProvider.t
 import { setMovieModel } from '../core/llm.ts';
 // detectVideoType: Auto is off while Animation is being tested (see the type decision below).
 import { VIDEO_TYPES, movieModeFor, parseVideoType, type VideoType } from '../videoType.ts';
+import { withPlayMark } from '../playMark.ts';
 import CinematicMontage, { type CinematicInfo } from '../cinematic/CinematicMontage.tsx';
 import TourScene, { type TourInfo } from '../tour/TourScene.tsx';
 import { animationMovie, markAnimationMovie, uploadOwnRecording, type AnimationMovie } from '../animation/animationStudio.ts';
@@ -707,7 +708,7 @@ export default function MovieResults() {
         const caption = animInfo.overview.split(/(?<=[.!?])\s/)[0];
         // A signed-in viewer shares their movie's short link; the video (and picture) once the cloud has it.
         return { title: animInfo.title, caption, hashtags: [] as string[], video: animVideoUrl ?? undefined,
-          url: animMovie ? `${site}/v/${animMovie.id}` : shareLink(animInfo.title, caption, animVideo?.poster ?? undefined, `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=${videoType}`) };
+          url: animMovie ? `${site}/v/${animMovie.id}` : shareLink(animInfo.title, caption, withPlayMark(animVideo?.poster), `${site}/movie-results?q=${encodeURIComponent(displayQuery)}&type=${videoType}`) };
       })() : null)
     : videoType === 'cinematic'
     ? (cine ? (() => {
@@ -718,7 +719,7 @@ export default function MovieResults() {
     : (isComplete && experience?.viral ? {
         title: experience.viral.title, caption: experience.viral.caption, hashtags: experience.viral.hashtags,
         video: selectedSwipe?.videoUrl || experience.coreVideoUrl,
-        url: shareLink(experience.viral.title, experience.viral.caption, coreImage,
+        url: shareLink(experience.viral.title, experience.viral.caption, withPlayMark(coreImage),
           savedId ? `${site}/v/${savedId}` : `${site}/movie-results?q=${encodeURIComponent(displayQuery)}`),
       } : null);
   const overview = videoType === 'cinematic' ? cine?.overview : videoType === 'tour' ? tourInfo?.overview : videoType === 'clip' ? clipInfo?.overview : videoType === 'animation' || videoType === 'simulation' ? animInfo?.overview : (experience?.narrative ?? draftNarrative);
