@@ -1,7 +1,8 @@
 // Animation (Video page type) — the studio. A model writes the answer as a live stage: a 3D machine
 // you can turn and run (three.js) or an animated story (SVG + GSAP) in a motion archetype with its own
-// palette (archetypes.ts, prompts.ts). Writing one takes ~20 s (Luna) to minutes (Sol), so it runs in
-// OpenAI's background mode: `start` launches it, the page polls `status` until the page is written.
+// palette (archetypes.ts, prompts.ts). It runs in OpenAI's background mode (Luna, Sol or Astra, _shared/models.ts): `start`
+// launches it, the page polls `status` until the page is written. If OpenAI fails, Claude (Haiku, Sonnet or Opus)
+// writes it inside this function's background task.
 // One animation per question (animations table), so the same question opens at once and is free.
 //
 // Body { action }:
@@ -35,7 +36,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { COVER, CRITIC, FIX, MACHINE, PORTRAIT, SIMULATION, STORY } from "./prompts.ts";
 import { direct, stageOf } from "./archetypes.ts";
 import { briefing, findSources, type Source } from "./sources.ts";
+import { askClaude, imageBlock } from "./claude.ts";
 import { signedUpload } from "../_shared/cloudinary.ts";
+import { modelsFrom, tierOf, type Tier } from "../_shared/models.ts";
 import { getVertexAccessToken, VERTEX_PROJECT } from "../_shared/vertex.ts";
 
 const corsHeaders = {
@@ -55,11 +58,8 @@ const REVIEW_MS = 90 * 1000; // a page nobody's browser got to review (the tab c
 // OpenAI's priority processing writes ~1.7× faster (a page in ~45 s instead of ~80 s) at a higher token
 // price; ANIMATION_SERVICE_TIER=default turns it off.
 const TIER = () => env("ANIMATION_SERVICE_TIER") || "priority";
-const MODELS = {
-  luna: () => env("MODEL_LUNA") || "gpt-6-luna",
-  sol: () => env("MODEL_SOL") || "gpt-6.1-sol",
-  astra: () => env("MODEL_ASTRA") || "gpt-6-astra",
-};
+const models = () => modelsFrom(env);
+const CLAUDE_MS = 120 * 1000; // past this the edge function could be stopped: Claude's fallback is given up
 
 const db = () => createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
 const openai = (path: string, init: RequestInit = {}) =>
@@ -181,12 +181,70 @@ const keyHash = async (key: string) =>
 // }
 
 const textOf = (data: Record<string, any>) => String(data.output_text ?? (data.output ?? []).flatMap((o: Record<string, any>) => o.content ?? []).map((c: Record<string, any>) => c.text ?? "").join(""));
-const pageOf = (data: Record<string, any>) => {
-  const text = textOf(data);
+const pageOf = (data: Record<string, any>) => pageFrom(textOf(data));
+const pageFrom = (text: string) => {
   const m = text.match(/```html\s*\n([\s\S]*?)```/);
   const html = (m ? m[1] : text).trim();
   return /id=["']manifest["']/.test(html) && html.length > 500 ? html : null;
 };
+
+/** OpenAI's background job for a page; its id, or null if it wouldn't start. */
+async function openaiJob(tier: Tier, instructions: string, input: string): Promise<string | null> {
+  const started = await openai("/responses", {
+    method: "POST",
+    // Low reasoning: as good a page as medium, a third sooner.
+    body: JSON.stringify({ model: models().openai(tier), reasoning: { effort: tier === "luna" ? "none" : "low" }, instructions, input, background: true, store: true, max_output_tokens: 48000, service_tier: TIER() }),
+  });
+  const job = await started.json().catch(() => null);
+  if (!started.ok || !job?.id) console.error("openai start", started.status, JSON.stringify(job).slice(0, 300));
+  return started.ok ? job?.id ?? null : null;
+}
+
+const claudeId = () => `claude:${crypto.randomUUID()}`;
+
+/** The writer of a page: its model and the id the row keeps, and go() to launch it once the row is saved. */
+async function writer(tier: Tier, instructions: string, input: string) {
+  const job = await openaiJob(tier, instructions, input);
+  if (job) return { model: models().openai(tier), id: job, go: (_key: string) => undefined };
+  const claude = models().claude(tier);
+  if (!claude) return null;
+  const id = claudeId();
+  return { model: claude, id, go: (key: string) => background(claudeWrites(key, id, claude, instructions, input)) };
+}
+
+/** Claude writes the page here, in the background; the page's `status` just waits. */
+async function claudeWrites(key: string, id: string, model: string, instructions: string, input: string) {
+  const current = async () => (await db().from("animations").select("*").eq("question_key", key).eq("response_id", id).maybeSingle()).data; // null: regenerated meanwhile
+  const text = await askClaude({ apiKey: env("CLAUDE_API_KEY"), model, system: instructions, content: input, maxTokens: 32000, signal: AbortSignal.timeout(CLAUDE_MS) }).catch((e) => { console.error("claude writer", model, e); return ""; });
+  const row = await current();
+  if (row) await written(key, row, pageFrom(text));
+}
+
+/** An OpenAI job failed: Claude takes over with the same brief, if it can. */
+async function claudeTakesOver(key: string, row: Record<string, any>, data: Record<string, any>) {
+  const model = models().claude(tierOf(row.model));
+  const items = model ? await openai(`/responses/${row.response_id}/input_items`).then((r) => (r.ok ? r.json() : null)).catch(() => null) : null;
+  const input = items ? textOf({ output: items.data }) : "";
+  if (!model || !input || !data.instructions) return written(key, row, null);
+  const id = claudeId();
+  const { data: mine } = await db().from("animations").update({ response_id: id, model }).eq("question_key", key).eq("response_id", row.response_id).select("question_key");
+  if (mine?.length) background(claudeWrites(key, id, model, data.instructions, input));
+  return json({ status: "making", cover: row.poster_url ?? null });
+}
+
+/** A writer finished. The critic's fixes go out as they are (one round, to stay in time; if they failed, the page the
+ *  critic saw does); a story goes past the critic first; 3D machines and simulations aren't shot well by the contact sheet. */
+async function written(key: string, row: Record<string, any>, html: string | null) {
+  if (row.review?.state === "fixing") return publish(key, html ?? row.html, { ...row.review, state: html ? "fixed" : "fix_failed" });
+  if (!html) {
+    await db().from("animations").delete().eq("question_key", key); // the next visit can try again
+    return json({ status: "failed" });
+  }
+  if (row.kind !== "story" || key.endsWith("|portrait")) return publish(key, html, null);
+  const { error } = await db().from("animations").update({ html, review: { state: "proof", at: Date.now() } }).eq("question_key", key);
+  if (error) throw error;
+  return proofOf(html, row.style);
+}
 
 /** The first picture (gemini-image: Nano Banana, gpt-image-2 fallback). */
 async function makeCover(question: string): Promise<string | null> {
@@ -201,22 +259,29 @@ async function makeCover(question: string): Promise<string | null> {
 
 interface Fix { beat?: unknown; problem?: unknown; fix?: unknown }
 
-/** Luna looks at the contact sheet. null: no verdict (the page goes out unreviewed rather than waiting). */
+/** The fast model (Luna, else Haiku) looks at the contact sheet. null: no verdict (the page goes out unreviewed rather than waiting). */
 async function critique(sheet: string, html: string): Promise<{ approved: boolean; fixes: Fix[] } | null> {
   const says = (html.match(/"say"\s*:\s*"(?:[^"\\]|\\.)*"/g) ?? []).map((s, i) => `${i + 1}. ${s.replace(/^"say"\s*:\s*/, "")}`).join("\n");
+  const text = `Narration by beat (reply in json):\n${says}`;
+  const claude = models().claude("luna");
+  const answer = await lunaLooks(sheet, text) ?? (claude ? await askClaude({ apiKey: env("CLAUDE_API_KEY"), model: claude, system: CRITIC, content: [imageBlock(sheet), { type: "text", text }], maxTokens: 1500, signal: AbortSignal.timeout(25000) }).catch((e) => { console.error("claude critic", e); return null; }) : null);
+  try {
+    const out = JSON.parse((answer ?? "").match(/\{[\s\S]*\}/)?.[0] ?? "");
+    return { approved: out.approved === true, fixes: Array.isArray(out.fixes) ? out.fixes.slice(0, 6) : [] };
+  } catch { return null; }
+}
+
+async function lunaLooks(sheet: string, text: string): Promise<string | null> {
   const res = await openai("/responses", {
     method: "POST",
     body: JSON.stringify({
-      model: MODELS.luna(), reasoning: { effort: "none" }, instructions: CRITIC, text: { format: { type: "json_object" } }, max_output_tokens: 900,
-      input: [{ role: "user", content: [{ type: "input_text", text: `Narration by beat (reply in json):\n${says}` }, { type: "input_image", image_url: sheet, detail: "high" }] }],
+      model: models().openai("luna"), reasoning: { effort: "none" }, instructions: CRITIC, text: { format: { type: "json_object" } }, max_output_tokens: 900,
+      input: [{ role: "user", content: [{ type: "input_text", text }, { type: "input_image", image_url: sheet, detail: "high" }] }],
     }),
     signal: AbortSignal.timeout(25000),
   }).catch(() => null);
   if (!res?.ok) { console.error("critic failed", res?.status, (await res?.text().catch(() => "") ?? "").slice(0, 300)); return null; }
-  try {
-    const out = JSON.parse(textOf(await res.json()));
-    return { approved: out.approved === true, fixes: Array.isArray(out.fixes) ? out.fixes.slice(0, 6) : [] };
-  } catch { return null; }
+  return textOf(await res.json());
 }
 
 /** The page goes out: ready for everyone, and its cloud recording starts. */
@@ -263,8 +328,8 @@ Deno.serve(async (req: Request) => {
       if (!question) return json({ error: "question required" }, 400);
       if (await left(req, uid) <= 0) return json({ error: uid ? "daily_limit" : "sign_in_required" }, 429);
       const story = body.kind !== "simulation";
-      // A story is Luna's whatever the question: 20 s instead of 1-8 minutes with Sol, for half a cent, and good with sources.
-      const tier = story || body.tier === "luna" ? "luna" : body.tier === "astra" && await isPro(uid) ? "astra" : "sol";
+      // A story goes to the fast tier whatever the question: seconds instead of 1-8 minutes.
+      const tier: Tier = story || body.tier === "luna" ? "luna" : body.tier === "astra" && await isPro(uid) ? "astra" : "sol";
       // The second decision of the cascade is off (see above): every animation is a Kurzgesagt story.
       // const { kind, style, direction } = body.kind === "simulation" ? { kind: "simulation", style: "sim", direction: undefined } : await classify(question, key);
       const direction = story ? direct({ archetype: "kurzgesagt", confidence: 100 }, [], key) : undefined;
@@ -273,34 +338,26 @@ Deno.serve(async (req: Request) => {
       const sources = story ? await findSources(question, env("TAVILY_API_KEY")) : [];
       // The viewer's chosen (or browser) language, for a question that shows none of its own.
       const lang = typeof body.lang === "string" && /^[a-z]{2,3}(-[A-Za-z]{2})?$/.test(body.lang) ? body.lang : "en";
-      // Low reasoning: as good a page as medium, a third sooner.
-      const effort = tier === "luna" ? "none" : "low";
-      const started = await openai("/responses", {
-        method: "POST",
-        body: JSON.stringify({
-          model: MODELS[tier](), reasoning: { effort }, instructions: `${kind === "simulation" ? SIMULATION : kind === "machine" ? MACHINE : STORY(direction!.archetype, direction!.palette)}
+      const page = await writer(tier, `${kind === "simulation" ? SIMULATION : kind === "machine" ? MACHINE : STORY(direction!.archetype, direction!.palette)}
 LANGUAGE: the question's own; when it shows none clearly (a name, a single word, a link), the language with code "${lang}".
-TODAY: ${new Date().toISOString().slice(0, 10)}.`,
-          input: briefing(question, sources), background: true, store: true, max_output_tokens: 48000, service_tier: TIER(),
-        }),
-      });
-      const job = await started.json().catch(() => null);
-      if (!started.ok || !job?.id) { console.error("openai start", started.status, JSON.stringify(job).slice(0, 300)); return json({ error: "start_failed" }, 502); }
+TODAY: ${new Date().toISOString().slice(0, 10)}.`, briefing(question, sources));
+      if (!page) return json({ error: "start_failed" }, 502);
       const fields = {
-        question_key: key, question, kind, style, model: MODELS[tier](), status: "making", response_id: job.id, html: null,
+        question_key: key, question, kind, style, model: page.model, status: "making", response_id: page.id, html: null,
         user_id: uid, creator_ip_hash: uid ? null : await ipHash(req), created_at: new Date().toISOString(),
         sources, review: null, regens: Number(row?.regens ?? 0) + (regenerate ? 1 : 0),
         video_url: null, poster_url: null, render_status: null, render_requested_at: null, rendered_at: null,
       };
       const { error } = await db().from("animations").upsert(fields, { onConflict: "question_key" });
       if (error) throw error;
+      page.go(key);
       if (regenerate) {
         // The old page's job, its portrait version and this viewer's copy of its video go; other viewers keep the movie they saved.
-        if (row?.status === "making" && row.response_id) void openai(`/responses/${row.response_id}/cancel`, { method: "POST" }).catch(() => undefined);
+        if (row?.status === "making" && row.response_id && !String(row.response_id).startsWith("claude:")) void openai(`/responses/${row.response_id}/cancel`, { method: "POST" }).catch(() => undefined);
         await db().from("animations").delete().eq("question_key", `${key}|portrait`);
         await db().from("movie_projects").update({ full_video_url: null, thumbnail_url: null, status: "rendering" }).eq("animation_key", key).eq("user_id", uid);
       }
-      if (cover) background(cover.then((url) => (url ? db().from("animations").update({ poster_url: url }).eq("question_key", key).eq("response_id", job.id) : null)));
+      if (cover) background(cover.then((url) => (url ? db().from("animations").update({ poster_url: url }).eq("question_key", key).eq("response_id", page.id) : null)));
       return json({ status: "making", kind, style, why: direction?.why });
     }
 
@@ -310,20 +367,14 @@ TODAY: ${new Date().toISOString().slice(0, 10)}.`,
       if (!key.endsWith("|portrait")) return json({ error: "portrait key required" }, 400);
       const { data: base } = await db().from("animations").select("*").eq("question_key", key.slice(0, -"|portrait".length)).maybeSingle();
       if (base?.status !== "ready" || !base.html) return json({ error: "not_ready" }, 400);
-      const started = await openai("/responses", {
-        method: "POST",
-        body: JSON.stringify({
-          model: base.model, reasoning: { effort: "low" }, instructions: PORTRAIT, input: base.html,
-          background: true, store: true, max_output_tokens: 48000, service_tier: TIER(),
-        }),
-      });
-      const job = await started.json().catch(() => null);
-      if (!started.ok || !job?.id) { console.error("openai portrait", started.status, JSON.stringify(job).slice(0, 300)); return json({ error: "start_failed" }, 502); }
+      const page = await writer(tierOf(base.model), PORTRAIT, base.html);
+      if (!page) return json({ error: "start_failed" }, 502);
       const { error } = await db().from("animations").upsert({
-        question_key: key, question: base.question, kind: base.kind, style: base.style, model: base.model, status: "making",
-        response_id: job.id, html: null, user_id: uid, creator_ip_hash: uid ? null : await ipHash(req), created_at: new Date().toISOString(),
+        question_key: key, question: base.question, kind: base.kind, style: base.style, model: page.model, status: "making",
+        response_id: page.id, html: null, user_id: uid, creator_ip_hash: uid ? null : await ipHash(req), created_at: new Date().toISOString(),
       }, { onConflict: "question_key" });
       if (error) throw error;
+      page.go(key);
       return json({ status: "making" });
     }
 
@@ -336,23 +387,15 @@ TODAY: ${new Date().toISOString().slice(0, 10)}.`,
         if (Date.now() - Number(row.review.at) > REVIEW_MS) return publish(key, row.html, { state: "unreviewed" });
         return row.review.state === "proof" ? proofOf(row.html, row.style) : json(making);
       }
+      if (String(row.response_id).startsWith("claude:")) return json(making); // Claude took over: claudeWrites reports
       const res = await openai(`/responses/${row.response_id}`);
       const data = await res.json().catch(() => null);
       if (!res.ok || !data) return json(making); // a hiccup: ask again
       if (data.status === "queued" || data.status === "in_progress") return json(making);
       const html = data.status === "completed" ? pageOf(data) : null;
-      // The writer's fixes go out as they are (one round, to stay in time); if they failed, the page the critic saw does.
-      if (row.review?.state === "fixing") return publish(key, html ?? row.html, { ...row.review, state: html ? "fixed" : "fix_failed" });
-      if (!html) {
-        console.error("animation failed", data.status, data.incomplete_details ?? data.error ?? "no page");
-        await db().from("animations").delete().eq("question_key", key); // the next visit can try again
-        return json({ status: "failed" });
-      }
-      // Stories go past the critic first; 3D machines and simulations aren't shot well by the contact sheet.
-      if (row.kind !== "story" || key.endsWith("|portrait")) return publish(key, html, null);
-      const { error } = await db().from("animations").update({ html, review: { state: "proof", at: Date.now() } }).eq("question_key", key);
-      if (error) throw error;
-      return proofOf(html, row.style);
+      if (html) return written(key, row, html);
+      console.error("animation failed", data.status, data.incomplete_details ?? data.error ?? "no page");
+      return claudeTakesOver(key, row, data);
     }
 
     if (body.action === "review") {
@@ -365,19 +408,10 @@ TODAY: ${new Date().toISOString().slice(0, 10)}.`,
       console.log("animation review", JSON.stringify({ key, verdict }));
       if (!verdict) return publish(key, row.html, { state: "unreviewed" });
       if (verdict.approved || !verdict.fixes.length) return publish(key, row.html, { state: "approved" });
-      const started = await openai("/responses", {
-        method: "POST",
-        body: JSON.stringify({
-          model: row.model, reasoning: { effort: "low" }, previous_response_id: row.response_id, instructions: FIX, input: JSON.stringify(verdict.fixes),
-          background: true, store: true, max_output_tokens: 48000, service_tier: TIER(),
-        }),
-      });
-      const job = await started.json().catch(() => null);
-      if (!started.ok || !job?.id) {
-        console.error("openai fix", started.status, JSON.stringify(job).slice(0, 300));
-        return publish(key, row.html, { state: "fix_failed", fixes: verdict.fixes });
-      }
-      await db().from("animations").update({ response_id: job.id, review: { state: "fixing", fixes: verdict.fixes } }).eq("question_key", key);
+      const page = await writer(tierOf(row.model), FIX, `${row.html}\n\nFIXES:\n${JSON.stringify(verdict.fixes)}`);
+      if (!page) return publish(key, row.html, { state: "fix_failed", fixes: verdict.fixes });
+      await db().from("animations").update({ response_id: page.id, model: page.model, review: { state: "fixing", fixes: verdict.fixes } }).eq("question_key", key);
+      page.go(key);
       return json({ status: "making" });
     }
 
