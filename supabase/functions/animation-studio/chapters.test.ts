@@ -45,6 +45,12 @@ describe('chapterSeconds', () => {
 });
 
 describe('pageFor', () => {
+  it('holds a painted chapter without its code: the rail shows it, the code comes when asked for', () => {
+    const html = pageFor(plan({ chapters: [{ ...chapter, cover: 'https://c/1.jpg', code: 'a.label("x")' }, { ...chapter, cover: 'https://c/2.jpg' }] }));
+    expect(html).toContain('curios.chapter(1,');
+    expect(html).not.toContain('curios.code(1,');
+  });
+
   it('always lists every chapter in the manifest, made or not: the page shows them from the start', () => {
     const m = readManifest(pageFor(plan()));
     expect(m?.beats).toHaveLength(2);

@@ -23,7 +23,7 @@ import { useSession } from '../../../hooks/useSession.ts';
 import { useLanguage } from '../../../contexts/LanguageContext.tsx';
 import { useProCredits } from '../../../providers/ProCreditsProvider.tsx';
 import { decideTier } from '../../auto/modelTier.ts';
-import { tts } from '../audio/paragraphNarrator.ts';
+import { filmNarratorAudio, tts, unlockFilmNarrator } from '../audio/paragraphNarrator.ts';
 import { loadNarratorVoice, narratorGender, NARRATOR_VOICES, saveNarratorVoice } from '../audio/narratorPrefs.ts';
 import { captionLines, lineAt, readingSeconds } from './captions.ts';
 import { tourKey } from '../tour/tourPlan.ts';
@@ -141,6 +141,7 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
 
   const regenerate = () => {
     if (!signedIn) return onNeedSignIn();
+    unlockFilmNarrator();
     regenerating.current = animation;
     setNotice('');
     setMaking({});
@@ -286,6 +287,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
   const setControl = (id: string, value: number | string) => { setControls((s) => ({ ...s, [id]: value })); send({ cmd: 'set', id, value }); };
   const [voice, setVoice] = useState<Voice>(() => loadNarratorVoice(session?.user));
   const [voiceMenu, setVoiceMenu] = useState(false);
+  const [silenced, setSilenced] = useState(false); // the browser blocked the voice: it needs a tap
   const voiceMenuRef = useRef<HTMLDivElement>(null);
   const [caption, setCaption] = useState('');
   const [captionsOn, setCaptionsOn] = useState(() => { try { return localStorage.getItem('animationCaptions') !== 'off'; } catch { return true; } });
@@ -351,11 +353,12 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
       const sound = await tts(text, v, narratorGender(v), new AbortController().signal);
       if (run.current.token !== token) return;
       const url = URL.createObjectURL(new Blob([sound], { type: 'audio/mpeg' }));
-      const audio = new Audio(url);
+      const audio = recorder ? new Audio() : filmNarratorAudio(); // a recording takes over its element for good
+      audio.src = url;
       audioRef.current = audio;
       take.current?.rec.voice(audio);
       audio.ontimeupdate = () => { if (audio.duration) show(audio.currentTime / audio.duration); };
-      await new Promise<void>((resolve) => { audio.onended = audio.onerror = () => resolve(); audio.play().catch(() => { paced(); resolve(); }); });
+      await new Promise<void>((resolve) => { audio.onended = audio.onerror = () => resolve(); audio.play().catch((e) => { if (e.name === 'NotAllowedError' && run.current.token === token) setSilenced(true); paced(); resolve(); }); });
       URL.revokeObjectURL(url);
     } catch { paced(); }
   };
@@ -365,6 +368,8 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
     if (take.current && i !== take.current.next) dropTake(); // the run was broken: not one whole video
     const token = ++run.current.token;
     audioRef.current?.pause();
+    if (!recorder) unlockFilmNarrator(); // pressed by the viewer, this is the tap the voice needs
+    setSilenced(false);
     setCurrent(i);
     setPlaying(true);
     if (film && !loaded.current.has(i)) {
@@ -521,6 +526,8 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
 
   return (
     <>
+      <div className={film ? 'flex flex-col lg:flex-row gap-6' : ''}>
+      <div className={film ? 'flex-1 min-w-0' : ''}>
       {/* The question, its key word in the accent (Marble). */}
       <h2 className="font-bricolage text-2xl sm:text-4xl font-bold leading-tight tracking-tight mb-3" style={{ color: 'var(--ui-text-primary)' }}>
         {hi >= 0 ? <>{title.slice(0, hi)}<span style={{ color: 'var(--accent-primary)' }}>{title.slice(hi, hi + manifest.highlight.length)}</span>{title.slice(hi + manifest.highlight.length)}</> : title}
@@ -584,7 +591,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => { if (!paused) dropTake(); setPaused((p) => !p); send({ cmd: 'pause', paused: !paused }); }} aria-label={paused ? t('vidAnimPlay') : t('vidAnimPause')} title={paused ? t('vidAnimPlay') : t('vidAnimPause')} className="p-1">
+          <button type="button" onClick={() => { if (!paused) dropTake(); setPaused((p) => !p); send({ cmd: 'pause', paused: !paused }); void (paused ? audioRef.current?.play() : audioRef.current?.pause()); }} aria-label={paused ? t('vidAnimPlay') : t('vidAnimPause')} title={paused ? t('vidAnimPlay') : t('vidAnimPause')} className="p-1">
             {paused ? <Play size={16} /> : <Pause size={16} />}
           </button>
           <span className={`hidden sm:block ml-1 text-white/70 truncate ${label}`}>{animation.kind === 'machine' ? t('vidAnimHint3d') : ''}</span>
@@ -599,6 +606,12 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent-primary)' }} />
           </div>
+        )}
+        {/* The browser wouldn't let the voice start: this tap does, and the chapter starts over in step with it. */}
+        {silenced && voice !== 'off' && !recorder && (
+          <button type="button" onClick={() => void play(current)} className="absolute top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--ui-text-on-accent)' }}>
+            <Volume2 size={15} /> {t('vidUnmute')}
+          </button>
         )}
         {/* The next chapter: its first frame as soon as it is painted, then it plays. */}
         {makingChapter !== null && (
@@ -647,7 +660,7 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
             ))}
           </div>
         </div>
-        <ol className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        {!film && <ol className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {manifest.beats.map((b, i) => {
             const live = i === current, done = i < current || (i === current && !playing), next = i === nextBeat && !playing;
             const enabled = ready && (i <= nextBeat || !machine || simulation);
@@ -665,17 +678,15 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
                     opacity: !enabled ? 0.45 : done && !live ? 0.6 : 1,
                   }}
                 >
-                  {covers[i] ?? film?.[i]?.cover ? <img src={(covers[i] ?? film?.[i]?.cover)!} alt="" className="w-6 h-6 rounded-full object-cover" /> : (
-                    <span className="w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-semibold" style={{ border: '1px solid currentColor' }}>
-                      {next && !auto && !live && !simulation ? <Play size={11} /> : i + 1}
-                    </span>
-                  )}
+                  <span className="w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-semibold" style={{ border: '1px solid currentColor' }}>
+                    {next && !auto && !live && !simulation ? <Play size={11} /> : i + 1}
+                  </span>
                   {b.label}
                 </button>
               </li>
             );
           })}
-        </ol>
+        </ol>}
         {!simulation && !story && controlsUi}
         {manifest.bigIdea && (
           <p className="text-sm sm:text-base" style={{ color: 'var(--ui-text-primary)' }}>
@@ -683,6 +694,32 @@ export function Player({ animation, animationKey, belowPlayer, onVideo, onRegene
           </p>
         )}
       </section>
+      </div>
+      {/* The chapters, as Video shows them: a rail on a wide screen, a row on a phone. */}
+      {film && (
+        <aside className="lg:w-64 flex-shrink-0">
+          <div className="mb-2">
+            <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--ui-text-muted)' }}>{t('vidSwipes')} ({manifest.beats.length})</span>
+          </div>
+          <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:max-h-[70vh] pb-2 lg:pb-0 scrollbar-hide">
+            {manifest.beats.map((b, i) => {
+              const cover = covers[i] ?? film[i]?.cover;
+              return (
+                <button key={i} type="button" disabled={!ready} onClick={() => void play(i)} className="relative flex-shrink-0 w-40 lg:w-full aspect-video rounded-lg overflow-hidden border-2 transition-all" style={{ borderColor: i === current ? 'var(--accent-primary)' : 'transparent', backgroundColor: 'var(--ui-bg-elevated)' }}>
+                  {cover ? <img src={cover} alt={b.label} className="w-full h-full object-cover" /> : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      {makingChapter === i ? <Loader2 size={16} className="animate-spin" style={{ color: 'var(--ui-text-muted)' }} /> : <Play size={16} style={{ color: 'var(--ui-text-muted)' }} />}
+                    </div>
+                  )}
+                  <span className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">{i + 1}/{manifest.beats.length}</span>
+                  <span className="absolute bottom-1 left-1 max-w-[calc(100%-0.5rem)] truncate text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">{b.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+      )}
+      </div>
       {belowPlayer}
     </>
   );

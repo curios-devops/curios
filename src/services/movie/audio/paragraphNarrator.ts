@@ -128,6 +128,18 @@ function silentWav(): string {
   return URL.createObjectURL(new Blob([buf.buffer], { type: 'audio/wav' }));
 }
 
+// The film's narrator speaks through one <audio>: played once inside a tap, it may speak later without one
+// (phones block a new element that starts seconds after the tap, and a film starts long after it).
+let filmNarrator: HTMLAudioElement | null = null;
+let silence: string | null = null;
+export const filmNarratorAudio = (): HTMLAudioElement => (filmNarrator ??= new Audio());
+/** Call inside a tap. */
+export function unlockFilmNarrator(): void {
+  const audio = filmNarratorAudio();
+  audio.src = silence ??= silentWav();
+  void audio.play().catch(() => undefined);
+}
+
 // 'held' = a paragraph finished and autoAdvance said stop (Cinematic with autoplay off).
 export type NarratorState = 'loading' | 'playing' | 'paused' | 'held' | 'ended' | 'error';
 
