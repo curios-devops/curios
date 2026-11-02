@@ -1,6 +1,6 @@
 // Animation (Video page type): asks the animation-studio edge function for the question's live stage.
 // One per question, kept by the server: an animation already made opens at once; a new one is written
-// by Luna/Sol/Astra in the background (1-3 minutes) while the page polls and shows a first picture. A story
+// in the background (a story by Luna, in under a minute) while the page polls and shows a first picture. A story
 // passes the critic first: this browser takes a contact sheet of the stage and the studio judges it. Once
 // published, the studio has it recorded once in the cloud (Cloud Run) as a video everyone shares.
 import { supabase } from '../../../lib/supabase.ts';
@@ -67,8 +67,8 @@ export async function portraitAnimation(key: string, signal: AbortSignal): Promi
 
 /** Polls until the page for `key` is published; a written story goes past the critic on the way. */
 async function waitFor(key: string, signal: AbortSignal, onMaking?: (m: Making) => void): Promise<Animation> {
-  for (let i = 0; i < 200 && !signal.aborted; i++) {
-    await new Promise((r) => setTimeout(r, 4000));
+  for (let i = 0; i < 400 && !signal.aborted; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
     if (signal.aborted) break;
     const s = await call({ action: 'status', key }).catch(() => ({ status: 'making' }) as Answer);
     if (s.ready && s.animation) return s.animation;

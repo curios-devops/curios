@@ -100,8 +100,8 @@ export default function AnimationScene({ question, kind, tab, belowPlayer, onRea
       if (found.animation) return show(found.animation);
       if (!found.making && found.left <= 0) return setStage(tier === 'pro' ? 'limit' : 'nocredits');
       setStage('making');
-      // The question's difficulty picks the writer: easy → Luna, complex → Sol (Astra for Pro).
-      const rated = await decideTier(question);
+      // A story is always Luna's (the studio's choice). A simulation's difficulty picks its writer: easy → Luna, complex → Sol (Astra for Pro).
+      const rated = kind === 'simulation' ? await decideTier(question) : 'easy';
       const model = rated === 'easy' ? 'luna' : rated === 'complex' && tier === 'pro' ? 'astra' : 'sol';
       show(await makeAnimation(key, question, model, controller.signal, { already: found.making, kind, lang: currentLanguage.code, regenerate: again, onMaking: (m) => setMaking((was) => ({ ...was, ...m })) }));
     })().catch((err) => {

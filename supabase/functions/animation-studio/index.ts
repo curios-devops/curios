@@ -1,6 +1,6 @@
 // Animation (Video page type) — the studio. A model writes the answer as a live stage: a 3D machine
 // you can turn and run (three.js) or an animated story (SVG + GSAP) in a motion archetype with its own
-// palette (archetypes.ts, prompts.ts). Writing one takes Sol ~45-90 s, longer than an edge call may wait, so it runs in
+// palette (archetypes.ts, prompts.ts). Writing one takes ~20 s (Luna) to minutes (Sol), so it runs in
 // OpenAI's background mode: `start` launches it, the page polls `status` until the page is written.
 // One animation per question (animations table), so the same question opens at once and is free.
 //
@@ -262,10 +262,11 @@ Deno.serve(async (req: Request) => {
       const question = typeof body.question === "string" ? body.question.trim().slice(0, 500) : "";
       if (!question) return json({ error: "question required" }, 400);
       if (await left(req, uid) <= 0) return json({ error: uid ? "daily_limit" : "sign_in_required" }, 429);
-      const tier = body.tier === "astra" && await isPro(uid) ? "astra" : body.tier === "luna" ? "luna" : "sol";
+      const story = body.kind !== "simulation";
+      // A story is Luna's whatever the question: 20 s instead of 1-8 minutes with Sol, for half a cent, and good with sources.
+      const tier = story || body.tier === "luna" ? "luna" : body.tier === "astra" && await isPro(uid) ? "astra" : "sol";
       // The second decision of the cascade is off (see above): every animation is a Kurzgesagt story.
       // const { kind, style, direction } = body.kind === "simulation" ? { kind: "simulation", style: "sim", direction: undefined } : await classify(question, key);
-      const story = body.kind !== "simulation";
       const direction = story ? direct({ archetype: "kurzgesagt", confidence: 100 }, [], key) : undefined;
       const kind = (story ? "story" : "simulation") as "story" | "machine" | "simulation", style = direction?.style ?? "sim";
       const cover = story ? makeCover(question) : null; // already painting while the writer starts
